@@ -1,0 +1,132 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" []>
+<section id="architecture">
+  <title>Архитектура</title>
+  <para>В данной главе рассмотрена архитектура CUBA-приложений в различных разрезах: по уровням, блокам, модулям, и по используемым базовым проектам.</para>
+  <section id="app_tiers">
+    <title>Уровни и блоки приложения</title>
+    <para>Платформа позволяет строить приложения по классической трехуровневой схеме:  клиентский уровень, средний слой, база данных. <firstterm>Уровень</firstterm> отражает степень &quot;удаленности&quot;  от хранимых данных. </para>
+    <para>В дальнейшем речь пойдет в основном о среднем слое и клиентах, поэтому для краткости выражение &quot;все уровни&quot; означает два этих уровня.</para>
+    <para>На каждом уровне возможно создание одного или нескольких <firstterm>блоков</firstterm> (units) приложения. Блок представляет собой обособленную исполняемую программу, взаимодействующую с другими блоками приложения. Средства платформы CUBA позволяют создавать блоки в виде веб-приложений и десктопных приложений. Разработка блоков для мобильных платформ на данный момент остается за рамками  CUBA, однако такие блоки, созданные другими средствами, могут быть интегрированы со стандартными блоками приложения. </para>
+    <figure>
+      <title>Уровни и блоки приложения</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/AppTiers.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <variablelist>
+      <varlistentry>
+        <term>Middleware</term>
+        <listitem>
+          <para>Средний слой, содержащий основную бизнес-логику приложения и выполняющий обращения к базе данных. Представляет собой отдельное веб-приложение под управлением стандартного контейнера <glossterm linkend="javaee_web_profile">Java EE Web Profile</glossterm>. См. <xref linkend="middleware"/></para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>Web Client</term>
+        <listitem>
+          <para>Основной блок клиентского уровня. Содержит  интерфейс, предназначенный, как правило, для внутренних пользователей организации. Представляет собой отдельное веб-приложение под управлением стандартного контейнера <application>Java EE Web Profile</application>. Реализация <link linkend="gui_framework">пользовательского интерфейса</link> основана на фреймворке <application>Vaadin</application>. См. <xref linkend="gui_framework"/></para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>Desktop Client</term>
+        <listitem>
+          <para>Дополнительный блок клиентского уровня. Содержит  интерфейс, предназначенный, как правило, для внутренних пользователей организации. Представляет собой десктопное Java-приложение, реализация пользовательского интерфейса основана на фреймворке <application>Java Swing</application>. См. <xref linkend="gui_framework"/></para>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>Web Portal</term>
+        <listitem>
+          <para>Дополнительный блок клиентского уровня. Содержит интерфейс для внешних пользователей и средства интеграции с мобильными устройствами и сторонними приложениями. Представляет собой отдельное веб-приложение под управлением стандартного контейнера <application>Java EE Web Profile</application>. Реализация пользовательского интерфейса основана на фреймворке <application>Spring MVC</application>. См. <xref linkend="portal"/></para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+    <para>Обязательным блоком любого приложения является средний слой - <structname>Middleware</structname>. Для реализации пользовательского интерфейса, как правило, используется один или несколько клиентских блоков, например, <structname>Web Client</structname> и <structname>Web Portal</structname>. </para>
+    <para>Вышеперечисленные блоки являются стандартными, однако в сложном приложении для разделения функциональности можно без труда создать произвольное количество как клиентских блоков, так и блоков среднего слоя.</para>
+    <para>Все клиентские блоки  взаимодействуют со средним слоем одинаковым образом посредством протокола <application>HTTP</application>, что позволяет размещать средний слой произвольным образом, в том числе за сетевым экраном. Следует отметить, что при развертывании в простейшем случае среднего слоя и веб-клиента на одном сервере между ними организуется локальное взаимодействие в обход сетевого стека для снижения накладных расходов.</para>
+  </section>
+  <section id="app_modules">
+    <title>Модули приложения</title>
+    <para>Модуль – наименьшая структурная единица CUBA-приложения. Представляет собой один модуль проекта приложения и соответствующий ему JAR файл с исполняемым кодом.</para>
+    <para>Стандартные модули: <itemizedlist>
+        <listitem>
+          <para><structname>global</structname> – включает в себя классы сущностей, интерфейсы сервисов и другие общие для всех уровней классы. Используется во всех <link linkend="app_tiers">блоках приложения</link>.</para>
+        </listitem>
+        <listitem>
+          <para><structname>core</structname> – реализация сервисов и всех остальных компонентов среднего слоя. Используется только на <structname>Middleware</structname>.</para>
+        </listitem>
+        <listitem>
+          <para><structname>gui</structname> – общие компоненты <link linkend="gui_framework">универсального пользовательского интерфейса</link>. Используется в <structname>Web Client</structname> и <structname>Desktop Client</structname>.</para>
+        </listitem>
+        <listitem>
+          <para><structname>web</structname> – реализация универсального пользовательского интерфейса на <application>Vaadin</application>, а также другие специфичные для веб-клиента классы. Используется в блоке <structname>Web Client</structname>.</para>
+        </listitem>
+        <listitem>
+          <para><structname>desktop</structname> – опциональный модуль – реализация универсального пользовательского интерфейса на <application>Java Swing</application>, а также другие специфичные для десктоп-клиента классы. Используется в блоке <structname>Desktop Client</structname>.</para>
+        </listitem>
+        <listitem>
+          <para><structname>portal</structname> – опциональный модуль – реализация веб-портала на <application>Spring MVC</application>.</para>
+        </listitem>
+      </itemizedlist>  </para>
+    <figure>
+      <title>Модули приложения</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/AppModules.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+  </section>
+  <section id="base_projects">
+    <title>Базовые проекты</title>
+    <para>Функциональность платформы разделена на несколько так называемых <firstterm>базовых проектов</firstterm>: <itemizedlist>
+        <listitem>
+          <para><structname>cuba</structname> – основной базовый проект, содержит всю функциональность, описанную в данном руководстве, плюс подсистему безопасности (управление пользователями и их доступом к данным)</para>
+        </listitem>
+        <listitem>
+          <para><structname>reports</structname> – подсистема генерации отчетов</para>
+        </listitem>
+        <listitem>
+          <para><structname>workflow</structname> – подсистема управления потоками работ со встроенным визуальным редактором бизнес-процессов</para>
+        </listitem>
+        <listitem>
+          <para><structname>fts</structname> – подсистема полнотекстового поиска</para>
+        </listitem>
+        <listitem>
+          <para><structname>charts</structname> – подсистема вывода диаграмм</para>
+        </listitem>
+        <listitem>
+          <para><structname>ccpayments</structname> – подсистема работы с кредитными картами</para>
+        </listitem>
+        <listitem>
+          <para><structname>bpmn</structname> – механизм исполнения бизнес-процессов по стандарту <application>BPMN 2.0</application></para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Создаваемое на основе платформы приложение может включать в себя функциональность базовых проектов путем объявления зависимостей от их <glossterm linkend="artifact"> артефактов</glossterm>. Зависимость от артефактов <structname>cuba</structname> является обязательной. Опциональные базовые проекты в свою очередь также зависят от <structname>cuba</structname>, и в принципе могут содержать зависимости между собой.</para>
+    <figure>
+      <title>Зависимости между проектами</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/BaseProjects.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <para>Сплошными линиями изображены обязательные зависимости, пунктирными − опциональные.</para>
+  </section>
+  <section>
+    <title>Состав приложения</title>
+    <para>Вышеописанные архитектурные принципы напрямую отражаются на составе собранного приложения. Рассмотрим его на примере простого приложения  <application>sales</application>, которое имеет 2 блока – <structname>Middleware</structname> и <structname>Web Client</structname>; и включает в себя функциональность базовых проектов <structname>cuba</structname> и <structname>reports</structname>.</para>
+    <figure>
+      <title>Состав простого приложения</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/SampleAppArtifacts.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <para>На рисунке изображено содержимое некоторых каталогов сервера <application>Tomcat</application> с развернутым в нем приложением <application>sales</application>. </para>
+    <para><link linkend="app_tiers">Блок</link><structname> Middleware</structname> реализован веб-приложением <filename>app-core</filename>, блок <structname>Web Client</structname> – веб-приложением <filename>app</filename>. Исполняемый код веб-приложений содержится в каталогах <filename>WEB-INF/lib</filename> в наборе JAR-файлов. Каждый JAR представляет собой результат сборки (<glossterm linkend="artifact">артефакт</glossterm>) одного из <link linkend="app_modules">модулей</link> приложения или <link linkend="base_projects">базового проекта</link>.</para>
+    <para>Например, состав JAR-файлов веб-приложения среднего слоя <filename>app-core</filename> определяется тем, что блок <structname>Middleware</structname> состоит из модулей <structname>global</structname> и <structname>core</structname>, и приложение использует базовые проекты <structname>cuba</structname> и <structname>reports</structname> (в данном случае версии 4.0.0). </para>
+  </section>
+</section>

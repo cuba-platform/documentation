@@ -1,0 +1,977 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" []>
+<section id="middleware">
+    <title>Компоненты среднего слоя</title>
+    <para>На следующем рисунке приведены основные компоненты среднего слоя CUBA-приложения.</para>
+    <figure>
+      <title>Компоненты среднего слоя</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/Middleware.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <para><link linkend="services">Services</link> – управляемые <glossterm linkend="container">контейнером</glossterm> компоненты, формирующие границу приложения и предоставляющие интерфейс клиентскому <link linkend="app_tiers">уровню</link> приложения. Сервисы могут содержать бизнес-логику сами, либо делегировать выполнение <link linkend="managed_beans">Managed Beans</link>.</para>
+    <para><link linkend="managed_beans">Managed Beans</link> – управляемые <glossterm linkend="container">контейнером</glossterm> компоненты, содержащие бизнес-логику приложения. Вызываются <link linkend="services">сервисами</link>, другими бинами или через опциональный <glossterm linkend="jmx">JMX</glossterm> интерфейс.</para>
+    <para><code>
+        <link linkend="persistence">Persistence</link>
+      </code> − инфраструктурный интерфейс для доступа к функциональности хранения данных: управлению <link linkend="transactions">транзакциями</link> и <link linkend="orm">ORM</link>. </para>
+    <section id="services">
+      <title>Сервисы</title>
+      <para>Сервисы образуют слой  компонентов, определяющий множество операций <structname>Middleware</structname>, доступных клиентскому <link linkend="app_tiers">уровню</link> приложения. Внутри сервисов  инкапсулируется бизнес-логика и  управление <link linkend="transactions">транзакциями</link>.</para>
+      <para>Основные задачи сервисов:</para>
+      <itemizedlist>
+        <listitem>
+          <para>Предоставляют удаленный (remote) интерфейс для вызова с клиентского уровня</para>
+        </listitem>
+        <listitem>
+          <para>Проверяют наличие активной <link linkend="userSession">пользовательской сессии</link>, соответствующей идентификатору сессии, переданному с клиента</para>
+        </listitem>
+        <listitem>
+          <para>Записывают в журнал  необработанные исключения среднего слоя</para>
+        </listitem>
+      </itemizedlist>
+      <para>Кроме того, именно в слое сервисов рекомендуется выполнять авторизацию текущего пользователя, т.е. проверять его права на ту или иную функциональность.</para>
+      <para>Общие для всех сервисов задачи решаются следующим образом:<itemizedlist>
+          <listitem>
+            <para>Проверка наличия пользовательской сессии и логгирование исключений производится классом-<glossterm linkend="interceptor">интерцептором</glossterm> <code>ServiceInterceptor</code>, который перехватывает выполнение каждого метода сервиса с помощью <application>Spring AOP</application></para>
+          </listitem>
+          <listitem>
+            <para>Удаленный интерфейс для доступа к сервису через <application>Spring HTTP Invoker</application> создается бином <code>RemoteServicesBeanCreator</code>, который конфигурируется в файле <filename>
+                <link linkend="remoting-spring.xml">remoting-spring.xml</link>
+              </filename> модуля <structname>core</structname>. </para>
+          </listitem>
+        </itemizedlist></para>
+      <figure>
+        <title>Диаграмма классов сервиса</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata align="center" fileref="img/MiddlewareServices.png"/>
+          </imageobject>
+        </mediaobject>
+      </figure>
+      <section>
+        <title>Создание сервиса</title>
+        <para>Имена интерфейсов сервисов должны заканчиваться на <code>Service</code>, имена классов реализации на <code>ServiceBean</code>.</para>
+        <para>При создании сервиса необходимо выполнить следующее:</para>
+        <procedure>
+          <step>
+            <para>Создать интерфейс в <link linkend="app_modules">модуле</link> <structname>global</structname> (т.к. интерфейс сервиса должен быть доступен на всех <link linkend="app_tiers">уровнях</link>) и задать в нем имя сервиса. Имя рекомендуется задавать в формате <literal>{имя_проекта}_{имя_интерфейса}</literal>. Например:</para>
+            <programlisting language="java">package com.sample.sales.core;
+
+import com.sample.sales.entity.Order;
+
+public interface OrderService {
+    String NAME = &quot;sales_OrderService&quot;;
+
+    void calculateTotals(Order order);
+}</programlisting>
+          </step>
+          <step>
+            <para>Создать класс сервиса в модуле <structname>core</structname> и добавить ему аннотацию <code>@org.springframework.stereotype.Service</code> с именем, заданным в интерфейсе</para>
+            <programlisting language="java">package com.sample.sales.core;
+
+import com.sample.sales.entity.Order;
+import org.springframework.stereotype.Service;
+
+@Service(OrderService.NAME)
+public class OrderServiceBean implements OrderService {
+    @Override
+    public void calculateTotals(Order order) {
+    }
+}</programlisting>
+            <para>Класс сервиса, как и класс любого другого <link linkend="managed_beans">управляемого бина</link>, должен находиться внутри дерева пакетов с корнем, заданным в элементе <literal>context:component-scan</literal> файла <filename>
+                <link linkend="spring.xml">spring.xml</link>
+              </filename>. В нашем случае файл <filename>spring.xml</filename> содержит элемент:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.sample.sales&quot;/&gt;</programlisting>что означает, что поиск аннотированных бинов для данного блока приложения будет происходить начиная с пакета <code>com.sample.sales</code>.</para>
+          </step>
+        </procedure>
+        <warning>
+          <para>Сервисы предназначены только для вызова &quot;снаружи&quot; <structname>Middleware</structname>. Не рекомендуется вызывать методы сервисов из других компонентов среднего слоя. При обнаружении факта вызова сервиса из другого сервиса в журнал  выводится сообщение об ошибке.</para>
+          <para>Если некоторую бизнес-логику требуется вызывать из разных сервисов либо других компонентов <structname>Middleware</structname>, ее необходимо выделить и инкапсулировать внутри соответствующего <link linkend="managed_beans">Managed Bean</link>.</para>
+        </warning>
+      </section>
+      <section id="service_import">
+        <title>Использование сервиса</title>
+        <para>Для того чтобы вызывать сервис, в клиентском  блоке приложения для него должен быть создан соответствующий прокси-объект. Делается это путем объявления имени и интерфейса сервиса в параметрах фабрики прокси-объектов. Для блока <structname>Web Client</structname> это бин класса <code>WebRemoteProxyBeanCreator</code>, для <structname>Web Portal</structname> - <code>PortalRemoteProxyBeanCreator</code> , для <structname>Desktop Client</structname> - <code>RemoteProxyBeanCreator</code> .</para>
+        <para>Фабрика прокси-объектов конфигурируется в файле <filename>
+            <link linkend="spring.xml">spring.xml</link>
+          </filename> соответствующего клиентского блока.</para>
+        <para>Например, чтобы в приложении <application>sales</application> вызвать с веб-клиента сервис <code>sales_OrderService</code>, необходимо добавить в файл <filename>web-spring.xml</filename> модуля <structname>web</structname> следующее:</para>
+        <programlisting language="xml">&lt;bean id=&quot;sales_proxyCreator&quot; class=&quot;com.haulmont.cuba.web.sys.remoting.WebRemoteProxyBeanCreator&quot;&gt;
+    &lt;property name=&quot;clusterInvocationSupport&quot; ref=&quot;cuba_clusterInvocationSupport&quot;/&gt;
+    &lt;property name=&quot;remoteServices&quot;&gt;
+        &lt;map&gt;
+            &lt;entry key=&quot;sales_OrderService&quot; value=&quot;com.sample.sales.core.OrderService&quot;/&gt;
+        &lt;/map&gt;
+    &lt;/property&gt;
+&lt;/bean&gt;</programlisting>
+        <para>Все импортируемые сервисы объявляются в одном свойстве <code>remoteServices</code>  в элементах <literal>map/entry</literal>.</para>
+        <para>С точки зрения прикладного кода прокси-объект сервиса на клиентском уровне является обычным бином <application>Spring</application> и может быть получен либо инжекцией, либо с помощью класса <code>AppBeans</code>, например:<programlisting language="java">@Inject
+protected OrderService orderService;
+...
+orderService.calculateTotals(order);</programlisting></para>
+      </section>
+    </section>
+    <section id="system_authentication">
+      <title>Системная аутентификация</title>
+      <para>При выполнении пользовательских запросов программному коду <structname>Middleware</structname>  через интерфейс <code>
+          <link linkend="userSessionSource">UserSessionSource</link>
+        </code> всегда доступна информация о текущем пользователе. Это возможно потому, что при получении запроса с клиентского уровня в потоке выполнения автоматически устанавливается соответствующий объект <code>
+          <link linkend="securityContext">SecurityContext</link>
+        </code>.</para>
+      <para>Однако существуют ситуации, когда текущий поток выполнения  не связан ни с каким пользователем системы: например, при вызове метода бина из <link linkend="scheduled_tasks_spring">планировщика</link>, либо через JMX-интерфейс. Если при этом бин выполняет изменение сущностей в базе данных, то ему потребуется информация о том, кто выполняет изменения, то есть аутентификация.</para>
+      <para>Такого рода аутентификация называется системной, так как не требует участия пользователя - средний слой приложения просто создает (или использует имеющуюся) пользовательскую сессию, и устанавливает в потоке выполнения соответствующий объект <code>SecurityContext</code>. </para>
+      <para>Обеспечить системную аутентификацию некоторого участка кода можно следующими способами:<itemizedlist>
+          <listitem>
+            <para>явно используя бин <code>com.haulmont.cuba.security.app.Authentication</code>, например:<programlisting language="java">@Inject
+protected Authentication authentication;
+...
+authentication.begin();
+try {
+    // authenticated code
+} finally {
+    authentication.end();
+}</programlisting></para>
+          </listitem>
+          <listitem>
+            <para>добавив методу бина аннотацию <code>@Authenticated</code>, например:<programlisting language="java">@Authenticated
+public String foo(String value) {
+    // authenticated code
+}</programlisting></para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Во втором случае также используется бин <code>Authentication</code>, но неявно, через интерцептор <code>AuthenticationInterceptor</code>, который перехватывает вызовы всех методов бинов с аннотацией <code>@Authenticated</code>.</para>
+      <para>В приведенных примерах пользовательская сессия будет создаваться от лица пользователя, логин которого указан в свойстве приложения <property>
+          <link linkend="cuba.jmxUserLogin">cuba.jmxUserLogin</link>
+        </property>. Если требуется аутентификация от имени другого пользователя, нужно воспользоваться первым вариантом и передать в метод <code>begin()</code> логин нужного пользователя.</para>
+      <warning>
+        <para>Если в момент выполнения <code>Authentication.begin()</code> в текущем потоке выполнения присутствует активная пользовательская сессия, то она не заменяется - соответственно, код, требующий аутентификации, будет выполняться с имеющейся сессией, и последующий метод <code>end()</code> не будет очищать поток.</para>
+        <para>Например,  вызов метода JMX-бина из встроенной в <structname>Web Client</structname> консоли JMX, если бин находится в той же JVM, что и блок WebClient, к которому в данный момент подключен пользователь, будет выполнен от имени текущего зарегистрированного в системе пользователя, независимо от наличия системной аутентификации.</para>
+      </warning>
+    </section>
+    <section id="persistence">
+      <title>Интерфейс Persistence</title>
+      <para>Интерфейс инфраструктуры, являющийся точкой входа в функциональность хранения данных в БД.</para>
+      <para>Методы интерфейса:<itemizedlist>
+          <listitem>
+            <para><code>createTransaction()</code>, <code>getTransaction()</code> - получить интерфейс управления <link linkend="transactions">транзакциями</link></para>
+          </listitem>
+          <listitem>
+            <para><code>isInTransaction()</code> - определяет, существует ли в данный момент активная транзакция</para>
+          </listitem>
+          <listitem>
+            <para><code>getEntityManager()</code> - возвращает экземпляр <code>
+                <link linkend="entityManager">EntityManager</link>
+              </code> для текущей транзакции</para>
+          </listitem>
+          <listitem>
+            <para><code>isSoftDeletion()</code> - позволяет определить, активен ли режим <link linkend="soft_deletion">мягкого удаления</link></para>
+          </listitem>
+          <listitem>
+            <para><code>setSoftDeletion()</code> - устанавливает или отключает режим мягкого удаления. Влияет на аналогичный признак всех создаваемых экземпляров <code>EntityManager</code>. По умолчанию мягкое удаление включено.</para>
+          </listitem>
+          <listitem>
+            <para><code>getDbTypeConverter()</code> - возвращает экземпляр <code>
+                <link linkend="dbTypeConverter">DbTypeConverter</link>
+              </code> для используемой в данный момент базы данных.</para>
+          </listitem>
+          <listitem>
+            <para><code>getDataSource()</code> - получить <code>javax.sql.DataSource</code> для используемой в данный момент базы данных.</para>
+            <warning>
+              <para>Для всех объектов <code>javax.sql.Connection</code>, получаемых методом <code>getDataSource().getConnection()</code>, необходимо после использования соединения вызвать метод <code>close()</code> в секции <code>finally</code>. В противном случае соединение не вернется в пул, через какое-то время пул переполнится, и приложение не сможет выполнять запросы к базе данных. </para>
+            </warning>
+          </listitem>
+          <listitem>
+            <para><code>getTools()</code> - возвращает экземпляр интерфейса  <code>PersistenceTools</code> (см. ниже).</para>
+          </listitem>
+        </itemizedlist></para>
+      <section id="persistenceTools">
+        <title>PersistenceTools</title>
+        <para><link linkend="managed_beans">ManagedBean</link>, содержащий вспомогательные методы работы с хранилищем данных. Интерфейс <code>PersistenceTools</code> можно получить либо методом <code>Persistence.getTools()</code>, либо как любой другой бин - инжекцией или через класс <code>AppBeans</code>.</para>
+        <para>Методы <code>PersistenceTools</code>:<itemizedlist>
+            <listitem>
+              <para><code>getDirtyFields()</code> - возвращает коллекцию имен атрибутов сущности, измененных со времени последней загрузки экземпляра из БД. Для новых экземпляров возвращает пустую коллекцию.</para>
+            </listitem>
+            <listitem>
+              <para><code>isLoaded()</code> - определяет, загружен ли из БД указанный атрибут экземпляра. Атрибут может быть <emphasis>не</emphasis> загружен, если он не указан в примененном при загрузке <link linkend="views">представлении</link>. </para>
+              <para>Данный метод работает только для экземпляров в  состоянии <link linkend="entity_states">Managed</link>.</para>
+            </listitem>
+            <listitem>
+              <para><code>getReferenceId()</code> - возвращает идентификатор связанной сущности без загрузки ее из БД. </para>
+              <para>Предположим, в <glossterm linkend="persistence_context">персистентный контекст</glossterm> загружен экземпляр <code>Order</code>, и нужно получить значение идентификатора экземпляра <code>Customer</code>, связанного с данным Заказом. Стандартное решение <code>order.getCustomer().getId()</code> приведет к выполнению SQL запроса к БД для загрузки экземпляра <code>Customer</code>, что в данном случае избыточно, так как значение идентификатора Покупателя физически находится также и в таблице Заказов. Выполнение же <programlisting language="java">persistence.getTools().getReferenceId(order, &quot;customer&quot;)</programlisting>не вызовет никаких дополнительных запросов к базе данных. </para>
+              <para>Данный метод работает только для экземпляров в  состоянии <link linkend="entity_states">Managed</link>.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Для расширения набора вспомогательных методов в конкретном приложении бин <code>PersistenceTools</code> можно <link linkend="bean_extension">переопределить</link>. Примеры работы с  расширенным интерфейсом:<programlisting language="java">MyPersistenceTools tools = persistence.getTools();
+tools.foo();</programlisting><programlisting language="java">((MyPersistenceTools) persistence.getTools()).foo();</programlisting></para>
+      </section>
+      <section id="persistenceHelper">
+        <title>PersistenceHelper</title>
+        <para>Вспомогательный класс для получения информации о персистентных сущностях. В отличие от бинов <code>Persistence</code> и <code>PersistenceTools</code> доступен на всех <link linkend="app_tiers">уровнях</link> приложения.</para>
+        <para>Методы <code>PersistenceHelper</code>:<itemizedlist>
+            <listitem>
+              <para><code>isNew()</code> - определяет, является ли переданный экземпляр только что созданным, т.е. находящимся в состоянии <link linkend="entity_states">New</link>. Возвращает <code>true</code>, также если экземпляр не является персистентной сущностью.</para>
+            </listitem>
+            <listitem>
+              <para><code>isDetached()</code> - определяет, находится ли переданный экземпляр в состоянии <link linkend="entity_states">Detached</link>. Возвращает <code>true</code>, также если экземпляр не является персистентной сущностью.</para>
+            </listitem>
+            <listitem>
+              <para><code>isSoftDeleted()</code> - определяет, поддерживает ли переданный класс сущности <link linkend="soft_deletion">мягкое удаление</link></para>
+            </listitem>
+            <listitem>
+              <para><code>getEntityName()</code> - возвращает имя сущности, заданное в <link linkend="entity_annotations">аннотации</link> <code>@Entity</code></para>
+            </listitem>
+            <listitem>
+              <para><code>getTableName()</code> - возвращает имя таблицы БД, хранящей экземпляры сущности, заданное в <link linkend="entity_annotations">аннотации</link> <code>@Table</code></para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+      <section id="dbTypeConverter">
+        <title>DbTypeConverter</title>
+        <para>Интерфейс, определяющий методы для конвертации данных между значениями атрибутов <link linkend="data_model">модели данных</link> и параметрами и результатами запросов JDBC. Объект данного интерфейса можно получить методом <code><link linkend="persistence">Persistence</link>.getDbTypeConverter()</code>.</para>
+        <para>Методы <code>DbTypeConverter</code>:<itemizedlist>
+            <listitem>
+              <para><code>getJavaObject()</code> - конвертирует результат JDBC запроса в тип, подходящий для присвоения атрибуту сущности. </para>
+            </listitem>
+            <listitem>
+              <para><code>getSqlObject()</code> - конвертирует значение атрибута сущности в тип, подходящий для присвоения параметру JDBC запроса.</para>
+            </listitem>
+            <listitem>
+              <para><code>getSqlType()</code> - возвращает константу из <code>java.sql.Types</code>, соответствующую переданному типу атрибута сущности.</para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+    </section>
+    <section id="orm">
+      <title>Слой ORM</title>
+      <para>Object-Relational Mapping - объектно-реляционное отображение - технология связывания таблиц реляционной базы данных с объектами языка программирования. </para>
+      <variablelist>
+        <varlistentry>
+          <term>Преимущества использования ORM:</term>
+          <listitem>
+            <itemizedlist>
+              <listitem>
+                <para>Позволяет работать с  данными реляционной СУБД, манипулируя объектами Java</para>
+              </listitem>
+              <listitem>
+                <para>Упрощает программирование, избавляя от рутины написания тривиальных SQL-запросов</para>
+              </listitem>
+              <listitem>
+                <para>Упрощает программирование, позволяя извлекать и сохранять целые графы объектов одной командой</para>
+              </listitem>
+              <listitem>
+                <para>Обеспечивает легкое портирование приложения на различные СУБД</para>
+              </listitem>
+              <listitem>
+                <para>Использует лаконичный язык запросов <glossterm linkend="jpql">JPQL</glossterm></para>
+              </listitem>
+              <listitem>
+                <para>Оптимизирует количество выполняемых SQL-запросов на команды insert и update</para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>Недостатки:</term>
+          <listitem>
+            <itemizedlist>
+              <listitem>
+                <para>Требует понимания особенностей работы с ORM</para>
+              </listitem>
+              <listitem>
+                <para>Не позволяет напрямую оптимизировать SQL или использовать особенности применяемой СУБД</para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <para>В платформе <productname>CUBA</productname> используется реализация ORM по стандарту Java Persistence API на основе фреймворка <application>Apache OpenJPA</application>.</para>
+      <section id="entityManager">
+        <title>EntityManager</title>
+        <para><code>EntityManager</code> - основной интерфейс ORM, служит для управления персистентными <link linkend="data_model">сущностями</link>.
+</para>
+        <para>Ссылку на <code>EntityManager</code>  можно получить через интерфейс <code>Persistence</code>,  вызовом метода  <code>getEntityManager()</code>.
+Полученный экземпляр <code>EntityManager</code> привязан к текущей <link linkend="transactions">транзакции</link>, то есть все вызовы <code>getEntityManager()</code> в рамках одной транзакции возвращают один и тот же экземпляр <code>EntityManager</code>. После завершения транзакции обращения к данному экземпляру невозможны.
+</para>
+        <para>Экземпляр <code>EntityManager</code> содержит в себе &quot;персистентный контекст&quot; – набор экземпляров сущностей, загруженных из БД или только что созданных. Персистентный контекст является своего рода кэшем данных в рамках  транзакции.
+<code>EntityManager</code> автоматически сбрасывает в БД все изменения, сделанные в его персистентном контексте, в момент коммита транзакции, либо при явном вызове метода  <code>flush()</code>.</para>
+        <para>Интерфейс <code>EntityManager</code>, используемый в CUBA-приложениях, в основном повторяет стандартный <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/EntityManager.html">javax.persistence.EntityManager</ulink>. Рассмотрим его основные методы:<itemizedlist>
+            <listitem>
+              <para><code>persist()</code> - вводит <link linkend="entity_states">новый экземпляр</link> сущности в персистентный контекст. При коммите транзакции командой SQL <code>INSERT</code>  в БД будет создана соответствующая запись.</para>
+            </listitem>
+            <listitem>
+              <para><code>merge()</code> - переносит состояние <link linkend="entity_states">отсоединенного экземпляра</link> сущности в персистентный контекст следующим образом: из БД  загружается экземпляр с тем же идентификатором, в него переносится состояние переданного Detached экземпляра и возвращается загруженный Managed экземпляр. Далее надо работать именно с возвращенным Managed экземпляром. При коммите транзакции командой SQL <code>UPDATE</code>  в БД будет сохранено состояние данного экземпляра.</para>
+            </listitem>
+            <listitem>
+              <para><code>remove()</code> - удалить объект из базы данных, либо, если  включен режим <link linkend="soft_deletion">мягкого удаления</link>, установить атрибуты <code>deleteTs</code> и <code>deletedBy</code>.</para>
+              <para>Если переданный экземпляр находится в Detached состоянии, сначала выполняется <code>merge()</code>.</para>
+            </listitem>
+            <listitem>
+              <para><code>find()</code> - загружает экземпляр сущности по идентификатору. </para>
+              <para>При формировании запроса к БД учитывается <link linkend="views">представление</link>, переданное в параметре данного метода, либо установленное для всего <code>EntityManager</code> методом <code>setView()</code>. В результате в персистентном контексте окажется граф объектов, для которого загружены все не-lazy атрибуты представления. Остальные атрибуты можно дозагрузить обращением к соответствующим методам доступа объектов, либо вызовом метода <code>fetch()</code>.</para>
+            </listitem>
+            <listitem>
+              <para><code>createQuery()</code> - создать объект <code>Query</code> для выполнения <link linkend="query">JPQL запроса</link>. </para>
+              <para>Рекомендуется использовать вариант метода с передачей класса сущности для получения экземпляра <code>TypedQuery</code>.</para>
+            </listitem>
+            <listitem>
+              <para><code>createNativeQuery()</code> - создать объект <code>Query</code> для выполнения <link linkend="nativeQuery">SQL запроса</link>. </para>
+            </listitem>
+            <listitem>
+              <para><code>setView()</code> - устанавливает <link linkend="views">представление</link> по умолчанию, с которым будет производиться последующая загрузка сущностей методом <code>find()</code> либо JPQL запросами. В результате <glossterm linkend="eager_fetching">жадно загружены</glossterm> будут все не-<literal>lazy</literal> атрибуты представления.</para>
+              <para>Если в данный метод передать <code>null</code>, либо не вызывать его вообще, загрузка будет производиться в соответствие с правилами <link linkend="entity_annotations">аннотаций сущностей</link>.</para>
+              <para>Представления, явно переданные в метод <code>find()</code> или установленные в объекте <code>Query</code> имеют приоритет над установленным данным методом.</para>
+            </listitem>
+            <listitem>
+              <para><code>addView()</code> - аналогичен методу <code>setView()</code>, но в случае наличия уже установленного в <code>EntityManager</code> представления, не заменяет его, а добавляет атрибуты переданного представления.</para>
+            </listitem>
+            <listitem>
+              <para><code>fetch()</code> - обеспечивает для экземпляра сущности загрузку всех атрибутов указанного <link linkend="views">представления</link>, включая <literal>lazy</literal> атрибуты. Экземпляр сущности должен быть в <link linkend="entity_states">Managed</link> состоянии.</para>
+              <para>Данный метод рекомендуется вызывать перед коммитом транзакции, если представление содержит <literal>lazy</literal> атрибуты, а экземпляр сущности нужно отправить на клиентский уровень. В этом случае только после вызова <code>fetch()</code> можно быть уверенным, что все нужные клиентсткому коду атрибуты действительно загружены.</para>
+            </listitem>
+            <listitem>
+              <para><code>reload()</code> - перезагрузить экземпляр сущности с указанным <link linkend="views">представлением</link>. Обеспечивает загрузку всех атрибутов представления, вызывая внутри себя метод <code>fetch()</code>. </para>
+            </listitem>
+            <listitem>
+              <para><code>isSoftDeletion()</code> - проверяет, находится ли данный <code>EntityManager</code> в режиме <link linkend="soft_deletion">мягкого удаления</link>.</para>
+            </listitem>
+            <listitem>
+              <para><code>setSoftDeletion()</code> - устанавливает режим <link linkend="soft_deletion">мягкого удаления</link> для данного экземпляра <code>EntityManager</code>.</para>
+            </listitem>
+            <listitem>
+              <para><code>getConnection()</code> - возвращает  <code>java.sql.Connection</code>, через который выполняет запросы данный экземпляр <code>EntityManager</code>, и, соответственно, текущая транзакция. Закрывать такое соединение не нужно, оно будет закрыто при завершении транзакции.</para>
+            </listitem>
+            <listitem>
+              <para><code>getDelegate()</code> - возвращает <code>javax.persistence.EntityManager</code>, предоставляемый реализацией ORM. </para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+      <section id="entity_states">
+        <title>Состояния сущности</title>
+        <para><variablelist>
+            <varlistentry>
+              <term>New</term>
+              <listitem>
+                <para>Только что созданный в памяти экземпляр, например: <code>Car car = new Car()</code></para>
+                <para>Новый экземпляр может быть передан в <methodname>EntityManager.persist()</methodname> для сохранения в БД, при этом он переходит в состояние Managed.</para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term>Managed</term>
+              <listitem>
+                <para>Загруженный из БД или новый, переданный в <methodname>EntityManager.persist()</methodname>, экземпляр. Принадлежит некоторому экземпляру <code>EntityManager</code>, другими словами, находится в его персистентном контексте.</para>
+                <para>Любые изменения  экземпляра в состоянии Managed будут сохранены в БД в случае коммита транзакции, к которой принадлежит данный <code>EntityManager</code></para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term>Detached</term>
+              <listitem>
+                <para>Экземпляр, загруженный из БД и отсоединенный от своего персистентного контекста (вследствие закрытия транзакции или сериализации).</para>
+                <para>Изменения, вносимые в Detached экземпляр, запоминаются в самом этом экземпляре (в полях, добавленных с помощью bytecode enhancement).
+Эти изменения будут сохранены в БД, только если данный экземпляр будет снова переведен в состояние Managed путем передачи в метод <methodname>EntityManager.merge()</methodname>. </para>
+              </listitem>
+            </varlistentry>
+          </variablelist></para>
+      </section>
+      <section id="lazy_loading">
+        <title>Загрузка по требованию</title>
+        <para>Загрузка по требованию (lazy loading) позволяет загружать связанные сущности отложенно, т.е. только в момент первого обращения к их свойствам.</para>
+        <para>Загрузка по требованию  в сумме порождает больше запросов к БД, чем <glossterm linkend="eager_fetching">жадная загрузка (eager fetching)</glossterm>, однако нагрузка при этом растянута во времени.<itemizedlist>
+            <listitem>
+              <para>Например, при извлечении списка N экземпляров сущности A, содержащих ссылку на экземпляр сущности B, в случае загрузки по требованию будет выполнено N+1 запросов к базе данных.</para>
+            </listitem>
+            <listitem>
+              <para>Для минимизации времени отклика и снижения нагрузки необходимо стремиться к меньшему количеству обращений к БД. Для этого  в платформе  используется механизм <link linkend="views">представлений</link>, с помощью которого в вышеописанном случае ORM может сформировать один  запрос к БД с объединением таблиц.</para>
+            </listitem>
+            <listitem>
+              <para>Если A содержит коллекцию B, в случае жадной загрузки ORM сформирует SQL запрос, возвращающий произведение строк A и B. </para>
+            </listitem>
+            <listitem>
+              <para>Иногда загрузка по требованию с точки зрения производительности предпочтительнее, чем жадная загрузка. Например, когда работает асинхронный процесс, выполняющий некоторую бизнес-логику, общее время выполнения некритично и желательно распределить во времени  нагрузку на БД.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Загрузка по требованию работает только для экземпляра в состоянии <link linkend="entity_states">Managed</link>, то есть внутри транзакции, загрузившей данный экземпляр.</para>
+      </section>
+      <section id="query">
+        <title>Выполнение JPQL запросов</title>
+        <para>Для выполнения <link linkend="jpql">JPQL</link> запросов предназначен интерфейс <code>Query</code>, ссылку на который  можно получить у текущего экземпляра <code>EntityManager</code> вызовом метода <code>createQuery()</code>. Если запрос предполагается использовать для извлечения сущностей, рекомендуется вызывать <code>createQuery()</code> с передачей типа результата, что приведет к созданию <code>TypedQuery</code>. </para>
+        <para>Методы <code>Query</code> в основном соответствуют методам стандартного интерфейса <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Query.html">
+            <code>javax.persistence.Query</code>
+          </ulink>. Рассмотрим отличия.<itemizedlist>
+            <listitem>
+              <para><code>setParameter()</code> - устанавливает значение параметра запроса. При передаче в данный метод экземпляра сущности выполняет неявное преобразование экземпляра в его идентификатор. Например:<programlisting language="java">Customer customer = ...;
+TypedQuery&lt;Order&gt; query = entityManager.createQuery(
+    &quot;select o from sales$Order o where o.customer.id = ?1&quot;, Order.class);
+query.setParameter(1, customer);</programlisting></para>
+              <para>Обратите внимание на сравнение в запросе по идентификатору, но передачу в качестве параметра самого экземпляра сущности. </para>
+              <para>Вариант метода с передачей <code>implicitConversions = false</code> не выполняет такого преобразования.</para>
+            </listitem>
+            <listitem>
+              <para><code>setView()</code>, <code>addView()</code> - аналогичны одноименным методам интерфейса <code>EntityManager</code> - устанавливают <link linkend="views">представление</link>, используемое при загрузке данных текущим запросом, не влияя на представление всего <code>EntityManager</code>.</para>
+            </listitem>
+            <listitem>
+              <para><code>getDelegate()</code> - возвращает экземпляр <code>javax.persistence.Query</code>, предоставляемый реализацией ORM.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>При выполнении запроса через <code>Query</code> изменения в текущем персистентном контексте не учитываются, т.е. запрос просто выполняется в БД. Если результатом выборки являются экземпляры, уже находящиеся в персистентном контексте, то в результате запроса окажутся именно они, а не прочитанные из БД. Ситуацию поясняет следующий фрагмент теста:<programlisting language="java">TypedQuery&lt;User&gt; query;
+List&lt;User&gt; list;
+
+query = em.createQuery(&quot;select u from sec$User u where u.name = ?1&quot;, User.class);
+query.setParameter(1, &quot;testUser&quot;);
+list = query.getResultList();
+assertEquals(1, list.size());
+User user = list.get(0);
+
+user.setName(&quot;newName&quot;);
+
+query = em.createQuery(&quot;select u from sec$User u where u.name = ?1&quot;, User.class);
+query.setParameter(1, &quot;testUser&quot;);
+list = query.getResultList();
+assertEquals(1, list.size());
+User user1 = list.get(0);
+
+assertTrue(user1 == user);</programlisting></para>
+        <para>Такое поведение определяется параметром <code>openjpa.IgnoreChanges=true</code>, заданным в файле <link linkend="persistence.xml">
+            <filename>persistence.xml</filename>
+          </link> базового проекта <structname>cuba</structname>. В прикладном проекте данный параметр можно изменить, указав его в собственном <filename>persistence.xml</filename>.</para>
+        <para>Запросы, модифицирующие данные (<code>update</code>, <code>delete</code>) приводят к сбросу (flush) в базу данных текущего персистентного контекста перед выполнением. Другими словами, ORM сначала синхронизирует состояние сущностей в персистентном контексте и в БД, а уже потом выполняет модифицирующий запрос. Рекомендуется выполнять такие запросы в неизмененном персистентном контексте, чтобы исключить неявные действия ORM, которые могут отрицательно сказаться на производительности.</para>
+        <section>
+          <title>Поиск подстроки без учета регистра</title>
+          <para>Для удобного формирования условия поиска без учета регистра символов и по любой части строки можно использовать префикс <literal>(?i)</literal> в значении параметра запроса. Например, имеется запрос:<programlisting>select c from sales$Customer c where c.name like :name</programlisting></para>
+          <para>Если в значении параметра <code>name</code> передать строку <userinput>(?i)%doe%</userinput>, то при наличии в БД записи со значением <userinput>John Doe</userinput> она будет найдена, несмотря на раличие в регистре символа. Это произойдет потому, что ORM выполнит SQL с условием вида <literal>lower(C.NAME) like ?</literal>.</para>
+          <para>Следует иметь в виду, что при таком поиске индекс, созданный в БД по полю <code>NAME</code>, не используется.</para>
+        </section>
+        <section id="jpql_macro">
+          <title>Макросы в JPQL</title>
+          <para>Текст JPQL запроса может включать макросы, которые обрабатываются перед выполнением и превращаются в исполняемый JPQL, дополнительно модифицируя набор параметров.</para>
+          <para>Макросы, определенные в платформе, решают следующие задачи:<itemizedlist>
+              <listitem>
+                <para>Позволяют обойти принципиальную невозможность средствами JPQL выразить условие зависимости значения поля от текущего момента времени (не работает арифметика типа current_date-1)</para>
+              </listitem>
+              <listitem>
+                <para>Позволяют сравнивать с датой поля типа Timestamp (содержащие дату+время)</para>
+              </listitem>
+            </itemizedlist></para>
+          <para>Рассмотрим их подробно:<variablelist>
+              <varlistentry>
+                <term>@between</term>
+                <listitem>
+                  <para>Имеет вид <literal>@between(field_name, moment1, moment2, time_unit)</literal>, где <itemizedlist>
+                      <listitem>
+                        <para><literal>field_name</literal> - имя атрибута для сравнения </para>
+                      </listitem>
+                      <listitem>
+                        <para><literal>moment1</literal>, <literal>moment2</literal> - моменты времени, в которые должно попасть значение атрибута <literal>field_name</literal>. Каждый из моментов должен быть определен выражением с участием переменной <literal>now</literal>, к которой может быть прибавлено или отнято целое число </para>
+                      </listitem>
+                      <listitem>
+                        <para><literal>time_unit</literal> - определяет единицу измерения времени, которое прибавляется или вычитается из <literal>now</literal> в выражениях моментов, а также точность округления моментов. Может быть следующим: <literal>year</literal>, <literal>month</literal>, <literal>day</literal>, <literal>hour</literal>, <literal>minute</literal>, <literal>second</literal>. При включенном <link linkend="base_projects">базовом проекте</link> <structname>workflow</structname> можно также использовать единицы рабочего времени: <literal>workday</literal>, <literal>workhour</literal>, workminute. </para>
+                      </listitem>
+                    </itemizedlist></para>
+                  <para>Макрос преобразуется в следующее выражение JPQL: <literal>field_name &gt;= :moment1 and field_name &lt; :moment2</literal></para>
+                  <para>Пример 1. Покупатель создан сегодня:<programlisting>select c from sales$Customer where @between(c.createTs, now, now+1, day)</programlisting></para>
+                  <para>Пример 2. Покупатель создан в течение последних 10 минут:<programlisting>select c from sales$Customer where @between(c.createTs, now-10, now, minute)</programlisting></para>
+                  <para>Пример 3. Документы, датированные последними 5 рабочими днями (для проектов, включающих <structname>workflow</structname>): <programlisting>select d from sales$Doc where @between(d.createTs, now-5, now, workday)</programlisting></para>
+                </listitem>
+              </varlistentry>
+              <varlistentry>
+                <term>@today</term>
+                <listitem>
+                  <para>Имеет вид <literal>@today(field_name)</literal> и обеспечивает формирование условия попадания значения атрибута в текущий день. По сути это частный случай макроса <literal>@between</literal>.</para>
+                  <para>Пример.
+
+Пользователь создан сегодня: <programlisting>select d from sales$Doc where @today(d.createTs)</programlisting></para>
+                </listitem>
+              </varlistentry>
+              <varlistentry>
+                <term>@dateEquals</term>
+                <listitem>
+                  <para>Имеет вид <literal>@dateEquals(field_name, parameter)</literal> и позволяет сформировать условие попадания значения поля <literal>field_name</literal> типа <code>Timestamp</code> в дату, задаваемую параметром <literal>parameter</literal>.</para>
+                  <para>Пример:<programlisting>select d from sales$Doc where @dateEquals(d.createTs, :param)</programlisting></para>
+                </listitem>
+              </varlistentry>
+              <varlistentry>
+                <term>@dateBefore</term>
+                <listitem>
+                  <para>Имеет вид <literal>@dateBefore(field_name, parameter</literal>) и позволяет сформировать условие, что дата значения поля <literal>field_name</literal> типа <code>Timestamp</code> меньше даты, задаваемой параметром <literal>parameter</literal>.</para>
+                  <para>Пример:<programlisting>select d from sales$Doc where @dateBefore(d.createTs, :param)</programlisting></para>
+                </listitem>
+              </varlistentry>
+              <varlistentry>
+                <term>@dateAfter</term>
+                <listitem>
+                  <para>Имеет вид <literal>@dateAfter(field_name, parameter</literal>) и позволяет сформировать условие, что дата значения поля <literal>field_name</literal> типа <code>Timestamp</code>  больше или равна дате, задаваемой параметром <literal>parameter</literal>.</para>
+                  <para>Пример:<programlisting>select d from sales$Doc where @dateAfter(d.createTs, :param)</programlisting></para>
+                </listitem>
+              </varlistentry>
+            </variablelist></para>
+          <para>Список макросов может быть расширен в прикладном проекте. Для создания нового макроса необходимо определить бин, реализующий интерфейс <code>QueryMacroHandler</code>, и задать ему <code>@Scope(&quot;prototype&quot;)</code>. Механизм выполнения JPQL  запросов создает все доступные бины типа <code>QueryMacroHandler</code>, и по очереди передает им текст запроса с набором параметров. Очередность вызова обработчиков не определена.</para>
+        </section>
+      </section>
+      <section id="nativeQuery">
+        <title>Выполнение SQL запросов</title>
+        <para>ORM позволяет выполнять SQL запросы к базе данных, возвращая как списки отдельных полей, так и экземпляры сущностей. Для этого необходимо создать объект <code>Query</code> или <code>TypedQuery</code> вызовом одного из методов <code>EntityManager.createNativeQuery()</code>. </para>
+        <para>Если  выполняется выборка отдельных колонок таблицы, то результирующий список будет содержать строки в виде <code>Object[]</code>. Например:<programlisting language="java">Query query = em.createNativeQuery(&quot;select ID, NAME from SALES_CUSTOMER where NAME like ?1&quot;);
+query.setParameter(1, &quot;%Company%&quot;);
+List list = query.getResultList();
+for (Iterator it = list.iterator(); it.hasNext(); ) {
+    Object[] row = (Object[]) it.next();
+    UUID id = (UUID) row[0];
+    String name = (String) row[1];
+}</programlisting></para>
+        <para>Следует иметь в виду, при использовании SQL колонки, соответствующие атрибутам сущностей типа <code>UUID</code>, возвращаются в виде <code>UUID</code> или в виде <code>String</code>, в зависимости от используемой СУБД и JDBC драйвера:<itemizedlist>
+            <listitem>
+              <para><application>HSQLDB</application> - <code>String</code></para>
+            </listitem>
+            <listitem>
+              <para><application>PostgreSQL</application>, драйвер <filename>postgresql-8.3-603.jdbc4.jar</filename> - <code>String</code></para>
+            </listitem>
+            <listitem>
+              <para><application>PostgreSQL</application>, драйвер <filename>postgresql-9.1-901.jdbc4.jar</filename> - <code>UUID</code></para>
+            </listitem>
+            <listitem>
+              <para><application>Microsoft SQL Server</application>, драйвер <filename>jtds-1.2.4.jar</filename> - <code>String</code></para>
+            </listitem>
+            <listitem>
+              <para><application>Oracle</application> - <code>String</code></para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Параметры этого типа также должны задаваться либо как <code>UUID</code>, либо своим строковым представлением, в зависимости от используемой СУБД и JDBC драйвера. Для обеспечения независимости кода от используемой СУБД рекомендуется использовать <code>
+            <link linkend="dbTypeConverter">DbTypeConverter</link>
+          </code>.</para>
+        <para>Если вместе с текстом запроса передан класс результирующей сущности, то возвращается <code>TypedQuery</code> и после выполнения производится попытка отображения результатов запроса на атрибуты сущности. Например:<programlisting language="java">TypedQuery&lt;Customer&gt; query = em.createNativeQuery(
+    &quot;select * from SALES_CUSTOMER where NAME like ?1&quot;,
+    Customer.class);
+query.setParameter(1, &quot;%Company%&quot;);
+List&lt;Customer&gt; list = query.getResultList();</programlisting></para>
+        <para>Поведение SQL запросов, возвращающих сущности, и модифицирующих запросов (<code>update</code>, <code>delete</code>), по отношению к текущему персистентному контексту аналогично описанному для <link linkend="query">JPQL запросов</link>.</para>
+        <para>См. также <xref linkend="queryRunner"/>.</para>
+      </section>
+      <section id="entity_listeners">
+        <title>Entity Listeners</title>
+        <para><firstterm>Entity Listeners</firstterm> предназначены для реакции на события жизненного цикла экземпляров сущностей на уровне<structname> Middleware</structname>.</para>
+        <para>Слушатель представляет собой класс, реализующий один или несколько интерфейсов пакета <code>com.haulmont.cuba.core.listener</code>. Слушатель будет реагировать на события  типов, соответствующих реализуемым интерфейсам.</para>
+        <variablelist>
+          <varlistentry>
+            <term>
+              <code>BeforeDetachEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onBeforeDetach()</code> вызывается  перед отделением объекта от <link linkend="entityManager">EntityManager</link> при коммите транзакции.</para>
+              <para>Данный слушатель можно использовать, например, для заполнения неперсистентных атрибутов сущности перед отправкой ее на клиентский уровень.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>BeforeAttachEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onBeforeAttach()</code> вызывается  перед введением объекта в персистентный контекст при выполнении операции <code>EntityManager.merge()</code>.</para>
+              <para>Данный слушатель можно использовать, например, для заполнения персистентных атрибутов сущности перед сохранением ее в базе данных.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>BeforeInsertEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onBeforeInsert()</code> вызывается перед выполнением вставки записи в БД. В данном методе возможны любые операции с текущим <code>EntityManager</code>.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>AfterInsertEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onAfterInsert()</code> вызывается после выполнения вставки записи в БД, но до коммита транзакции. В данном методе нельзя модифицировать текущий персистентный контекст, однако можно производить изменения в БД с помощью <link linkend="queryRunner">QueryRunner</link>.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>BeforeUpdateEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onBeforeUpdate()</code> вызывается перед изменением записи в БД. В данном методе возможны любые операции с текущим <code>EntityManager</code>.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>AfterUpdateEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onAfterUpdate()</code> вызывается после изменения записи в БД, но до коммита транзакции. В данном методе нельзя модифицировать текущий персистентный контекст, однако можно производить изменения в БД с помощью <code>QueryRunner</code>.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>BeforeDeleteEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onBeforeDelete()</code> вызывается перед удалением записи из БД (или в случае <link linkend="soft_deletion">мягкого удаления</link> - перед изменением записи). В данном методе возможны любые операции с текущим <code>EntityManager</code>.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>AfterDeleteEntityListener</code>
+            </term>
+            <listitem>
+              <para>Метод <code>onAfterDelete()</code> вызывается после удаления записи из БД (или в случае мягкого удаления - после изменения записи), но до коммита транзакции. В данном методе нельзя модифицировать текущий персистентный контекст, однако можно производить изменения в БД с помощью <code>QueryRunner</code>.</para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+        <para>Entity Listener может быть как обычным классом Java, так и управляемым бином. В последнем случае в нем можно использовать инжекцию: <programlisting language="java">@ManagedBean(&quot;cuba_MyEntityListener&quot;)
+public class MyEntityListener implements
+        BeforeInsertEntityListener&lt;MyEntity&gt;,
+        BeforeUpdateEntityListener&lt;MyEntity&gt; {
+
+    @Inject
+    protected Persistence persistence;
+
+    @Override
+    public void onBeforeInsert(MyEntity entity) {
+        EntityManager em = persistence.getEntityManager();
+        ...
+    }
+
+    @Override
+    public void onBeforeUpdate(MyEntity entity) {
+        EntityManager em = persistence.getEntityManager();
+        ...
+    }
+}</programlisting></para>
+        <para>Entity Listener  может быть задан 2-мя способами: <itemizedlist>
+            <listitem>
+              <para>Статически - имена классов слушателей, или, если слушатель является бином, имена бинов, указываются в аннотации <link linkend="listeners_annotation">@Listeners</link> на классе сущности:<programlisting language="java">@Entity(...)
+@Table(...)
+@Listeners(&quot;cuba_MyEntityListener&quot;)
+public class MyEntity extends StandardEntity {
+    ...
+}</programlisting></para>
+            </listitem>
+            <listitem>
+              <para>Динамически - класс сущности и класс слушателя, или, если слушатель является бином, имя бина, передаются в метод <code>addListener()</code> бина <code>EntityListenerManager</code>. Пример динамического добавления слушателя рассматривается в разделе рецептов разработки: <xref linkend="app_start_recipe"/>. </para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Для всех экземпляров некоторого класса сущности извлекается из контекста Spring или создается и кэшируется <emphasis>один</emphasis> экземпляр слушателя определенного типа, поэтому слушатель <emphasis>не должен иметь состояния</emphasis>.</para>
+        <para>Если для сущности объявлены несколько слушателей одного типа (например, аннотациями класса сущности и его предков, плюс динамически), то их вызов будет выполняться в следующем порядке:<orderedlist>
+            <listitem>
+              <para>Для каждого предка, начиная с самого дальнего, вызываются его динамически добавленные слушатели, затем статически назначенные.</para>
+            </listitem>
+            <listitem>
+              <para>После всех предков вызываются  динамически добавленные слушатели  данного класса, затем статически назначенные.</para>
+            </listitem>
+          </orderedlist></para>
+      </section>
+    </section>
+    <section id="transactions">
+      <title>Управление транзакциями</title>
+      <para>В данном разделе рассмотрены различные аспекты управления транзакциями в CUBA-приложениях.</para>
+      <section>
+        <title>Программное управление транзакциями</title>
+        <para>Программное управление транзакциями осуществляется с помощью интерфейса <code>com.haulmont.cuba.core.Transaction</code>, ссылку на который можно получить методами <code>createTransaction()</code> или <code>getTransaction()</code> интерфейса инфраструктуры <code>
+            <link linkend="persistence">Persistence</link>
+          </code>.</para>
+        <para>Метод <code>createTransaction()</code> создает новую транзакцию и возвращает интерфейс <code>Transaction</code>. Последующие вызовы методов <code>commit()</code>, <code>commitRetaining()</code>, <code>end()</code> этого интерфейса управляют созданной транзакцией. Если в момент создания существовала другая транзакция, то она будет приостановлена, и возобновлена после завершения созданной. </para>
+        <para>Метод <code>getTransaction()</code> вызывает либо создание новой, либо присоединение к текущей транзакции. Если в момент вызова существовала активная транзакция, то метод успешно завершается, и последующие вызовы <code>commit()</code>, <code>commitRetaining()</code>, <code>end()</code> не оказывают никакого влияния на существующую транзакцию. Однако если <code>end()</code> вызван без предварительного вызова <code>commit()</code>, то текущая транзакция помечается как <code>RollbackOnly</code>.</para>
+        <para>Пример ручного управления транзакцией:<programlisting language="java">@Inject
+private Persistence persistence;
+...
+Transaction tx = persistence.createTransaction();
+try {
+    EntityManager em = persistence.getEntityManager();
+    Customer customer = new Customer();
+    customer.setName(&quot;John Smith&quot;);
+    em.persist(customer);
+
+    tx.commit();
+} finally {
+    tx.end();
+}</programlisting></para>
+        <para>Интерфейс Transaction имеет также метод execute(), принимающий на вход класс-действие, которое нужно выполнить в данной транзакции. Это позволяет организовать управление транзакциями в функциональном стиле, например:<programlisting language="java">persistence.createTransaction().execute(new Transaction.Runnable() {
+    public void run(EntityManager em) {
+        // transactional code here
+    }
+});</programlisting></para>
+        <para>Если транзакционный блок должен вернуть результат, класс-действие должен реализовывать интерфейс <code>Transaction.Callable</code>. Если результат не требуется, как в приведенном примере, то класс-действие удобно наследовать от абстрактного класса <code>Transaction.Runnable</code>.</para>
+        <para>Следует иметь в виду, что метод <code>execute()</code> у некоторого экземпляра <code>Transaction</code> можно вызвать только один раз, так как после выполнения кода класса-действия транзакция завершается.</para>
+      </section>
+      <section>
+        <title>Декларативное управление транзакциями</title>
+        <para>Любой метод <link linkend="managed_beans">управляемого бина</link> <structname>Middleware</structname> можно пометить аннотацией <code>@org.springframework.transaction.annotation.Transactional</code>, что вызовет автоматическое создание транзакции при вызове этого метода. В таком методе не нужно вызывать <code>Persistence.createTransaction()</code>, а можно сразу получать <code>EntityManager</code> и работать с ним.</para>
+        <para>Для аннотации <code>@Transactional</code> можно указать параметры. Основным параметром является режим создания транзакции - <code>Propagation</code>. Значение <code>REQUIRED</code> соответствует <code>getTransaction()</code>, значение <code>REQUIRES_NEW</code> - <code>createTransaction()</code>. По умолчанию <code>REQUIRED</code>.
+</para>
+        <para>Декларативное управление транзакциями позволяет уменьшить количество <ulink url="http://en.wikipedia.org/wiki/Boilerplate_code">boilerplate кода</ulink>, однако имеет следующий недостаток: коммит транзакции происходит вне прикладного кода, что часто затрудняет отладку, т.к. скрывается момент отправки изменений в БД и перехода сущностей в состояние <link linkend="entity_states">Detached</link>. Кроме того, следует иметь в виду, что декларативная разметка сработает только в случае вызова метода контейнером, т.е. вызов транзакционного метода из другого метода того же самого объекта не приведет к старту транзакции.
+</para>
+        <para>В связи с этим рекомендуется применять декларативное управление транзакциями только для простых случаев типа метода <link linkend="services">сервиса</link>, читающего некоторый объект и возвращающего его на клиента. </para>
+      </section>
+      <section>
+        <title>Примеры взаимодействия транзакций</title>
+        <section>
+          <title>Откат вложенной транзакции</title>
+          <para>Если вложенная транзакция создана через <code>getTransaction()</code>, то ее откат приведет к невозможности коммита охватывающей транзакции. Например:<programlisting language="java">void methodA() {
+    Transaction tx = persistence.createTransaction();
+    try {
+        // (1) вызываем метод, создающий вложенную транзакцию
+        methodB();
+
+        // (4) в этот момент будет выброшено исключение, т.к. транзакция
+        //     помечена как rollback only
+        tx.commit();
+    } finally {
+        tx.end();
+    }
+}
+
+void methodB() {
+    Transaction tx = persistence.getTransaction();
+    try {
+        // (2) допустим здесь возникло исключение
+        tx.commit();
+    } catch (Exception e) {
+        // (3) обрабатываем его и выходим
+        return;
+    } finally {
+        tx.end();
+    }
+}</programlisting></para>
+          <para>Если же транзакция в <code>methodB()</code> будет создана через <code>createTransaction()</code>, то ее откат не окажет никакого влияния на коммит охватывающей транзакции в <code>methodA()</code>. </para>
+        </section>
+        <section>
+          <title>Чтение и изменение данных во вложенной транзакции</title>
+          <para>Рассмотрим сначала зависимую вложенную транзакцию, создаваемую через <code>getTransaction()</code>:<programlisting language="java">void methodA() {
+    Transaction tx = persistence.createTransaction();
+    try {
+        EntityManager em = persistence.getEntityManager();
+
+        // (1) загружаем сущность, в которой name == &quot;old name&quot;
+        Employee employee = em.find(Employee.class, id);
+        assertEquals(&quot;old name&quot;, employee.getName());
+
+        // (2) присваиваем новое значение полю
+        employee.setName(&quot;name A&quot;);
+
+        // (3) вызываем метод, создающий вложенную транзакцию
+        methodB();
+
+        // (8) здесь происходит коммит изменений в БД, и в ней
+        //     окажется значение &quot;name B&quot;
+        tx.commit();
+
+    } finally {
+        tx.end();
+    }
+}
+
+void methodB() {
+    Transaction tx = persistence.getTransaction();
+    try {
+        // (4) получаем тот же экземпляр EntityManager, что и methodA
+        EntityManager em = persistence.getEntityManager();
+
+        // (5) загружаем сущность с тем же идентификатором
+        Employee employee = em.find(Employee.class, id);
+
+        // (6) значение поля новое, т.к. мы работаем с тем же
+        //     персистентным контекстом, и обращения к БД вообще
+        //     не происходит
+        assertEquals(&quot;name A&quot;, employee.getName());
+        employee.setName(&quot;name B&quot;);
+
+        // (7) в этот момент реально коммита не происходит
+        tx.commit();
+    } finally {
+        tx.end();
+    }
+}</programlisting></para>
+          <para>Теперь рассмотрим тот же самый пример с независимой вложенной транзакцией, создаваемой через <code>createTransaction()</code>: <programlisting language="java">void methodA() {
+    Transaction tx = persistence.createTransaction();
+    try {
+        EntityManager em = persistence.getEntityManager();
+
+        // (1) загружаем сущность, в которой name == &quot;old name&quot;
+        Employee employee = em.find(Employee.class, id);
+        assertEquals(&quot;old name&quot;, employee.getName());
+
+        // (2) присваиваем новое значение полю
+        employee.setName(&quot;name A&quot;);
+
+        // (3) вызываем метод, создающий вложенную транзакцию
+        methodB();
+
+        // (8) здесь возникнет исключение из-за оптимистичной блокировки
+        //     и коммит не пройдет вообще
+        tx.commit();
+
+    } finally {
+        tx.end();
+    }
+}
+
+void methodB() {
+    Transaction tx = persistence.createTransaction();
+    try {
+        // (4) создается новый экземпляр EntityManager, т.к. это
+        //     новая транзакция
+        EntityManager em = persistence.getEntityManager();
+
+        // (5) загружаем сущность с тем же идентификатором
+        Employee employee = em.find(Employee.class, id);
+
+        // (6) значение поля старое, т.к. произошла загрузка из БД
+        //     старого экземпляра сущности
+        assertEquals(&quot;old name&quot;, employee.getName());
+
+        employee.setName(&quot;name B&quot;);
+
+        // (7) здесь происходит коммит изменений в БД, и в ней
+        //     окажется значение &quot;name B&quot;
+        tx.commit();
+
+    } finally {
+        tx.end();
+    }
+}</programlisting></para>
+          <para>В последнем случае исключение в точке (8) возникнет, только если сущность является оптимистично блокируемой, т.е. если она реализует интерфейс <code>Versioned</code>.</para>
+        </section>
+      </section>
+      <section id="transaction_timeout">
+        <title>Таймаут транзакции</title>
+        <para>Для создаваемой транзакции может быть указан таймаут в секундах, при превышении которого транзакция будет прервана и откачена. Таймаут транзакции  ограничивает максимальную длительность запросов к базе данных.</para>
+        <para>При программном управлении транзакциями таймаут включается путем передачи объекта <code>TransactionParams</code> в метод <code>Persistence.createTransaction()</code>. Например:<programlisting language="java">Transaction tx = persistence.createTransaction(new TransactionParams().setTimeout(2));</programlisting></para>
+        <para>При декларативном управлении транзакциями используется параметр <code>timeout</code> аннотации <code> @Transactional</code>, например:<programlisting language="java">@Transactional(timeout = 2)
+public void someServiceMethod() {
+...</programlisting></para>
+        <para>Таймаут по умолчанию может быть задан в свойстве приложения <property>
+            <link linkend="cuba.defaultQueryTimeoutSec">cuba.defaultQueryTimeoutSec</link>
+          </property>. </para>
+        <section>
+          <title>Особенности реализации для различных СУБД</title>
+          <para><application>PostgreSQL</application></para>
+          <para>К сожалению, JDBC драйвер <application>PostgreSQL</application> не поддерживает метод <code>setQueryTimeout()</code> интерфейса <code>java.sql.Statement</code>, поэтому в начале каждой транзакции, для которой определен таймаут (любым способом, включая ненулевое значение  свойства <property>
+              <link linkend="cuba.defaultQueryTimeoutSec">cuba.defaultQueryTimeoutSec</link>
+            </property>), выполняется дополнительный оператор в БД: <code>set local statement_timeout to {value}</code>. При этом в случае превышения таймаута запрос будет прерван самим сервером БД. </para>
+          <para>Для снижения нагрузки от этих дополнительных операторов рекомендуется поступать следующим образом: <itemizedlist>
+              <listitem>
+                <para>Таймаут по умолчанию устанавливать не на <structname>Middleware</structname> с помощью свойства <property>cuba.defaultQueryTimeoutSec</property>, а на самом сервере <application>PostgreSQL</application> в файле <filename>postgresql.conf</filename>, например, <literal>statement_timeout = 3000</literal> (это в миллисекундах). </para>
+              </listitem>
+              <listitem>
+                <para>Для методов, которым требуется большее время таймаута (отчеты и пр.), явно указывать желаемый таймаут в параметрах транзакции. </para>
+              </listitem>
+            </itemizedlist></para>
+          <para><application>Microsoft SQL Server</application></para>
+          <para>Драйвер JTDS поддерживает метод <code>setQueryTimeout()</code> интерфейса <code>java.sql.Statement</code>, поэтому для <code>EntityManager</code> просто устанавливается стандартное свойство <literal>javax.persistence.query.timeout</literal>, которое соответствующим образом влияет на JDBC запросы. </para>
+        </section>
+      </section>
+    </section>
+    <section id="dataService">
+      <title>DataService и DataWorker</title>
+      <para><link linkend="managed_beans">Управляемый бин</link> <code>DataWorker</code> является универсальным средством для загрузки графов сущностей из базы данных, и для сохранения изменений, произведенных в <link linkend="entity_states">Detached</link> экземплярах сущностей. <link linkend="services">Сервис</link> <code>DataService</code> является фасадом для вызова <code>DataWorker</code> с клиентского <link linkend="app_tiers">уровня</link> приложения.</para>
+      <para>Выделение бизнес-логики загрузки и сохранения в <code>DataWorker</code> дает возможность при необходимости создать свой сервис, делегирующий основную работу <code>DataWorker</code> и выполняющий дополнительные преобразования, например, перед возвратом данных на клиентский уровень.</para>
+      <para><code>DataWorker</code> всегда стартует новую транзакцию и по завершении работы выполняет коммит, таким образом возвращая сущности в состоянии <link linkend="entity_states">Detached</link>.</para>
+      <para>Методы <code>DataService</code> и <code>DataWorker</code>:<itemizedlist>
+          <listitem>
+            <para><code>load()</code>, <code>loadList()</code> - загружает граф сущностей в соответствии с параметрами переданного объекта <code>LoadContext</code>. </para>
+            <para>В <code>LoadContext</code> обязательно должен быть передан либо JPQL-запрос, либо идентификатор сущности. Если передано и то и другое, используется запрос, а идентификатор игнорируется. </para>
+            <para>Правила создания запросов аналогичны описанным в <xref linkend="query"/>. Отличием является то, что в запросе <code>LoadContext</code> могут быть использованы только именованные параметры, позиционные не поддерживаются.</para>
+            <para>Методы <code>load()</code> и <code>loadList()</code> проверяют наличие у пользователя права <code>EntityOp.READ</code> на загружаемую сущность. Кроме того, при извлечении сущностей из БД накладываются ограничения групп доступа (см. руководство <productname>Подсистема безопасности</productname>). Для отмены действия ограничений в текущем запросе можно передать в <code>LoadContext</code> атрибут <code>useSecurityConstraints = false</code>.</para>
+            <para>Примеры загрузки сущностей  в контроллере экрана:<programlisting language="java">@Inject
+private DataService dataService;
+
+private Book loadBookById(UUID bookId) {
+    LoadContext loadContext = new LoadContext(Book.class)
+            .setId(bookId).setView(&quot;book.edit&quot;);
+    return dataService.load(loadContext);
+}
+
+private List&lt;BookPublication&gt; loadBookPublications(UUID bookId) {
+    LoadContext loadContext = new LoadContext(BookPublication.class)
+            .setView(&quot;bookPublication.full&quot;);
+    loadContext.setQueryString(&quot;select p from library$BookPublication p where p.book.id = :bookId&quot;)
+            .setParameter(&quot;bookId&quot;, bookId);
+    return dataService.loadList(loadContext);
+}</programlisting></para>
+          </listitem>
+          <listitem>
+            <para><code>commit()</code> - сохраняет в базе данных набор сущностей, переданный в объекте <code>CommitContext</code>. Отдельно указываются коллекции сущностей, которые нужно сохранить, и которые нужно удалить.</para>
+            <para>Метод возвращает набор экземпляров сущностей, возвращенных из метода <code>EntityManager.merge()</code>, то есть по сути свежие экземпляры, только что обновленные в БД. Дальнейшая работа должна производиться именно с этими возвращенными экземплярами, чтобы предотвратить потерю данных или исключения оптимистичной блокировки. Для того, чтобы обеспечить наличие нужных атрибутов у возвращенных сущностей, с помощью мэп <code>CommitContext.getViews()</code> можно указать <link linkend="views">представление</link> для каждого сохраняемого экземпляра. </para>
+            <para>Метод <code>commit()</code>  проверяет наличие у пользователя права <code>EntityOp.UPDATE</code> на изменяемые сущности, и <code>EntityOp.DELETE</code> на  удаляемые. </para>
+            <para>Примеры сохранения коллекций сущностей:<programlisting language="java">@Inject
+private DataService dataService;
+
+/**
+ * @param toSave    entities to update in the database
+ * @param toDelete  entities to delete from the database
+ */
+private void saveBookInstances(List&lt;BookInstance&gt; toSave, List&lt;BookInstance&gt; toDelete) {
+    CommitContext commitContext = new CommitContext(toSave, toDelete);
+    dataService.commit(commitContext);
+}
+
+/**
+ * @param toSave    entities to update in the database
+ * @param view      view to fetch each updated entity before returning it back to the client
+ * @return          set of updated entities, fetched according to the view
+ */
+private Set&lt;Entity&gt; saveAndReturnBookInstances(List&lt;BookInstance&gt; toSave, View view) {
+    CommitContext commitContext = new CommitContext();
+    for (BookInstance bookInstance : toSave) {
+        commitContext.getCommitInstances().add(bookInstance);
+        commitContext.getViews().put(bookInstance, view);
+    }
+    return dataService.commit(commitContext);
+}</programlisting></para>
+          </listitem>
+          <listitem>
+            <para><code>commitNotDetached()</code> - аналогичен методу <code>commit()</code>, но предназначен для сохранения в БД экземпляров, у которых отсутствует информация о <link linkend="entity_states">Detached</link> состоянии. Такие экземпляры сущностей могут быть переданы с клиентов, которые работают не напрямую с объектами, загруженными <structname>Middleware</structname>, а с дополнительными Data Transfer Objects, либо вообще не с Java объектами, а с их XML или JSON представлением (как, например, клиенты <link linkend="rest_api">REST API</link>)</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>В процессе загрузки данных <code>DataWorker</code> может реализовывать дополнительную функциональность, описанную ниже.</para>
+      <section>
+        <title>Запросы с distinct</title>
+        <para>В JPQL запросах для экранов со списками сущностей, в которых включено постраничное отображение и возможна непредсказуемая модификация запроса <link linkend="gui_Filter">универсальным фильтром</link> или механизмом ограничений групп доступа, при отсутствии в запросе оператора <literal>distinct</literal> может возникать следующий эффект: <itemizedlist>
+            <listitem>
+              <para>при объединении с коллекцией на уровне извлечения из базы данных возникает набор с дубликатами строк</para>
+            </listitem>
+            <listitem>
+              <para>на клиентском уровне в источнике данных дубликаты исчезают, т.к. попадают в мэп (<code>java.util.Map</code>) </para>
+            </listitem>
+            <listitem>
+              <para>при постраничном отображении на одной странице оказывается меньшее количество строк, чем запрошено, общее количество строк наоборот завышено.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Таким образом, рекомендуется в JPQL запросы браузеров включать предложение <literal> distinct</literal>, которое гарантирует отсутствие дубликатов записей при выборке из базы данных. Однако в некоторых серверах БД (в частности <application>PostgreSQL</application>) при большом количестве извлекаемых записей (более 10000) SQL запрос с <literal>distinct</literal> выполняется недопустимо долго.</para>
+        <para>Для решения этой проблемы в платформе реализована возможность корректной работы без <literal>distinct</literal> на уровне SQL. Данный механизм включается свойством приложения <property>
+            <link linkend="cuba.inMemoryDistinct">cuba.inMemoryDistinct</link>
+          </property>, при активации которого выполняется следующее: <itemizedlist>
+            <listitem>
+              <para>В JPQL запросе должен по-прежнему присутствовать <literal>select distinct</literal></para>
+            </listitem>
+            <listitem>
+              <para>В <code>DataWorker</code> из JPQL запроса перед отправкой в ORM <literal>distinct</literal> вырезается  </para>
+            </listitem>
+            <listitem>
+              <para>После загрузки страницы данных на <structname>Middleware</structname> удаляются дубликаты и выполняются дополнительные запросы к БД для получения нужного количества строк, которые затем и возвращаются клиенту.</para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+      <section id="query_from_selected">
+        <title>Последовательная выборка</title>
+        <para><code>DataWorker</code> может выполнять последовательную выборку данных из результатов предыдущего запроса. Эта возможность используется в <link linkend="gui_Filter">универсальном фильтре</link> при последовательном наложении фильтров. </para>
+        <para>Данный механизм работает следующим образом:<itemizedlist>
+            <listitem>
+              <para>При получении <code>LoadContext</code> с установленными атрибутами <code>prevQueries</code> и <code>queryKey</code> <code>DataWorker</code> выполняет выборку по предыдущему запросу и сохраняет идентификаторы полученных сущностей в таблице <database>SYS_QUERY_RESULT</database> (соответствующей сущности <literal>sys$QueryResult</literal>), разделяя наборы записей по идентификаторам пользовательских сессий и ключу сеанса выборки <code>queryKey</code>. </para>
+            </listitem>
+            <listitem>
+              <para>Текущий запрос модифицируется для объединения с результатами предыдущего, так что в итоге возвращает данные, соответствующие условиям обоих запросов, объединенных по &quot;И&quot;.</para>
+            </listitem>
+            <listitem>
+              <para>Далее процесс может повторяться, при  этом уменьшающийся набор предыдущих результатов удаляется из таблицы <database>SYS_QUERY_RESULT</database> и заполняется заново.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Таблицу <database>SYS_QUERY_RESULT</database> необходимо периодически чистить от ненужных результатов запросов, оставленных завершенными пользовательскими сессиями. Для этого предназначен метод <code>deleteForInactiveSessions</code> бина <code>QueryResultsManagerAPI</code>. В прикладном проекте с включенным параметром <property>
+            <link linkend="cuba.allowQueryFromSelected">cuba.allowQueryFromSelected</link>
+          </property> необходимо вызывать этот метод из <link linkend="scheduled_tasks">назначенных заданий</link>, например:<programlisting language="xml">&lt;task:scheduled-tasks scheduler=&quot;scheduler&quot;&gt;
+    &lt;task:scheduled ref=&quot;cuba_QueryResultsManager&quot; method=&quot;deleteForInactiveSessions&quot; fixed-rate=&quot;600000&quot;/&gt;
+&lt;/task:scheduled-tasks&gt;</programlisting></para>
+      </section>
+    </section>
+  </section>

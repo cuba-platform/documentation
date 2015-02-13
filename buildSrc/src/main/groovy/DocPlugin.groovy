@@ -103,6 +103,16 @@ class Docbook2Xhtml extends DocTask {
         }
     }
 
+    @InputDirectory
+    File getSourceCodeDir() {
+        project.file("content/$docName/source")
+    }
+
+    @InputDirectory
+    File getVarDir() {
+        project.file("content/$docName/var")
+    }
+
     @OutputFile
     File getDstFile() {
         if (destFile) destFile
@@ -175,15 +185,25 @@ class DocBook2WebHelp extends DocTask {
     }
 
     @InputDirectory
+    File getImagesDir() {
+        project.file("content/$docName/img")
+    }
+
+    @InputDirectory
+    File getSourceCodeDir() {
+        project.file("content/$docName/source")
+    }
+
+    @InputDirectory
+    File getVarDir() {
+        project.file("content/$docName/var")
+    }
+
+    @InputDirectory
     File stylesheetsDir = new File(project.buildDir, 'xsl')
 
     @InputDirectory
     File templateDir = project.file('tools/webhelp/template')
-
-    @InputDirectory
-    File getImagesDir() {
-        project.file("content/$docName/img")
-    }
 
     @InputDirectory
     File searchDir = project.file('tools/webhelp/search')
