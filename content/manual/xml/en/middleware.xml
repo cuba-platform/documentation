@@ -1,0 +1,955 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<section id="middleware">
+  <title>Middleware Components</title>
+  <para>The following figure shows the main components of the CUBA application middle tier.</para>
+  <figure>
+    <title>Components of the Middle Tier</title>
+    <mediaobject>
+      <imageobject>
+        <imagedata align="center" fileref="img/Middleware.png"/>
+      </imageobject>
+    </mediaobject>
+  </figure>
+  <para><link linkend="services">Services</link> are  <glossterm linkend="container">container</glossterm>-managed components that form the application boundary and provide the interface to the client <link linkend="app_tiers">tier</link>. Services may contain the business logic themselves or delegate the execution to managed beans.</para>
+  <para><link linkend="managed_beans">Managed beans</link> are container-managed components that contain the business logic of the application. They are called by services, other beans or via the optional  <glossterm linkend="jmx">JMX </glossterm>interface.</para>
+  <para><link linkend="persistence">Persistence</link> is the infrastructure interface to access the data storage functionality: <link linkend="orm">ORM</link> and <link linkend="transactions">transactions</link> management. </para>
+  <section id="services">
+    <title>Services</title>
+    <para>Services form the component layer that defines a set of  <structname>Middleware</structname> operations available to the client <link linkend="app_tiers">tier</link>. Services encapsulate business logic and  <link linkend="transactions">transaction</link> management. </para>
+    <para>The main objectives of services:</para>
+    <itemizedlist>
+      <listitem>
+        <para>Provide the remote interface to call from the client tier.</para>
+      </listitem>
+      <listitem>
+        <para>Check the availability of the active <link linkend="userSession">user session</link>, that corresponds to the session identifier transferred from the client.</para>
+      </listitem>
+      <listitem>
+        <para>Log unhandled middleware exceptions. </para>
+      </listitem>
+    </itemizedlist>
+    <para>In addition, it is recommended to perform user authorization in the service layer, i.e. to check their rights for a particular functionality.</para>
+    <para>The objectives common to all services are handled as follows:<itemizedlist>
+        <listitem>
+          <para>Checking the availability of the user session and logging exceptions are performed by the  <code>ServiceInterceptor</code>, class which <link linkend="interceptor">intercepts</link> the execution of each service method using  <application>Spring AOP</application>.</para>
+        </listitem>
+        <listitem>
+          <para>The remote interface to access the service through <application>Spring HTTP Invoker</application> is created by the  <code>RemoteServicesBeanCreator</code>, bean, which is configured in the <link linkend="remoting-spring.xml">remoting-spring.xml</link> file of the  <structname>core</structname> module. </para>
+        </listitem>
+      </itemizedlist></para>
+    <figure>
+      <title>The Service Class Diagram</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/MiddlewareServices.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <section id="service_creation">
+      <title>Creating a Service</title>
+      <para>The name of service interface should end with  <code>Service</code>, the names of implementation class – with  <code>ServiceBean</code>.</para>
+      <para>The following steps are required for creating a service:</para>
+      <procedure>
+        <step>
+          <para>Create the service interface in the  <structname>global </structname><link linkend="app_modules">module</link>, as the service interface must be available at all <link linkend="app_tiers">tiers</link>), and specify the service name in it. It is recommended to specify the name in the following format:  <literal>{project_name}_{interface_name}</literal>. For example:</para>
+          <programlisting language="java">package com.sample.sales.core;
+
+import com.sample.sales.entity.Order;
+
+public interface OrderService {
+  String NAME = &quot;sales_OrderService&quot;;
+
+  void calculateTotals(Order order);
+}</programlisting>
+        </step>
+        <step>
+          <para>Create the service class in the <structname>core</structname> module and add the <code>@org.springframework.stereotype.Service</code> annotation to it with the name specified in the interface:</para>
+          <programlisting language="java">package com.sample.sales.core;
+
+import com.sample.sales.entity.Order;
+import org.springframework.stereotype.Service;
+
+@Service(OrderService.NAME)
+public class OrderServiceBean implements OrderService {
+  @Override
+  public void calculateTotals(Order order) {
+  }
+}</programlisting>
+          <para>The service class, being a   <link linkend="managed_beans">managed bean</link>, should be placed inside the package tree with the root specified in the <literal>context:component-scan</literal> element of the <link linkend="spring.xml">spring.xml</link> file. In this case, the  <filename>spring.xml</filename> file contains the element:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.sample.sales&quot;/&gt;</programlisting>which means that the search for annotated beans for this application block will be performed starting with the  <code>com.sample.sales</code> package.</para>
+        </step>
+      </procedure>
+      <warning>
+        <para>Services are only intended for calling “outside of” Middleware. It is not recommended to call service methods from other components of the middle tier. An error message is logged upon detection of a service call from another service.</para>
+        <para>If different services or other Middleware components require to call the same business logic, it should be extracted and encapsulated inside an appropriate <link linkend="managed_beans">managed bean</link>.</para>
+      </warning>
+    </section>
+    <section id="service_import">
+      <title>Using the Service</title>
+      <para>In order to call the service, the corresponding proxy object should be created in the client block of the application. Declare the service name and interface in the parameters of the proxy object factory to achieve this. For the  <structname>Web Client</structname> block, it is  <code>WebRemoteProxyBeanCreator</code>, for <structname>Web Portal</structname> –  <code>PortalRemoteProxyBeanCreator</code> , for <structname>Desktop Client</structname> – <code>RemoteProxyBeanCreator</code> .</para>
+      <para>The proxy object factory is configured in <link linkend="spring.xml">spring.xml</link> of the corresponding client block.</para>
+      <para>For example, to call the <code>sales_OrderService</code> service from the web client in the  <application>sales</application> application, it is necessary to add the following code into the  <filename>web-spring.xml</filename> file of the  <structname>web</structname> module:</para>
+      <programlisting language="xml">&lt;bean id=&quot;sales_proxyCreator&quot; class=&quot;com.haulmont.cuba.web.sys.remoting.WebRemoteProxyBeanCreator&quot;&gt;
+  &lt;property name=&quot;clusterInvocationSupport&quot; ref=&quot;cuba_clusterInvocationSupport&quot;/&gt;
+  &lt;property name=&quot;remoteServices&quot;&gt;
+      &lt;map&gt;
+          &lt;entry key=&quot;sales_OrderService&quot; value=&quot;com.sample.sales.core.OrderService&quot;/&gt;
+      &lt;/map&gt;
+  &lt;/property&gt;
+&lt;/bean&gt;</programlisting>
+      <para>All imported services are declared in a single <code>remoteServices</code> property in the  <literal>map/entry</literal> elements.</para>
+      <para>From the application code perspective, the service’s proxy object at the client level is a standard <application>Spring</application> bean and can be obtained either by injection or through <code>AppBeans</code> class. For example:<programlisting language="java">@Inject
+protected OrderService orderService;
+...
+orderService.calculateTotals(order);</programlisting></para>
+    </section>
+  </section>
+  <section id="system_authentication">
+    <title>System Authentication</title>
+    <para>When executing user requests, the Middleware program code always has access to the information on the current user via the <link linkend="userSessionSource">UserSessionSource</link> interface. This is possible because the corresponding <link linkend="securityContext">SecurityContext</link> object is automatically set for the current thread when a request is received from the client tier.</para>
+    <para>However, there are situations when the current thread is not associated with any system user, for example, when calling a bean’s method from the  <link linkend="scheduled_tasks_spring">scheduler</link>, or via the JMX interface. In case the bean modifies entities in the database, it will require information on who is making changes, i.e., authentication.</para>
+    <para>This kind of authentication is called “system authentication” as it requires no user participation – the application middle layer simply creates or uses an existing user session and sets the corresponding  <code>SecurityContext</code> object for the current thread.</para>
+    <para>The following methods can be used to provide the system authentication for a code block: <itemizedlist>
+        <listitem>
+          <para>Make use of the  <code>com.haulmont.cuba.security.app.Authentication</code> bean:<programlisting language="java">@Inject
+protected Authentication authentication;
+...
+authentication.begin();
+try {
+  // authenticated code
+} finally {
+  authentication.end();
+}</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Add the  <code>@Authenticated</code> annotation to the bean method:<programlisting language="java">@Authenticated
+public String foo(String value) {
+  // authenticated code
+}</programlisting></para>
+        </listitem>
+      </itemizedlist></para>
+    <para>The second case uses the <code>Authentication</code> bean implicitly, via the <code>AuthenticationInterceptor</code> object, which intercepts calls of all bean methods with the  <code>@Authenticated</code> annotation.</para>
+    <para>In the examples above, the user session will be created on behalf of the user, whose login is specified in the <link linkend="cuba.jmxUserLogin">cuba.jmxUserLogin</link> application property. If authentication on behalf of another user is required, pass the login of the desired user to the  <code>begin()</code> method of the first variant.</para>
+    <warning>
+      <para>If current thread has an active user session assigned at the time of  <code>Authentication.begin()</code> execution, it will not be replaced. Therefore the code will be executed with the existing session and the subsequent call to the <code>end()</code> method will not clear the thread.</para>
+      <para>For example, if a bean is in the same JVM as the Web Client block, to which the user is currently connected, the call of the JMX bean method from the Web Client built-in <link linkend="jmx_console">JMX console</link> will be executed on behalf of the currently logged in user, regardless of the system authentication.</para>
+    </warning>
+  </section>
+  <section id="persistence">
+    <title>The Persistence Interface</title>
+    <para>The infrastructure interface, serving as an entry point to data storage functionality.</para>
+    <para>The interface has the following methods:<itemizedlist>
+        <listitem>
+          <para><code>createTransaction()</code>, <code>getTransaction()</code> – obtain the interface to manage <link linkend="transactions">transactions</link>.</para>
+        </listitem>
+        <listitem>
+          <para><code>isInTransaction()</code> – checks  if an active transaction exists at the moment.</para>
+        </listitem>
+        <listitem>
+          <para><code>getEntityManager()</code> – returns the <link linkend="entityManager">EntityManager</link> instance bound to the current transaction.</para>
+        </listitem>
+        <listitem>
+          <para><code>isSoftDeletion()</code> – allows to determine if the  <link linkend="soft_deletion">soft deletion</link> mode is active.</para>
+        </listitem>
+        <listitem>
+          <para><code>setSoftDeletion()</code> – enables or disables the soft deletion mode. Setting this property affects all newly created <code>EntityManager</code>. instances. Soft deletion is enabled by default.</para>
+        </listitem>
+        <listitem>
+          <para><code>getDbTypeConverter()</code> – returns the  <link linkend="dbTypeConverter">DbTypeConverter</link> instance for the currently used database.</para>
+        </listitem>
+        <listitem>
+          <para><code>getDataSource()</code> – returns the  <code>javax.sql.DataSource</code> instance for the currently used database.</para>
+          <warning>
+            <para>For all  <code>javax.sql.Connection</code> objects obtained through <code>getDataSource().getConnection()</code> method the <code>close()</code> method should be called in the  <code>finally</code> section after using the connection. Otherwise, the connection will not be returned to the pool. Over time, the pool will overflow and the application will not be able to execute database queries.</para>
+          </warning>
+        </listitem>
+        <listitem>
+          <para><code>getTools()</code> – returns an instance of the   <code>PersistenceTools</code> interface (see below).</para>
+        </listitem>
+      </itemizedlist></para>
+    <section id="persistenceTools">
+      <title>PersistenceTools</title>
+      <para><link linkend="managed_beans">Managed bean</link> containing helper methods related to data storage functionality. It can be obtained either by calling the  <code>Persistence.getTools()</code> method or like any other bean, through injection or the  <code>AppBeans</code> class.</para>
+      <para>The  <code>PersistenceTools</code> bean has the following methods:<itemizedlist>
+          <listitem>
+            <para><code>getDirtyFields()</code> – returns a collection of entity attribute names that have been changed since the last load of the instance from the DB. For new instances an empty collection is returned.</para>
+          </listitem>
+          <listitem>
+            <para><code>isLoaded()</code> –  determines if the specified instance attribute was loaded from the DB. The attribute may  <emphasis>not</emphasis> be loaded, if it was not present in the <link linkend="views">view</link> specified when loading the instance. </para>
+            <para>This method only works for instances in the <link linkend="entity_states">Managed</link> state.</para>
+          </listitem>
+          <listitem>
+            <para><code>getReferenceId()</code> – returns an ID of the related entity without loading it from the DB.</para>
+            <para>Let us suppose that an <code>Order</code> instance was loaded in the  <glossterm linkend="persistence_context">persistent context</glossterm> and it is necessary to get the ID value of the <code>Customer</code> instance related to this <code>Order</code>. A call to the  <code>order.getCustomer().getId()</code> method will execute the DB query to load the  <code>Customer</code> instance, which in this case is unnecessary, because the value of the Customer ID is also located in the <code>Order</code> table as a foreign key. Whereas the execution of <programlisting language="java">persistence.getTools().getReferenceId(order, &quot;customer&quot;)</programlisting>will not send any additional queries to the database.</para>
+            <para>This method works only for instances in the <link linkend="entity_states">Managed</link> state.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The <code>PersistenceTools</code> bean can be  <link linkend="bean_extension">overridden</link> in your application to extend the set of default helper methods.  An example of working with the extended interface is shown below:<programlisting language="java">MyPersistenceTools tools = persistence.getTools();
+tools.foo();</programlisting><programlisting language="java">((MyPersistenceTools) persistence.getTools()).foo();</programlisting></para>
+    </section>
+    <section id="persistenceHelper">
+      <title>PersistenceHelper</title>
+      <para>A helper class for obtaining the information on persistent entities. Unlike the  <code>Persistence</code> and  <code>PersistenceTools</code> beans, this class is available on all  <link linkend="app_tiers">tiers</link>.</para>
+      <para>The  <code>PersistenceHelper</code> bean has the following methods: <itemizedlist>
+          <listitem>
+            <para><code>isNew()</code> – determines if the passed instance is newly created, i.e., in the   <link linkend="entity_states">New</link> state. Also returns  <code>true</code> if this instance is actually in <link linkend="entity_states">Managed</link> state but newly-persisted in the current transaction, or if it is not a persistent entity.</para>
+          </listitem>
+          <listitem>
+            <para><code>isDetached()</code> – determines if the passed instance is in the  <link linkend="entity_states">Detached</link> state. Also returns <code>true</code>, if this instance is not a persistent entity.</para>
+          </listitem>
+          <listitem>
+            <para><code>isSoftDeleted()</code> – determines if the passed entity class supports the <link linkend="soft_deletion">soft deletion</link>.</para>
+          </listitem>
+          <listitem>
+            <para><code>getEntityName()</code> – returns the name of the entity specified in the <link linkend="entity_annotation">@Entity</link> annotation.</para>
+          </listitem>
+        </itemizedlist></para>
+    </section>
+    <section id="dbTypeConverter">
+      <title>DbTypeConverter</title>
+      <para>The interface containing methods for conversion between <link linkend="data_model">data model</link> attribute values and  parameters/results of JDBC queries. An object of this interface can be obtained through the <link linkend="persistence">Persistence.getDbTypeConverter()</link> method. </para>
+      <para>The  <code>DbTypeConverter</code> interface has the following methods:<itemizedlist>
+          <listitem>
+            <para><code>getJavaObject()</code> – converts the result of the JDBC query into a type suitable for assigning to entity attribute.</para>
+          </listitem>
+          <listitem>
+            <para><code>getSqlObject()</code> – converts the value of the entity attribute into a type suitable for assigning to the JDBC query parameter.</para>
+          </listitem>
+          <listitem>
+            <para><code>getSqlType()</code> – returns a <code>java.sql.Types</code> constant that corresponds to the passed entity attribute type.</para>
+          </listitem>
+        </itemizedlist></para>
+    </section>
+  </section>
+  <section id="orm">
+    <title>ORM Layer</title>
+    <para>Object-Relational Mapping is the technology for linking relational database tables to programming language objects.  </para>
+    <variablelist>
+      <varlistentry>
+        <term>Benefits of using ORM:</term>
+        <listitem>
+          <itemizedlist>
+            <listitem>
+              <para>Allows working with a relational DBMS by means of Java objects manipulation.</para>
+            </listitem>
+            <listitem>
+              <para>Simplifies programming by eliminating routine writing of SQL queries.</para>
+            </listitem>
+            <listitem>
+              <para>Simplifies programming by letting you extract and save entire object graphs with one command.</para>
+            </listitem>
+            <listitem>
+              <para>Ensures easy porting of the application to different DBMS.</para>
+            </listitem>
+            <listitem>
+              <para>Uses a concise object query language –  <glossterm linkend="jpql">JPQL</glossterm>.</para>
+            </listitem>
+            <listitem>
+              <para>Optimizes the number of SQL requests for insert and update.</para>
+            </listitem>
+          </itemizedlist>
+        </listitem>
+      </varlistentry>
+      <varlistentry>
+        <term>Shortcomings:</term>
+        <listitem>
+          <itemizedlist>
+            <listitem>
+              <para>Requires understanding of specifics of working with ORM.</para>
+            </listitem>
+            <listitem>
+              <para>Does not allow to directly optimize SQL or use specifics of the DBMS.</para>
+            </listitem>
+          </itemizedlist>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+    <para>CUBA uses the ORM implementation according to Java Persistence API standard based on <application>Apache OpenJPA </application>framework.</para>
+    <section id="entityManager">
+      <title>EntityManager</title>
+      <para><code>EntityManager</code> – main ORM interface, used to manage  <link linkend="data_model">persistent entities</link>.
+</para>
+      <para>Reference to the  <code>EntityManager</code> may be obtained via the  <link linkend="persistence">Persistence</link> interface, by calling the  <code>getEntityManager()</code> method.
+The retrieved instance of  <code>EntityManager</code> is bound to the current <link linkend="transactions">transaction</link>,  i.e. all calls to <code>getEntityManager()</code> as part of one transaction return one and the same instance of  <code>EntityManager</code>.  After the end of transaction calls to the corresponding <code>EntityManager</code> instance are impossible.
+</para>
+      <para>An instance of  <code>EntityManager</code> contains a &quot;persistent context&quot; – a set of instances loaded from DB or newly created. Persistent context is a kind of data cache within a transaction.
+<code>EntityManager</code> automatically flushes to DB all changes done in its persistent context at the moment when a transaction is committed or when the   <code>flush()</code> method is called explictly.</para>
+      <para><code>EntityManager</code> interface used in CUBA applications mainly copies the standard  <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/EntityManager.html">javax.persistence.EntityManager</ulink> interface. Let us have a look at its main methods:<itemizedlist>
+          <listitem>
+            <para><code>persist()</code> – adds a  <link linkend="entity_states">new instance</link> of the entity to the persistent context. When the transaction is committed a corresponding record is created in DB using SQL <code>INSERT</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>merge()</code> – copies the state of <link linkend="entity_states">detached instance</link> to the persistent context the following way: an instance with the same identifier gets loaded from DB and the state of the passed Detached instance is copied into it and then the loaded Managed instance is returned. After that you should work with the returned Managed instance. The state of this entity will be stored in DB using SQL <code>UPDATE</code> on transaction commit.</para>
+          </listitem>
+          <listitem>
+            <para><code>remove()</code> – removes an object from the database, or, if  <link linkend="soft_deletion">soft deletion</link> mode is turned on, sets  <code>deleteTs</code> and <code>deletedBy</code> attributes.</para>
+            <para>If the passed instance is in Detached state,  <code>merge()</code> is performed first.</para>
+          </listitem>
+          <listitem>
+            <para><code>find()</code> – loads an entity instance by its identifier. </para>
+            <para>When forming a request to the database the system considers the  <link linkend="views">view</link> which has been passed as a parameter to this method, or set to the entire  <code>EntityManager</code> via  <code>setView()</code>. As a result the persistent context will contain a graph of objects with all non-lazy view attributes loaded. The rest of the attributes may be loaded by calling the corresponding access methods of the entity, or by calling  <code>EntityManager.fetch()</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>createQuery()</code> – creates a  <code>Query</code> object for executing a <link linkend="query">JPQL query</link>. </para>
+            <para>We recommend using the variant of this method, which receives an entity class to return an instance of  <code>TypedQuery</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>createNativeQuery()</code> – creates a  <code>Query</code> object to execute an  <link linkend="nativeQuery">SQL query</link>. </para>
+          </listitem>
+          <listitem>
+            <para><code>setView()</code> – sets the default  <link linkend="views">view</link>, which will be used for further loading of instance via <code>find()</code> or JPQL requests. As a result, all non-lazy attributes of the view will be  <glossterm linkend="eager_fetching">eagerly fetched</glossterm>.</para>
+            <para>Passing  <code>null</code> to this method or not calling it at all will load the attributes according to  <link linkend="entity_annotations">entity annotations</link>.</para>
+            <para>The views explicitly passed to   <code>find()</code> method or set in the <code>Query</code> object have a priority over the one set by this method. </para>
+          </listitem>
+          <listitem>
+            <para><code>addView()</code>  is similar to  <code>setView()</code>, but does not replace the view if it was already set in the <code>EntityManager</code>. Instead it adds the attributes of the passed view to it.</para>
+          </listitem>
+          <listitem>
+            <para><code>fetch()</code> – ensures loading of all attributes of the specified <link linkend="views">view</link> for the entity instance, including lazy attributes. The entity instance should be in Managed state.</para>
+            <para>We recommend calling this method before committing a transaction, if the view contains lazy attributes and the entity instance should be sent to the client tier. In this case, only calling <code>fetch()</code> will ensure that all attributes required by the client code have been actually loaded.</para>
+          </listitem>
+          <listitem>
+            <para><code>reload()</code> – reloads the entity instance with the provided  <link linkend="views">view</link>. Ensures loading of all view attributes by calling <code>fetch()</code> internally. </para>
+          </listitem>
+          <listitem>
+            <para><code>isSoftDeletion()</code> – checks if the  <code>EntityManager</code> is in   <link linkend="soft_deletion">soft deletion</link> mode.</para>
+          </listitem>
+          <listitem>
+            <para><code>setSoftDeletion()</code> – sets <link linkend="soft_deletion">soft deletion</link> mode for this <code>EntityManager</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>getConnection()</code> – returns a   <code>java.sql.Connection</code>, which is used by this instance of  <code>EntityManager</code>, and hence by the current transaction. Such connection does not need to be closed, it will be closed automatically when the transaction is complete.</para>
+          </listitem>
+          <listitem>
+            <para><code>getDelegate()</code> – returns  <code>javax.persistence.EntityManager</code> provided by the ORM implementation. </para>
+          </listitem>
+        </itemizedlist></para>
+    </section>
+    <section id="entity_states">
+      <title>Entity States</title>
+      <para><variablelist>
+          <varlistentry>
+            <term>New</term>
+            <listitem>
+              <para>An instance which has been just created in memory:  <code>Car car = new Car()</code>.</para>
+              <para>New instance may be passed to <code>EntityManager.persist()</code> to be stored to the DB, in which case it switches into Managed state.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>Managed</term>
+            <listitem>
+              <para>The instance loaded from DB, or a new one passed to <methodname>EntityManager.persist()</methodname>. Belongs to a <code>EntityManager</code> instance, i.e. is contained in its persistent context.</para>
+              <para>Any changes of the instance in Managed state will be saved to the DB when a transaction that the  <code>EntityManager</code> belongs to is committed.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>Detached</term>
+            <listitem>
+              <para>An instance loaded from the DB and detached from its persistent context (as result of transaction closing or serialization).</para>
+              <para>The changes applied to a Detached instance will be saved in DB only if this instance is switched back to the Managed state by being passed to  <methodname>EntityManager.merge()</methodname>. </para>
+            </listitem>
+          </varlistentry>
+        </variablelist></para>
+    </section>
+    <section id="lazy_loading">
+      <title>Lazy Loading</title>
+      <para>Loading on demand  (lazy loading) allows delayed loading of linked entities, i.e. they get loaded when their properties are accessed for the first time.</para>
+      <para>Lazy loading generates more DB queries than  <glossterm linkend="eager_fetching">eager fetching</glossterm>, but it is stretched in time.<itemizedlist>
+          <listitem>
+            <para>For example, in case of lazy loading of a list of N instances of entity A, each containing a link to an instance of entity B, will require N+1 requests to DB.</para>
+          </listitem>
+          <listitem>
+            <para>It is important to aim towards fewer requests to DB to minimize response time and load levels. The platform uses the mechanism of  <link linkend="views">views</link> to achieve this. Using view allows ORM to create only one request to DB with table joining for the above mentioned case.</para>
+          </listitem>
+          <listitem>
+            <para>If A includes a collection of B, then eager fetching will result in an SQL request, returning Cartesian product of rows A and B. </para>
+          </listitem>
+          <listitem>
+            <para>Sometimes lazy loading provides better performance than eager fetching. For example, when an asynchronous process is carrying out business logic, the execution time may not be critical and it may be better to distribute the load on DB in time.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Lazy loading works only for instances in  <link linkend="entity_states">Managed</link> state,  i.e. within the transaction which loaded the specified instance.</para>
+    </section>
+    <section id="query">
+      <title>Executing JPQL Queries</title>
+      <para><link linkend="jpql">JPQL</link> queries should be run through the  <code>Query</code> interface. The reference to it may be obtained from the current  <code>EntityManager</code> instance by calling  <code>createQuery()</code> method. If the query is supposed to be used to load entities, we recommend calling  <code>createQuery()</code> and passing the result type as parameter. This will create a  <code>TypedQuery</code> instance. </para>
+      <para>The methods of <code>Query</code> mainly correspond to the methods of a standard <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Query.html">javax.persistence.Query</ulink> interface. Let us have a look at the differences.<itemizedlist>
+          <listitem>
+            <para><code>setParameter()</code> – sets a value to a query parameter. If the value is an entity instance, implicitly converts the instance into its identifier. For example:<programlisting language="java">Customer customer = ...;
+TypedQuery&lt;Order&gt; query = entityManager.createQuery(
+  &quot;select o from sales$Order o where o.customer.id = ?1&quot;, Order.class);
+query.setParameter(1, customer);</programlisting></para>
+            <para>Note that the actual entity is passed as parameter while comparison in the query is done using identifier. </para>
+            <para>A variant of the method with  <code>implicitConversions = false</code> does not do such conversion.</para>
+          </listitem>
+          <listitem>
+            <para><code>setView()</code>, <code>addView()</code> – are similar to the <code>EntityManager</code> methods with the same names – they define a  <link linkend="views">view</link>, used to load data with the current query and do not affect the view of the entire <code>EntityManager</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>getDelegate()</code> – returns an instance of  <code>javax.persistence.Query</code>, provided by the ORM implementation.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>When a request is run through  <code>Query</code> changes in the current persistent context are ignored, i.e. the query just runs in DB. If the results of selection are the instances already contained in persistent context, then the query result will contain instances from context and not the ones read from DB. The following test fragment should clarify this:<programlisting language="java">TypedQuery&lt;User&gt; query;
+List&lt;User&gt; list;
+
+query = em.createQuery(&quot;select u from sec$User u where u.name = ?1&quot;, User.class);
+query.setParameter(1, &quot;testUser&quot;);
+list = query.getResultList();
+assertEquals(1, list.size());
+User user = list.get(0);
+
+user.setName(&quot;newName&quot;);
+
+query = em.createQuery(&quot;select u from sec$User u where u.name = ?1&quot;, User.class);
+query.setParameter(1, &quot;testUser&quot;);
+list = query.getResultList();
+assertEquals(1, list.size());
+User user1 = list.get(0);
+
+assertTrue(user1 == user);</programlisting></para>
+      <para>This behavior is controlled by  <code>openjpa.IgnoreChanges=true</code>, parameter defined in  <link linkend="persistence.xml">persistence.xml</link> file of the  <structname>cuba</structname> base project. It is possible to change this parameter in your project by including it in the project&apos;s own   <filename>persistence.xml</filename>.</para>
+      <para>The queries, which change data (<code>update</code>, <code>delete</code>) cause flush of the data from the current persistent context to the database prior to execution. In other words, ORM first synchronizes the states of entities in the persistent context and DB, and only after that runs the modifying query. We recommend to run such queries in an unchanged persistent context in order to prevent implicit actions by the ORM, which may have negative impact on performance.</para>
+      <section>
+        <title>Case-Insensitive Substring Search </title>
+        <para>You can use <literal>(?i)</literal> prefix in the value of the query parameters to conveniently specify conditions for case insensitive search by any part of the string. For example, let us assume we have a query:<programlisting>select c from sales$Customer c where c.name like :(?i)name</programlisting></para>
+        <para>If we pass the string  <literal>(?i)%doe% </literal> as a value of the  <literal>name</literal> parameter, the search will return  <literal>John Doe</literal>, if such record exists in DB, even though the case of the D is different. This will happen because ORM will run the SQL query with condition like <literal>lower(C.NAME) like ? </literal></para>
+        <para>It should be kept in mind that such search will not use index on the name field, even if such exists in the DB.</para>
+      </section>
+      <section id="jpql_macro">
+        <title>Macros in JPQL</title>
+        <para>JPQL query text may include macros, which are processed before the query is executed. They are converted into the executable JPQL and thus additionally modify the set of parameters.</para>
+        <para>The macros defined in the platform solve the following problems:<itemizedlist>
+            <listitem>
+              <para>Provide a workaround for the limitation of JPQL which makes it impossible to express the condition of dependency of a given field on current time (i.e. expressions like “current_date -1” do not work).</para>
+            </listitem>
+            <listitem>
+              <para>Allow comparing <code>Timestamp</code> type fields (the date/time fields) with a date.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Let us consider them in more detail:<variablelist>
+            <varlistentry>
+              <term>@between</term>
+              <listitem>
+                <para>Has the format  <literal>@between(field_name, moment1, moment2, time_unit)</literal>, where <itemizedlist>
+                    <listitem>
+                      <para><literal>field_name</literal>  is the name of the compared attribute. </para>
+                    </listitem>
+                    <listitem>
+                      <para><literal>moment1</literal>, <literal>moment2</literal> – start and end points of the time interval where the value of <literal>field_name</literal> should fall into. Each of the points should be defined by an expression containing  <literal>now</literal> variable with an addition or subtraction of an integer number.</para>
+                    </listitem>
+                    <listitem>
+                      <para><literal>time_unit</literal> – defines the unit for time interval added to or subtracted from <literal>now</literal>  in the time point expressions and time points rounding precision. May be one of the following:  <literal>year</literal>, <literal>month</literal>, <literal>day</literal>, <literal>hour</literal>, <literal>minute</literal>, <literal>second</literal>. With included <structname>workflow</structname> base project, work time units can also be used: <literal>workday</literal>, <literal>workhour</literal>, <literal>workminute</literal>. </para>
+                    </listitem>
+                  </itemizedlist></para>
+                <para>The macro gets converted to the following expression in JPQL: <literal>field_name &gt;= :moment1 and field_name &lt; :moment2</literal></para>
+                <para>Example 1. Customer was created today:<programlisting>select c from sales$Customer where @between(c.createTs, now, now+1, day)</programlisting></para>
+                <para>Example 2. Customer was created within the last 10 minutes:<programlisting>select c from sales$Customer where @between(c.createTs, now-10, now, minute)</programlisting></para>
+                <para>Example 3. Documents dated within the last 5 work days (for the projects including <structname>workflow</structname>): <programlisting>select d from sales$Doc where @between(d.createTs, now-5, now, workday)</programlisting></para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term>@today</term>
+              <listitem>
+                <para>Has the format  <literal>@today(field_name)</literal> and helps to define a condition checking that the attribute value falls into the current date. Essentially, this is a special case of the <literal>@between</literal> macro.</para>
+                <para>Example. Customer was created today: <programlisting>select d from sales$Doc where @today(d.createTs)</programlisting></para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term>@dateEquals</term>
+              <listitem>
+                <para>Has the format  <literal>@dateEquals(field_name, parameter)</literal> and allows to define a condition checking that <literal>field_name</literal> value (in  <code>Timestamp</code> format) falls into the date passed as <literal>parameter</literal>.</para>
+                <para>Example:<programlisting>select d from sales$Doc where @dateEquals(d.createTs, :param)</programlisting></para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term>@dateBefore</term>
+              <listitem>
+                <para>Has the format  <literal>@dateBefore(field_name, parameter</literal>) and allows to define a condition checking that <literal>field_name</literal> value (in  <code>Timestamp</code> format) is smaller than the date passed as <literal>parameter</literal>.</para>
+                <para>Example:<programlisting>select d from sales$Doc where @dateBefore(d.createTs, :param)</programlisting></para>
+              </listitem>
+            </varlistentry>
+            <varlistentry>
+              <term>@dateAfter</term>
+              <listitem>
+                <para>Has the format  <literal>@dateAfter(field_name, parameter</literal>) and allows to define a condition that the date of the  <literal>field_name</literal> value (in  <code>Timestamp</code> format) is more or equal to the date passed as <literal>parameter</literal>.</para>
+                <para>Example:<programlisting>select d from sales$Doc where @dateAfter(d.createTs, :param)</programlisting></para>
+              </listitem>
+            </varlistentry>
+          </variablelist></para>
+        <para>The list of macros may be extended in the application project. To create a new macro, it is necessary to define a bean implementing the interface <code>QueryMacroHandler</code>, and define its <code>@Scope(&quot;prototype&quot;)</code>. The execution mechanism of JPQL queries creates all accessible  <code>QueryMacroHandler</code> beans and passes the query text with a set of parameters to these beans one by one. The handlers are called without any specific order..</para>
+      </section>
+    </section>
+    <section id="nativeQuery">
+      <title>Running SQL Queries</title>
+      <para>ORM allows running SQL queries to the database returning either the lists of individual fields or entity instances. For this, it is necessary to create a <code>Query</code> or  <code>TypedQuery</code> object by calling one of the methods of <code>EntityManager.createNativeQuery()</code>. </para>
+      <para>If individual columns are selected within a table, the resulting list will include the rows as <code>Object[]</code>. For example:<programlisting language="java">Query query = em.createNativeQuery(&quot;select ID, NAME from SALES_CUSTOMER where NAME like ?1&quot;);
+query.setParameter(1, &quot;%Company%&quot;);
+List list = query.getResultList();
+for (Iterator it = list.iterator(); it.hasNext(); ) {
+  Object[] row = (Object[]) it.next();
+  UUID id = (UUID) row[0];
+  String name = (String) row[1];
+}</programlisting></para>
+      <para>Keep in mind when using SQL that the columns corresponding to entity attributes of   <code>UUID </code>type are returned as  <code>UUID</code> or as  <code>String</code>, depending on the used DBMS and JDBC driver:<itemizedlist>
+          <listitem>
+            <para><application>HSQLDB</application> – <code>String</code></para>
+          </listitem>
+          <listitem>
+            <para><application>PostgreSQL</application>, driver <filename>postgresql-8.3-603.jdbc4.jar</filename> – <code>String</code></para>
+          </listitem>
+          <listitem>
+            <para><application>PostgreSQL</application>, driver <filename>postgresql-9.1-901.jdbc4.jar</filename> – <code>UUID</code></para>
+          </listitem>
+          <listitem>
+            <para><application>Microsoft SQL Server</application>, driver <filename>jtds-1.2.4.jar</filename> – <code>String</code></para>
+          </listitem>
+          <listitem>
+            <para><application>Oracle</application> – <code>String</code></para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Parameters of this type should also be defined either as UUID or using their string representation, depending on the DBMS and JDBC driver. To ensure that your code does not depend on the DBMS used, it is recommended to use <code>DbTypeConverter</code>.  </para>
+      <para>If the resulting entity class is passed along with the query text,  <code>TypedQuery</code> is returned, and the attempt to map the query results to entity attributes is performed. For example:<programlisting>TypedQuery&lt;Customer&gt; query = em.createNativeQuery(
+  &quot;select * from SALES_CUSTOMER where NAME like ?1&quot;,
+  Customer.class);
+query.setParameter(1, &quot;%Company%&quot;);
+List&lt;Customer&gt; list = query.getResultList();</programlisting></para>
+      <para>Behavior of SQL queries returning entities and modifying queries  (<code>update</code>, <code>delete</code>), in relation to the current persistent context is similar to that of  <link linkend="query">JPQL queries</link> described above.</para>
+    </section>
+    <section id="entity_listeners">
+      <title>Entity Listeners</title>
+      <para><firstterm>Entity Listeners</firstterm> are designed to react to lifecycle events of entity instances on <link linkend="app_tiers">Middleware</link>.</para>
+      <para>A listener is a class implementing one or several interfaces of  <code>com.haulmont.cuba.core.listener</code> package. The listener will react to events corresponding to the implemented interfaces.  </para>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <code>BeforeDetachEntityListener</code>
+          </term>
+          <listitem>
+            <para><code>onBeforeDetach()</code> method is called before the object is detached from <link linkend="entityManager">EntityManager</link> on transaction commit. </para>
+            <para>This listener can be used for filling non-persistent entity attributes before sending it to the client tier. </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>BeforeAttachEntityListener</code>
+          </term>
+          <listitem>
+            <para><code>onBeforeAttach()</code> method is called before the object is attached to the persistent context as a result of <code>EntityManager.merge()</code> operation.</para>
+            <para>This listener can be used, for example, to fill persistent entity attributes before saving it in the database. </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>BeforeInsertEntityListener</code>
+          </term>
+          <listitem>
+            <para> <code>onBeforeInsert()</code> method is called before a record is inserted into database. All kinds of operations can be performed with the current <link linkend="entityManager">EntityManager</link> available within this method. </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>AfterInsertEntityListener</code>
+          </term>
+          <listitem>
+            <para> <code>onAfterInsert()</code> is called after a record is inserted into database, but before transaction commit. This method does not allow modifications of the current persistent context, however, database modifications can be done using <link linkend="queryRunner">QueryRunner</link>.</para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>BeforeUpdateEntityListener</code>
+          </term>
+          <listitem>
+            <para><code>onBeforeUpdate()</code> method is called before a record is updated in the database. All kinds of operations can be performed with the current <link linkend="entityManager">EntityManager</link> available within this method. </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>AfterUpdateEntityListener</code>
+          </term>
+          <listitem>
+            <para> <code>onAfterUpdate()</code> method is called after a record was updated in the database, but before transaction commit. This method does not allow modifications of the current persistent context, however, database modifications can be done using  <link linkend="queryRunner">QueryRunner</link>.</para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>BeforeDeleteEntityListener</code>
+          </term>
+          <listitem>
+            <para> <code>onBeforeDelete()</code>method is called before a record is deleted from the database (in the case of  <link linkend="soft_deletion">soft deletion</link> – before updating a record). All kinds of operations can be performed with the current <link linkend="entityManager">EntityManager</link> available within this method. </para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>AfterDeleteEntityListener</code>
+          </term>
+          <listitem>
+            <para><code>onAfterDelete()</code> method is called after a record is deleted from the database (in the case of  <link linkend="soft_deletion">soft deletion</link> – before updating a record), but before transaction commit. This method does not allow modifications of the current persistent context, however, database modifications can be done using  <link linkend="queryRunner">QueryRunner</link>.</para>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+      <para>An entity listener can be a plain Java class or a managed bean. In the latter case, injection can be used as follows: </para>
+      <programlisting language="java">@ManagedBean(&quot;cuba_MyEntityListener&quot;)
+public class MyEntityListener implements
+      BeforeInsertEntityListener&lt;MyEntity&gt;,
+      BeforeUpdateEntityListener&lt;MyEntity&gt; {
+
+  @Inject
+  protected Persistence persistence;
+
+  @Override
+  public void onBeforeInsert(MyEntity entity) {
+      EntityManager em = persistence.getEntityManager();
+      ...
+  }
+
+  @Override
+  public void onBeforeUpdate(MyEntity entity) {
+      EntityManager em = persistence.getEntityManager();
+      ...
+  }
+}</programlisting>
+      <para>Entity Listener can be created in two ways:<itemizedlist>
+          <listitem>
+            <para>Statically – the names of listener classes are listed in  <link linkend="listeners_annotation">@Listeners</link> annotation in the entity class. </para>
+          </listitem>
+          <listitem>
+            <para>Dynamically – entity and listener classes are passed to   <code>addListener()</code> method of <code>EntityListenerManager</code> bean. For example: <programlisting language="java">@ManagedBean
+public class MyBean implements AppContext.Listener {
+
+  @Inject
+  private EntityListenerManager entityListenerManager;
+
+  public ClusterManager() {
+      AppContext.addListener(this);
+  }
+
+  @Override
+  public void applicationStarted() {
+      entityListenerManager.addListener(User.class, MyUserListener.class);
+  }
+
+  @Override
+  public void applicationStopped() {
+  }
+}</programlisting></para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Only one listener instance of a certain type is created for all instances of a particular entity class, therefore listener <emphasis>must not have a state</emphasis>.</para>
+      <para>If several listeners of the same type (for example from annotations of entity class and its parents and also added dynamically) were declared for an entity, they will be called in the following order:  <orderedlist>
+          <listitem>
+            <para>For each ancestor, starting from the most distant one, dynamically added listeners are called first, followed by statically assigned listeners. </para>
+          </listitem>
+          <listitem>
+            <para>Once parent classes are processed, dynamically added listeners for given class are called first, followed by statically assigned.  </para>
+          </listitem>
+        </orderedlist></para>
+    </section>
+  </section>
+  <section id="transactions">
+    <title>Transaction Management</title>
+    <para>This section covers various aspects of transaction management in CUBA applications.</para>
+    <section id="transactions_prog">
+      <title>Programmatic Transaction Management</title>
+      <para>Programmatic transaction management is done using <code>com.haulmont.cuba.core.Transaction</code> interface, a reference to which may be obtained via the <code>createTransaction()</code> or  <code>getTransaction()</code> methods of the <link linkend="persistence">Persistence</link> infrastructure interface.</para>
+      <para>The  <code>createTransaction()</code> method creates a new transaction and returns the <code>Transaction</code> interface. Subsequent calls of  <code>commit()</code>, <code>commitRetaining()</code>, <code>end()</code> methods of this interface control the created transaction. If at the moment of creation there was another transaction, it will be paused and resumed after the completion of the newly created one.</para>
+      <para>The  <code>getTransaction()</code> method either creates a new transaction or attaches to an existing one. If at the moment of the call there is an active transaction, then the method completes successfully, but subsequent calls of  <code>commit()</code>, <code>commitRetaining()</code>, <code>end()</code> have no influence on the existing transaction. However calling  <code>end()</code> without a prior call to  <code>commit()</code> will mark current transaction as  <code>RollbackOnly</code>.</para>
+      <para>An example of programmatic transaction management:<programlisting language="java">@Inject
+private Persistence persistence;
+...
+Transaction tx = persistence.createTransaction();
+try {
+  EntityManager em = persistence.getEntityManager();
+  Customer customer = new Customer();
+  customer.setName(&quot;John Smith&quot;);
+  em.persist(customer);
+
+  tx.commit();
+} finally {
+  tx.end();
+}</programlisting></para>
+      <para><code>Transaction</code> interface also has the  <code>execute()</code> method accepting an action class as input. This class defines an action which should be performed in this transaction. This allows organizing transaction management in functional style, for example:<programlisting language="java">persistence.createTransaction().execute(new Transaction.Runnable() {
+  public void run(EntityManager em) {
+      // transactional code here
+  }
+});</programlisting></para>
+      <para>If the transactional block is expected to return a result, the action class should implement  <code>Transaction.Callable</code> interface. If the result is not required as in the example above, it is recommended to inherit the action class from the abstract class <code>Transaction.Runnable</code>.</para>
+      <para>Keep in mind that <code>execute()</code> method of a given instance of  <code>Transaction</code> may be called only once because the transaction ends after the action class code is executed.</para>
+    </section>
+    <section id="transactions_decl">
+      <title>Declarative Transaction Management</title>
+      <para>Any method of the Middleware <link linkend="managed_beans">managed bean</link> may be marked with the annotation <code>@org.springframework.transaction.annotation.Transactional</code>, which will automatically create a transaction when the method is called. Such method does not require invoking <code>Persistence.createTransaction()</code>, you can immediately get   <code>EntityManager</code> and work with it.</para>
+      <para><code>@Transactional</code> annotation supports a number of parameters. The main parameter is transaction creation mode – <code>Propagation</code>. The value  <code>REQUIRED</code> corresponds to  <code>getTransaction()</code>, the value  <code>REQUIRES_NEW</code> – to <code>createTransaction()</code>. The default value is <code>REQUIRED</code>.
+</para>
+      <para>Declarative transaction management allows to reduce the amount of  <ulink url="http://en.wikipedia.org/wiki/Boilerplate_code">boilerplate code</ulink>, but it has the following drawback: transactions are committed outside of the application code, which often complicates debugging because it conceals the moment when changes are sent to the DB and the entities become <link linkend="entity_states">Detached</link>. Additionally, keep in mind that declarative markup will only work if the method is called by the container, i.e. calling a transaction method from another method of the same object will not start a transaction.
+</para>
+      <para>With this in mind, we recommend using declarative transaction management only for simple cases like a <link linkend="services">service</link> method reading a certain object and returning it to the client. </para>
+    </section>
+    <section id="transactions_interaction">
+      <title>Examples of Transactions Interaction</title>
+      <simplesect>
+        <title>Rollback of a Nested Transaction</title>
+        <para>If a nested transaction was created via <code>getTransaction()</code> and rolled back, then commit of the enclosing transaction will be impossible. For example:<programlisting language="java">void methodA() {
+  Transaction tx = persistence.createTransaction();
+  try {
+      // (1) calling a method creating a nested transaction
+      methodB();
+
+      // (4) at this point an exception will be thrown, because transaction
+      //     is marked as rollback only
+      tx.commit();
+  } finally {
+      tx.end();
+  }
+}
+
+void methodB() {
+  Transaction tx = persistence.getTransaction();
+  try {
+      // (2) let us assume  the exception occurs here
+      tx.commit();
+  } catch (Exception e) {
+      // (3) handle it and exit
+      return;
+  } finally {
+      tx.end();
+  }
+}</programlisting></para>
+        <para>If the transaction in <code>methodB()</code> is created with <code>createTransaction()</code> instead, then rolling it back will have no influence on the enclosing transaction in <code>methodA()</code>. </para>
+      </simplesect>
+      <simplesect>
+        <title>Reading and Modifying Data in a Nested Transaction</title>
+        <para>Let us first have a look at a dependent nested transaction created using <code>getTransaction()</code>:<programlisting language="java">void methodA() {
+  Transaction tx = persistence.createTransaction();
+  try {
+      EntityManager em = persistence.getEntityManager();
+
+      // (1) loading an entity with name == &quot;old name&quot;
+      Employee employee = em.find(Employee.class, id);
+      assertEquals(&quot;old name&quot;, employee.getName());
+
+      // (2) setting new value to the field
+      employee.setName(&quot;name A&quot;);
+
+      // (3) calling a method creating a nested transaction
+      methodB();
+
+      // (8) the changes are committed to DB, and
+      //     it will contain &quot;name B&quot;
+      tx.commit();
+
+  } finally {
+      tx.end();
+  }
+}
+
+void methodB() {
+  Transaction tx = persistence.getTransaction();
+  try {
+      // (4) retrieving the same instance of EntityManager as methodA
+      EntityManager em = persistence.getEntityManager();
+
+      // (5) loading an entity with the same identifier
+      Employee employee = em.find(Employee.class, id);
+
+      // (6) the field value is the new one since we are working with the same
+      //     persistent context, and there are no calls to DB at all
+      assertEquals(&quot;name A&quot;, employee.getName());
+      employee.setName(&quot;name B&quot;);
+
+      // (7) no actual commit is done at this point
+      tx.commit();
+  } finally {
+      tx.end();
+  }
+}</programlisting></para>
+        <para>Now, let us have a look at the same example with an independent nested transaction created with <code>createTransaction()</code>: <programlisting language="java">void methodA() {
+  Transaction tx = persistence.createTransaction();
+  try {
+      EntityManager em = persistence.getEntityManager();
+
+      // (1) loading an entity with name == &quot;old name&quot;
+      Employee employee = em.find(Employee.class, id);
+      assertEquals(&quot;old name&quot;, employee.getName());
+
+      // (2) setting new value to the field
+      employee.setName(&quot;name A&quot;);
+
+      // (3) calling a method creating a nested transaction
+      methodB();
+
+      // (8) an exception occurs due to optimistic locking
+      //     and commit will fail
+      tx.commit();
+
+  } finally {
+      tx.end();
+  }
+}
+
+void methodB() {
+  Transaction tx = persistence.createTransaction();
+  try {
+      // (4) creating a new instance of EntityManager,
+      //    as this is a new transaction
+      EntityManager em = persistence.getEntityManager();
+
+      // (5) loading an entity with the same identifier
+     Employee employee = em.find(Employee.class, id);
+
+      // (6) the field value is old because an old instance of the entity
+      //     has been loaded from DB
+      assertEquals(&quot;old name&quot;, employee.getName());
+
+      employee.setName(&quot;name B&quot;);
+
+      // (7) the changes are commited to DB, and the value of
+      //     &quot;name B&quot; will now be in DB
+      tx.commit();
+
+  } finally {
+      tx.end();
+  }
+}</programlisting></para>
+        <para>In the last example, the exception at point (8) will only occur if the entity supports optimistic  blocking, i.e. if it implements <code>Versioned</code> interface.</para>
+      </simplesect>
+    </section>
+    <section id="transaction_timeout">
+      <title>Transaction Timeout</title>
+      <para>You can set timeout in seconds for created transaction. When the timeout is exceeded, transaction will be interrupted and rolled back. Transaction timeout effectively limits the maximum duration of a database request.</para>
+      <para>When transactions are managed programmatically, the timeout is specified by passing  <code>TransactionParams</code> object to the  <code>Persistence.createTransaction()</code>. method. For example:<programlisting language="java">Transaction tx = persistence.createTransaction(new TransactionParams().setTimeout(2));</programlisting></para>
+      <para>In case of declarative transactions management, <code>timeout</code> parameter of the <code> @Transactional</code> annotation can be used, for example:<programlisting language="java">@Transactional(timeout = 2)
+public void someServiceMethod() {
+...</programlisting></para>
+      <para>The default timeout can be defined using <link linkend="cuba.defaultQueryTimeoutSec">cuba.defaultQueryTimeoutSec</link> application property.</para>
+      <simplesect>
+        <title>Implementation Specifics for Different DBMS</title>
+        <para><application>PostgreSQL</application></para>
+        <para>Unfortunately, JDBC driver for   <application>PostgreSQL</application> does not support the  <code>setQueryTimeout()</code> method of the  <code>java.sql.Statement</code> interface. For this reason an extra command <code>set local statement_timeout to {value}</code> is executed in DB at the beginning of each transaction, for which timeout has been set using any approach, including a non-zero value of <link linkend="cuba.defaultQueryTimeoutSec">cuba.defaultQueryTimeoutSec</link>. In this case, the DB server will interrupt the request itself if the timeout is exceeded. </para>
+        <para>We recommend the following to decrease the load generated by these extra operators:
+  <itemizedlist>
+            <listitem>
+              <para>Default timeout should be set not on <structname>Middleware</structname> using <property>cuba.defaultQueryTimeoutSec</property> property, but on <application>PostgreSQL</application> server in the file <filename>postgresql.conf</filename>. For example, <literal>statement_timeout = 3000</literal> (in milliseconds). </para>
+            </listitem>
+            <listitem>
+              <para>For methods which need a longer timeout (reports and similar) the timeout should be specified explicitly in transaction parameters.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para><application>Microsoft SQL Server</application></para>
+        <para>JTDS driver supports the  <code>setQueryTimeout()</code> method of the   <code>java.sql.Statement</code> interface, so you can just set the standard <code>EntityManager</code> property <literal>javax.persistence.query.timeout</literal>, which will automatically apply to JDBC queries. </para>
+      </simplesect>
+    </section>
+  </section>
+  <section id="dataService">
+    <title>DataService and DataWorker</title>
+    <para>The  <code>DataWorker</code> <link linkend="managed_beans">managed bean</link> is the universal tool for loading entity graphs from the database and saving changes applied to  <link linkend="entity_states">Detached</link> entities instances.  <code>DataService</code> <link linkend="services">service</link> is the facade for calling  <code>DataWorker</code> from the client <link linkend="app_tiers">tier</link> of the application.</para>
+    <para>Encapsulation of loading and saving business logic to the <code>DataWorker</code> allows you to create your own service, which delegates main operations to   <code>DataWorker</code> and performs additional transformations – for example, before the data is returned to the client tier.</para>
+    <para><code>DataWorker</code> always starts a new transaction and commits it on operation completion, thus returning entities in the <link linkend="entity_states">Detached</link> state.</para>
+    <para><code>DataService</code> and <code>DataWorker</code> methods are listed below:</para>
+    <para><itemizedlist>
+        <listitem>
+          <para><code>load()</code>, <code>loadList()</code> – loads a graph of entities according to the parameters of the <code>LoadContext</code> object passed to it. </para>
+          <para><code>LoadContext</code> must include either a JPQL query or an entity identifier. If both are defined, the query will be used and the identifier will be ignored.
+The rules for queries creation are similar to those described in <xref linkend="query"/>. The difference is that the query in <code>LoadContext</code> may only use named parameters, positional parameters are not supported.
+</para>
+          <para><code>load()</code> and <code>loadList()</code> methods check user permission <code>EntityOp.READ</code> for the entity being loaded. Additionally, loading entities from DB is subject for access group limitations (see <xref linkend="constraints"/>). It is possible to ignore access constraints by passing <code>useSecurityConstraints = false</code> to <code>LoadContext</code>.</para>
+          <para>Examples of loading entities in the screen controller:</para>
+          <programlisting language="java">@Inject
+private DataService dataService;
+
+private Book loadBookById(UUID bookId) {
+  LoadContext loadContext = new LoadContext(Book.class)
+          .setId(bookId).setView(&quot;book.edit&quot;);
+  return dataService.load(loadContext);
+}
+
+private List&lt;BookPublication&gt; loadBookPublications(UUID bookId) {
+  LoadContext loadContext = new LoadContext(BookPublication.class)
+          .setView(&quot;bookPublication.full&quot;);
+  loadContext.setQueryString(&quot;select p from library$BookPublication p where p.book.id = :bookId&quot;)
+          .setParameter(&quot;bookId&quot;, bookId);
+  return dataService.loadList(loadContext);
+}</programlisting>
+        </listitem>
+        <listitem>
+          <para><code>commit()</code> –  saves the set  of entities passed in  <code>CommitContext</code> to the database. Collections of entities which should be saved and which should be deleted must be specified separately. </para>
+          <para>The method returns the set of entity instances returned by  <code>EntityManager.merge()</code>, essentially these are fresh instances just updated in DB. Further work should be performed with these returned instances to prevent data loss or optimistic locking. You can ensure that required attributes are present in the returned entities by setting a <link linkend="views">view</link> for each saved instance using <code>CommitContext.getViews()</code> map.</para>
+          <para>This method    checks user permissions <code>EntityOp.UPDATE</code> for the updated entities, and <code>EntityOp.DELETE</code> for the deleted ones. </para>
+          <para>Examples for saving a collection of entities:</para>
+          <programlisting language="java">@Inject
+private DataService dataService;
+
+/**
+* @param toSave    entities to update in the database
+* @param toDelete  entities to delete from the database
+*/
+private void saveBookInstances(List&lt;BookInstance&gt; toSave, List&lt;BookInstance&gt; toDelete) {
+  CommitContext commitContext = new CommitContext(toSave, toDelete);
+  dataService.commit(commitContext);
+}
+
+/**
+* @param toSave    entities to update in the database
+* @param view      view to fetch each updated entity before returning it back to the client
+* @return          set of updated entities, fetched according to the view
+*/
+
+private Set&lt;Entity&gt; saveAndReturnBookInstances(List&lt;BookInstance&gt; toSave, View view) {
+  CommitContext commitContext = new CommitContext();
+  for (BookInstance bookInstance : toSave) {
+      commitContext.getCommitInstances().add(bookInstance);
+      commitContext.getViews().put(bookInstance, view);
+  }
+  return dataService.commit(commitContext);
+}</programlisting>
+        </listitem>
+        <listitem>
+          <para><code>commitNotDetached()</code> is similar to <code>commit()</code>, but is intended for saving instances which have no information about the <link linkend="entity_states">Detached</link> state. Such instances can be passed by the clients, which do not work with the objects loaded by Middleware directly, but rather with extra Data Transfer Objects, or even not with Java objects, but their XML or JSON representations (e.g. <link linkend="rest_api">REST API</link> clients).</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>While loading data,  <code>DataWorker</code> may also implement additional functionality described below.</para>
+    <section id="query_with_distinct">
+      <title>Queries with distinct</title>
+      <para>The following may happen when <literal>distinct</literal> operator is omitted in JPQL queries for screens with lists of entities with enabled paging and where unpredictable modification of the query can happen as result of applying a <link linkend="gui_Filter">generic filter</link> or access group <link linkend="constraints">constraints</link> mechanisms: <itemizedlist>
+          <listitem>
+            <para>If a collection is joined at database level, the dataset will contain duplicate rows.</para>
+          </listitem>
+          <listitem>
+            <para>On client level the duplicates disappear in the datasource as they are added to a map (<code>java.util.Map</code>). </para>
+          </listitem>
+          <listitem>
+            <para>In case of paged table, a page may show fewer lines than requested, while the total number of lines exceeds requested.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Thus, we recommend including <literal> distinct</literal> in JPQL queries, which ensures the absence of duplicates in the dataset returned from DB. However, certain DB servers  (<application>PostgreSQL</application> in particular) may take unacceptably long time to execute an SQL query with <literal>distinct</literal>, if the number of returned records is big (more than 10000). </para>
+      <para>To solve this, the platform implements a mechanism to operate correctly without <literal>distinct</literal> at SQL level. This mechanism is enabled by <link linkend="cuba.inMemoryDistinct">cuba.inMemoryDistinct</link> application property. When activated, it does the following:<itemizedlist>
+          <listitem>
+            <para>The JPQL query should still include <literal>select distinct</literal>.</para>
+          </listitem>
+          <listitem>
+            <para><code>DataWorker</code> cuts  <literal>distinct</literal> out of the JPQL query before sending it to ORM.</para>
+          </listitem>
+          <listitem>
+            <para>After the data page is loaded by <code>DataWorker</code>, it deletes the duplicates and runs additional queries to DB in order to retrieve the necessary number of rows which are then returned to the client.</para>
+          </listitem>
+        </itemizedlist></para>
+    </section>
+    <section id="query_from_selected">
+      <title>Sequential Queries</title>
+      <para><code>DataWorker</code> can select data from the results of previous requests. This ability is used by the <link linkend="gui_Filter">generic filter</link> for sequential application of filters. </para>
+      <para>The mechanism works as follows:<itemizedlist>
+          <listitem>
+            <para>If a  <code>LoadContext</code> with defined attributes <code>prevQueries</code> and <code>queryKey</code> is provided, the  <code>DataWorker</code> executes the previous query and saves identifiers of retrieved entities in <database>SYS_QUERY_RESULT</database> table  (corresponding to  <literal>sys$QueryResult</literal> entity), separating the sets of records by user sessions and the query session key <code>queryKey</code>. </para>
+          </listitem>
+          <listitem>
+            <para>The current query is modified to be combined with the results of the previous one, so that the resulting data complies with the conditions of both queries combined by AND.</para>
+          </listitem>
+          <listitem>
+            <para>The process may be further repeated. In this case the gradually reduced set of previous results gets deleted from <database>SYS_QUERY_RESULT</database> table and refilled again.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The table  <database>SYS_QUERY_RESULT</database> should be periodically cleaned of all unnecessary query results left by terminated user sessions. This is done by the  <code>deleteForInactiveSessions()</code> method of the <code>QueryResultsManagerAPI</code> bean. In an application with enabled <link linkend="cuba.allowQueryFromSelected">cuba.allowQueryFromSelected</link> property this method should be called by <link linkend="scheduled_tasks">scheduled tasks</link>, for example:<programlisting language="xml">&lt;task:scheduled-tasks scheduler=&quot;scheduler&quot;&gt;
+  &lt;task:scheduled ref=&quot;cuba_QueryResultsManager&quot; method=&quot;deleteForInactiveSessions&quot; fixed-rate=&quot;600000&quot;/&gt;
+&lt;/task:scheduled-tasks&gt;</programlisting></para>
+    </section>
+  </section>
+</section>

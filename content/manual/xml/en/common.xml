@@ -1,0 +1,2586 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<section id="common_components">
+  <title>Common Components</title>
+  <para>This chapter covers platform components, which are common for all   <link linkend="app_tiers">tiers</link> of the application.</para>
+  <section id="data_model"><title>Data Model</title>Problem domain is modeled with the help of interconnected Java classes, which are called entity classes or simply entities.<para>Entities are divided into two categories:<itemizedlist>
+        <listitem>
+          <para>Persistent – instances of such entities are stored in the database tables.</para>
+        </listitem>
+        <listitem>
+          <para>Non-persistent – instances exist only in memory.</para>
+        </listitem>
+      </itemizedlist></para><para>The entities are characterized by their attributes. An attribute corresponds to a field and a pair of access methods (get / set) of the field. To make an attribute immutable (read only), it is enough to omit &quot;set&quot; method.</para><para>Persistent entities may include attributes that are not stored in the database. For non-persistent attribute the field is optional, creation of access methods will be sufficent.</para><para>The entity class should meet the following requirements:<itemizedlist>
+        <listitem>
+          <para>Be inherited from one of the base classes provided by the platform (see below).</para>
+        </listitem>
+        <listitem>
+          <para>Have a set of fields and access methods corresponding to the entity attributes.</para>
+        </listitem>
+        <listitem>
+          <para>The class and its fields (or access methods if the attribute has no corresponding field) must be  <link linkend="entity_annotations">annotated</link> in a definite way for correct operation of  <glossterm linkend="jpa">JPA</glossterm> (in case of a persistent entity) and the  <link linkend="metadata_framework">metadata framework</link>. </para>
+        </listitem>
+        <listitem>
+          <para>To enable support of potential  <link linkend="extension">extension</link> of the entity, fields should be declared with the modifier <code>protected</code>, instead of   <code>private</code>.</para>
+        </listitem>
+      </itemizedlist></para><para>The following attribute types of entities are supported: <itemizedlist>
+        <listitem>
+          <para><code>java.lang.String</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.lang.Boolean</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.lang.Integer</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.lang.Long</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.lang.Double</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.math.BigDecimal</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.util.Date</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.sql.Date</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.sql.Time</code></para>
+        </listitem>
+        <listitem>
+          <para><code>java.util.UUID</code></para>
+        </listitem>
+        <listitem>
+          <para><code>byte[]</code></para>
+        </listitem>
+        <listitem>
+          <para><code>enum</code></para>
+        </listitem>
+        <listitem>
+          <para><code>entity</code></para>
+        </listitem>
+      </itemizedlist></para><para>Base entity classes (see below) override  <code>equals()</code> and  <code>hashCode()</code> methods to provide entity instance matching by comparing their identifiers. I.e., instances are considered equal, if their identifiers match. An identifier of the UUID type is assigned to an instance right after its creation in memory, which is why new instances can also be compared and added to collections. </para><section id="base_entity_classes">
+      <title>Base Entity Classes </title>
+      <para>The base entity classes and interfaces are described in detail in this section. </para>
+      <figure id="entity_base_classes">
+        <title>Base Entity Classes</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata align="center" fileref="img/EntityClasses.png"/>
+          </imageobject>
+        </mediaobject>
+      </figure>
+      <itemizedlist>
+        <listitem>
+          <para><code>Instance</code> – declares the basic methods for working with objects of application domain:<itemizedlist>
+              <listitem>
+                <para>getting the global unique identifier (UUID) of the entity</para>
+              </listitem>
+              <listitem>
+                <para>getting references to the object meta-class</para>
+              </listitem>
+              <listitem>
+                <para>generating the instance name</para>
+              </listitem>
+              <listitem>
+                <para>reading/writing attribute values by name </para>
+              </listitem>
+              <listitem>
+                <para>adding listeners receiving notifications about attribute changes</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+        <listitem>
+          <para><code>Entity</code> – extends <code>Instance</code> with entity identifier (which is not necessarily equal to the UUID); at the same time <code>Entity</code> does not define the type of the identifier leaving this option to descendants.  </para>
+        </listitem>
+        <listitem>
+          <para><code>AbstractInstance</code> – implements the logic of working with attribute change listeners.
+</para>
+          <warning>
+            <para><code>AbstractInstance</code> stores the listeners in  <code>WeakReference</code>, and if there are no external references to the added listener, it will be immediately destroyed by garbage collector. Normally,  attribute change listeners  are <link linkend="gui_vcl">visual components </link> and <link linkend="datasources">UI datasources</link> that are always referenced by other objects, so there is no problem with listeners dropout. However, if a listener is created by application code and no objects refer to it in a natural way, it is necessary to save it in a certain object field apart from just adding it to  <code>Instance</code>.</para>
+          </warning>
+        </listitem>
+        <listitem>
+          <para><code>AbstractNotPersistentEntity</code> – base class of non-persistent entities with <code>UUID</code> identifier.</para>
+        </listitem>
+        <listitem>
+          <para><code>BaseEntity</code> – base class of persistent entities; declares methods for working with information about when and by whom the entity instance was created in the database. </para>
+        </listitem>
+        <listitem>
+          <para><code>BaseGenericIdEntity</code> – implements <code>BaseEntity</code> with added <glossterm linkend="jpa">JPA</glossterm> annotations without specifying the type of the identifier (i.e. the primary key) of the entity.</para>
+        </listitem>
+        <listitem>
+          <para><code>BaseUuidEntity</code> –   extends  <code>BaseGenericIdEntity</code> and sets the <code>id</code> identification attribute of the <code>UUID</code> type.</para>
+        </listitem>
+        <listitem>
+          <para><code>BaseLongIdEntity</code> –   extends  <code>BaseGenericIdEntity</code> and sets the <code>id</code> identification attribute of the <code>Long</code> type.</para>
+        </listitem>
+        <listitem>
+          <para><code>BaseIntegerIdEntity</code> –   extends  <code>BaseGenericIdEntity</code> and sets the <code>id</code> identification attribute of the <code>Integer</code> type.</para>
+        </listitem>
+        <listitem>
+          <para><code>BaseStringIdEntity</code> –   extends  <code>BaseGenericIdEntity</code> and sets only the type of the identifier - <code>String</code>. A specific entity class, extended from <code>BaseStringIdEntity</code>, must have a <code>String</code>-type identifier attribute with the <code>@Id</code> JPA annotation.</para>
+        </listitem>
+        <listitem>
+          <para><code>Versioned</code> – interface for entities supporting  <glossterm linkend="optimistic_locking">optimistic locking </glossterm>.</para>
+        </listitem>
+        <listitem>
+          <para><code>Updatable</code> – interface for entities which require to keep the information about when and by whom the instance was last changed. </para>
+        </listitem>
+        <listitem>
+          <para><code>SoftDelete</code> – interface for entities supporting  <link linkend="soft_deletion">soft deletion</link>.</para>
+        </listitem>
+        <listitem>
+          <para><code>StandardEntity</code> –  the most commonly used base class of persistent entities that implements the interfaces given above.</para>
+        </listitem>
+      </itemizedlist>
+      <para>When creating entity classes it is recommended to choose a base class according to the following rules:<itemizedlist>
+          <listitem>
+            <para>If an entity is not stored in the database, inherit it from <code>AbstractNotPersistentEntity</code>.</para>
+          </listitem>
+          <listitem>
+            <para>If an entity is embedded, inherit it from  <code>EmbeddableEntity</code>.</para>
+          </listitem>
+          <listitem>
+            <para>If an entity is only created in DB, never changes and needs no soft deletion, inherit it from <code>BaseUuidEntity</code>.</para>
+          </listitem>
+          <listitem>
+            <para>If an entity behaves in a standard way: changes in the database, requires optimistic locking and soft deletion   − inherit it from <code>StandardEntity</code>.</para>
+          </listitem>
+          <listitem>
+            <para>Otherwise inherit the entity from <code>BaseUuidEntity</code> and implement <code>Versioned</code>, <code>Updatable</code>, <code>SoftDelete</code> interfaces if required.</para>
+          </listitem>
+          <listitem>
+            <para>For some entities, it is desirable to use integer or string primary keys. In this case, inherit the entity from  <code>BaseLongIdEntity</code>, <code>BaseIntegerIdEntity</code> or <code>BaseStringIdEntity</code> instead of <code>BaseUuidEntity</code>. </para>
+          </listitem>
+        </itemizedlist></para>
+    </section><section id="entity_annotations">
+      <title>Entity Annotations</title>
+      <para>This section describes all annotations of entity classes and attributes supported by the platform.  </para>
+      <para>Annotations of the  <code>javax.persistence</code> package are needed for  <glossterm linkend="jpa">JPA</glossterm>, annotations of   <code>com.haulmont.*</code> packages are designed for  <link linkend="metadata_framework">metadata</link> management and control of other mechanisms in the platform.  </para>
+      <para>In this manual, if an annotation is identified by a simple class name, it refers to a platform class, located in one of <code>com.haulmont.*</code> packages. </para>
+      <section id="entity_class_annotations">
+        <title>Class Annotations</title>
+        <variablelist>
+          <varlistentry id="entity_annotation">
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Entity.html">@javax.persistence.Entity</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Declares a class to be a data model entity.</para>
+              <para>Parameters:
+<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the name of the entity, must begin with a prefix, separated by a  <literal>$</literal> sign. It is recommended  to use a short name of the project as a prefix to form a separate namespace.</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@Entity(name = &quot;sales$Customer&quot;)</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/MappedSuperclass.html">@javax.persistence.MappedSuperclass</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines that the class is an ancestor for some entities and its attributes must be used as part of descendant entities. Such class is not associated with any particular database table. </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="table_annotation">
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Table.html">@javax.persistence.Table</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines database table for the given entity. </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the table name</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@Table(name = &quot;SALES_CUSTOMER&quot;)</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="embeddable_annotation">
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Embeddable.html">@javax.persistence.Embeddable</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines an embedded entity stored in the same table as the owning entity. </para>
+              <para><link linkend="metaclass_annotation">@MetaClass</link> annotation should be used to specify the entity name.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="inheritance_annotation">
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Inheritance.html">@javax.persistence.Inheritance</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines the inheritance strategy to be used for an entity class hierarchy. It is specified on the entity class that is the root of the entity class hierarchy.</para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>strategy</code> – inheritance strategy, <code>SINGLE_TABLE</code> by default</para>
+                  </listitem>
+                </itemizedlist></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>@<ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/DiscriminatorColumn.html">javax.persistence.DiscriminatorColumn</ulink></code>
+            </term>
+            <listitem>
+              <para>Is used for defining a database column responsible for the distinction of entity types in the cases of   <code>SINGLE_TABLE</code> and <code>JOINED</code> inheritance strategies.</para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the discriminator column name</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>discriminatorType</code> – the discriminator column type</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@DiscriminatorColumn(name = &quot;TYPE&quot;, discriminatorType = DiscriminatorType.INTEGER)</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/DiscriminatorValue.html">@javax.persistence.DiscriminatorValue</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines the discriminator column value for this entity.</para>
+              <para>Example:<programlisting language="java">@DiscriminatorValue(&quot;0&quot;)</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/PrimaryKeyJoinColumn.html">@javax.persistence.PrimaryKeyJoinColumn</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Is used in the case of  <code>JOINED</code> inheritance strategy to specify a foreign key column for the entity which refers to the primary key of the ancestor entity.  </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the name of the foreign key column of the entity</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>referencedColumnName</code> – the name of primary key column of the ancestor entity</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@PrimaryKeyJoinColumn(name = &quot;CARD_ID&quot;, referencedColumnName = &quot;ID&quot;)</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="namePattern">
+            <term>
+              <code>@NamePattern</code>
+            </term>
+            <listitem>
+              <para>Determines the way of getting the name of the  instance returned by the method <code>Instance.getInstanceName()</code>.</para>
+              <para>The annotation value should be a string in the format  <literal>{0}|{1}</literal>, where: <itemizedlist>
+                  <listitem>
+                    <para><literal>{0}</literal> – formatting string according to the   <code>String.format()</code> rules, or this object method name with the prefix <literal>#</literal>. The method should return  <code>String</code> and should have no parameters. </para>
+                  </listitem>
+                  <listitem>
+                    <para><literal>{1}</literal> – a list of field names separated by commas, corresponding to  <literal>{0}</literal> format. If the method is used in <literal>{0}</literal>, the list of fields is still required as it forms the <literal>_minimal</literal> <link linkend="views">view</link>.</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Examples:<programlisting language="java">@NamePattern(&quot;%s|name&quot;)</programlisting><programlisting language="java">@NamePattern(&quot;#getCaption|login,name&quot;)</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="listeners_annotation">
+            <term>
+              <code>@Listeners</code>
+            </term>
+            <listitem>
+              <para>Defines the list of listeners intended for reaction to the events of the entity instance  lifecycle  on the Middleware <link linkend="app_tiers">tier</link>. </para>
+              <para>The annotation value should be a string or an array of strings containing class names of the listeners. See <xref linkend="entity_listeners"/>.</para>
+              <para>The strings here are used instead of class references because classes of the listeners are  contained only on  <structname>Middleware</structname> tier and are inaccessible for client code, while the classes of the entities are used on all tiers. </para>
+              <para>Examples:<programlisting language="java">@Listeners(&quot;com.haulmont.cuba.security.listener.UserEntityListener&quot;)</programlisting><programlisting language="java">@Listeners({&quot;com.abc.sales.entity.FooListener&quot;,&quot;com.abc.sales.entity.BarListener&quot;})</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="metaclass_annotation">
+            <term>
+              <code>@MetaClass</code>
+            </term>
+            <listitem>
+              <para>Is used for declaring non-persistent or  <link linkend="embeddable_annotation">embedded</link> entity (meaning that  <code>@javax.persistence.Entity</code> annotation cannot be applied)  </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the entity name, must begin with a prefix, separated by a  <literal>$</literal> sign. It is recommended to use a short name of the project as prefix to form a separate namespace. </para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@MetaClass(name = &quot;sys$LockInfo&quot;)</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>@SystemLevel</code>
+            </term>
+            <listitem>
+              <para>Indicates that the entity is system only and should not be available for selection in various lists of entities, such as <link linkend="gui_Filter">generic filter</link> parameter types or  <link linkend="runtime_properties">dynamic attribute</link> type. </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>@EnableRestore</code>
+            </term>
+            <listitem>
+              <para>Indicates that the entity instances are available for recovery after <link linkend="soft_deletion">soft deletion</link> on a special screen <literal>core$Entity.restore</literal>. </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>@TrackEditScreenHistory</code>
+            </term>
+            <listitem>
+              <para>Indicates that editor screens opening history (<literal>{entity_name}.edit</literal>) will be recorded with the ability to display it on a special screen  <literal>sec$ScreenHistory.browse</literal>.  </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>@Extends</code>
+            </term>
+            <listitem>
+              <para>Indicates that the entity is an extension and it should be used everywhere instead of the base entity.  See <xref linkend="extension"/>.  </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="postConstruct_entity_annotation">
+            <term>
+              <code>@PostConstruct</code>
+            </term>
+            <listitem>
+              <para>This annotation can be specified for a method. Such method will be invoked right after the entity instance is created by  <link linkend="metadata">Metadata.create()</link>. This is convenient, when instance initialization requires invocation of  <link linkend="managed_beans">beans</link>. For example, see  <xref linkend="init_values_in_class"/>.</para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+      </section>
+      <section id="entity_attr_annotations">
+        <title>Attribute Annotations</title>
+        <para>Attribute annotations should be set for the corresponding fields, with the following exception: if there is a need to declare read-only, non-persistent attribute <literal>foo</literal>, it is sufficient to create <code>getFoo()</code> method and annotate it with   <code>@MetaProperty</code>.</para>
+        <variablelist>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Transient.html">@javax.persistence.Transient</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Indicates that field is not stored in the database, meaning it is non-persistent. </para>
+              <para>The fields supported by JPA types (See  <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Basic.html">http://docs.oracle.com/javaee/5/api/javax/persistence/Basic.html</ulink>) <emphasis>are persistent by default</emphasis>, that is why  <code>@Transient</code> annotation is mandatory for non-persistent attribute of such type. </para>
+              <para><link linkend="metaProperty_annotation">@MetaProperty</link>
+                annotation is required if  <code>@Transient</code> attribute should be included in metadata.  </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <ulink url="http://openjpa.apache.org/builds/2.2.2/apache-openjpa-2.2.2/docs/javadoc/org/apache/openjpa/persistence/Persistent.html">
+                <code>@org.apache.openjpa.persistence.Persistent</code>
+              </ulink>
+            </term>
+            <listitem>Indicates that field is stored in the database, meaning it is persistent. <para>This annotation is only required for non-standard JPA fields. The platform currently supports one such type – <code>java.util.UUID</code>. Thus, <code>@Persistent</code> annotation is only required when declaring persistent  <code>UUID</code> type field.</para></listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Column.html">@javax.persistence.Column</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines DB column for storing attribute values.</para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the column name. </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>length</code> – (optional parameter, <literal>255</literal> by default) – the length of the column. It is also used for <link linkend="metadata_framework">metadata</link> generation and ultimately, can limit the maximum length of the input text in visual components implementing this attribute. Add the <code>@Lob</code> annotation to remove restriction on the attribute length.</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>nullable</code> – (optional parameter, <code>true</code> by default) – determines if an attribute can contain  <code>null</code> value. When  <code>nullable = false</code> JPA ensures that the field has a value when saved. In addition, visual components working with the attribute can request the user to enter a value.  </para>
+                  </listitem>
+                </itemizedlist></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="manyToOne_1">
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Id.html">@javax.persistence.Id </ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Indicates  that the attribute is the entity primary key. Typically, this annotation is set on the field of a base class, such as <link linkend="base_entity_classes">BaseUuidEntity</link>. Using this annotation for a specific entity class is required only in case of inheritance from the <code>BaseStringIdEntity</code>  base class (i.e. creating an entity with a string primary key).  </para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="manyToOne">
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/ManyToOne.html">@javax.persistence.ManyToOne</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines a reference attribute  with many-to-one relationship type.  </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>fetch</code> – (<code>EAGER</code> by default) parameter that determines whether  JPA will <glossterm linkend="eager_fetching">eagerly</glossterm>  fetch the referenced entity. This parameter should always be set to <code>LAZY</code>, since retrieval of referenced entity in CUBA-application is determined dynamically by the <link linkend="views">views</link> mechanism.</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>optional</code> – (optional parameter, <code>true</code> by default) – indicates whether the attribute can contain  <code>null</code> value. If <code>optional = false</code> JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value. </para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>For example, several  <code>Order</code> instances refer to the same  <code>Customer</code> instance. In this case <code>Order</code> class should contain the following annotations:<programlisting language="java">@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = &quot;CUSTOMER_ID&quot;)
+protected Customer customer;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/OneToMany.html">@javax.persistence.OneToMany</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines a collection attribute with one-to-many relationship type.  </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>mappedBy</code> – the field of the referenced entity, which determines the relationship.  </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>targetEntity</code> – the type of referenced entity. This parameter is optional if the collection is declared using   <application>Java generics</application>. </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>fetch</code> – (optional parameter, <code>LAZY</code> by default) – determines whether  JPA will <glossterm linkend="eager_fetching">eagerly</glossterm> fetch the collection of referenced entities.  This parameter should always remain  <code>LAZY</code>, since retrieval of referenced entities in CUBA-application is determined dynamically by the  <link linkend="views">views</link> mechanism.  </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>cascade</code> – (optional parameter, <code>{}</code> by default) – determines operations that should be cascaded to the referenced entities. Cascading on this level is not recommended.</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>For example, several <code>Item</code> instances refer to the same  <code>Order</code> instance using <code>@ManyToOne</code> field  <code>Item.order</code>. In this case  <code>Order</code> class can contain a collection of <code>Item</code> instances: <programlisting language="java">@OneToMany(mappedBy = &quot;order&quot;)
+protected Set&lt;Item&gt; items;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/OneToOne.html">@javax.persistence.OneToOne</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines a reference attribute with one-to-one relationship type. </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>fetch</code> – (<code>EAGER</code> by default) determines whether JPA will <glossterm linkend="eager_fetching">eagerly</glossterm> fetch the referenced entity. This parameter should be set to  <code>LAZY</code>, since retrieval of referenced entities in CUBA-application is determined dynamically by the  <link linkend="views">views</link> mechanism. </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>mappedBy</code> – the field of the referenced entity, which determines the relationship. It must only be set on the non-owning side of the relationship.   </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>optional</code> – (optional parameter, <code>true</code> by default) – indicates whether the attribute can contain  <code>null</code> value.  If  <code>optional = false</code> JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value. </para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example of owning side of the relationship, <code>Driver</code> class:<programlisting language="java">@OneToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = &quot;CALLSIGN_ID&quot;)
+protected DriverCallsign callsign;</programlisting></para>
+              <para>Example of non-owning side of the relationship, <code>DriverCallsign</code> class:<programlisting language="java">@OneToOne(fetch = FetchType.LAZY, mappedBy = &quot;callsign&quot;)
+protected Driver driver;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/ManyToMany.html">@javax.persistence.ManyToMany</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines a collection attribute with many-to-many relationship type. </para>
+              <para>Many-to-many  relationship always has an owning side and can also have inverse, non-owning side. The owning side should be marked with additional  <code>@JoinTable</code> annotation, and the non-owning side – with <code>mappedBy</code> parameter.  </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>mappedBy</code> – the field of the referenced entity, which determines the relationship. It must only be set on the non-owning side of the relationship.  </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>targetEntity</code> – the type of referenced entity. This parameter is optional if the collection is declared using   <application>Java generics</application>. </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>fetch</code> – (optional parameter, <code>LAZY</code> by default) – determines whether JPA will <glossterm linkend="eager_fetching">eagerly</glossterm> fetch the collection of referenced entities. This parameter should always remain  <code>LAZY</code>, since retrieval of referenced entities in CUBA-application is determined dynamically by the   <link linkend="views">views</link> mechanism.</para>
+                  </listitem>
+                </itemizedlist></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/JoinColumn.html">@javax.persistence.JoinColumn</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines DB column that determines the relationship between entities.  </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the column name</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = &quot;CUSTOMER_ID&quot;)
+protected Customer customer;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/JoinTable.html">@javax.persistence.JoinTable</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines a join table on the owning side of  <code>@ManyToMany</code> relationship.</para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>name</code> – the join table name</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>joinColumns</code> –  <code>@JoinColumn</code> element in the join table corresponding to primary key of the owning side of the relationship (the one containing  <code>@JoinTable</code> annotation) </para>
+                  </listitem>
+                  <listitem>
+                    <para><code>inverseJoinColumns</code> –  <code>@JoinColumn </code>element in the join table corresponding to primary key of the non-owning side of the relationship. </para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example of the    <code>customers</code> attribute of the  <code>Group</code> class on the owning side of the relationship:<programlisting language="java">@ManyToMany
+@JoinTable(name = &quot;SALES_CUSTOMER_GROUP_LINK&quot;,
+  joinColumns = @JoinColumn(name = &quot;GROUP_ID&quot;),
+  inverseJoinColumns = @JoinColumn(name = &quot;CUSTOMER_ID&quot;))
+protected Set&lt;Customer&gt; customers;</programlisting></para>
+              <para>Example of the  <code>groups</code> attribute of the  <code>Customer</code>class on non-owning side of the same relationship:<programlisting language="java">@ManyToMany(mappedBy = &quot;customers&quot;)
+protected Set&lt;Group&gt; groups;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/OrderBy.html">@javax.persistence.OrderBy</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Determines the order of elements in a collection attribute at the point when the association is retrieved from the database. This annotation should be specified for ordered Java collections such as  <code>List</code> or <code>LinkedHashSet</code> to get a predictable sequence of elements.</para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>value</code> – string, determines the order in the format: <programlisting>orderby_list::= orderby_item [,orderby_item]*
+orderby_item::= property_or_field_name [ASC | DESC]</programlisting></para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@OneToMany(mappedBy = &quot;user&quot;)
+@OrderBy(&quot;createTs&quot;)
+protected List&lt;UserRole&gt; userRoles;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Embedded.html">@javax.persistence.Embedded</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Defines a reference attribute of embeddable type. The referenced entity should have <code>@Embeddable</code> annotation.  </para>
+              <para>Example:<programlisting language="java">@Embedded
+protected Address address;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Temporal.html">@javax.persistence.Temporal</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Specifies the type of the stored value for  <code>java.util.Date</code> attribute: date, time or date+time. </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>value</code> – the type of the stored value:  <code>DATE</code>, <code>TIME</code>, <code>TIMESTAMP</code></para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Example:<programlisting language="java">@Column(name = &quot;START_DATE&quot;)
+@Temporal(TemporalType.DATE)
+protected Date startDate;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Version.html">@javax.persistence.Version</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Indicates that the annotated field stores version for  <glossterm linkend="optimistic_locking">optimistic locking</glossterm> support. </para>
+              <para>Such field is required when an entity class implements the   <code>Versioned</code> interface (<code>StandardEntity</code> base class already contains such field).</para>
+              <para>Example:<programlisting language="java">@Version
+@Column(name = &quot;VERSION&quot;)
+private Integer version;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="lob_annotation">
+            <term>
+              <code>
+                <ulink url="http://docs.oracle.com/javaee/5/api/javax/persistence/Lob.html">@javax.persistence.Lob</ulink>
+              </code>
+            </term>
+            <listitem>
+              <para>Indicates that the attribute does not have any length restrictions. This annotation is used together with the  <code>@Column</code> annotation. If <code>@Lob</code> is set, the default or explicitly defined length in <code>@Column</code> is ignored. </para>
+              <para>Example:<programlisting language="java">@Column(name = &quot;DESCRIPTION&quot;)
+@Lob
+private String description;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="metaProperty_annotation">
+            <term>
+              <code>@MetaProperty</code>
+            </term>
+            <listitem>
+              <para>Indicates that  <link linkend="metadata_framework">metadata</link> should include the annotated attribute. This annotation can be set for a field or for a getter method, if there is no corresponding field.  </para>
+              <para>This annotation is not required for the fields already containing the following annotations from  <code>javax.persistence</code> package: <code>@Column</code>, <code>@OneToOne</code>, <code>@OneToMany</code>, <code>@ManyToOne</code>, <code>@ManyToMany</code>, <code>@Embedded</code>. Such fields are included in metadata automatically. Thus, <code>@MetaProperty</code> is mainly used for defining non-persistent attributes of the entities. </para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>mandatory</code> – (optional parameter, <code>false</code> by default) – determines whether the attribute can contain   <code>null</code> value. If <code>mandatory = true</code>, the visual components working with this attribute can request the user to enter a value.</para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Field example: <programlisting language="java">@Transient
+@MetaProperty
+protected String token;</programlisting></para>
+              <para>Method example: <programlisting language="java">@MetaProperty
+public String getLocValue() {
+  if (!StringUtils.isBlank(messagesPack)) {
+      return AppBeans.get(Messsages.class).getMessage(messagesPack, value);
+  } else {
+      return value;
+  }
+}</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="onDelete_annotation">
+            <term>
+              <code>@OnDelete</code>
+            </term>
+            <listitem>
+              <para>Determines handling policy for related entities  in case of soft deletion of the entity, containing the attribute. See <xref linkend="soft_deletion"/>.</para>
+              <para>Example:<programlisting language="java">@OneToMany(mappedBy = &quot;group&quot;)
+@OnDelete(DeletePolicy.CASCADE)
+private Set&lt;Constraint&gt; constraints;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="onDeleteInverse_annotation">
+            <term>
+              <code>@OnDeleteInverse</code>
+            </term>
+            <listitem>
+              <para>Determines handling policy for related entities in case of soft deletion of the entity from the inverse side of the relationship. See <xref linkend="soft_deletion"/>.</para>
+              <para>Example:<programlisting language="java">@ManyToOne
+@JoinColumn(name = &quot;DRIVER_ID&quot;)
+@OnDeleteInverse(DeletePolicy.DENY)
+private Driver driver;</programlisting></para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="composition_annotation">
+            <term>
+              <code>@Composition</code>
+            </term>
+            <listitem>
+              <para>Indicates that the relationship is a composition, which is a stronger variant of the association. Essentially this means that the related entity should only exist as a part of the owning entity, i.e. created and deleted together with it.</para>
+              <para>For example, a list of items in an order (<code>Order</code> class contains a collection of <code>Item</code> instances):<programlisting language="java">@OneToMany(mappedBy = &quot;order&quot;)
+@Composition
+protected List&lt;Item&gt; items;</programlisting></para>
+              <para>Choosing <code>@Composition</code> annotation as the relationship type allows making use of a special commit mode for datasources in  <link linkend="screen_edit">edit screens</link>. In this mode, the changes to related instances are only stored when the master entity is committed. See <xref linkend="composition_recipe"/> for details.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry id="localizedValue_annotation">
+            <term>
+              <code>@LocalizedValue</code>
+            </term>
+            <listitem>
+              <para>Determines a method for retrieving a localized value for an attribute, using  <code><link linkend="messageTools">MessageTools</link>.getLocValue()</code> method.</para>
+              <para>Parameters:<itemizedlist>
+                  <listitem>
+                    <para><code>messagePack</code> – explicit indication of the package, from which a localized message will be taken, for example,   <code>com.haulmont.cuba.core.entity</code>.</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>messagePackExpr</code> – expression defining the path to the attribute, containing a package name from which the localized message should be taken (for example, <code>proc.messagesPack</code>). The path starts from the attribute of the current entity. </para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>The annotation in the example below indicates that localized message for the  <code>state</code> attribute value should be taken from the package name defined in the  <code>messagesPack</code> attribute of the  <code>proc</code> entity.<programlisting language="java">@Column(name = &quot;STATE&quot;)
+@LocalizedValue(messagePackExpr = &quot;proc.messagesPack&quot;)
+protected String state;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = &quot;PROC_ID&quot;)
+protected Proc proc;</programlisting></para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+      </section>
+    </section><section id="enum_attributes">
+      <title>Enum Attributes</title>
+      <para>The standard use of  <glossterm linkend="jpa">JPA</glossterm> for <code>enum</code> attributes, involves an integer database field containing a value obtained from the  <code>ordinal()</code> method. This approach may lead to the following issues with extending a system in production:<itemizedlist>
+          <listitem>
+            <para>An entity instance cannot be loaded, if the value of the enum in the database does not equal to any <code>ordinal</code> value.</para>
+          </listitem>
+          <listitem>
+            <para>It is impossible to add a new value between the existing ones, which is important when sorting by enumeration value (order by).</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>CUBA-style approach to solving these problems is to detach the value stored in the database from  <code>ordinal</code> value of the enumeration. In order to do this, the field of the entity should be declared with the type, stored in the database  (<code>Integer</code> or <code>String</code>), while the access methods (getter / setter) should be created with the actual enumeration type. </para>
+      <para>Example:<programlisting language="java">@Entity(name = &quot;sales$Customer&quot;)
+@Table(name = &quot;SALES_CUSTOMER&quot;)
+public class Customer extends StandardEntity {
+
+  @Column(name = &quot;GRADE&quot;)
+  protected Integer grade;
+
+  public CustomerGrade getGrade() {
+      return grade == null ? null : CustomerGrade.fromId(grade);
+  }
+
+  public void setGrade(CustomerGrade grade) {
+      this.grade = grade == null ? null : grade.getId();
+  }
+...
+}  </programlisting></para>
+      <para>In this case, the enumeration class can look like this:<programlisting language="java">public enum CustomerGrade implements EnumClass&lt;Integer&gt; {
+
+  PREMIUM(10),
+  HIGH(20),
+  MEDIUM(30);
+
+  private Integer id;
+
+  CustomerGrade(Integer id) {
+      this.id = id;
+  }
+
+  @Override
+  public Integer getId() {
+      return id;
+  }
+
+  public static CustomerGrade fromId(Integer id) {
+      for (CustomerGrade grade : CustomerGrade.values()) {
+          if (grade.getId().equals(id))
+              return grade;
+      }
+      return null;
+  }
+}</programlisting></para>
+      <para>For correct reflection in  <link linkend="metadata_framework">metadata</link> the enumeration class must implement  <code>EnumClass</code>  interface. </para>
+      <para>As the examples show,  <code>grade</code> attribute corresponds to the <code>Integer</code> type value stored in the database, which is specified by the <code>id</code> field of  <code>CustomerGrade</code> enumeration, namely  <literal>10</literal>, <literal>20</literal> or <literal>30</literal>. At the same time,  the application code and metadata framework use <code>CustomerGrade</code> enum through access methods, which perform the actual conversion. </para>
+      <para>A call to  <code>getGrade()</code> method will simply return  <code>null</code>, if the value in the database does not correspond to any of the enumeration values. In order to add a new value, for example,  <code>HIGHER</code>, between <code>HIGH</code> and <code>PREMIUM</code>, it is sufficient to add new enumeration value with <code>id = 15</code>, which ensures that sorting by <code>Customer.grade</code> field remains correct. </para>
+      <para>Enumeration values can be associated with <link linkend="enum_localization">localized names</link> that will be displayed in the user interface of the application.</para>
+    </section><section id="soft_deletion">
+      <title>Soft Deletion</title>
+      <para>CUBA platform supports soft deletion mode, when the records are not deleted from the database, but instead, marked in a special way, so that they become inaccessible for common use. Later, these records can be either completely removed from the database using some kind of scheduled procedure or restored. </para>
+      <para>Soft deletion mechanism is transparent for an application developer, the only requirement is for entity class to implement  <code>SoftDelete</code> interface. The platform will adjust data operations automatically.</para>
+      <para>Soft deletion mode offers the following benefits:<itemizedlist>
+          <listitem>
+            <para>Significantly reduces the risk of data loss caused by incorrect user actions.</para>
+          </listitem>
+          <listitem>
+            <para>Allows to make certain records inaccessible instantly even if there are references to them. </para>
+            <para>Using Orders-Customers data model as an example, let&apos;s assume that a certain customer has made several orders but we need to make him inaccessible. This is impossible with traditional hard deletion, as deletion of a customer requires either deletion of all his orders or setting to null all references to the customer (meaning data loss). After soft deletion, the customer becomes unavailable for search and modification; however, a user can see the name of the customer in the order editor, as deletion attribute  is purposely ignored when the related entities are fetched. </para>
+            <para>The standard behavior above  can be modified with  <link linkend="delete_policy">related entities processing policy</link>.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The negative impact of soft deletion is increase in database size and likely need for additional cleanup procedures. </para>
+      <section>
+        <title>Use of Soft Deletion</title>
+        <para>To support soft deletion, the entity class should implement    <code>SoftDelete</code> interface, and the corresponding database table should contain the following columns: <itemizedlist>
+            <listitem>
+              <para><database>DELETE_TS</database> – when the record was deleted.</para>
+            </listitem>
+            <listitem>
+              <para><database>DELETED_BY</database> – the login of the user who deleted the record.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>The default behavior for instances implementing  <code>SoftDelete</code> interface, is that soft deleted entities are not returned by queries or search by id. If required, this behavior can by dynamically turned off using the following methods:  <itemizedlist>
+            <listitem>
+              <para>Calling <code>setSoftDeletion(false)</code> for the current  <link linkend="entityManager">EntityManager</link> instance. </para>
+            </listitem>
+            <listitem>
+              <para>Calling <code>setSoftDeletion(false)</code> for <code>LoadContext</code> object when requesting data via
+                  <link linkend="dataService">DataService</link> or <link linkend="dataService">DataWorker</link>. </para>
+            </listitem>
+            <listitem>
+              <para>On <link linkend="datasources">datasource</link> level – calling <code>CollectionDatasource.setSoftDeletion(false)</code>  or setting <literal>softDeletion=&quot;false&quot;</literal> attribute of  <sgmltag>collectionDatasource</sgmltag> element in  <link linkend="screen_xml">XML-descriptor</link> screen.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>In soft deletion mode, the platform automatically filters out the deleted instances when loading by <code>id</code> and when using  <glossterm linkend="jpql">JPQL queries</glossterm>, as well as the deleted elements of the related entities in collection attributes. However, related entities in single-value attributes are loaded, regardless of whether the related instance was deleted or not. </para>
+      </section>
+      <section id="delete_policy">
+        <title>Related Entities Processing Policy </title>
+        <para>The platform offers a tool for managing related entities when deleting, which is largely similar to  <database>ON DELETE</database> rules for database foreign keys. This tool works on the Middleware <link linkend="app_tiers">tier</link> and uses <link linkend="onDelete_annotation">@OnDelete</link>, <link linkend="onDeleteInverse_annotation">@OnDeleteInverse</link> annotations for entity attributes.  </para>
+        <para> <code>@OnDelete</code> annotation is processed when the entity in which this annotation is found is deleted, but not the one pointed to by this annotation (this is the main difference from cascade deletion at the database level).</para>
+        <para> <code>@OnDeleteInverse</code> annotation is processed when the entity which it points to is deleted (which is similar to cascade deletion at foreign key level in the database). This annotation is useful when the object being deleted has no attribute that can be checked before deletion. Typically, the object being checked has a reference to the object being deleted, and this is the attribute that should be annotated with<code> @OnDeleteInverse</code>. </para>
+        <para>Annotation value can be: <itemizedlist>
+            <listitem>
+              <para><code>DeletePolicy.DENY</code> – prohibits entity deletion, if the annotated attribute is not  <code>null</code> or not an empty collection.  </para>
+            </listitem>
+            <listitem>
+              <para><code>DeletePolicy.CASCADE</code> – cascade deletion of the annotated attribute. </para>
+            </listitem>
+            <listitem>
+              <para><code>DeletePolicy.UNLINK</code> – disconnect the link with the annotated attribute. It is reasonable to disconnect the link only in the owner side of the association – the one with  <code>@JoinColumn</code> annotation in the entity class. </para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Examples: <orderedlist>
+            <listitem>
+              <para>Prohibit deletion of entity with references:<code> DeletePolicyException</code>  will be thrown if you try to delete <code>Customer</code> instance, which is referred to by at least one  <code>Order</code>.</para>
+              <para><filename>Order.java</filename><programlisting language="java">@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = &quot;CUSTOMER_ID&quot;)
+@OnDeleteInverse(DeletePolicy.DENY)
+protected Customer customer;</programlisting></para>
+              <para><filename>Customer.java</filename><programlisting language="java">@OneToMany(mappedBy = &quot;customer&quot;)
+protected List&lt;Order&gt; orders;</programlisting></para>
+            </listitem>
+            <listitem>
+              <para>Cascade deletion of related collection elements: deletion of  <code>Role</code> instance causes all <code>Permission</code> instances to be deleted as well.  </para>
+              <para><filename>Role.java</filename><programlisting language="java">@OneToMany(mappedBy = &quot;role&quot;)
+@OnDelete(DeletePolicy.CASCADE)
+protected Set&lt;Permission&gt; permissions;</programlisting></para>
+              <para><filename>Permission.java</filename><programlisting language="java">@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = &quot;ROLE_ID&quot;)
+protected Role role;</programlisting></para>
+            </listitem>
+            <listitem>
+              <para>Disconnect the links with related collection elements:  deletion of <code>Role</code> instance leads to setting to null references to this <code>Role</code> for all  <code>Permission</code> instances included in the collection. </para>
+              <para><filename>Role.java</filename><programlisting language="java">@OneToMany(mappedBy = &quot;role&quot;)
+protected Set&lt;Permission&gt; permissions;</programlisting></para>
+              <para><filename>Permission.java</filename><programlisting language="java">@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = &quot;ROLE_ID&quot;)
+@OnDeleteInverse(DeletePolicy.UNLINK)
+protected Role role;</programlisting></para>
+            </listitem>
+          </orderedlist></para>
+        <para>Implementation notes: <orderedlist>
+            <listitem>
+              <para>Be careful when using  <code>@OnDeleteInverse</code> together with  <code>CASCADE</code> and <code>UNLINK</code> policies. During this process, all instances of the related objects are fetched from the database, modified and then saved.  </para>
+              <para>For example, if <code>@OnDeleteInverse(CASCADE)</code> policy is set on <code>Job.customer</code> attribute in a  <code>Customer</code> – <code>Job</code> association with many jobs to one customer, if you set <code>@OnDeleteInverse(CASCADE)</code> policy on <code>Job.customer</code> attribute, all jobs will be retrieved and modified when deleting a Customer instance. This may overload the application server or the database.  </para>
+              <para>On the other hand, using  <code>@OnDeleteInverse(DENY)</code> is safe, as it only involves  counting the number of the related objects.  If there are more than <literal>0</literal>, an exception is thrown. This makes use of  <code>@OnDeleteInverse(DENY)</code> suitable for  <code>Job.customer</code> attribute. </para>
+            </listitem>
+            <listitem>
+              <para>Related entities processing is implemented at Middleware using <link linkend="entity_listeners">Entity Listeners</link>.</para>
+            </listitem>
+          </orderedlist> </para>
+      </section>
+      <section id="soft_deletion_unique_constr">
+        <title>Unique Restrictions at Database Level</title>
+        <para>In order to apply unique restrictions for certain value in the soft deletion mode, at least one non-deleted record with this value and an arbitrary number of deleted records with the same value may exist in database. </para>
+        <para>This logic can be implemented in a specific way for each database server type:<itemizedlist>
+            <listitem>
+              <para>If database server supports partial indexes (e.g.    <application>PostgreSQL</application>), unique restrictions can be achieved as follows:<programlisting>create unique index IDX_SEC_USER_UNIQ_LOGIN on SEC_USER (LOGIN_LC) where DELETE_TS is null</programlisting></para>
+            </listitem>
+            <listitem>
+              <para>If database server does not support partial indexes (e.g. <application>Microsoft SQL Server 2005</application>), <database>DELETE_TS </database>field can be included in the unique index: <programlisting>create unique index IDX_SEC_USER_UNIQ_LOGIN on SEC_USER (LOGIN_LC, DELETE_TS)</programlisting></para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+    </section></section>
+  <section id="metadata_framework">
+    <title>Metadata Framework</title>
+    <para>Metadata framework is used to support efficient work with  <link linkend="data_model">data model</link>   in CUBA-applications. The framework:</para>
+    <itemizedlist>
+      <listitem>
+        <para>provides API for obtaining information about <glossterm linkend="entity">entities</glossterm>, their attributes and relations between the entities; it is also used for traversing object graphs; </para>
+      </listitem>
+      <listitem>
+        <para>serves as a specialized and more convenient alternative for <application>Java Reflection API</application>;</para>
+      </listitem>
+      <listitem>
+        <para>controls permitted data types and relationships between entities;</para>
+      </listitem>
+      <listitem>
+        <para>allows implementation of universal mechanisms for operations with data.</para>
+      </listitem>
+    </itemizedlist>
+    <section id="metadata_interfaces">
+      <title>Metadata Interfaces</title>
+      <para>Let us consider the basic metadata interfaces.</para>
+      <figure>
+        <title>Metadata Framework Interfaces </title>
+        <mediaobject>
+          <imageobject>
+            <imagedata contentwidth="80%" align="center" fileref="img/MetadataFramework.png"/>
+          </imageobject>
+        </mediaobject>
+      </figure>
+      <variablelist>
+        <varlistentry>
+          <term>
+            <code>Session</code>
+          </term>
+          <listitem>
+            <para>Entry point of the metadata framework. Allows obtaining  <code>MetaClass</code> instances by name and by the corresponding Java class. Note the difference in methods: <code>getClass()</code> methods can return <code>null </code>while <code>getClassNN()</code> (NonNull) methods cannot. </para>
+            <para> <code>Session</code> object can be obtained using  <code>
+                <link linkend="metadata">Metadata</link>
+              </code> infrastructure interface.</para>
+            <para>Example:<programlisting language="java">@Inject
+protected Metadata metadata;
+...
+Session session = metadata.getSession();
+MetaClass metaClass1 = session.getClassNN(&quot;sec$User&quot;);
+MetaClass metaClass2 = session.getClassNN(User.class);
+assert metaClass1 == metaClass2;</programlisting></para>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>MetaModel</code>
+          </term>
+          <listitem>
+            <para>Rarely used interface intended to group meta-classes.  </para>
+            <para>Meta-classes are grouped by  the root name of Java project package specified in <link linkend="metadata.xml">metadata.xml</link> file.</para>
+          </listitem>
+        </varlistentry>
+        <varlistentry id="metaClass">
+          <term>
+            <code>MetaClass</code>
+          </term>
+          <listitem>
+            <para>Entity class metadata interface. <code>MetaClass</code> is always associated with Java class which it represents. </para>
+            <para>Basic methods:</para>
+            <itemizedlist>
+              <listitem>
+                <para><code>getName()</code> – entity name, according to convention the first part of the name before  <code>$</code> sign is namespace code, for example,  <code>sales$Customer</code>.</para>
+              </listitem>
+              <listitem>
+                <para><code>getProperties()</code> – the list of meta-properties  (<code>MetaProperty</code>).</para>
+              </listitem>
+              <listitem>
+                <para><code>getProperty()</code>, <code>getPropertyNN()</code> – methods return meta-properties by name. In case when there is no attribute with provided name, the first method returns  <code>null</code>, and the second throws an exception.</para>
+                <para>Example:<programlisting language="java">MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupProperty = userClass.getPropertyNN(&quot;group&quot;);</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>getPropertyPath()</code> – allows to navigate by references. This method accepts string parameter – path in the format of dot-separated attribute names. The returned <code>MetaPropertyPath</code> object allows accessing the required (the last in the path) attribute by invoking <code>getMetaProperty()</code> method.</para>
+                <para>Example:<programlisting language="java">MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupNameProp = userClass.getPropertyPath(&quot;group.name&quot;).getMetaProperty();
+assert groupNameProp.getDomain().getName().equals(&quot;sec$Group&quot;);</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>getJavaClass()</code> – entity class, corresponding to this <code>MetaClass</code>.</para>
+              </listitem>
+              <listitem>
+                <para><code>getAnnotations()</code> – collection of <link linkend="meta_annotations">meta-annotations</link>.</para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+        </varlistentry>
+        <varlistentry id="metaProperty">
+          <term>
+            <code>MetaProperty</code>
+          </term>
+          <listitem>
+            <para>Entity attribute metadata interface. </para>
+            <para>Basic methods:</para>
+            <itemizedlist>
+              <listitem>
+                <para><code>getName()</code> – property name, corresponds to entity attribute name.</para>
+              </listitem>
+              <listitem>
+                <para><code>getDomain()</code> – meta-class, owning this property.</para>
+              </listitem>
+              <listitem id="metaProperty.getType">
+                <para><code>getType() </code>- the property type: <itemizedlist>
+                    <listitem>
+                      <para>simple type: <code>DATATYPE</code></para>
+                    </listitem>
+                    <listitem>
+                      <para>enumeration: <code>ENUM</code></para>
+                    </listitem>
+                    <listitem>
+                      <para>reference type of two kinds:</para>
+                      <itemizedlist>
+                        <listitem id="associationType">
+                          <para><code>ASSOCIATION</code> − simple reference to another entity. For example, Order-Customer relationship is an association. </para>
+                        </listitem>
+                        <listitem>
+                          <para><code>COMPOSITION</code> −  reference to the entity, having no consistent value without the owning entity.  <code>COMPOSITION</code> is considered to be a “closer” relationship than <code>ASSOCIATION</code>. For example, the relationship between Order and its Items is a <code>COMPOSITION</code>, as the Item cannot exist without the Order to which it belongs. </para>
+                        </listitem>
+                      </itemizedlist>
+                      <para>The type of <code>ASSOCIATION</code> or <code>COMPOSITION</code> reference attributes affects entity edit mode: in the first case the related entity is persisted to the database independently, in the second case – only together with the owning entity. See <xref linkend="composition_recipe"/> for details.</para>
+                    </listitem>
+                  </itemizedlist></para>
+              </listitem>
+              <listitem>
+                <para><code>getRange()</code> –  <code>Range</code> interface providing detailed description of the attribute  type. </para>
+              </listitem>
+              <listitem>
+                <para><code>isMandatory()</code> – indicates a mandatory attribute. For instance, it is used by visual components to signal a user that value is mandatory.     </para>
+              </listitem>
+              <listitem>
+                <para><code>isReadOnly()</code> – indicates a read-only attribute. </para>
+              </listitem>
+              <listitem>
+                <para><code>getInverse()</code> – for reference-type attribute, returns the meta-property from the other side of the association,  if such exists. </para>
+              </listitem>
+              <listitem>
+                <para><code>getAnnotatedElement()</code> – field (<code>java.lang.reflect.Field</code>) or method  (<code>java.lang.reflect.Method</code>), corresponding to the entity attribute.</para>
+              </listitem>
+              <listitem>
+                <para><code>getJavaType()</code> –  Java class of the entity attribute. It can either be the type of corresponding field or the type of the value returned by corresponding method. </para>
+              </listitem>
+              <listitem>
+                <para><code>getDeclaringClass()</code> –  Java class containing this attribute. </para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+        </varlistentry>
+        <varlistentry>
+          <term>
+            <code>Range</code>
+          </term>
+          <listitem>
+            <para>Interface describing entity attribute type in detail.</para>
+            <para>Basic methods:</para>
+            <itemizedlist>
+              <listitem>
+                <para><code>isDatatype()</code> – returns <code>true</code> for simple   <link linkend="metaProperty.getType">type</link> attribute.</para>
+              </listitem>
+              <listitem>
+                <para><code>asDatatype()</code> – returns <link linkend="datatype">Datatype</link> for simple type attribute.</para>
+              </listitem>
+              <listitem>
+                <para><code>isEnum()</code> – returns <code>true</code> for enumeration type attribute.</para>
+              </listitem>
+              <listitem>
+                <para><code>asEnumeration()</code> – returns <link linkend="datatype">Enumeration</link> for enumeration type attribute.</para>
+              </listitem>
+              <listitem>
+                <para><code>isClass()</code> – returns <code>true</code> for reference attribute of <code>ASSOCIATION</code> or <code>COMPOSITION</code> type.</para>
+              </listitem>
+              <listitem>
+                <para><code>asClass()</code> – returns <link linkend="metaClass">metaclass</link> of associated entity for a reference attribute. </para>
+              </listitem>
+              <listitem>
+                <para><code>isOrdered()</code> – returns <code>true</code> if the attribute is represented by an ordered collection (for example <code>List</code>).</para>
+              </listitem>
+              <listitem>
+                <para><code>getCardinality()</code> –  relation kind of the reference attribute:  <code>ONE_TO_ONE</code>, <code>MANY_TO_ONE</code>, <code>ONE_TO_MANY</code>, <code>MANY_TO_MANY</code>.</para>
+              </listitem>
+            </itemizedlist>
+          </listitem>
+        </varlistentry>
+      </variablelist>
+    </section>
+    <section id="metadata_building">
+      <title>Metadata Building </title>
+      <para>The main source for metadata structure generation are  <link linkend="entity_annotations">annotated</link> entity classes. </para>
+      <para>Entity class will be present in the metadata in the following cases: <itemizedlist>
+          <listitem>
+            <para>Persistent entity class is annotated by  <code>@Entity</code>, <code>@Embeddable</code>, <code>@MappedSuperclass</code> and is located within the root package specified in <link linkend="metadata.xml">metadata.xml</link>.</para>
+          </listitem>
+          <listitem>
+            <para>Non-persistent entity class is annotated by  <code>@MetaClass</code> and is located within the root package specified in  <filename>metadata.xml</filename>.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>All entities inside same root package are put into the same  <code>MetaModel</code> instance, which is given the name of this package. Entities within the same <code>MetaModel</code> can contain arbitrary references to each other. References between entities from different meta-models can be created in the order of declaration of  <filename>metadata.xml</filename> files in <link linkend="cuba.metadataConfig">cuba.metadataConfig</link> property.  </para>
+      <para>Entity attribute will be present in metadata if: <itemizedlist>
+          <listitem>
+            <para>A class field is annotated by  <code>@Column</code>, <code>@OneToOne</code>, <code>@OneToMany</code>, <code>@ManyToOne</code>, <code>@ManyToMany</code>, <code>@Embedded</code>.</para>
+          </listitem>
+          <listitem>
+            <para>A class field or an access method (getter) is annotated by  <code>@MetaProperty</code>.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Metaclass and metaproperty parameters are determined on the base of the listed  <link linkend="entity_annotations">annotations</link> parameters as well as field types and class methods.  Besides, if an attribute does not have write access method (setter), it becomes immutable (read only). </para>
+    </section>
+    <section id="datatype">
+      <title>Datatype</title>
+      <para><code>Datatype</code> interface describes a valid data type for the entity attribute if it is not a reference. Each <code>Datatype</code> implementation corresponds to a single Java class. </para>
+      <para>All of the instances are registered in repository –  <code>Datatypes</code> class, which performs loading and initializing of <code>Datatype</code> implementation classes in the following way: <itemizedlist>
+          <listitem>
+            <para><link linkend="datatypes.xml">datatypes.xml</link> file is searched in <literal>CLASSPATH</literal> root, and if it is found,   <code>Datatypes</code> repository is initialized from it. </para>
+          </listitem>
+          <listitem>
+            <para>otherwise <code>Datatypes</code> repository is initialized from <filename>/com/haulmont/chile/core/datatypes/datatypes.xml</filename> file.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para> <code>Datatype</code> instance can be obtained in two ways: <itemizedlist>
+          <listitem>
+            <para>For an entity attribute – from the corresponding meta-property <link linkend="metaProperty.getType">DATATYPE</link> using  <code>getRange().asDatatype()</code> call.</para>
+          </listitem>
+          <listitem>
+            <para>Using <code>Datatypes.get()</code> static method by passing to it the name of the  <code>Datatype</code> implementation or Java class it was created for.  </para>
+          </listitem>
+        </itemizedlist></para>
+      <para><code>Datatypes</code> are associated with entity attributes during application start according to the following rules: <itemizedlist>
+          <listitem>
+            <para>If <code>@MetaProperty</code> annotation is defined on the field or method having a non-empty   <code>datatype</code> value, the attribute is associated with the  <code>Datatype</code> instance with the given name.  </para>
+            <para>For instance, if the entity attribute is declared as in the example below, it will be associated with a nonstandard type –  <code>GeoCoordinateDatatype</code>:<programlisting language="java">@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
+@Column(name = &quot;LATITUDE&quot;)
+private Double latitude;</programlisting></para>
+          </listitem>
+          <listitem>
+            <para>In most cases, explicit specification is omitted, and the attribute is associated with the  <code>Datatype</code> instance from repository, which is returned by  <code>Datatypes.get(Class)</code> by supplied field or method type. </para>
+            <para>In example below, <code>latitude</code> attribute will get a standard  <code>DoubleDatatype</code> type registered in the   <filename>/com/haulmont/chile/core/datatypes/datatypes.xml</filename> base file:<programlisting language="java">@Column(name = &quot;LATITUDE&quot;)
+private Double latitude;</programlisting></para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Basic methods of <code>Datatype</code> interfaces:<itemizedlist>
+          <listitem>
+            <para><code>getName()</code> – returns the unique name of the implementation. </para>
+          </listitem>
+          <listitem>
+            <para><code>format()</code> – converts the passed value into a string.  </para>
+          </listitem>
+          <listitem>
+            <para><code>parse()</code> – transforms a string into the value of corresponding type.  </para>
+          </listitem>
+        </itemizedlist></para>
+      <para><code>Datatype</code> determines two sets of methods for formatting and parsing: considering and not considering locale. Conversion considering locale is applied everywhere in user interface, ignoring locale – in system mechanisms, for example, serialization in  <link linkend="rest_api">REST API</link>. </para>
+      <para>Parsing formats ignoring locale are specified in the above mentioned  <link linkend="datatypes.xml">datatypes.xml</link> file.</para>
+      <para>The parsing formats considering locale are provided in the  <link linkend="main_message_pack">main localized messages pack</link>, in the strings containing the following keys: <itemizedlist>
+          <listitem>
+            <para><literal>numberDecimalSeparator</literal> – specifies decimal separator for numeric types. </para>
+          </listitem>
+          <listitem>
+            <para><literal>numberGroupingSeparator</literal> – defines separator between digits groups for numeric types (e.g. when space is used as separator, number will be formatted as 1 000 000).</para>
+          </listitem>
+          <listitem>
+            <para><literal>integerFormat</literal> – format for  <code>Integer</code> and <code>Long</code> types.</para>
+          </listitem>
+          <listitem>
+            <para><literal>doubleFormat</literal> – format for  <code>Double</code> type.</para>
+          </listitem>
+          <listitem>
+            <para><literal>decimalFormat</literal> – format for  <code>BigDecimal </code>type.</para>
+          </listitem>
+          <listitem>
+            <para><literal>dateTimeFormat</literal> – format for  <code>java.util.Date</code> type.</para>
+          </listitem>
+          <listitem>
+            <para><literal>dateFormat</literal> – format for  <code>java.sql.Date</code> type.</para>
+          </listitem>
+          <listitem>
+            <para><literal>timeFormat</literal> – format for  <code>java.sql.Time</code> type.</para>
+          </listitem>
+          <listitem>
+            <para><literal>trueString</literal> – string corresponding to  <code>Boolean.TRUE</code>.</para>
+          </listitem>
+          <listitem>
+            <para><literal>falseString</literal> – string corresponding to  <code>Boolean.FALSE</code>.</para>
+          </listitem>
+        </itemizedlist>All the listed formats are specified in the main localized message pack of CUBA  <link linkend="base_projects">base projects</link> by default, and can be overridden in the similar files of the application project. </para>
+      <section>
+        <title>Example of Data Formatting in UI </title>
+        <para>Let us consider the way  <code>Order.date</code>  attribute is displayed in orders browser table. </para>
+        <para><code>order-browse.xml</code><programlisting language="xml">&lt;table id=&quot;ordersTable&quot;&gt;
+  ...
+  &lt;columns&gt;
+      &lt;column id=&quot;date&quot;/&gt;
+      ...</programlisting></para>
+        <para> <code>date</code> attribute in <code>Order</code> class is defined using &quot;date&quot; type: <programlisting language="java">@Column(name = &quot;DATE&quot;, nullable = false)
+@Temporal(TemporalType.DATE)
+private Date date;</programlisting></para>
+        <para>If the current user is logged in with the Russian locale, the following string is retrieved from the <link linkend="main_message_pack">main message pack</link> on the client  <link linkend="app_tiers">tier</link>: <programlisting>dateFormat=dd.MM.yyyy</programlisting></para>
+        <para>The result: date &quot;6th August 2012 &quot; is converted into a string &quot;06.08.2012&quot; which is displayed in the table cell. </para>
+      </section>
+      <section>
+        <title>Examples of Date and Number Formatting in the Application Code </title>
+        <itemizedlist>
+          <listitem>
+            <para>Date formatting example <programlisting language="java">@Inject
+protected UserSessionSource userSessionSource;
+...
+Date date = ...;
+String dateStr = Datatypes.get(Date.class).format(date, userSessionSource.getLocale());</programlisting></para>
+          </listitem>
+          <listitem>
+            <para>Example of formatting of numeric values with high accuracy (5 decimal numbers after comma) in <structname>Web Client</structname>:</para>
+            <para><filename>/com/sample/sales/web/messages_ru.properties</filename><programlisting>coordinateFormat = #,##0.00000</programlisting></para>
+            <para><filename>SomeClass.java</filename><programlisting language="java">@Inject
+protected Messages messages;
+@Inject
+protected UserSessionSource userSessionSource;
+...
+String coordinateFormat = messages.getMainMessage(&quot;coordinateFormat&quot;);
+FormatStrings formatStrings = Datatypes.getFormatStrings(userSessionSource.getLocale());
+NumberFormat format = new DecimalFormat(coordinateFormat, formatStrings.getFormatSymbols());
+
+String formattedValue = format.format(value);</programlisting></para>
+          </listitem>
+        </itemizedlist>
+      </section>
+      <section>
+        <title>Example of a Custom Datatype</title>
+        <para>Let us consider the implementation of a custom <code>GeoCoordinateDatatype</code>,  intended for the attributes storing geographical coordinates.</para>
+        <para>First, we need to create a class in the  <structname>global</structname> module:<programlisting language="java">public class GeoCoordinateDatatype extends DoubleDatatype {
+
+  public static final String NAME = &quot;geocoordinate&quot;;
+
+  // the format is the same for all locales but may differ in decimal points
+  public static final String FORMAT = &quot;#0.000000&quot;;
+
+  public GeoCoordinateDatatype(Element element) {
+      super(element);
+  }
+
+  @Override
+  public String getName() {
+      return NAME;
+  }
+
+  @Override
+  public String format(Double value, Locale locale) {
+      if (value == null)
+          return &quot;&quot;;
+      FormatStrings formatStrings = Datatypes.getFormatStrings(locale);
+      if (formatStrings == null)
+          return format(value); // FormatStrings are not defined for locales, so formatting is made according to  datatypes.xml file
+
+      NumberFormat format = new DecimalFormat(FORMAT, formatStrings.getFormatSymbols());
+      return format.format(value);
+  }
+
+  @Override
+  public Double parse(String value, Locale locale) throws ParseException {
+      if (StringUtils.isBlank(value))
+          return null;
+      FormatStrings formatStrings = Datatypes.getFormatStrings(locale);
+      if (formatStrings == null)
+          return parse(value); // FormatStrings are not defined for locales, so parsing is made according to  datatypes.xml file
+
+      NumberFormat format = new DecimalFormat(FORMAT, formatStrings.getFormatSymbols());
+      return parse(value, format).doubleValue();
+  }
+}</programlisting></para>
+        <para>Next, we create  <filename>datatypes.xml</filename> file in the root of the  <structname>global</structname> module <filename>src</filename> directory in the application project and copy contents from  <filename>/com/haulmont/chile/core/datatypes/datatypes.xml</filename> file located in <structname>global</structname> module of  <structname>cuba </structname>base project.  Then add registration of the new type to it: <programlisting language="xml">&lt;datatypes&gt;
+
+  &lt;datatype class=&quot;com.sample.sales.entity.GeoCoordinateDatatype&quot;
+            format=&quot;#0.000000&quot; decimalSeparator=&quot;.&quot; groupingSeparator=&quot;&quot;/&gt;
+...</programlisting></para>
+        <para>Finally we specify new datatype for the required attributes: <programlisting language="java">@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
+@Column(name = &quot;LATITUDE&quot;)
+private Double latitude;</programlisting></para>
+        <para>After the above listed operations are completed, <code>latitude</code> attribute will be displayed in the desired format throughout the application.  </para>
+      </section>
+    </section>
+    <section id="meta_annotations">
+      <title>Meta-Annotations </title>
+      <para>Entity meta-annotations are a set of key/value pairs providing additional information about entities.   </para>
+      <para>Meta-annotations are accessed using    <link linkend="metaClass">meta-class</link> <code>getAnnotations()</code> method.</para>
+      <para>The sources of meta-annotations are: <itemizedlist>
+          <listitem>
+            <para>  <code>@OnDelete</code>, <code>@OnDeleteInverse</code>, <code>@Extends</code> <link linkend="entity_annotations">annotations</link>. These annotations cause creation of special meta-annotations for describing relations between entities.  </para>
+          </listitem>
+          <listitem>
+            <para> <code>@NamePattern</code>, <code>@SystemLevel</code>, <code>@EnableRestore</code>, <code>@TrackEditScreenHistory</code> annotations. These annotations cause generation of meta-annotations with keys corresponding to the full name of Java class of the annotation.  </para>
+          </listitem>
+          <listitem>
+            <para>Optional: custom annotations can be defined in a project, and reflected to corresponding meta-annotations in the  <link linkend="extension">overridden</link> <code>MetadataImpl.initMetaAnnotations()</code> method. </para>
+          </listitem>
+          <listitem>
+            <para>Optional: entity meta-annotations can also be defined in <link linkend="metadata.xml">metadata.xml</link> files. If a meta-annotation in XML has the same name as the meta-annotation created by Java entity class annotation, then it will override the latter.  </para>
+            <para>The example below shows meta-annotations definition in <filename>metadata.xml</filename>:<programlisting language="xml">&lt;annotations&gt;
+  &lt;entity class=&quot;com.haulmont.cuba.security.entity.User&quot;&gt;
+      &lt;annotation name=&quot;com.haulmont.cuba.core.entity.annotation.TrackEditScreenHistory&quot; value=&quot;false&quot;/&gt;
+      &lt;annotation name=&quot;com.haulmont.cuba.core.entity.annotation.EnableRestore&quot; value=&quot;true&quot;/&gt;
+  &lt;/entity&gt;
+&lt;/annotations&gt;</programlisting></para>
+          </listitem>
+        </itemizedlist></para>
+    </section>
+  </section>
+  <section id="views">
+    <title>Views</title>
+    <para>When retrieving the entities from the database, we often face a question: how to ensure loading of the related entities to desired depth?  </para>
+    <para>For example, you need to display the date and order amount together with the Buyer name in Orders browser, which means that you need to fetch the related Buyer instance. And for Order editor screen, you need to fetch the collection of Items, in addition to that each Item should contain a related Product instance to display its name.   </para>
+    <para><link linkend="lazy_loading">Lazy loading</link> can not help in most cases because data processing is usually performed not in the transaction where the entities were loaded but, for example, on client  <link linkend="app_tiers">tier</link> in UI. At the same time it is unacceptable to apply  <glossterm linkend="eager_fetching">eager fetching</glossterm> by <link linkend="entity_annotations">entity annotations</link> as it leads to permanent retrieval of the entire graph of related entities which can be very large.  </para>
+    <para>Another similar problem is the requirement to limit the set of  <glossterm linkend="local_attribute">local</glossterm> entity attributes of the loaded graph: for example, some entity can have 50 attributes, including BLOB, but only 10 attributes need to be displayed on the screen. In this case, why should we download 40 remaining attributes from the database, then serialize them and transfer to the client when it does not need them at the moment?</para>
+    <para> <firstterm>Views</firstterm> mechanism resolves these issues by providing retrieval from database and transmitting to the client entity graphs, limited by depth and by attributes. A <firstterm>view</firstterm> is the descriptor of object graph required on a certain UI screen or data-processing operation.    </para>
+    <para>Views processing is performed in the following way:  <itemizedlist>
+        <listitem>
+          <para>All relations in the data model are declared with lazy fetching property (<code>fetch = FetchType.LAZY</code>. See <xref linkend="entity_annotations"/>). </para>
+        </listitem>
+        <listitem>
+          <para>In the process of data loading using  <link linkend="dataService">DataService</link> the client code provides required view together with  <glossterm linkend="jpql">JPQL</glossterm> query.</para>
+        </listitem>
+        <listitem>
+          <para>The so-called  <firstterm>Fetch Plan</firstterm> is produced on the  base of the view – this is a special feature of <application>Apache OpenJPA</application> framework lying in the base of  <link linkend="orm"> ORM layer</link>. Fetch Plan affects the generation of SQL queries to the database: both the list of returned fields and joins with the other tables containing related entities. </para>
+        </listitem>
+        <listitem>
+          <para>References, excluded  from the Fetch Plan (sometimes this helps to simplify the basic SQL query), are loaded by separate SQL queries. To maintain this process the view-processing mechanism just invokes corresponding attribute reading methods (getters). </para>
+        </listitem>
+        <listitem>
+          <para>As a result, when the data loading  <link linkend="transactions">transaction</link> is finished, the Middleware will contain the object graph, determined by JPQL query and the provided view.</para>
+        </listitem>
+      </itemizedlist></para>
+    <figure>
+      <title>View Classes </title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/View.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <para>The view is determined by  <code>View</code> class instance, where: <itemizedlist>
+        <listitem>
+          <para><code>entityClass</code> – the entity class, for which the view is defined. In other words, it is the
+“root” of the loaded entities tree.
+</para>
+        </listitem>
+        <listitem>
+          <para><code>name</code> – the name of the view. It should be either  <code>null</code>, or a unique name within all views for the entity. </para>
+        </listitem>
+        <listitem>
+          <para><code>properties</code> – collection of <code>ViewProperty</code> instances, corresponding to the entity attributes which should be loaded. </para>
+        </listitem>
+        <listitem>
+          <para><code>includeSystemProperties</code> – if set, system attributes (included into  <link linkend="entity_base_classes">basic interfaces</link> of <code>BaseEntity</code> and  <code>Updatable</code> persistent entities) are automatically included in the view. The system attributes are not explicitly listed in  <code>properties</code> but they are included by view processing mechanism depending on the interfaces which are implemented by this entity.  </para>
+        </listitem>
+      </itemizedlist></para>
+    <para> <code>ViewProperty</code> class has the following properties: <itemizedlist>
+        <listitem>
+          <para><code>name</code> – the name of the entity attribute. </para>
+        </listitem>
+        <listitem>
+          <para><code>view</code> – for reference attributes, specifies the view which which will be used to load the related entity. </para>
+        </listitem>
+        <listitem>
+          <para><code>lazy</code> – for reference attributes, indicates that this attribute should not be included into Fetch Plan, but loaded as a separate SQL query, initiated by accessing the attribute. It is important to mention that, if requesting data through <link linkend="dataService">DataService</link> or <link linkend="datasource_query">datasource query</link>, the attribute is loaded anyway, this property affects only the method of fetching. But if the view with lazy attributes is used on the ORM layer, after loading instances they should be passed to <link linkend="entityManager">EntityManager</link>.fetch() method, otherwise the lazy attributes will not be fetched.</para>
+        </listitem>
+      </itemizedlist></para>
+    <warning>
+      <para>Regardless of the attributes defined in the view, the following attributes are always loaded:  <itemizedlist>
+          <listitem>
+            <para><code>id</code> – entity identifier. </para>
+          </listitem>
+          <listitem>
+            <para><code>version</code> – used for optimistic locking of the entities implementing  <code>Versioned</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>deleteTs</code>, <code>deletedBy</code> – used for the entities, implementing <link linkend="soft_deletion">SoftDelete</link>.</para>
+          </listitem>
+        </itemizedlist></para>
+    </warning>
+    <para>Attributes, which were not loaded, have  <code>null</code> value. By default an attempt to set the value for a not loaded attribute (setter call) for  <link linkend="entity_states">detached</link> entity raises an exception. This behavior can be modified using the application property <link linkend="cuba.allowSetNotLoadedAttributes">cuba.allowSetNotLoadedAttributes</link>. If this property is set to   <code>true</code>,  then setter call will not cause exception, nevertheless the value will not be saved.</para>
+    <para>Bear in mind that not loaded reference attributes of detached entity, corresponding to external keys (i.е. ManyToOne, OneToOne) can be set to a new non-zero value in any case and the changes will be saved during the subsequent  <code>EntityManager.merge()</code>.</para>
+    <section id="views_creation">
+      <title>Views Creation </title>
+      <para>A view can be created in two possible ways: <itemizedlist>
+          <listitem>
+            <para><emphasis role="bold">Programmatically</emphasis> – by creating   <code>View</code> instance, for example:<programlisting language="java">View view = new View(Order.class)
+      .addProperty(&quot;date&quot;)
+      .addProperty(&quot;amount&quot;)
+      .addProperty(&quot;customer&quot;, new View(Customer.class)
+          .addProperty(&quot;name&quot;)
+      );</programlisting></para>
+            <para>Typically, this way can be appropriate for creating views that are used in a single piece of business-logic.   </para>
+          </listitem>
+          <listitem>
+            <para><emphasis role="bold">Declaratively</emphasis> –  by creating an XML descriptor and deploying it to   <code>ViewRepository</code>. <code>View</code> instances are created and cached when XML-based descriptor is deployed. Further on the required view can be retrieved in any part of the application code by repository call providing the entity class and view name. </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Let us consider in details the declarative way for creation and working with views.  </para>
+      <para><code>ViewRepository</code> is a <application>Spring</application> bean, accessible to all application blocks. The link to  <code>ViewRepository</code> can be obtained using  <link linkend="metadata">Metadata</link> infrastructure interface. <code>getView()</code> methods  are used to retrieve  <code>View</code> instance from the repository.   <code>deployViews()</code> methods from  <code>AbstractViewRepository </code>basic implementation are used to deploy XML view descriptors to the repository.</para>
+      <para>Two views named  <filename>_local</filename> and <filename>_minimal</filename> are available in the repository for each entity by default: <itemizedlist>
+          <listitem>
+            <para><filename>_local</filename> contains all  <glossterm linkend="local_attribute">local</glossterm> entity attributes. </para>
+          </listitem>
+          <listitem>
+            <para><filename>_minimal</filename> contains the attributes which are included to the name of the entity instance and which are specified by <link linkend="namePattern">@NamePattern</link> annotation. If  <code>@NamePattern</code> annotation is not specified in the entity, this view does not contain any attributes.   </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The detailed structure of XML descriptors is provided in  <xref linkend="views.xml"/>.</para>
+      <para>The example below shows view descriptor for <code>Order</code> entity which provides loading of all local attributes, associated <code>Customer</code> and ordered <code>Items</code> collection: <programlisting language="xml">&lt;view class=&quot;com.sample.sales.entity.Order&quot;
+    name=&quot;orderWithCustomer&quot;
+    extends=&quot;_local&quot;&gt;
+  &lt;property name=&quot;customer&quot; view=&quot;_minimal&quot;/&gt;
+  &lt;property name=&quot;items&quot; view=&quot;itemsInOrder&quot;/&gt;
+&lt;/view&gt;</programlisting></para>
+      <para>The recommended way of grouping and deployment of view descriptors is as follows: <itemizedlist>
+          <listitem>
+            <para>Create <filename>views.xml</filename> file in the   <structname>global</structname> <link linkend="app_modules">module</link> in <filename>src</filename>  root and place all view descriptors which should be globally accessible (i.e. on all application <link linkend="app_tiers">tiers</link> into it. </para>
+          </listitem>
+          <listitem>
+            <para>Register this file in  <link linkend="cuba.viewsConfig">cuba.viewsConfig</link> application property of all used blocks, i.e. in <filename>app.properties</filename> of the <structname>core</structname> module, <filename>web-app.properties</filename> of the <structname>web</structname> module, etc. This will ensure automatic deployment of the views upon application startup in the repository (See <code>AbstractViewRepository.init()</code> method). </para>
+          </listitem>
+          <listitem>
+            <para>If there are views which are used only in one application block, they can be specified in the similar file in this block, for example,  <filename>web-views.xml</filename>, and registered in <link linkend="cuba.viewsConfig">cuba.viewsConfig</link> property of this block only.</para>
+            <para>If the repository contains a view with certain name for some entity, an attempt to deploy another view with this name for the same entity will be ignored. If you need to replace the existing view in the repository with a new one and guarantee its deployment, specify <literal>overwrite = &quot;true&quot;</literal> attribute for it.</para>
+          </listitem>
+        </itemizedlist></para>
+      <tip>
+        <para>It is recommended to give “descriptive” names to the views. For example, not just “browse”, but “customerBrowse”. It simplifies the search of views in XML descriptors.</para>
+      </tip>
+    </section>
+  </section>
+  <section id="managed_beans">
+    <title>Managed Beans</title>
+    <para><firstterm>Managed Beans</firstterm>  are program components intended for implementation of the application’s business logic. “Managed” in this case means that the instance creation and dependency management is handled by the <glossterm linkend="container">container</glossterm>, which is the main part of the  <application>Spring</application> framework.</para>
+    <warning>
+      <para>Managed Bean is a  <firstterm>singleton</firstterm>,  i.e., only one instance of such class exists in each application block. Therefore, if a bean contains mutable data in fields (in other words, has a state), it is necessary to synchronize access to such data.</para>
+    </warning>
+    <section id="managed_beans_creation">
+      <title>Creating a Bean</title>
+      <para>To create a managed bean, add the   <literal>@javax.annotation.ManagedBean</literal> annotation to the Java class. For example:<programlisting language="java">package com.sample.sales.core;
+
+import com.sample.sales.entity.Order;
+import javax.annotation.ManagedBean;
+
+@ManagedBean(OrderWorker.NAME)
+public class OrderWorker {
+  public static final String NAME = &quot;sales_OrderWorker&quot;;
+
+  public void calculateTotals(Order order) {
+  }
+}</programlisting></para>
+      <para>It is recommended to assign a unique name to the bean in form of  <literal>{project_name}_{class_name}</literal> and to define it in the <code>NAME</code> constant. </para>
+      <para>The managed bean class should be placed inside the package tree with the root specified in the <literal>context:component-scan</literal> element of the <link linkend="spring.xml">spring.xml</link> file. In this case, the  <filename>spring.xml</filename> file contains the element:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.sample.sales&quot;/&gt;</programlisting>which means that the search for annotated beans for this application block will be performed starting with the <code>com.sample.sales</code> package.</para>
+      <para>To provide an ability to substitute the implementation in the future, it is recommended to give the bean a separate interface:</para>
+      <programlisting language="java">// OrderWorker.java – interface
+package com.sample.sales.core;
+
+import com.sample.sales.entity.Order;
+
+public interface OrderWorker {
+  String NAME = &quot;sales_OrderWorker&quot;;
+
+  void calculateTotals(Order order);
+}</programlisting>
+      <programlisting language="java">// OrderWorkerBean.java – implementation
+package com.sample.sales.core;
+
+import com.sample.sales.entity.Order;
+import javax.annotation.ManagedBean;
+
+@ManagedBean(OrderWorker.NAME)
+public class OrderWorkerBean implements OrderWorker {
+  @Override
+  public void calculateTotals(Order order) {
+  }
+}</programlisting>
+      <para>Managed beans can be created on any <link linkend="app_tiers">tier</link>, because the  <application>Spring Framework</application> container is used in all standard blocks of the application.</para>
+    </section>
+    <section id="managed_beans_usage">
+      <title>Using the Bean</title>
+      <para>A reference to the bean can be obtained through injection or through the <code>AppBeans</code> class. As an example of using the bean, let us look at the implementation of the <code>OrderService</code> bean that delegates the execution to the  <code>OrderWorker</code> bean:<programlisting language="java">package com.sample.sales.core;
+
+import com.haulmont.cuba.core.Persistence;
+import com.sample.sales.entity.Order;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import javax.inject.Inject;
+
+@Service(OrderService.NAME)
+public class OrderServiceBean implements OrderService {
+
+  @Inject
+  protected Persistence persistence;
+
+  @Inject
+  protected OrderWorker orderWorker;
+
+  @Transactional
+  @Override
+  public BigDecimal calculateTotals(Order order) {
+      Order entity = persistence.getEntityManager().merge(order);
+      orderWorker.calculateTotals(entity);
+  }
+}</programlisting></para>
+      <para>In this example, the service starts a  <link linkend="transactions">transaction</link>, places the entity instance obtained from the client level into the <link linkend="entityManager">persistent context</link>, and passes the control to the <code>OrderWorker</code> bean, which contains the main business logic. </para>
+    </section>
+  </section>
+  <section id="jmx_beans"><title>JMX Beans</title><para>Sometimes, it is necessary to give system administrator an ability to view and change the state of some  <link linkend="managed_beans">managed bean</link> at runtime. In such case, it is recommended to create a JMX bean – a program component having the  <glossterm linkend="jmx">JMX</glossterm> interface. JMX bean is usually a wrapper delegating calls to the managed bean which actually maintains state: cache, configuration data or statistics.</para><figure>
+      <title>JMX Bean Class Diagram</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/JMXBeans.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure><para>As can be seen from the diagram, the JMX bean consists of the interface and implementation class. The class should be a  <link linkend="managed_beans">managed bean</link>, i.e., should have the  <code>@ManagedBean</code> annotation and unique name. The interface of the JMX bean is registered in <link linkend="spring.xml">spring.xml</link> in a special way to create the JMX interface in the current JVM.</para><para>Calls to all JMX bean interface methods are intercepted using <application>Spring AOP</application> by the <methodname>MBeanInterceptor</methodname> <glossterm linkend="interceptor">interceptor</glossterm> class, which sets the correct  <code>ClassLoader</code> in the current thread, and enables logging of unhandled exceptions.</para><warning>
+      <para>The JMX bean interface name must conform to the following format: <literal>{class_name}MBean</literal>.</para>
+    </warning>JMX-interface can be utilized by external tools, such as <application>jconsole</application>or <application>jvisualvm</application>. In addition, the Web Client platform block includes the <link linkend="jmx_console">JMX console</link>, which provides the basic tools to view the status and call the methods of the JMX beans.<section id="jmx_beans_creation">
+      <title>Creating a JMX Bean</title>
+      <para>The following example shows how to create a JMX bean.</para>
+      <itemizedlist>
+        <listitem>
+          <para>JMX bean interface:<programlisting language="java">package com.sample.sales.core;
+
+import org.springframework.jmx.export.annotation.*;
+
+@ManagedResource(description = &quot;Performs operations on Orders&quot;)
+public interface OrdersMBean {
+
+  @ManagedOperation(description = &quot;Recalculates an order amount&quot;)
+  @ManagedOperationParameters({@ManagedOperationParameter(name = &quot;orderId&quot;, description = &quot;&quot;)})
+  String calculateTotals(String orderId);
+}</programlisting></para>
+          <para>The interface and its methods may contain annotations to specify the description of the JMX bean and its operations. This description will be displayed in all tools that work with this JMX interface, thereby helping the system administrator.</para>
+          <para>Since the JMX tools support a limited set of data types, it is desirable to use  <code>String</code> as the type for the parameters and result of the method and perform the conversion inside the method, if necessary. </para>
+        </listitem>
+        <listitem>
+          <para>The JMX bean class:<programlisting language="java">package com.sample.sales.core;
+
+import com.haulmont.cuba.core.*;
+import com.haulmont.cuba.core.app.*;
+import com.sample.sales.entity.Order;
+import org.apache.commons.lang.exception.ExceptionUtils;
+import javax.annotation.ManagedBean;
+import javax.inject.Inject;
+import java.util.UUID;
+
+@ManagedBean(&quot;sales_OrdersMBean&quot;)
+public class Orders implements OrdersMBean {
+
+  @Inject
+  protected OrderWorker orderWorker;
+
+  @Inject
+  protected Persistence persistence;
+
+  @Authenticated
+  @Override
+  public String calculateTotals(final String orderId) {
+      try {
+          persistence.createTransaction().execute(new Transaction.Runnable() {
+              @Override
+              public void run(EntityManager em) {
+                  Order entity = em.find(Order.class, UUID.fromString(orderId));
+                  orderWorker.calculateTotals(entity);
+              }
+          });
+          return &quot;Done&quot;;
+      } catch (Throwable e) {
+          return ExceptionUtils.getStackTrace(e);
+      }
+  }
+}</programlisting></para>
+          <para>The <code>@ManagedBean</code> annotation defines class as a managed bean with the  <literal>sales_OrdersMBean</literal> name. The name is specified directly in the annotation and not in the constant, since access to the JMX bean from Java code is not required.</para>
+          <para>Lets overview the implementation of the <code>calculateTotals()</code> method.<itemizedlist>
+              <listitem>
+                <para>The method has the   <code>@Authenticated</code> annotation, i.e., <link linkend="system_authentication">system authentication</link> is performed on method entry in the absence of the  <link linkend="userSession">user session</link>.</para>
+              </listitem>
+              <listitem>
+                <para>The method’s body is wrapped in the  <code>try/catch</code> block, so that, if successful, the method returns &quot;Done&quot;, and in case of error – the stack trace of the exception as string.</para>
+                <para>It should be kept in mind that, in this case, all exceptions are handled and therefore do not get logged automatically, because they never fall through to <code>MBeanInterceptor</code>. If logging of exceptions is required, the call of the logger should be added in the  <code>catch</code> section.</para>
+              </listitem>
+              <listitem>
+                <para>The method starts the transaction, loads the <code>Order</code> entity instance by identifier, and passes control to the <code>OrderWorker</code> bean for processing.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+        <listitem>
+          <para>The registration of the JMX bean in  <filename>spring.xml</filename>:</para>
+          <programlisting language="xml">&lt;bean id=&quot;sales_MBeanExporter&quot; lazy-init=&quot;false&quot;
+    class=&quot;com.haulmont.cuba.core.sys.jmx.MBeanExporter&quot;&gt;
+  &lt;property name=&quot;beans&quot;&gt;
+      &lt;map&gt;
+          &lt;entry key=&quot;${cuba.webContextName}.sales:type=Orders&quot;
+                 value-ref=&quot;sales_OrdersMBean&quot;/&gt;
+      &lt;/map&gt;
+  &lt;/property&gt;
+&lt;/bean&gt;</programlisting>
+        </listitem>
+      </itemizedlist>
+      <para>All JMX beans of a project are declared in one  <code>MBeanExporter</code> instance in the <literal>map/entry</literal> elements of the  <code>beans</code> property. The key is JMX ObjectName, the value – the bean’s name specified in the <code>@ManagedBean</code> annotation. ObjectName begins with the name of the web application, because several web applications, which export the same JMX interfaces, can be deployed in one <application>Tomcat</application> instance (i.e., in one JVM).</para>
+    </section><section id="jmx_beans_platform">
+      <title>The Platform JMX Beans</title>
+      <para>This section describes some of the JMX beans available in the platform.</para>
+      <section id="cachingFacadeMBean">
+        <title>CachingFacadeMBean</title>
+        <para><code>CachingFacadeMBean</code> provides methods to clear various caches in the <structname>Middleware</structname> and   <structname>Web Client</structname> blocks.</para>
+        <para>JMX ObjectName: <literal>app-core.cuba:type=CachingFacade</literal> and <literal>app.cuba:type=CachingFacade</literal></para>
+      </section>
+      <section id="configStorageMBean">
+        <title>ConfigStorageMBean</title>
+        <para><code>ConfigStorageMBean</code> allows viewing and setting values of the  <link linkend="app_properties">application properties</link> in the  <structname>Middleware</structname>, <structname>Web Client</structname> and <structname>Web Portal</structname> blocks.</para>
+        <para>This interface has separate sets of methods for working with parameters of configuration and deployment (<code>*AppProperties</code>) and with runtime parameters  (<code>*DbProperties</code>). This is due to the difference in mechanisms of storing these categories of properties.</para>
+        <warning>
+          <para>The following usage restrictions of <code>ConfigStorageMBean</code> interface apply:<itemizedlist>
+              <listitem>
+                <para>Only the properties explicitly set in the storage location are displayed. When accessed through the <link linkend="config_interfaces">configuration interface</link>, the default value is returned, if the property value is not set. However, the default value cannot be obtained through  <code>ConfigStorageMBean</code>. </para>
+              </listitem>
+              <listitem>
+                <para>The changes to property values stored in files are not persistent, and are valid only until a restart of this block.</para>
+              </listitem>
+            </itemizedlist></para>
+        </warning>
+        <para>JMX ObjectName: <literal>app-core.cuba:type=ConfigStorage</literal>, <literal>app.cuba:type=ConfigStorage</literal>, <literal>app-portal.cuba:type=ConfigStorage</literal></para>
+      </section>
+      <section id="emailerMBean">
+        <title>EmailerMBean</title>
+        <para><code>EmailerMBean</code> allows viewing the current values of the  <link linkend="email_sending">email sending</link> parameters, and to send a test message.</para>
+        <para>JMX ObjectName: <literal>app-core.cuba:type=Emailer</literal></para>
+      </section>
+      <section id="persistenceManagerMBean">
+        <title>PersistenceManagerMBean</title>
+        <para><code>PersistenceManagerMBean</code> provides the following abilities:<itemizedlist>
+            <listitem>
+              <para>Managing  <link linkend="entity_statistics">entity statistics</link> mechanism.</para>
+            </listitem>
+            <listitem>
+              <para>Viewing new DB update scripts using the  <code>findUpdateDatabaseScripts()</code> method. Triggering DB  update with the <code>updateDatabase()</code> method.</para>
+            </listitem>
+            <listitem>
+              <para>Executing arbitrary JPQL queries in the  <structname>Middleware</structname> context by using  <code>jpqlLoadList()</code>, <code>jpqlExecuteUpdate()</code> methods.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>JMX ObjectName: <literal>app-core.cuba:type=PersistenceManager</literal></para>
+      </section>
+      <section id="scriptingManagerMBean">
+        <title>ScriptingManagerMBean</title>
+        <para><code>ScriptingManagerMBean</code> is the JMX facade for the <link linkend="scripting">Scripting</link> infrastructure interface.</para>
+        <para>JMX ObjectName: <literal>app-core.cuba:type=ScriptingManager</literal></para>
+        <para>JMX attributes:<itemizedlist>
+            <listitem>
+              <para><code>RootPath</code> – absolute path to the   <link linkend="conf_dir">configuration directory</link> of the Middleware <link linkend="app_tiers">block</link>, in which this bean was started.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>JMX operations:<itemizedlist>
+            <listitem>
+              <para><code>runGroovyScript()</code> – executes a Groovy script in the  <structname>Middleware</structname> context and returns the result. The following variables should be passed to the script:<itemizedlist>
+                  <listitem>
+                    <para><code>persistence</code> of the <link linkend="persistence">Persistence</link> type.</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>metadata</code> of the <link linkend="metadata">Metadata</link> type.</para>
+                  </listitem>
+                  <listitem>
+                    <para><code>configuration</code> of the <link linkend="configuration">Configuration</link> type. </para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>The result type should be of the String type, for it to be displayed in the JMX interface. Otherwise, the method is similar to the <link linkend="scripting.runGroovyScript">Scripting.runGroovyScript()</link> method. </para>
+              <para>The example script for creating a set of test users is shown below:<programlisting language="java">import com.haulmont.cuba.core.*
+import com.haulmont.cuba.core.global.*
+import com.haulmont.cuba.security.entity.*
+
+PasswordEncryption passwordEncryption = AppBeans.get(PasswordEncryption.class)
+
+Transaction tx = persistence.createTransaction()
+try {
+  EntityManager em = persistence.getEntityManager()
+  Group group = em.getReference(Group.class, UUID.fromString(&apos;0fa2b1a5-1d68-4d69-9fbd-dff348347f93&apos;))
+  for (i in (1..250)) {
+      User user = new User()
+      user.setGroup(group)
+      user.setLogin(&quot;user_${i.toString().padLeft(3, &apos;0&apos;)}&quot;)
+      user.setName(user.login)
+      user.setPassword(passwordEncryption.getPasswordHash(user.id, &apos;1&apos;));
+      em.persist(user)
+  }
+  tx.commit()
+} finally {
+  tx.end()
+}</programlisting></para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+      <section id="serverInfoMBean">
+        <title>ServerInfoMBean</title>
+        <para><code>ServerInfoMBean</code> provides the general information about this   <structname>Middleware</structname> block: the build number, build date and the  <link linkend="serverId">server id</link>.</para>
+        <para>JMX ObjectName: <literal>app-core.cuba:type=ServerInfo</literal></para>
+      </section>
+    </section></section>
+  <section id="infrastructure_interfaces">
+    <title>Infrastructure Interfaces </title>
+    <para>Infrastructure interfaces provide access to frequently used functionality of the platform. Most of them are located in <structname>global</structname> <link linkend="app_modules">module</link> and can be used both on the Middle tier and in Client tier  <link linkend="app_tiers">blocks</link>. However, some of them (<link linkend="persistence">Persistence</link>, for example)  are accessible only for Middleware code.</para>
+    <para>Infrastructure interfaces are implemented by  <application>Spring Framework</application> beans, so they can be injected into any other managed components  (<link linkend="managed_beans">managed beans</link>, <link linkend="services">Middleware services</link>, generic user interface <link linkend="screen_controller">screen controllers</link>).</para>
+    <para>Also, like any other beans, infrastructure interfaces can be obtained using static methods of  <code>AppBeans</code> class, and can be used in non-managed components  (<glossterm linkend="pojo">POJO</glossterm>, helper classes etc.).</para>
+    <section id="configuration">
+      <title> Configuration </title>
+      <para>The interface helps to obtain references to   <link linkend="config_interfaces">configuration interfaces</link>.</para>
+      <para>Examples:<programlisting language="java">// field injection
+
+@Inject
+protected Configuration configuration;
+...
+String tempDir = configuration.getConfig(GlobalConfig.class).getTempDir();</programlisting><programlisting language="java">// setter injection
+
+protected GlobalConfig globalConfig;
+
+@Inject
+public void setConfiguration(Configuration configuration) {
+  this.globalConfig = configuration.getConfig(GlobalConfig.class);
+}</programlisting><programlisting language="java">// location
+
+String tempDir = AppBeans.get(Configuration.class).getConfig(GlobalConfig.class).getTempDir();</programlisting></para>
+    </section>
+    <section id="messages">
+      <title>Messages</title>
+      <para> <code>Messages</code> interface provides methods to get <link linkend="localization">localized message strings</link>.</para>
+      <para>Let us consider interface methods in detail.</para>
+      <itemizedlist>
+        <listitem>
+          <para><code>getMessage()</code> – returns the localized message by key, pack name and required locale. There are several modifications of this method with different sets of parameters. If locale is not specified in the method parameter, the current user locale is used. </para>
+          <para>Examples:<programlisting language="java">@Inject
+protected Messages messages;
+...
+String message1 = messages.getMessage(getClass(), &quot;someMessage&quot;);
+String message2 = messages.getMessage(&quot;com.abc.sales.web.customer&quot;, &quot;someMessage&quot;);
+String message3 = messages.getMessage(RoleType.STANDARD);</programlisting></para>
+        </listitem>
+        <listitem>
+          <para><code>formatMessage()</code> – retrieves a localized message by key, pack name and required locale, then uses it to format the input parameters. The format is defined according to  <code>String.format()</code> method rules. There are several modifications of this method with different sets of parameters. If locale is not specified in the method parameter, the current user locale is used. </para>
+          <para>Example:<programlisting language="java">String formattedValue = messages.formatMessage(getClass(), &quot;someFormat&quot;, someValue);</programlisting></para>
+        </listitem>
+        <listitem>
+          <para><code>getMainMessage()</code> – returns the localized message from the <link linkend="main_message_pack">main message pack</link> of the application  <link linkend="app_tiers">block</link>.</para>
+          <para>Example:<programlisting language="java">protected Messages messages = AppBeans.get(Messages.class);
+...
+messages.getMainMessage(&quot;actions.Ok&quot;);</programlisting></para>
+        </listitem>
+        <listitem>
+          <para><code>getMainMessagePack()</code> – returns the name of the <link linkend="main_message_pack">main message pack</link> of the application block. </para>
+          <para>Example:<programlisting language="java">String formattedValue = messages.formatMessage(messages.getMainMessagePack(), &quot;someFormat&quot;, someValue);</programlisting></para>
+        </listitem>
+        <listitem>
+          <para><code>getTools()</code> – returns  <code>MessageTools</code> interface instance (see below).</para>
+        </listitem>
+      </itemizedlist>
+      <section id="messageTools">
+        <title>MessageTools</title>
+        <para><code>MessageTools</code> interface is a <link linkend="managed_beans">managed bean</link> containing additional methods for working with  <link linkend="localization">localized messages</link>. You can access  <code>MessageTools</code> interface either using  <code>Messages.getTools()</code> method, or as any other bean – by means of injection or through <code>AppBeans</code> class. </para>
+        <para> <code>MessageTools</code> methods: <itemizedlist>
+            <listitem id="messageTools.loadString">
+              <para><code>loadString()</code> – returns a localized message, specified by reference in  <literal>msg://{messagePack}/{key}</literal> format</para>
+              <para>Reference components:<itemizedlist>
+                  <listitem>
+                    <para><literal>msg://</literal> – mandatory prefix.</para>
+                  </listitem>
+                  <listitem>
+                    <para><literal>{messagePack}</literal> – optional name of the message pack. If it is not specified, it is assumed that the pack name is passed to <code>loadString()</code> as a separate parameter. </para>
+                  </listitem>
+                  <listitem>
+                    <para><literal>{key}</literal> – message key in the pack. </para>
+                  </listitem>
+                </itemizedlist></para>
+              <para>Examples of the message references:<programlisting>msg://someMessage
+msg://com.abc.sales.web.customer/someMessage</programlisting></para>
+            </listitem>
+            <listitem>
+              <para><code>getEntityCaption()</code> – returns the localized entity name.</para>
+            </listitem>
+            <listitem>
+              <para><code>getPropertyCaption()</code> – returns the localized name of an entity attribute.</para>
+            </listitem>
+            <listitem>
+              <para><code>hasPropertyCaption()</code> – checks whether the entity attribute was given a localized name.</para>
+            </listitem>
+            <listitem>
+              <para><code>getLocValue()</code> – returns the localized value of the entity attribute based on <link linkend="localizedValue_annotation">@LocalizedValue</link> annotation.</para>
+            </listitem>
+            <listitem>
+              <para><code>getMessageRef()</code> – forms a <link linkend="messageTools.loadString">message reference</link>  for   <link linkend="metaProperty">meta-property</link> which can be used to retrieve the localized name of the entity attribute. </para>
+            </listitem>
+            <listitem>
+              <para><code>getDefaultLocale()</code> – returns default application locale, which is the first one listed in <link linkend="cuba.availableLocales">cuba.availableLocales</link> application property.</para>
+            </listitem>
+            <listitem>
+              <para><code>useLocaleLanguageOnly()</code> – returns <code>true</code>, if for all locales supported by the application (defined in <code>cuba.availableLocales</code> property) only the language parameter is specified, without country and variant. This method is used by platform mechanisms which need to find the most appropriate supported locale when locale info is received from the external sources such as operation system or HTTP request.</para>
+            </listitem>
+            <listitem>
+              <para><code>trimLocale()</code> – deletes from the passed locale everything except language, if <code>useLocaleLanguageOnly()</code> method returns <code>true</code>.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>You can <link linkend="bean_extension">override</link> <code>MessageTools</code> to extend the set of its methods in a particular application.  Below are the examples of working with the extended interface: <programlisting language="java">MyMessageTools tools = messages.getTools();
+tools.foo();</programlisting><programlisting language="java">((MyMessageTools) messages.getTools()).foo();</programlisting> </para>
+      </section>
+    </section>
+    <section id="metadata">
+      <title>Metadata</title>
+      <para> <code>Metadata</code> interface provides access to  metadata session and <link linkend="views">view</link> repository.</para>
+      <para>Interface methods:<itemizedlist>
+          <listitem>
+            <para><code>getSession()</code> – returns the   <link linkend="metadata_framework">metadata</link>  session instance.</para>
+          </listitem>
+          <listitem>
+            <para><code>getViewRepository()</code> – returns the  <link linkend="views">view</link> repository instance. </para>
+          </listitem>
+          <listitem>
+            <para><code>getExtendedEntities()</code> – returns <code>ExtendedEntities</code> instance, intended for working with the extended entities. See more in <xref linkend="entity_extension"/>.</para>
+          </listitem>
+          <listitem>
+            <para><code>create()</code> – creates an entity instance,  taking into account potential extension. See more in <xref linkend="entity_extension"/>.</para>
+          </listitem>
+          <listitem>
+            <para><code>getTools()</code> – returns   <code>MetadataTools</code> interface instance (see below). </para>
+          </listitem>
+        </itemizedlist></para>
+      <section id="metadataTools">
+        <title>MetadataTools</title>
+        <para><code>MetadataTools</code> is a <link linkend="managed_beans">managed bean</link>, containing additional methods for working with metadata. You can access  <code>MetadataTools</code> interface by either using <code>Metadata.getTools()</code> method, or as any other bean – by means of injection or through <code>AppBeans</code> class.</para>
+        <para> <code>MetadataTools </code>methods: <itemizedlist>
+            <listitem>
+              <para><code>getAllPersistentMetaClasses()</code> – returns the collection of persistent entities <link linkend="metaClass">meta-classes</link>.</para>
+            </listitem>
+            <listitem>
+              <para><code>getAllEmbeddableMetaClasses()</code> – returns the collection of embeddable entities meta-classes.</para>
+            </listitem>
+            <listitem>
+              <para><code>getAllEnums()</code> – returns the collection of enumeration classes used as entity attributes types. </para>
+            </listitem>
+            <listitem>
+              <para><code>format()</code> – formats the passed value according to data type of the given  <link linkend="metaProperty">meta-property</link>.</para>
+            </listitem>
+            <listitem>
+              <para><code>isSystem()</code> – checks if a  meta-property is system, i.e. specified in one of the  <link linkend="entity_base_classes">basic entity interfaces</link>.</para>
+            </listitem>
+            <listitem>
+              <para><code>isPersistent()</code> – checks if a meta-property is persistent, i.e. stored in the database. </para>
+            </listitem>
+            <listitem>
+              <para><code>isTransient()</code> – checks if a meta-property or an arbitrary attribute is non-persistent.</para>
+            </listitem>
+            <listitem>
+              <para><code>isEmbedded()</code> – checks if a meta-property is an embedded object. </para>
+            </listitem>
+            <listitem>
+              <para><code>isAnnotationPresent()</code> – checks if an annotation is present on the class or on one of its ancestors.</para>
+            </listitem>
+            <listitem>
+              <para><code>getNamePatternProperties()</code> –  returns collection of meta-properties of attributes included in the instance name, returned by  <code>Instance.getInstanceName()</code> method. See <link linkend="namePattern">@NamePattern</link>.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>You can  <link linkend="bean_extension">override</link>  <code>MetadataTools</code> bean in your application to extend the set of its methods.  The examples of working with the extended interface: <programlisting language="java">MyMetadataTools tools = metadata.getTools();
+tools.foo();</programlisting><programlisting language="java">((MyMetadataTools) metadata.getTools()).foo();</programlisting></para>
+      </section>
+    </section>
+    <section id="resources">
+      <title>Resources</title>
+      <para><code>Resources</code> interface maintains resources loading according to the following rules: <orderedlist>
+          <listitem>
+            <para>If the provided location is a URL, the resource is downloaded from this URL;</para>
+          </listitem>
+          <listitem>
+            <para>If the provided location begins with  <literal>classpath:</literal> prefix, the resource is downloaded from classpath; </para>
+          </listitem>
+          <listitem>
+            <para>If the location is not a URL and it does not begin with  <literal>classpath:</literal>, then:<orderedlist>
+                <listitem>
+                  <para>The file is searched in the <link linkend="conf_dir">configuration folder</link> of application using the provided location as relative pathname. If the file is found, the resource is downloaded from it;</para>
+                </listitem>
+                <listitem>
+                  <para>If the resource is not found at the previous steps, it is downloaded from classpath.</para>
+                </listitem>
+              </orderedlist></para>
+          </listitem>
+        </orderedlist></para>
+      <para>In practice, explicit identification of URL or  <code>classpath:</code> prefix is rarely used, so resources are usually downloaded either from the <link linkend="conf_dir">configuration folder</link> or from classpath. The resource in the configuration folder overrides the classpath resource with the same name.</para>
+      <para> <code>Resources</code>  methods: <itemizedlist>
+          <listitem>
+            <para><code>getResourceAsStream()</code> – returns <code>InputStream</code> for the provided resource, or  <code>null</code>, if the resource is not found. The stream should be closed after it had been used, for example:<programlisting language="java">@Inject
+protected Resources resources;
+...
+InputStream stream = null;
+try {
+  stream = resources.getResourceAsStream(resourceLocation);
+  ...
+} finally {
+  IOUtils.closeQuietly(stream);
+}</programlisting></para>
+            <para>You can also use &quot;try with resources&quot;:<programlisting language="java">try (InputStream stream = resources.getResourceAsStream(resourceLocation)) {
+  ...
+}</programlisting></para>
+          </listitem>
+          <listitem>
+            <para><code>getResourceAsString()</code> – returns the indicated resource content as string, or <code>null</code>, if the resource is not found. </para>
+          </listitem>
+        </itemizedlist></para>
+    </section>
+    <section id="scripting">
+      <title>Scripting</title>
+      <para> <code>Scripting</code>  interface is used to compile and load Java and Groovy classes dynamically (i.e. at runtime) as well as to execute Groovy scripts and expressions. </para>
+      <para><code>Scripting</code> methods: <itemizedlist>
+          <listitem>
+            <para><code>evaluateGroovy()</code> – executes the Groovy expression and returns its result. </para>
+            <para><link linkend="cuba.groovyEvaluatorImport">cuba.groovyEvaluatorImport</link> application property is used to define the common set of the imported classes inserted into each executed expression. By default, all standard application blocks import <link linkend="persistenceHelper">PersistenceHelper</link> class.</para>
+            <para>The compiled expressions are cached, and this considerably speeds up repeated execution. </para>
+            <para>Example:<programlisting language="java">@Inject
+protected Scripting scripting;
+...
+Integer intResult = scripting.evaluateGroovy(&quot;2 + 2&quot;, new Binding());
+
+Binding binding = new Binding();
+binding.setVariable(&quot;instance&quot;, new User());
+Boolean boolResult = scripting.evaluateGroovy(&quot;return PersistenceHelper.isNew(instance)&quot;, binding);</programlisting></para>
+          </listitem>
+          <listitem id="scripting.runGroovyScript">
+            <para><code>runGroovyScript()</code> – executes Groovy script and returns its result.</para>
+            <para>The script should be located either in application  <link linkend="conf_dir">configuration folder</link> or in classpath (the current  <code>Scripting</code> implementation supports classpath resources within JAR files only). A script in the configuration folder overrides the script in classpath with the same name. </para>
+            <para>The path to the script is constructed using separators <literal>/</literal>. The separator is not required in the beginning of the path. </para>
+            <para> Example:<programlisting language="java">@Inject
+protected Scripting scripting;
+...
+Binding binding = new Binding();
+binding.setVariable(&quot;itemId&quot;, itemId);
+BigDecimal amount = scripting.runGroovyScript(&quot;com/abc/sales/CalculatePrice.groovy&quot;, binding);</programlisting></para>
+          </listitem>
+          <listitem>
+            <para><code>loadClass()</code> – loads Java or Groovy class using the following steps: <orderedlist>
+                <listitem>
+                  <para>If the class is already loaded, it will be returned.</para>
+                </listitem>
+                <listitem>
+                  <para>The Groovy source code (file  <filename>*.groovy</filename>)  is searched in the configuration folder. If it is found, it will be compiled and the class will be returned.</para>
+                </listitem>
+                <listitem>
+                  <para>The Java source code (file  <filename>*.java</filename>) is searched in the configuration folder. If it is found, it will be compiled and the class will be returned.</para>
+                </listitem>
+                <listitem>
+                  <para>The compiled class is searched in classpath. If it is found, it will be loaded and returned. </para>
+                </listitem>
+                <listitem>
+                  <para>If nothing is found,  <code>null</code> will be returned. </para>
+                </listitem>
+              </orderedlist></para>
+            <para>The files in configuration folder containing Java and Groovy source code can be modified at runtime. On the next  <code>loadClass()</code> call the corresponding class will be recompiled and the new one will be returned, with the following restrictions:  <itemizedlist>
+                <listitem>
+                  <para>The type of the source code must not be changed from Groovy to Java; </para>
+                </listitem>
+                <listitem>
+                  <para>If Groovy source code was once compiled, the deletion of the source code file will not lead to loading of another class from classpath. Instead of this, the class compiled from the removed source code will still be returned. </para>
+                </listitem>
+              </itemizedlist></para>
+            <para>Example:<programlisting language="java">@Inject
+protected Scripting scripting;
+...
+Class calculatorClass = scripting.loadClass(&quot;com.abc.sales.PriceCalculator&quot;);</programlisting></para>
+          </listitem>
+          <listitem>
+            <para><code>getClassLoader()</code> –  returns  <code>ClassLoader</code>, which is able to work according to the rules for  <code>loadClass()</code> method described above. </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Cache of the compiled classes can be cleaned at runtime using   <link linkend="cachingFacadeMBean">CachingFacadeMBean</link> JMX bean. </para>
+      <para>See also <xref linkend="scriptingManagerMBean"/>.  </para>
+    </section>
+    <section id="security">
+      <title>Security</title>
+      <para>This interface provides authorization – checking user access rights to different objects in the system. Most of the <code>Security</code> interface methods just obtain the current user session from  <link linkend="userSessionSource">UserSessionSource</link> and delegate authorization process to it. See more in <xref linkend="authentication"/>.</para>
+    </section>
+    <section id="timeSource">
+      <title>TimeSource</title>
+      <para>TimeSource interface provides the current time. Using <code>new Date()</code> and similar methods in the application code is not recommended. </para>
+      <para>Examples:<programlisting language="java">@Inject
+protected TimeSource timeSource;
+...
+Date date = timeSource.currentTimestamp();</programlisting><programlisting language="java">long startTime = AppBeans.get(TimeSource.class).currentTimeMillis();</programlisting></para>
+    </section>
+    <section id="userSessionSource">
+      <title>UserSessionSource</title>
+      <para>The interface is used to obtain current user session object. See more in <xref linkend="authentication"/>.</para>
+    </section>
+    <section id="uuidSource">
+      <title>UuidSource</title>
+      <para>The interface is used to obtain  <code>UUID</code> values, including those used for entity identifiers. Using  <code>UUID.randomUUID()</code> in the application code is not recommended. </para>
+      <para>To call from a static context, you can use the <code>UuidProvider</code> class, which also has an additional <code>fromString()</code> method that works faster than the standard <code>UUID.fromString()</code> method.</para>
+    </section>
+  </section>
+  <section id="appContext">
+    <title>AppContext</title>
+    <para><code>AppContext</code>  is a system class, which stores references to certain common components for each application  <link linkend="app_tiers">block</link> in its static fields:<itemizedlist>
+        <listitem>
+          <para><code>ApplicationContext</code> of <application>Spring</application> framework.</para>
+        </listitem>
+        <listitem>
+          <para>Set of  <link linkend="app_properties">application properties </link> loaded from  <filename>app.properties</filename>  files.</para>
+        </listitem>
+        <listitem>
+          <para><code>ThreadLocal</code> variable, storing  <link linkend="securityContext">SecurityContext</link>  instances.</para>
+        </listitem>
+        <listitem>
+          <para>Collection of application lifecycle listeners  (<code>AppContext.Listener</code>).</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>When the application is started, <code>AppContext</code> is initialized using loader classes, specific for each application  <link linkend="app_tiers">block</link>:<itemizedlist>
+        <listitem>
+          <para> <structname>Middleware</structname> loader – <code>AppContextLoader</code></para>
+        </listitem>
+        <listitem>
+          <para> <structname>Web Client</structname> loader – <code>WebAppContextLoader</code></para>
+        </listitem>
+        <listitem>
+          <para> <structname>Web Portal</structname> loader – <code>PortalAppContextLoader</code></para>
+        </listitem>
+        <listitem>
+          <para> <structname>Desktop Client</structname> loader – <code>DesktopAppContextLoader</code></para>
+        </listitem>
+      </itemizedlist></para>
+    <para><code>AppContext</code> can be used in the application code for the following tasks:  <itemizedlist>
+        <listitem>
+          <para>Registering listeners, triggered after full initialization and before termination of the application, for example: <programlisting language="java">AppContext.addListener(new AppContext.Listener() {
+  @Override
+  public void applicationStarted() {
+      System.out.println(&quot;Application is ready&quot;);
+  }
+
+  @Override
+  public void applicationStopped() {
+      System.out.println(&quot;Application is closing&quot;);
+  }
+});</programlisting>  </para>
+          <para>At the moment of <code>applicationStarted()</code> call:<itemizedlist>
+              <listitem>
+                <para>All the  <link linkend="managed_beans">beans</link> are fully initialized and their  <code>@PostConstruct</code> methods are executed.</para>
+              </listitem>
+              <listitem>
+                <para>Static <code>AppBeans.get()</code> methods can be used for obtaining beans.</para>
+              </listitem>
+              <listitem>
+                <para>The <code>AppContext.isStarted()</code> method returns <code>true</code>.</para>
+              </listitem>
+              <listitem>
+                <para>If  <link linkend="cuba.automaticDatabaseUpdate">cuba.automaticDatabaseUpdate</link> application property is enabled, all database update scripts are successfully executed (in the Middleware block).</para>
+              </listitem>
+            </itemizedlist></para>
+          <para>At the moment of  <code>applicationStopped()</code> call:<itemizedlist>
+              <listitem>
+                <para>All the beans are operational and can be obtained via <code>AppBeans.get()</code> methods.</para>
+              </listitem>
+              <listitem>
+                <para><code>AppContext.isStarted()</code> method returns  <code>false</code>.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para>A real example of using <code>AppContext.Listener</code> can be found in <xref linkend="app_start_recipe"/>.</para>
+        </listitem>
+        <listitem>
+          <para>Checking that the application  <link linkend="app_tiers">block</link>  is fully initialized and ready to process requests. This check is usually required for bean methods, automatically run by <application>Spring</application> <link linkend="scheduled_tasks_spring">TaskScheduler</link>. </para>
+          <para>Example:<programlisting language="java">if (!AppContext.isStarted())
+  return;</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Getting the   <link linkend="app_properties">application property</link> values, stored in  <filename>app.properties</filename> files in case they are not available through <link linkend="config_interfaces">configuration interfaces</link>.</para>
+        </listitem>
+        <listitem>
+          <para>Passing <code>SecurityContext</code> to new execution threads, see <xref linkend="authentication"/>.</para>
+        </listitem>
+      </itemizedlist></para>
+    <tip>
+      <para>Use injection or static methods of <code>AppBeans</code> class to obtain references to  <application>Spring</application> beans. </para>
+      <para>It is not recommended to use  <code>AppContext.getApplicationContext().getBean()</code>.</para>
+    </tip>
+  </section>
+  <section id="app_properties">
+    <title>Application Properties </title>
+    <para>Application properties present named data of different types, which determine various aspects of application configuration and functions. </para>
+    <para>Application properties can be classified by the intended purpose as follows: </para>
+    <itemizedlist>
+      <listitem>
+        <para><firstterm>Configuration parameters</firstterm> – specify sets of configuration files and certain user interface parameters, i.e. determine the application functionality. </para>
+        <para>For example: <link linkend="cuba.springContextConfig">cuba.springContextConfig</link>, <link linkend="cuba.web.useLightHeader">cuba.web.useLightHeader</link>.</para>
+      </listitem>
+      <listitem>
+        <para><firstterm>Deployment parameters</firstterm> – describe different URLs to connect application  <link linkend="app_tiers">blocks</link>, DBMS type, security subsystem settings etc. </para>
+        <para>For example: <link linkend="cuba.connectionUrlList">cuba.connectionUrlList</link>, <link linkend="cuba.dbmsType">cuba.dbmsType</link>, <link linkend="cuba.userSessionExpirationTimeoutSec">cuba.userSessionExpirationTimeoutSec</link>.</para>
+      </listitem>
+      <listitem>
+        <para><firstterm>Runtime parameters</firstterm> – audit settings, email sending parameters etc.  </para>
+        <para>For example: <property>cuba.security.EntityLog.enabled</property>, <property>cuba.email.smtpHost</property>.</para>
+      </listitem>
+    </itemizedlist>
+    <para>Typically, a property belongs to one or several application  <link linkend="app_tiers">blocks</link>. For example, <link linkend="cuba.persistenceConfig">cuba.persistenceConfig</link> is only intended for <structname>Middleware</structname>, <link linkend="cuba.web.useLightHeader">cuba.web.useLightHeader</link>  belongs to  <structname>Web Client</structname>, while <link linkend="cuba.springContextConfig">cuba.springContextConfig</link> is used in all blocks.</para>
+    <para>Belonging to a block means that if you need to set some value to a property, you should do it  <emphasis>in all blocks</emphasis>, used in the application, to which this property belongs.</para>
+    <para>You can find out where a property belongs as per below: <itemizedlist>
+        <listitem>
+          <para>From the documentation: See  <xref linkend="app_properties_reference"/>. </para>
+        </listitem>
+        <listitem>
+          <para>By tracing property usage in the application code.  </para>
+        </listitem>
+        <listitem>
+          <para>If a property has an access via  <link linkend="config_interfaces">configuration interface</link>, by project  <link linkend="app_modules">module</link> owning the interface .</para>
+        </listitem>
+      </itemizedlist></para>
+    <section id="app_properties_access">
+      <title>Access to Properties</title>
+      <para><para> <link linkend="config_interfaces">Configuration interfaces</link> mechanism is the main way to get access to the application properties from the application code. In addition, all configuration and deployment parameters are available via  <link linkend="appContext">AppContext</link> class methods. </para></para>
+      <para>Some application blocks define JMX interfaces for application properties access. In particular, Middleware, Web Client and Web Portal blocks contain <link linkend="configStorageMBean">ConfigStorageMBean</link> JMX interface, which allows to get and set the value of any property at runtime. </para>
+    </section>
+    <section id="app_properties_files">
+      <title>Storing Properties in Files</title>
+      <para>The properties, which determine configuration and deployment parameters, are specified in special properties files, named using <filename>*-app.properties</filename> pattern. Each application  <link linkend="app_tiers">block</link> contains a set of such files, including files from platform  <link linkend="base_projects">base projects </link> and the current application file. Properties files set is defined as follows: </para>
+      <itemizedlist>
+        <listitem>
+          <para>For web applications blocks  (<structname>Middleware</structname>, <structname>Web Client</structname>, <structname>Web Portal</structname>) properties files set should be specified in  <filename>web.xml</filename> in  <literal>appPropertiesConfig</literal> parameter.</para>
+        </listitem>
+        <listitem>
+          <para>For<structname> Desktop Client</structname> block the standard way to specify properties files set is to override  <methodname>getDefaultAppPropertiesConfig()</methodname> method in <code>com.haulmont.cuba.desktop.App</code> descendant class.</para>
+        </listitem>
+      </itemizedlist>
+      <para>For example, properties files set of the  <structname>Middleware</structname> block is specified in    <filename>web/WEB-INF/web.xml</filename> file of the  <structname>core </structname>module, and looks as follows: </para>
+      <programlisting>classpath:cuba-app.properties
+classpath:app.properties
+file:${catalina.home}/conf/app-core/local.app.properties</programlisting>
+      <para>The <literal>classpath:</literal> prefix means that corresponding file can be found in Java classpath, while  <literal>file:</literal> prefix means that it should be accessed using file system path. Java system properties can be used, in this example it is <literal>catalina.home</literal> –    <application>Tomcat</application> root path. </para>
+      <para>Files declaration order is important as the values, specified in each subsequent file override the values of the same named properties, specified in the preceding files. This allows to override platform properties in application.  </para>
+      <para>The last file in the above set is <filename>local.app.properties</filename>. It can be used to override application properties upon deployment. If the file does not exist, it is ignored. However if application installation requires overriding of certain parameters (usually different URLs) you can create such file and place all overridden properties into it. It is easy to retain such file during further system updates. </para>
+      <para>For <structname>Desktop Client</structname> JVM command line arguments serve as an equivalent of  <filename>local.app.properties</filename>. Properties loader of this block treats all the arguments containing  &quot;<literal>=</literal>&quot; sign as a key/value pair and uses them to replace corresponding application properties specified in  <filename>app.properties</filename> files.</para>
+      <tip>
+        <para>The rules for data definition in   <filename>*.properties</filename> files:</para>
+        <itemizedlist>
+          <listitem>
+            <para>File encoding – <literal>UTF-8</literal>.</para>
+          </listitem>
+          <listitem>
+            <para>The key can contain Latin letters, numbers, periods and underscores.</para>
+          </listitem>
+          <listitem>
+            <para>The value is entered after  (<literal>=</literal>) sign.</para>
+          </listitem>
+          <listitem>
+            <para>Do not quote values using  &quot; or &apos; brackets.</para>
+          </listitem>
+          <listitem>
+            <para>Set file paths either in UNIX  (<filename>/opt/haulmont/</filename>) or Windows  (<filename>c:\\haulmont\\</filename>) format.</para>
+          </listitem>
+          <listitem>
+            <para>You can use  <literal>\n \t \r </literal>codes. The sign  <literal>\</literal> is a reserved code, use  (<literal>\\</literal>) to insert it in value.  See more in: <ulink url="http://docs.oracle.com/javase/tutorial/java/data/characters.html">http://docs.oracle.com/javase/tutorial/java/data/characters.html</ulink>.</para>
+          </listitem>
+          <listitem>
+            <para>Use <literal>\</literal> sign at the end of each line to enter a multi-line value. </para>
+          </listitem>
+        </itemizedlist>
+      </tip>
+    </section>
+    <section id="app_properties_db">
+      <title>Storing Properties in the Database</title>
+      <para>Runtime parameters are stored in  <database>SYS_CONFIG</database> table.  </para>
+      <para>Such properties have the following distinctive features:<itemizedlist>
+          <listitem>
+            <para>As the property value is stored in the database, it is defined in a single location, regardless of the application blocks in which it is used. </para>
+          </listitem>
+          <listitem>
+            <para>The value can be changed and saved at runtime both using  <link linkend="config_interfaces">configuration interface</link>, containing this property, or  <link linkend="configStorageMBean">ConfigStorageMBean</link>.</para>
+          </listitem>
+          <listitem>
+            <para>Property value can be overridden for a particular application block in its  <filename>app.properties</filename> files. Value search is always done in two stages – in  <filename>app.properties</filename> first, then if not found – in the database. </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The properties kept in the database are cached on the  <structname>Middleware</structname>. You can clean the cache via <link linkend="configStorageMBean">ConfigStorageMBean</link> JMX interfaces using <code>clearCache()</code> method or via <link linkend="cachingFacadeMBean">CachingFacadeMBean</link> using <code>clearConfigStorageCache()</code> method. </para>
+      <para>It is important to mention, that retrieving DB-stored properties on the client side leads to <structname>Middleware</structname> requests. This is less efficient than retrieving local properties from <filename>app.properties</filename> files. To reduce the number of such requests the client caches all the properties, kept in the DB, for the lifetime of configuration interface implementation instance. Thus, if you need to access the properties of a configuration interface from some UI screen for several times, it is better to get the reference to this interface at screen initialization and save it to a screen controller field for further access.  </para>
+    </section>
+    <section id="config_interfaces">
+      <title>Configuration Interfaces </title>
+      <para>The configuration interfaces mechanism allows working with application properties using Java interface methods, providing the following benefits: <itemizedlist>
+          <listitem>
+            <para>Typed access – application code works with actual data types (String, Boolean, Integer etc.) and not only with strings.</para>
+          </listitem>
+          <listitem>
+            <para>The application code uses interface methods instead of string property identifiers, so IDE can prompt their names. </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Example of transaction timeout value access in  <structname>Middleware</structname> block: <programlisting language="java">@Inject
+private ServerConfig serverConfig;
+
+public void doSomething() {
+  int timeout = serverConfig.getDefaultQueryTimeoutSec();
+  ...
+}</programlisting></para>
+      <para>If injection is impossible, the configuration interface reference can be obtained via <link linkend="configuration">Configuration</link> infrastructure interface: <programlisting language="java">int timeout = AppBeans.get(Configuration.class)
+  .getConfig(ServerConfig.class)
+  .getDefaultQueryTimeoutSec();</programlisting></para>
+      <warning>
+        <para>Configuration interfaces are not regular Spring beans. They can  only be obtained through explicit interface injection or via <code>Configuration.getConfig()</code> but not through  <code>AppBeans.get()</code> .</para>
+      </warning>
+      <section>
+        <title>Using Configuration Interfaces </title>
+        <para>Do the following to create a configuration interface: </para>
+        <itemizedlist>
+          <listitem>
+            <para>Create an interface inherited from  <code>com.haulmont.cuba.core.config.Config</code> (not to be confused with the entity class <code>com.haulmont.cuba.core.entity.Config</code>).</para>
+          </listitem>
+          <listitem>
+            <para>Add <code>@Source</code> annotation to the interface in order to identify the source (storing method) for parameters: <itemizedlist>
+                <listitem>
+                  <para><code>SourceType.SYSTEM</code> – the property value will be taken from the system properties of the given JVM, using <code> System.getProperty()</code> method.</para>
+                </listitem>
+                <listitem>
+                  <para><code>SourceType.APP</code> – the property value will be taken from  <filename>app.properties</filename> files.</para>
+                </listitem>
+                <listitem>
+                  <para><code>SourceType.DATABASE</code> – the property value will be taken from <database>SYS_CONFIG</database> table.</para>
+                </listitem>
+              </itemizedlist></para>
+          </listitem>
+          <listitem>
+            <para>Create property access methods (getters / setters). If the property value is not expected to be changed at runtime, setter is not needed.  Possible property types are described below. </para>
+          </listitem>
+          <listitem>
+            <para>Add  <code>@Property</code> annotation defining the property name to getter. </para>
+          </listitem>
+          <listitem>
+            <para>You can optionally set  <code>@Source</code> annotation for a particular property of the interface if its source differs from the interface source.   </para>
+          </listitem>
+        </itemizedlist>
+        <para>Example:<programlisting language="java">@Source(type = SourceType.DATABASE)
+public interface SalesConfig extends Config {
+
+  @Property(&quot;sales.companyName&quot;)
+  String getCompanyName();
+}</programlisting></para>
+        <para>There is no need to create implementation class for the configuration interface as required proxy will be automatically created.</para>
+      </section>
+      <section>
+        <title>Property Types </title>
+        <para>The following property types are supported without any additional efforts: <itemizedlist>
+            <listitem>
+              <para><code>String</code>, primitive types or their object wrappers  (<code>boolean</code>, <code>Boolean</code>, <code>int</code>, <code>Integer</code>, etc.)</para>
+            </listitem>
+            <listitem>
+              <para><code>enum</code>. The property value is stored in a file or in the database as the value name of the enumeration.</para>
+            </listitem>
+            <listitem>
+              <para>Persistent <link linkend="data_model">entity</link> classes. When accessing a property of the entity type, the instance defined by the property value is loaded from the database.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>To support arbitrary types use  <code>TypeStringify</code> and <code>TypeFactory</code> classes to convert the value to/from a string and specify these classes for property with <code>@Stringify</code> and <code>@Factory</code> annotations.</para>
+        <para>Let us consider this process using  <code>UUID</code> type as example. </para>
+        <itemizedlist>
+          <listitem>
+            <para>Create class  <code>com.haulmont.cuba.core.config.type.UuidTypeFactory</code> inherited from <code>com.haulmont.cuba.core.config.type.TypeFactory</code> and implement the following method in it:<programlisting language="java">public Object build(String string) {
+  if (string == null)
+      return null;
+  return UUID.fromString(string);
+}</programlisting></para>
+          </listitem>
+          <listitem>
+            <para>There is no need to create <code>TypeStringify</code> as <code>toString()</code> method is sufficient in this case. </para>
+          </listitem>
+          <listitem>
+            <para>Annotate the property in the configuration interface: <programlisting language="java">@Factory(factory = UuidTypeFactory.class)
+UUID getUuidProp();
+void setUuidProp(UUID value);</programlisting></para>
+          </listitem>
+        </itemizedlist>
+        <para>The platform provides <code>TypeFactory</code> implementations for the following types:</para>
+        <itemizedlist>
+          <listitem>
+            <para><code>UUID</code> – <code>UuidTypeFactory</code>, as described above.</para>
+          </listitem>
+          <listitem>
+            <para><code>java.util.Date</code> – <code>DateFactory</code>. Date value must be specified in <code>yyyy-MM-dd HH:mm:ss.SSS</code> format, for example: <programlisting>cuba.test.dateProp = 2013-12-12 00:00:00.000</programlisting></para>
+          </listitem>
+          <listitem>
+            <para><code>List&lt;Integer&gt;</code> (integer numbers list) – <code>IntegerListTypeFactory</code>. The property value must be specified in the form of numbers list, separated by spaces, for example:<programlisting>cuba.test.integerListProp = 1 2 3</programlisting></para>
+          </listitem>
+          <listitem>
+            <para><code>List&lt;String&gt;</code> (list of strings) – <code>StringListTypeFactory</code>. The property value must be specified as a list of strings separated by &quot;|&quot; sign, for example:<programlisting>cuba.test.stringListProp = aaa|bbb|ccc</programlisting></para>
+          </listitem>
+        </itemizedlist>
+      </section>
+      <section>
+        <title>Default Values </title>
+        <para>You can specify default values  for configuration interfaces properties. These values will be returned instead of <code>null</code> if the property is not defined in the storage location – DB or  <filename>app.properties</filename>.</para>
+        <para>The default value can be specified as a string using  <code>@Default</code> annotation, or as a specific type using other annotations from <code>com.haulmont.cuba.core.config.defaults</code> package:<programlisting language="java">@Property(&quot;cuba.email.adminAddress&quot;)
+@Default(&quot;address@company.com&quot;)
+String getAdminAddress();
+
+@Property(&quot;cuba.email.delayCallCount&quot;)
+@Default(&quot;2&quot;)
+int getDelayCallCount();
+
+@Property(&quot;cuba.email.defaultSendingAttemptsCount&quot;)
+@DefaultInt(10)
+int getDefaultSendingAttemptsCount();
+
+@Property(&quot;cuba.test.dateProp&quot;)
+@Default(&quot;2013-12-12 00:00:00.000&quot;)
+@Factory(factory = DateFactory.class)
+Date getDateProp();
+
+@Property(&quot;cuba.test.integerList&quot;)
+@Default(&quot;1 2 3&quot;)
+@Factory(factory = IntegerListTypeFactory.class)
+List&lt;Integer&gt; getIntegerList();
+
+@Property(&quot;cuba.test.stringList&quot;)
+@Default(&quot;aaa|bbb|ccc&quot;)
+@Factory(factory = StringListTypeFactory.class)
+List&lt;String&gt; getStringList();</programlisting></para>
+        <para>Default value for entities is a string of <literal>{entity_name}-{id}-{optional_view_name}</literal> type, for example: <programlisting language="java">@Default(&quot;sec$User-98e5e66c-3ac9-11e2-94c1-3860770d7eaf-browse&quot;)
+User getAdminUser();
+
+@Default(&quot;sec$Role-a294aef0-3ac9-11e2-9433-3860770d7eaf&quot;)
+Role getAdminRole();</programlisting></para>
+      </section>
+    </section>
+  </section>
+  <section id="localization">
+    <title>Messages Localization</title>
+    <para>Applications based on CUBA platform support messages localization, which means that all user interface elements can be displayed in the language, selected by user.</para>
+    <para>Language selection options are determined by the combination of  <link linkend="cuba.localeSelectVisible">cuba.localeSelectVisible</link> and <link linkend="cuba.availableLocales">cuba.availableLocales</link> application properties.  </para>
+    <para>This section describes the localization mechanism and rules of localized messages creation. For information about obtaining messages see <xref linkend="getting_messages"/>. </para>
+    <section id="message_packs">
+      <title>Message Packs</title>
+      <para>A message pack is a set of properties files with the names in format of <filename>messages{_XX}.properties </filename>located in a single Java package. <literal>XX</literal> suffix indicates the language of the messages in this file and corresponds to the language code in <code>Locale.getLanguage()</code>. It is also possible to use other  <code>Locale</code> attributes, for example, <code>country</code>. In this case the pack file will look like  <filename>messages{_XX_YY}.properties</filename>. One of the files in the pack can have no language suffix – it is the  <firstterm>default file</firstterm>. The name of the message pack corresponds to the name of the Java package, which contains the pack files. </para>
+      <para>Let us consider the following example: <programlisting>/com/abc/sales/gui/customer/messages.properties
+/com/abc/sales/gui/customer/messages_fr.properties
+/com/abc/sales/gui/customer/messages_ru.properties</programlisting></para>
+      <para>This pack consists of 3 files – one for the Russian language, one for the French and a default file. The name of the pack is  <code>com.abc.sales.gui.customer</code>. </para>
+      <para>Message files contain key/value pairs, where the key is the message identifier referenced by the application code, and the value is the message itself in the language of the file. The rules for matching pairs are similar to those of  <code>java.util.Properties</code> properties files with the following specifics:<itemizedlist>
+          <listitem>
+            <para>File encoding –  <code>UTF-8</code> only.</para>
+          </listitem>
+          <listitem>
+            <para>Including other message packs is supported using  <literal>@include</literal> key. Several packs can be included using comma-separated enumeration. In this case, if some message key is found in both the current and the included pack, the message from the current pack will be used. Example of including packs: <programlisting>@include=com.haulmont.cuba.web, com.abc.sales.web
+
+someMessage=Some Message
+...</programlisting></para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Messages are retrieved from the packs using <link linkend="messages">Messages</link> interface methods according to the following rules: <itemizedlist>
+          <listitem>
+            <para>At first step search is performed in the application  <link linkend="conf_dir">configuration directory</link>. <itemizedlist>
+                <listitem>
+                  <para> <filename>messages_XX.properties</filename> file is searched in the directory specified by the message pack name, where  <literal>XX</literal> is the code of the required language. </para>
+                </listitem>
+                <listitem>
+                  <para>If there is no such file, default <filename>messages.properties</filename> file is searched in the same directory.</para>
+                </listitem>
+                <listitem>
+                  <para>If either the required language file or the default file is found, it is loaded together with all <literal>@include</literal> files, and the key message is searched in it.</para>
+                </listitem>
+                <listitem>
+                  <para>If the file is not found or it does not contain the proper key, the directory is changed to the parent one and the search procedure is repeated. The search continues until the root of the configuration directory is reached.   </para>
+                </listitem>
+              </itemizedlist></para>
+          </listitem>
+          <listitem>
+            <para>If the message is not found in the configuration directory, the search is performed in classpath according to the same algorithm.</para>
+          </listitem>
+          <listitem>
+            <para>On client <link linkend="app_tiers">tier</link>, if the message is not found after the previous steps, the query is made to  <structname>Middleware</structname>, and the message is searched there in the similar way. </para>
+          </listitem>
+          <listitem>
+            <para>If the message is found, it is cached and returned. If not, the fact that the message is not present is cached as well and the key which was passed for search is returned. Thus, the complex search procedure is only performed once and further on the result is loaded from the local cache of the application block. </para>
+          </listitem>
+        </itemizedlist></para>
+      <tip>
+        <para>It is recommended to organize message packs as follows:  <itemizedlist>
+            <listitem>
+              <para>If the application is not intended for internationalization, you can include message strings directly into the application code instead of using packs or use  <filename>messages.properties</filename> default files to separate resources from code.  </para>
+            </listitem>
+            <listitem>
+              <para>If the application is international, it is reasonable to use default files for the language of the application primary audience or for the English language, so that the messages from these default files are displayed to the user if the messages in the required language are not found.  </para>
+            </listitem>
+          </itemizedlist></para>
+      </tip>
+    </section>
+    <section id="main_message_pack">
+      <title>Main Message Pack</title>
+      <para>Each standard application  <link linkend="app_tiers">block</link> should have its own  <firstterm>main</firstterm> message pack. For Client tier blocks the main message pack contains main menu entries and common UI elements names (for example, names of  <guibutton>OK</guibutton> and <guibutton>Cancel</guibutton> buttons). The main pack also determines <link linkend="datatype">Datatype</link> transformation formats for all application blocks, including <structname>Middleware</structname>.</para>
+      <para><link linkend="cuba.mainMessagePack">cuba.mainMessagePack</link> application property is used to specify the main message pack. The property value can be either a single pack or list of packs separated by spaces. For example: <programlisting>cuba.mainMessagePack=com.haulmont.cuba.web com.abc.sales.web</programlisting></para>
+      <para>In this case the messages in the second pack of the list will override those from the first pack. Thus, the messages defined in the  <link linkend="base_projects">base projects</link> packs can be overridden in the application project. </para>
+    </section>
+    <section id="entity_localization">
+      <title>Entity and Attributes Names Localization</title>
+      <para>To display localized names of the entities and attributes in UI, create special message packs in the Java packages containing the entities. Use the following format in message files: <itemizedlist>
+          <listitem>
+            <para>Key of the entity name – simple class name (without package).</para>
+          </listitem>
+          <listitem>
+            <para>Key of the attribute name – simple class name, then the name of the attribute separated by period.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The example of default English localization of  <code>com.abc.sales.entity.Customer</code> entity –  <filename>/com/abc/sales/entity/messages.properties</filename> file:  <programlisting>Customer=Customer
+Customer.name=Name
+Customer.email=Email
+
+Order=Order
+Order.customer=Customer
+Order.date=Date
+Order.amount=Amount</programlisting></para>
+      <para>Such message packs are usually used implicitly by the framework, for example, by <link linkend="gui_Table">Table</link> and <link linkend="gui_FieldGroup">FieldGroup</link> visual components.  Besides, you can obtain the names of the entities and attributes using the following methods: <itemizedlist>
+          <listitem>
+            <para>Programmatically – by <link linkend="messageTools">MessageTools</link> <code>getEntityCaption()</code>, <code>getPropertyCaption()</code> methods;</para>
+          </listitem>
+          <listitem>
+            <para>In XML screen descriptor – by reference to the message according to <link linkend="messageTools.loadString">MessageTools.loadString()</link> rules: <literal>msg://{entity_package}/{key}</literal>, for example: <programlisting language="xml">caption=&quot;msg://com.abc.sales.entity/Customer.name&quot;</programlisting></para>
+          </listitem>
+        </itemizedlist></para>
+    </section>
+    <section id="enum_localization">
+      <title>Enum Localization</title>
+      <para>To localize the enumeration names and values, add messages with the following keys to the message pack located in the Java package of the enumeration class:  <itemizedlist>
+          <listitem>
+            <para>Enumeration name key – simple class name (without package);</para>
+          </listitem>
+          <listitem>
+            <para>Value key – simple class name, then the value name separated by period.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>For example, for enum  <programlisting language="java">package com.abc.sales;
+
+public enum CustomerGrade { PREMIUM, HIGH, STANDARD }</programlisting></para>
+      <para>default English  localization file <filename>/com/abc/sales/messages.properties</filename> should contain the following lines: <programlisting>CustomerGrade=Customer Grade
+CustomerGrade.PREMIUM=Premium
+CustomerGrade.HIGH=High
+CustomerGrade.STANDARD=Standard</programlisting></para>
+      <para>Localized enum values are automatically used by different visual components such as <link linkend="gui_LookupField">LookupField</link>. You can obtain localized enum value programmatically: use  <code>getMessage()</code> method of the   <link linkend="messages">Messages</link> interface and simply pass the <code>enum</code> instance to it. </para>
+    </section>
+  </section>
+  <section id="authentication">
+    <title>User Authentication </title>
+    <para>This section describes some access control aspects from developer&apos;s point of view. For complete information on configuring user data access restrictions, see  <xref linkend="chapter_security"/>. </para>
+    <section id="userSession">
+      <title>UserSession</title>
+      <para>User Session is the main element of access control subsystem of the CUBA-application. It is represented by <code>UserSession</code> object, associated with the currently authenticated user in the system; it contains information about user rights to access data. The object of the current session can be obtained in any application  <link linkend="app_tiers">block</link> using <link linkend="userSessionSource">UserSessionSource</link> infrastructure interface. </para>
+      <para>The user session is created on  <structname>Middleware</structname> during <code>LoginService.login()</code> method execution after the user is authenticated using the provided name and password.  <code>UserSession</code> object is then cached in this Middleware block and is returned to the Client tier. When running in cluster, session object is replicated to all cluster members. The client tier also stores the session object after receiving it, associating it with the active user in one way or another (for example, in HTTP session). Further on all Middleware invocations on behalf of this user are followed by passing the session identifier (of  <code>UUID</code> type). This process does not need any special support in the application code, as the session identifier is passed automatically, regardless of the signature of invoked methods. Client invocations  processing in the Middleware starts from retrieving session from cache using the obtained identifier. Then the session is assigned to the execution thread. The session object is deleted from cache when  <code>LoginService.logout()</code> method is called or when the timeout defined by <link linkend="cuba.userSessionExpirationTimeoutSec">cuba.userSessionExpirationTimeoutSec</link> application property expires.</para>
+      <para>Thus the session identifier created when the user logs into the system is used for user authentication during each Middleware invocation.  </para>
+      <para> <code>UserSession</code> object also contains methods for current user  <firstterm>authorization</firstterm> – validation of the rights to access system objects: <code>isScreenPermitted()</code>, <code>isEntityOpPermitted()</code>, <code>isEntityAttrPermitted()</code>, <code>isSpecificPermitted()</code>.</para>
+      <para><code>UserSession</code> object can contain named attributes of arbitrary serializable type. The attributes are set by  <code>setAttribute()</code> method and returned by  <code>getAttribute()</code> method. The latter is also able to return the following session parameters, as if they were attributes:  <itemizedlist>
+          <listitem>
+            <para><code>userId</code> – ID of the currently registered or substituted user; </para>
+          </listitem>
+          <listitem>
+            <para><code>userLogin</code> –  login of the currently registered or substituted user in lowercase.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The attributes are replicated within the Middleware cluster, same as the rest session data. </para>
+    </section>
+    <section id="login">
+      <title>Login</title>
+      <para>Standard user login process: <itemizedlist>
+          <listitem>
+            <para>The user enters his username and password.</para>
+          </listitem>
+          <listitem>
+            <para>Application client block hashes the password using  <code>getPlainHash()</code> method of  <code>PasswordEncryption</code> bean and invokes <code>LoginService.login()</code>  Middleware method  passing the user login and password hash to it.</para>
+          </listitem>
+          <listitem>
+            <para><code>LoginService</code> delegates execution to the  <code>LoginWorker</code> bean, which loads <code>User</code> object by the entered login, hashes the obtained password hash again using user identifier as salt and compares the obtained hash to the password hash stored in the DB. In case of mismatch,  <code>LoginException</code> is thrown. </para>
+          </listitem>
+          <listitem>
+            <para>If the authentication is successful, all the access parameters of the user (roles list, rights, restrictions and session attributes) are loaded to the created <link linkend="userSession">UserSession</link> instance. </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Password hashing algorithm is implemented by the  <code>EncryptionModule</code> type bean and is specified in <link linkend="cuba.passwordEncryptionModule">cuba.passwordEncryptionModule</link> application property. SHA-1 is used by default. </para>
+      <para>It is possible that the user password (actually, password hash) is not stored in the database, but is verified by external means, for example, by means of integration with <application>ActiveDirectory</application>. In this case the authentication is in fact performed by the Client block, while the Middleware “trusts” the client by creating the session based on user login only, without the password, using  <code>LoginService.loginTrusted()</code> method. This method requires satisfying the following conditions:  <itemizedlist>
+          <listitem>
+            <para>The client block has to pass the so-called trusted password, specified in <link linkend="cuba.trustedClientPassword">cuba.trustedClientPassword</link> Middleware and Client block application property.</para>
+          </listitem>
+          <listitem>
+            <para>IP address of the client block has to match the mask, specified in <link linkend="cuba.trustedClientPermittedIpMask">cuba.trustedClientPermittedIpMask</link> application property.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Login to the system is also required for scheduled automatic processes as well as for connecting to the  Middleware beans using JMX interface. Formally, these actions are considered administrative and they do not require authentication as long as no entities are changed in the database. When an entity is persisted to the database, the process requires login of the user who is making the change so that the login of the user responsible for the changes is stored.   </para>
+      <para>An additional benefit from login to the system for an automatic process or for JMX call is that the server log output is displayed with the current user login if the user session is set to the execution thread.  This simplifies searching messages created by specific process during log parsing.  </para>
+      <para>System  access  for the processes within Middleware is done using  <code>LoginWorker.loginSystem()</code> call passing the login (without password) of the user on whose behalf the process will be executed. As result, <link linkend="userSession">UserSession</link> object will be created and cached in the corresponding Middleware block but it will not be replicated in the cluster.  </para>
+      <para>See more about processes authentication inside Middleware in <xref linkend="system_authentication"/>.</para>
+    </section>
+    <section id="securityContext">
+      <title>SecurityContext</title>
+      <para> <code>SecurityContext</code> class instance stores information about the user session for the current execution thread. It is created and passed to  <code>AppContext.setSecurityContext()</code> method in the following moments: <itemizedlist>
+          <listitem>
+            <para>For <structname>Web Client</structname> and <structname>Web Portal</structname> blocks – at the beginning of processing of each HTTP request from the user browser. </para>
+          </listitem>
+          <listitem>
+            <para>For <structname>Middleware</structname> block – at the beginning of processing of each request from the Client tier. </para>
+          </listitem>
+          <listitem>
+            <para>For <structname>Desktop Client</structname> block – once after the user login, as the desktop application is running in single user mode. </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>In the first two cases,   <code>SecurityContext</code> is removed from the execution thread when the request execution is finished. </para>
+      <para>If you create a new execution thread from the application code, pass the current  <code>SecurityContext</code> instance to it as in the example below: <programlisting language="java">final SecurityContext securityContext = AppContext.getSecurityContext();
+executor.submit(new Runnable() {
+  public void run() {
+      AppContext.setSecurityContext(securityContext);
+      // business logic here
+  }
+});</programlisting></para>
+    </section>
+  </section>
+  <section id="exception_handling">
+    <title>Exceptions Handling </title>
+    <para>This section describes various aspects of working with exceptions in CUBA applications. </para>
+    <section id="exception_classes">
+      <title>Exception Classes </title>
+      <para>The following rules should be followed when creating your own exception classes:  <itemizedlist>
+          <listitem>
+            <para>If the exception is part of business logic and requires some non-trivial actions to handle it, the exception class should be made checked (inherited from  <code>Exception</code>). Such exceptions are handled by the invoking code.</para>
+          </listitem>
+          <listitem>
+            <para>If the exception indicates an error and assumes interruption of execution and a simple action like displaying the error information to the user, its class should be unchecked (inherited from  <code>RuntimeException</code>). Such exceptions are processed by special <link linkend="exceptionHandlers">handler classes</link> registered in Client blocks of the application. </para>
+          </listitem>
+          <listitem>
+            <para>If the exception is thrown and processed in the same  <link linkend="app_tiers">block</link>, its class should be declared in corresponding <link linkend="app_modules">module</link>. If the exception is thrown on  Middleware and processed on the Client tier, the exception class should be declared in the  <structname>global</structname> module. </para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The platform contains a special unchecked exception class <code>SilentException</code>. It can be used to interrupt execution without showing any messages to the user or writing them to the log. <code>SilentException</code> is declared in the global module, and therefore is accessible both in Middleware and Client blocks.</para>
+    </section>
+    <section id="remoteException">
+      <title>Passing Middleware Exceptions </title>
+      <para>If an exception is thrown on Middleware as result of handling a client request, the execution terminates and the exception object is returned to the Client. The object usually includes the chain of underlying exceptions. This chain can contain classes which are inaccessible for Client tier (for example, JDBC driver exceptions). For this reason, instead of sending this chain to the Client we send its presentation inside specially created  <code>RemoteException</code> object. </para>
+      <para>The information about the causing exceptions is stored as a list of <code>RemoteException.Cause</code> objects. Each <code>Cause</code> object always contains an exception class name and its message. Moreover, if the exception class is “supported by client”,  <code>Cause</code> stores the exception object as well. This allows passing information to the Client in the exception fields.    </para>
+      <para>Exception class should be annotated by  <code>@SupportedByClient </code>if its objects should be passed to the Client tier as Java objects. For example: <programlisting language="java">@SupportedByClient
+public class WorkflowException extends RuntimeException {
+...</programlisting></para>
+      <para>Thus, when an exception is thrown on Middleware and it is not annotated by  <code>@SupportedByClient</code> the calling Client code will receive  <code>RemoteException</code> containing original exception information in a string form. If the source exception is annotated by  <code>@SupportedByClient</code>, the caller will receive it directly. This enables handling the exceptions declared by Middleware <link linkend="services">services</link> in the application code in the traditional way – using  <code>try...catch</code> blocks.    </para>
+      <para>Bear in mind that if you need the exception supported by client to be passed on the client as an object, it should not contain any unsupported exceptions in its <code>getCause()</code> chain. Therefore, if you create an exception instance on Middleware and want to pass it to the client, specify cause parameter only if you are sure that it contains the exceptions known to the client. </para>
+      <para><code>ServiceInterceptor</code> class is a <link linkend="services">service</link> interceptor which packs the exception objects before passing them to the client tier. Besides, it performs exceptions logging. All information about the exception including full stack trace is output to the log by default. If it is not desirable, add <code>@Logging</code> annotation to the exception class and specify the logging level: <itemizedlist>
+          <listitem>
+            <para><code>FULL</code> – full information, including stacktrace (default). </para>
+          </listitem>
+          <listitem>
+            <para><code>BRIEF</code> – exception class name and message only. </para>
+          </listitem>
+          <listitem>
+            <para><code>NONE</code> – no output.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>For example:<programlisting language="java">@SupportedByClient
+@Logging(Logging.Type.BRIEF)
+public class FinancialTransactionException extends Exception {
+...</programlisting></para>
+    </section>
+    <section id="exceptionHandlers">
+      <title>Client-Level Exception Handlers </title>
+      <para>Unhandled exceptions in Web Client and Desktop Client  <link linkend="app_tiers">blocks</link> thrown in Client tier or passed from Middleware, are passed to the special handlers mechanism. This mechanism is similar for both blocks; however, it uses different (although mainly homonymous) implementation classes.    </para>
+      <para>Let us consider the example of the mechanism in Web Client block. </para>
+      <para>The bean of <code>ExceptionHandlersConfiguration</code> class is declared in  <link linkend="spring.xml">spring.xml</link> file of the block. The handler class names list is specified in  <code>handlerClasses</code> property. For example:  <programlisting language="java">&lt;bean id=&quot;sales_exceptionHandlersConf&quot; class=&quot;com.haulmont.cuba.web.exception.ExceptionHandlersConfiguration&quot;&gt;
+  &lt;property name=&quot;handlerClasses&quot;&gt;
+      &lt;list&gt;
+          &lt;value&gt;com.sample.sales.web.exception.ZeroBalanceExceptionHandler&lt;/value&gt;
+          &lt;value&gt;com.sample.sales.web.exception.InvalidCustomerStateExceptionHandler&lt;/value&gt;
+      &lt;/list&gt;
+  &lt;/property&gt;
+&lt;/bean&gt;</programlisting></para>
+      <para>The bean identifier should be unique and should not coincide with any of the beans in <link linkend="base_projects">base projects</link>, as the base projects, in turn, may contain similar configuration beans with their own identifiers. </para>
+      <para>The handler should implement  <code>ExceptionHandler</code> interface, handle processing in its  <code>handle()</code> method and return  <code>true</code>, or immediately return  <code>false</code>, if this handler is not able to handle the designated exception. This behaviour enables creating “chain of responsibility” for handlers.  </para>
+      <para>It is recommended to inherit your own handler from  <code>AbstractExceptionHandler</code> base class, which is able to disassemble the exceptions chain (including ones packed inside <code>RemoteException</code>) and handle specific exception types. Exceptions types supported by this handler are defined by passing strings array to the base constructor from the handler constructor. Each string of the array should contain one full class name of the handled exception, for example: <programlisting language="java">public class ReportExceptionHandler extends AbstractExceptionHandler {
+
+  public ReportExceptionHandler() {
+      super(ReportingException.class.getName(),
+            FailedToConnectToOpenOfficeException.class.getName(),
+            UnsupportedFormatException.class.getName());
+  }
+...</programlisting></para>
+      <para>If the exception class is not accessible on Client side, specify its name with string literal: <programlisting language="java">public class OptimisticExceptionHandler extends AbstractExceptionHandler {
+
+  public OptimisticExceptionHandler() {
+      super(&quot;org.springframework.orm.jpa.JpaOptimisticLockingFailureException&quot;);
+  }
+...</programlisting></para>
+      <para>In the case of using  <code>AbstractExceptionHandler</code> as base class, the processing logic is located in  <code>doHandle()</code> method and  looks as  follows for Web Client:<programlisting language="java">@Override
+protected void doHandle(App app, String className, String message, @Nullable Throwable throwable) {
+  String msg = messages.getMainMessage(&quot;zeroBalance.message&quot;);
+  app.getAppWindow().showNotification(msg, Window.Notification.TYPE_ERROR_MESSAGE);
+}</programlisting></para>
+      <para>If the name of the exception class is insufficient to make a decision  whether this handler can be applied to the exception,  <code>canHandle()</code> method should be defined. Above all, this method accepts the text of the exception. If the handler is applicable for this exception, the method must return  <code>true</code>. For example:<programlisting language="java">public class NumericOverflowExceptionHandler extends AbstractExceptionHandler {
+
+  public NumericOverflowExceptionHandler() {
+      super(ReportingSQLException.class.getName());
+  }
+
+  @Override
+  protected boolean canHandle(String className, String message, @Nullable Throwable throwable) {
+      return StringUtils.containsIgnoreCase(message, &quot;Numeric field overflow&quot;);
+  }
+...</programlisting></para>
+    </section>
+  </section>
+</section>

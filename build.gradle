@@ -1,0 +1,88 @@
+ext.docSrcDir = file('content')
+ext.docToolsDir = file('tools')
+ext.docCssDir = new File(docToolsDir, 'css')
+ext.docJsDir = new File(docToolsDir, 'js')
+ext.docDstDir = new File("$buildDir/doc")
+ext.docTmpDir = new File("$buildDir/tmp/doc")
+
+repositories {
+    mavenLocal()
+    maven {
+        credentials {
+            username System.getenv('HAULMONT_REPOSITORY_USER')
+            password System.getenv('HAULMONT_REPOSITORY_PASSWORD')
+        }
+        url "http://repository.haulmont.com:8587/nexus/content/groups/work"
+    }
+}
+
+apply(plugin: 'idea')
+
+configurations {
+    prepareStyleSheets
+    buildDoc
+    docFonts
+    webHelpXslt
+    webHelpIndexer
+}
+
+dependencies {
+    buildDoc 'xalan:xalan:2.7.1'
+    buildDoc 'xerces:xercesImpl:2.9.1'
+    buildDoc module('com.haulmont.thirdparty:xhtmlrenderer:R8rc1') {
+        dependency 'com.haulmont.thirdparty:itext:2.0.8@jar'
+    }
+    buildDoc 'com.haulmont.thirdparty:xslthl:2.0.1@jar'
+    prepareStyleSheets 'com.haulmont.thirdparty:docbook-xsl:1.78.1.20130911@zip'
+    docFonts 'com.haulmont.thirdparty:doc-fonts:1.0@zip'
+    webHelpXslt 'com.haulmont.thirdparty:saxon:6.5.5'
+    webHelpIndexer "com.haulmont.thirdparty:webhelpindexer:1.0.1-pre@jar"
+}
+
+task clean(type: Delete) {
+    delete 'build', 'buildSrc/build'
+}
+
+task prepareStyleSheets(type: Copy) {
+    File xslDir = file('tools/xsl')
+    into new File(project.buildDir, 'xsl')
+    from(xslDir) {
+        include '*.xsl'
+    }
+    from(project.zipTree(project.configurations.prepareStyleSheets.singleFile)) {
+        // Remove the prefix
+        eachFile { fcd -> fcd.path = fcd.path.replaceFirst('^docbook-xsl-[0-9\\.]+/', '') }
+    }
+}
+
+def commonXslParameters = [
+        'toc.section.depth': '5',
+        'chunk.section.depth': '5',
+        'section.autolabel': '1',
+        'chapter.autolabel': '1',
+        'appendix.autolabel': 'A',
+        'admon.textlabel': 0
+    ]
+
+task buildManual(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+    docName = 'manual'
+    docLang = 'en'
+}
+
+task buildManualRu(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+    docName = 'manual'
+    docLang = 'ru'
+}
+
+task buildManualWebHelp(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
+    docName = 'manual'
+    docLang = 'en'
+    xslParameters = commonXslParameters
+}
+
+task buildManualWebHelpRu(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
+    docName = 'manual'
+    docLang = 'ru'
+    xslParameters = commonXslParameters
+}
+

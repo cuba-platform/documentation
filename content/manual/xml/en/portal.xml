@@ -1,0 +1,365 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<section id="portal">
+  <title>Portal Components</title>
+  <para>In this manual, a  <firstterm>portal</firstterm> is a client  <link linkend="app_tiers">block</link>, which can solve the following problems:<itemizedlist>
+      <listitem>
+        <para>provide an alternative web-interface, which is usually intended for users outside of the organization;</para>
+      </listitem>
+      <listitem>
+        <para>provide an interface for integration with mobile applications and third-party systems.</para>
+      </listitem>
+    </itemizedlist></para>
+  <para>A specific application may contain several portal modules intended for different purposes; for example, in an application, which automates business tasks, it can be a public web site for customers, an integration module for a mobile application for ordering a taxi, an integration module for a mobile application for drivers, etc.</para>
+  <para>The <structname>cuba</structname> <link linkend="base_projects">base project</link> of the platform includes the  <structname>portal</structname> module, which is a template to create portals in projects. First, it provides basic functionality of the client block to work with Middleware, and second, it includes the universal <link linkend="rest_api">REST API</link> to work with entities.</para>
+  <section id="portal_basic_func">
+    <title>Basic Functionality</title>
+    <para>Below is an overview of the main components provided by the platform to build a portal.<itemizedlist>
+        <listitem>
+          <para><code>PortalAppContextLoader</code> – the  <link linkend="appContext">AppContext</link> loader; must be registered in the  <sgmltag>listener</sgmltag> element of the  <filename>web.xml</filename> file.</para>
+        </listitem>
+        <listitem>
+          <para><code>PortalDispatcherServlet</code> – the central servlet that distributes requests to  <application>Spring MVC</application> controllers, for both the web interface and REST API. The set of files of the Spring context config is defined by the   <link linkend="cuba.dispatcherSpringContextConfig">cuba.dispatcherSpringContextConfig</link> application property. This servlet must be registered in  <filename>web.xml</filename> and displayed in the root URL of the web application.</para>
+        </listitem>
+        <listitem>
+          <para><code>App</code> – the object that contains information on the current HTTP request and the reference to  <code>Connection</code> object. The  <code>App</code> instance can be obtained in the application code by calling the  <code>App.getInstance()</code> static method.</para>
+        </listitem>
+        <listitem>
+          <para><code>Connection</code> – allows a user to log  in/out  of the <structname>Middleware</structname>.</para>
+        </listitem>
+        <listitem>
+          <para><code>PortalSession</code> – the object of a  <link linkend="userSession">user session</link> that is specific for the portal. It is returned by the <link linkend="userSessionSource">UserSessionSource</link> infrastructure interface and by the  <code>PortalSessionProvider.getUserSession()</code> static method.</para>
+          <para>It has an additional  <code>isAuthenticated()</code> method, which returns  <code>true</code> if this session belongs to a non-anonymous user, i.e. a user explicitly registered with the login and password.</para>
+          <para>When a user first accesses the portal, the  <code>SecurityContextHandlerInterceptor</code> creates an anonymous session for him (or ties to an already existing one) by registering at Middleware with a user name specified in the  <link linkend="cuba.portal.anonymousUserLogin">cuba.portal.anonymousUserLogin</link> application property. The registration is made by <link linkend="login"> loginTrusted()</link> method, so it is necessary to set the   <link linkend="cuba.trustedClientPassword">cuba.trustedClientPassword</link> property in the portal block as well. Thus, any anonymous user of the portal can work with  <structname>Middleware</structname> with <code>cuba.portal.anonymousUserLogin</code> user rights.
+</para>
+          <para>If the portal contains user registration page with name and password <code>SecurityContextHandlerInterceptor</code> assigns the session of the explicitly registered user to the execution thread after       <code>Connection.login()</code> is executed, and the work with <structname>Middleware</structname> is performed on this user&apos;s behalf.</para>
+        </listitem>
+        <listitem>
+          <para><code>PortalLogoutHandler</code> – handles the navigation to the logout page. It must be registered in the  <filename>portal-security-spring.xml</filename> project file.</para>
+        </listitem>
+      </itemizedlist></para>
+  </section>
+  <section id="rest_api"><title>REST API</title><para>The universal REST API of the platform allows to load and save any entities defined in the application data model by sending simple HTTP requests. This provides easy way to integrate with a wide range of third-party applications – from the JavaScript code executed in the browser to arbitrary systems running on Java, .NET, PHP or any other platform.</para><para>Key API features:<itemizedlist>
+        <listitem>
+          <para>Loading entity instances from the database by identifier or by JPQL query with parameters.</para>
+        </listitem>
+        <listitem>
+          <para>Saving new and modified instances, deleting instances.</para>
+        </listitem>
+        <listitem>
+          <para>Obtaining a description of the data model in HTML format.</para>
+        </listitem>
+        <listitem>
+          <para>Data representation in JSON and XML formats.</para>
+        </listitem>
+        <listitem>
+          <para>User authentication.</para>
+        </listitem>
+      </itemizedlist></para>All functions work with data in UTF-8 format.<section>
+      <title>Including in a Project</title>
+      <para>REST API is implemented in the <structname>portal</structname> module of the  <structname>cuba</structname> base project, therefore you need to create  <structname>portal</structname> module in your application project. The easiest way to do this is to run the <guibutton>Create portal module</guibutton> command on the <guilabel>Project properties</guilabel> panel of the <link linkend="cubaStudio_install">CUBA Studio</link> navigator.</para>
+      <para>Key configuration elements:<itemizedlist>
+          <listitem>
+            <para>Add REST API controllers to Spring context defined by the <link linkend="dispatcher-spring.xml">portal-dispatcher-spring.xml</link>     file:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.haulmont.cuba.portal.restapi&quot;/&gt;</programlisting></para>
+          </listitem>
+          <listitem>
+            <para>Set access mode in  <filename>portal-security-spring.xml</filename>:<programlisting language="xml">&lt;intercept-url pattern=&quot;/api/**&quot; access=&quot;IS_AUTHENTICATED_ANONYMOUSLY&quot;/&gt;</programlisting></para>
+          </listitem>
+        </itemizedlist></para>
+    </section><section>
+      <title>Describing Functions</title>
+      <para>With standard settings of the  <structname>portal</structname> module, all requests to REST API must have the URL starting with  <literal>{host:port}/app-portal/api</literal>.</para>
+      <para>All functions require an authenticated user session, which means that you must perform the login first and then pass the resulting session identifier to subsequent requests.</para>
+      <section id="rest_api.login">
+        <title>Login</title>
+        <para>Login can be performed by either GET or POST request.</para>
+        <variablelist>
+          <varlistentry>
+            <term>GET request</term>
+            <listitem>
+              <para>For GET request, create the URL  <code>{host:port}/app-portal/api/login</code> with the following parameters:</para>
+              <itemizedlist>
+                <listitem>
+                  <para><emphasis role="bold">u</emphasis> − user login</para>
+                </listitem>
+                <listitem>
+                  <para><emphasis role="bold">p</emphasis> − user password</para>
+                </listitem>
+                <listitem>
+                  <para><emphasis role="bold">l</emphasis> − user locale (optional)</para>
+                </listitem>
+              </itemizedlist>
+              <para>For example:</para>
+              <programlisting>http://localhost:8080/app-portal/api/login?u=admin&amp;p=admin&amp;l=ru</programlisting>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>POST request</term>
+            <listitem>
+              <para>To perform login using POST, execute request by <code>{host:port}/app-portal/api/login</code> address, passing JSON (<code>Content-Type</code> header has the value  <code>application/json</code>) or form  (<code>Content-Type</code> header has the value  <code>application/x-www-form-urlencoded</code>) in request body. </para>
+              <para>Example of the JSON format:</para>
+              <programlisting language="json">{
+  &quot;username&quot; : &quot;admin&quot;,
+  &quot;password&quot; : &quot;admin&quot;,
+  &quot;locale&quot; : &quot;en&quot;
+}</programlisting>
+              <para>Example of the form:</para>
+              <programlisting>username: admin
+password: admin
+locale: en</programlisting>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+        <para>The service will return  <code>userSessionId</code> in response body and status 200 or status 401 if the authentication fails.</para>
+      </section>
+      <section id="rest_api.logout">
+        <title>Logout</title>
+        <para>Logout can also be performed by either GET or POST request.</para>
+        <variablelist>
+          <varlistentry>
+            <term>GET request</term>
+            <listitem>
+              <para>To perform login using GET, construct the URL  <code>{host:port}/app-portal/api/logout</code> with the  <emphasis role="bold">session</emphasis> parameter containing the current session ID obtained by calling <code>login</code>.</para>
+              <para>For example:</para>
+              <programlisting>http://localhost:8080/app-portal/api/logout?session=64f7d59d-2cf5-acfb-f4d3-f55b7882da72</programlisting>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>POST request</term>
+            <listitem>
+              <para>To perform login using POST, send request to <code>{host:port}/app-portal/api/logout</code> URL, passing JSON (<code>Content-Type</code> header has the value  <code>application/json</code>) or form  (<code>Content-Type</code> header has the value  <code>application/x-www-form-urlencoded</code>)  in request body.</para>
+              <para>Example of the JSON format:</para>
+              <programlisting language="json">{
+  &quot;session&quot; : &quot;64f7d59d-2cf5-acfb-f4d3-f55b7882da72&quot;
+}</programlisting>
+              <para>Example of the form:</para>
+              <programlisting>session: 64f7d59d-2cf5-acfb-f4d3-f55b7882da72</programlisting>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+        <para>The service will return status 200.</para>
+      </section>
+      <section id="rest_api.find">
+        <title>Loading a Persistent Object Instance From the Database by Identifier</title>
+        <para>To load an object, you should perform GET request <code>{host:port}/app-portal/api/find.&lt;format&gt;?e=&lt;entityRef&gt;&amp;s=&lt;sessionId&gt;</code> with the following parameters:</para>
+        <itemizedlist>
+          <listitem>
+            <para><emphasis role="bold">e</emphasis> − the description of the required object in  <code>&lt;entity-id&gt;</code> or  <code>&lt;entity-id-view&gt;</code> format (see <link linkend="link_to_screen">EntityLoadInfo</link>). For example, <code>sales$Order-43c61345-d23c-48fe-ab26-567504072f05-_local</code>. Thus, the format allows to specify required  <link linkend="views">view</link>  of the loaded object.</para>
+          </listitem>
+          <listitem>
+            <para><emphasis role="bold">s</emphasis> − current session identifier.</para>
+          </listitem>
+        </itemizedlist>
+        <para><emphasis role="bold">format</emphasis> element of the request specifies the result format. It takes two values: <code>xml</code> and <code>json</code>.</para>
+        <para>Example of a request, which returns the result in  <code>xml</code> format:</para>
+        <programlisting>http://localhost:8080/app-portal/api/find.xml?e=sales$Order-60885987-1b61-4247-94c7-dff348347f93-orderWithCustomer&amp;s=c38f6bf4-fae7-4ee6-a412-9d93ff243f23</programlisting>
+        <para>Example of request, which returns the result in <code>json</code> format:</para>
+        <programlisting>http://localhost:8080/app-portal/api/find.json?e=sales$Order-60885987-1b61-4247-94c7-dff348347f93-orderWithCustomer&amp;s=c38f6bf4-fae7-4ee6-a412-9d93ff243f23</programlisting>
+      </section>
+      <section id="rest_api.query">
+        <title>Executing JPQL Query to Retrieve Data</title>
+        <para>To execute a query, the <code>{host:port}/app-portal/api/query.&lt;format&gt;?e=&lt;entity&gt;&amp;s=&lt;sessionId&gt;&amp;q=&lt;encoded query string&gt;&amp;param1=&lt;value 1&gt;$param1_type=&lt;type 1&gt;&amp;paramN=&lt;value N&gt;&amp;paramN_type=&lt;type N&gt;&amp;view=&lt;viewName&gt;&amp;firstResult=&lt;firstResult&gt;&amp;maxResults=&lt;maxResults&gt;</code> GET request should be performed with the following parameters:</para>
+        <itemizedlist>
+          <listitem>
+            <para><emphasis role="bold">e</emphasis> − the name of the entity.</para>
+          </listitem>
+          <listitem>
+            <para><emphasis role="bold">q</emphasis> − a  <link linkend="jpql">JPQL</link> data query. The request may contain parameters. Their values are provided as values of same-named parameters of HTTP query.</para>
+          </listitem>
+          <listitem>
+            <para><emphasis role="bold">s</emphasis> − the identifier of the current session.</para>
+          </listitem>
+          <listitem>
+            <para><emphasis role="bold">view</emphasis> (optional)  − the <link linkend="views">view</link>, which should be used to load data.</para>
+          </listitem>
+          <listitem>
+            <para><emphasis role="bold">max</emphasis> (optional) − maximum number of rows in resulting dataset (similar to JPA    <code>setMaxResults</code>).</para>
+          </listitem>
+          <listitem>
+            <para><emphasis role="bold">first</emphasis> (optional) − number of the first row of resulting dataset (similar to JPA  <code>setFirstResult</code>).</para>
+          </listitem>
+        </itemizedlist>
+        <para><emphasis role="bold">format</emphasis> specifies the format of obtaining the result. It takes two values:  <code>xml</code> or <code>json</code>.</para>
+        <para>Examples:</para>
+        <programlisting>http://localhost:8080/app-portal/api/query.json?e=sales$Customer&amp;q=select%20c%20from%20sales$Customer%20c&amp;s=748e5d3f-1eaf-4b38-bf9d-8d838587367d&amp;view=_local</programlisting>
+        <programlisting>http://localhost:8080/app-portal/api/query.json?e=sales$Customer&amp;q=select%20c%20from%20sales$Customer%20c%20where%20c.name=:specName&amp;s=748e5d3f-1eaf-4b38-bf9d-8d838587367d&amp;specName=Петров</programlisting>
+        <para>For each of the passed parameters, the  type can be explicitly specified by adding the parameter of the same name and the  <code>_type</code> suffix to the request. For example:</para>
+        <programlisting>http://localhost:8080/app-portal/api/query.json?e=sales$Customer&amp;q=select%20c%20from%20sales$Customer%20c%20where%20c.name=:specName&amp;s=748e5d3f-1eaf-4b38-bf9d-8d838587367d&amp;specName=Петров&amp;specName_type=string</programlisting>
+        <para>Specifying parameter type is optional, however it allows to avoid parsing errors if the system cannot determine the type automatically.</para>
+        <para>Normally, the type should be specified only for string parameters, which for some reason have a more specific  format types (dates, numbers, UUID), but must be interpreted as strings.</para>
+        <para>The list of available types can be found in meta-model description (<guimenu>Help</guimenu> -&gt; <guimenu>Data Model</guimenu>) or by obtaining the  <link linkend="getHTMLModel">HTML-description of the model</link>.</para>
+      </section>
+      <section id="rest_api.commit">
+        <title>Committing New and Modified Instances, Removal</title>
+        <para>The commit function allows to perform operations on objects passed to it, and returns their old and new states. The format of the result depends on format (JSON or XML) used for the request (the  <code>Content-Type</code> header). </para>
+        <variablelist>
+          <varlistentry>
+            <term>JSON format</term>
+            <listitem>
+              <para>You should use   <code>Content-Type</code> as the value of <code>application/json</code> header.</para>
+              <para>Creating a <code>Customer</code> entity with an automatically generated identifier:</para>
+              <programlisting language="json">{
+  &quot;commitInstances&quot;: [{
+      &quot;id&quot;: &quot;NEW-sales$Customer&quot;,
+      &quot;name&quot;: &quot;Lawrence&quot;,
+      &quot;email&quot;: &quot;lawrence@mail.com&quot;
+      }
+  ]
+}</programlisting>
+              <para>Creating a <code>Customer</code> entity with a specified identifier:</para>
+              <programlisting language="json">{
+  &quot;commitInstances&quot;: [{
+      &quot;id&quot;: &quot;NEW-sales$Customer-b32a6412-d4d9-11e2-a20b-87b22b1460c7&quot;,
+      &quot;name&quot;: &quot;Bradley&quot;,
+      &quot;email&quot;: &quot;bradley@mail.com&quot;
+      }
+  ]
+}</programlisting>
+              <para>Creating the <code>Order</code> entity,  specifying a link to a new <code>Customer</code> entity and filling the <code>Customer</code> entity with attributes:</para>
+              <programlisting language="json">{
+  &quot;commitInstances&quot;: [{
+      &quot;id&quot;: &quot;NEW-sales$Order&quot;,
+      &quot;amount&quot;: 15,
+      &quot;customer&quot;:
+          {&quot;id&quot;: &quot;NEW-sales$Customer-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff&quot;
+          }
+      },{
+          &quot;id&quot;: &quot;sales$Customer-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff&quot;,
+          &quot;name&quot;: &quot;Fletcher&quot;,
+          &quot;email&quot;: &quot;fletcher@mail.com&quot;
+         }
+  ]
+}</programlisting>
+              <para>Changing two <code>Customer</code> entities simultaneously:</para>
+              <programlisting language="json">{
+  &quot;commitInstances&quot;: [{
+        &quot;id&quot;: &quot;sales$Customer-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff&quot;,
+        &quot;email&quot;: &quot;fletcher@mail.ru&quot;
+      },
+      {
+        &quot;id&quot;: &quot;sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab&quot;,
+        &quot;email&quot;: &quot;lawrence@mail.ru&quot;
+      }
+  ]
+}</programlisting>
+              <para>Removing the <code>Customer</code> entity with  <link linkend="soft_deletion">soft deletion</link> support:</para>
+              <programlisting language="json">{
+  &quot;removeInstances&quot;: [{
+      &quot;id&quot;: &quot;sales$Customer-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff&quot;
+      }
+  ],
+  &quot;softDeletion&quot;: &quot;true&quot;
+}</programlisting>
+              <itemizedlist>
+                <listitem>
+                  <para>The  <code>commitInstances</code> array contains created and modified entities.</para>
+                  <itemizedlist>
+                    <listitem>
+                      <para>When creating an entity, <code>id</code> or   <code>NEW-&lt;entityName&gt;</code> should be specified as the value of the <code>NEW-&lt;entityName&gt;-&lt;uuid&gt;</code> field.</para>
+                    </listitem>
+                    <listitem>
+                      <para>When changing an entity, <code>&lt;entityName&gt;-&lt;uuid&gt;</code> should be specified as the value of the   <code>id</code> field.</para>
+                    </listitem>
+                    <listitem>
+                      <para>Next, attribute names and values for created or modified entity should be provided in the list of elements, separated by commas.</para>
+                      <para>If any attribute should be set to <code>null</code> while editing the entity, you must specify the view that includes this attribute, in the identifier. For example:</para>
+                      <programlisting language="json">{
+  &quot;commitInstances&quot;: [{
+      &quot;id&quot;: &quot;sales$Customer-b32a6412-d4d9-11e2-a20b-87b22b1460c7-customer-edit&quot;,
+      &quot;name&quot;: &quot;John Doe&quot;,
+      &quot;channel&quot;: null
+      }
+  ]
+}</programlisting>
+                      <para>Here, the <code>customer-edit</code> view must contain the <code>channel</code> attribute, otherwise the value will not change. To set a local attribute to <code>null</code>, you can specify the <code>_local</code> view, which is always available. </para>
+                    </listitem>
+                  </itemizedlist>
+                </listitem>
+                <listitem>
+                  <para>The  <code>removeInstances</code> array contains removed entities. When removing an entity, you must specify the value of the <code>id</code> field. Before deletion,  <code>merge()</code> will be executed for the provided object, which allows, for example, to check if the version of the removed object has changed.</para>
+                </listitem>
+                <listitem>
+                  <para>The  <code>softDeletion</code> field controls  <link linkend="soft_deletion">soft deletion</link> mode.</para>
+                </listitem>
+              </itemizedlist>
+              <para>Commit function is invoked by POST request to  <code>{host:port}/app-portal/api/commit?s=&lt;sessionId&gt;</code>. JSON is passed in the request body. The function returns an array of JSON object pairs. For example, if  <code>email</code> field of the customer entity is being changed, the following array of JSON object pairs will be returned:</para>
+              <programlisting language="json">[
+  [
+      {&quot;id&quot;:&quot;sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab&quot;,
+          &quot;createTs&quot;:null,
+          &quot;createdBy&quot;:null,
+          &quot;deleteTs&quot;:null,
+          &quot;deletedBy&quot;:null,
+          &quot;email&quot;:&quot;lawrence@mail.com&quot;,
+          &quot;name&quot;:null,
+          &quot;updateTs&quot;:null,
+          &quot;updatedBy&quot;:null,
+          &quot;version&quot;:null
+      },
+      {&quot;id&quot;:&quot;sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab&quot;,
+          &quot;createTs&quot;:&quot;2013-06-14T14:07:15.040&quot;,
+          &quot;createdBy&quot;:&quot;admin&quot;,
+          &quot;deleteTs&quot;:null,
+          &quot;deletedBy&quot;:null,
+          &quot;email&quot;:&quot;lawrence@mail.com&quot;,
+          &quot;name&quot;:&quot;Lawrence&quot;,
+          &quot;updateTs&quot;:&quot;2013-06-14T15:07:03.463&quot;,
+          &quot;updatedBy&quot;:&quot;admin&quot;,
+          &quot;version&quot;:&quot;3&quot;
+      }
+  ]
+]</programlisting>
+              <para>In the pair, the provided object comes first and the modified object comes second.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term>XML format</term>
+            <listitem>
+              <para><code>text/xml</code> should be used as the value of   <code>Content-Type</code> header. </para>
+              <para>XML format example:</para>
+              <programlisting language="xml">&lt;CommitRequest&gt;
+  &lt;commitInstances&gt;
+      &lt;instance id=&quot;sales$Customer-9873c8a8-d4e7-11e2-85c0-33423bc08c84&quot;&gt;
+          &lt;basic name=&quot;name&quot;&gt;Jenkins&lt;/basic&gt;
+          &lt;basic name=&quot;email&quot;&gt;jenkins@mail.com&lt;/basic&gt;
+      &lt;/instance&gt;
+  &lt;/commitInstances&gt;
+  &lt;removeInstances&gt;
+      &lt;instance id=&quot;sales$Order-d67c10f0-4d28-4904-afca-4bc45654985d&quot;/&gt;
+  &lt;/removeInstances&gt;
+  &lt;softDeletion&gt;true&lt;/softDeletion&gt;
+&lt;/CommitRequest&gt;</programlisting>
+              <para>XML document fields semantics is defined in <ulink url="http://schemas.haulmont.com/cuba/5.3/restapi-commit.xsd">http://schemas.haulmont.com/cuba/5.3/restapi-commit.xsd</ulink> scheme.</para>
+              <para>This function is invoked by POST request to <code>{host:port}/app-portal/api/commit?s=&lt;sessionId&gt;</code>. XML is passed in the request body. The function returns an array of XML object pairs.</para>
+              <programlisting language="xml">&lt;mapping&gt;
+  &lt;pair&gt;
+      &lt;instance ...&gt;
+      &lt;instance ...&gt;
+  &lt;/pair&gt;
+&lt;/mapping&gt;</programlisting>
+              <para>The schema containing the description of the function call result is located at <ulink url="http://schemas.haulmont.com/cuba/5.3/restapi-instances.xsd">http://schemas.haulmont.com/cuba/5.3/restapi-instances.xsd</ulink></para>
+            </listitem>
+          </varlistentry>
+        </variablelist>
+      </section>
+      <section id="rest_download_file">
+        <title>Uploading Files from Storage</title>
+        <para>Uploading files from <link linkend="file_storage">FileStorage</link> requires a <code>{host:port}/app-portal/api/download?f=&lt;fileDescriptorId&gt;&amp;s=&lt;sessionId&gt;</code>  GET request with the following parameters:<itemizedlist>
+            <listitem>
+              <para><emphasis role="bold">f</emphasis> − the ID of the corresponding <code>FileDescriptor</code> instance.</para>
+            </listitem>
+            <listitem>
+              <para><emphasis role="bold">s</emphasis> − current session ID.</para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+      <section id="getHTMLModel">
+        <title>Obtaining Data Model Description in HTML Format</title>
+        <para>The  <code>/printDomain?s=&lt;sessionId&gt;</code> GET request allows developer to obtain data model description. The service returns a simple HTML, which contains basic data types list and description of all meta-model entities, their attributes and  <link linkend="views">views</link> defined for entities.</para>
+      </section>
+      <section id="rest_api.deployViews">
+        <title>Creating New Views on Server</title>
+        <para>The  <code>/deployViews?s=&lt;sessionId&gt;</code> POST request allows to load to middleware descriptions of <link linkend="views">view</link> objects, required for the client. The view objects are sent as standard XML description of a view used in the platform. XML is placed in the request body. For more information about the format, see  <xref linkend="views"/>.</para>
+      </section>
+    </section></section>
+</section>

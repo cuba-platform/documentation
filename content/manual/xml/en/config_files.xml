@@ -1,0 +1,625 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE appendix PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
+<appendix id="config_files">
+  <title>Configuration Files</title>
+  <para>This appendix describes the main configuration files included in CUBA-applications.</para>
+  <section id="context.xml">
+    <title>context.xml</title>
+    <para><filename>context.xml</filename> file is the application deployment descriptor for the <application>Apache Tomcat</application> server. In a deployed application, this file is located in the <filename>META-INF</filename> subfolder of web application folder or the WAR file, for example, <filename>tomcat/webapps/app-core/META-INF/context.xml</filename>. In application project, the files of this type can be found in the <filename>/web/META-INF</filename> folders of the <structname>core</structname>, <structname>web</structname> and <structname>portal</structname> modules.</para>
+    <para>The main purpose of this file in the Middleware block is to define a datasource and assign a JNDI name, specified in the  <link linkend="cuba.dataSourceJndiName">cuba.dataSourceJndiName</link> application property.</para>
+    <para>An example of a data source declaration for <application>PostgreSQL</application>:<programlisting language="xml">&lt;Resource
+  name=&quot;jdbc/CubaDS&quot;
+  type=&quot;javax.sql.DataSource&quot;
+  maxActive=&quot;100&quot;
+  maxIdle=&quot;2&quot;
+  maxWait=&quot;5000&quot;
+  driverClassName=&quot;org.postgresql.Driver&quot;
+  username=&quot;cuba&quot;
+  password=&quot;cuba&quot;
+  url=&quot;jdbc:postgresql://localhost/sales&quot;/&gt;</programlisting></para>
+    <para>An example of a data source declaration for <application>Microsoft SQL Server</application>:<programlisting language="xml">&lt;Resource
+  name=&quot;jdbc/CubaDS&quot;
+  type=&quot;javax.sql.DataSource&quot;
+  maxActive=&quot;100&quot;
+  maxIdle=&quot;2&quot;
+  maxWait=&quot;5000&quot;
+  driverClassName=&quot;net.sourceforge.jtds.jdbc.Driver&quot;
+  username=&quot;sa&quot;
+  password=&quot;saPass1&quot;
+  url=&quot;jdbc:jtds:sqlserver://localhost/sales&quot;/&gt;</programlisting></para>
+    <para>An example of a data source declaration for <application>Oracle</application>:<programlisting language="xml">&lt;Resource
+name=&quot;jdbc/CubaDS&quot;
+type=&quot;javax.sql.DataSource&quot;
+maxActive=&quot;100&quot;
+maxIdle=&quot;2&quot;
+maxWait=&quot;5000&quot;
+driverClassName=&quot;oracle.jdbc.OracleDriver&quot;
+username=&quot;sales&quot;
+password=&quot;sales&quot;
+url=&quot;jdbc:oracle:thin:@//localhost:1521/orcl&quot;/&gt;</programlisting></para>
+    <para>In all <link linkend="app_tiers">blocks</link> implemented as web applications, this file may be used to disable serialization of HTTP-sessions:<programlisting language="xml">&lt;Manager className=&quot;org.apache.catalina.session.PersistentManager&quot; debug=&quot;0&quot; distributable=&quot;false&quot;
+       saveOnRestart=&quot;false&quot;&gt;
+  &lt;Store className=&quot;org.apache.catalina.session.FileStore&quot;/&gt;
+&lt;/Manager&gt;</programlisting></para>
+  </section>
+  <section id="datatypes.xml">
+    <title>datatypes.xml</title>
+    <para><filename>datatypes.xml</filename> defines the available data types for entity attributes. See  <xref linkend="datatype"/></para>
+    <para>The default file is located in the <code>com.haulmont.chile.core.datatypes</code> package of the <structname>cuba</structname> <link linkend="base_projects">base project</link>. If a similar file is created in the CLASSPATH root of the <structname>global</structname> <link linkend="app_modules">module</link> in an application project, the data types will be loaded from this file.</para>
+    <warning>
+      <para>The loading mechanism does not support extension, i.e. all data types are loaded from a single file – either from the CLASSPATH root or from the <code>com.haulmont.chile.core.datatypes</code> package.</para>
+    </warning>
+    <para>Available data types should be specified as <sgmltag>datatype</sgmltag> elements. The only mandatory attribute is <code>class</code>, which defines a data type class implementing the <code>Datatype</code> interface. The remaining attribute set depends on the class. The object created from the class, receives the corresponding XML element when created, and should parse the element itself.</para>
+    <para>Typical attributes:<itemizedlist>
+        <listitem>
+          <para><sgmltag>format</sgmltag> – format for conversion to string.</para>
+        </listitem>
+        <listitem>
+          <para><sgmltag>groupingSeparator</sgmltag> – number grouping separator character.</para>
+        </listitem>
+        <listitem>
+          <para><sgmltag>decimalSeparator</sgmltag> – decimal separator character.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Example:<programlisting language="xml">&lt;datatypes&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.BooleanDatatype&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.IntegerDatatype&quot;
+            format=&quot;0&quot; groupingSeparator=&quot;&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.LongDatatype&quot;
+            format=&quot;0&quot; groupingSeparator=&quot;&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.DoubleDatatype&quot;
+            format=&quot;0.###&quot; decimalSeparator=&quot;.&quot; groupingSeparator=&quot;&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.BigDecimalDatatype&quot;
+            format=&quot;0.####&quot; decimalSeparator=&quot;.&quot; groupingSeparator=&quot;&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.StringDatatype&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.DateTimeDatatype&quot;
+            format=&quot;yyyy-MM-dd&apos;T&apos;HH:mm:ss.SSS&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.DateDatatype&quot;
+            format=&quot;yyyy-MM-dd&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.TimeDatatype&quot;
+            format=&quot;HH:mm:ss&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.UUIDDatatype&quot;/&gt;
+
+  &lt;datatype class=&quot;com.haulmont.chile.core.datatypes.impl.ByteArrayDatatype&quot;/&gt;
+
+&lt;/datatypes&gt;</programlisting></para>
+  </section>
+  <section id="dispatcher-spring.xml">
+    <title>dispatcher-spring.xml</title>
+    <para>The files of this type define configuration of an additional <application>Spring Framework</application> container for client blocks containing <application>Spring MVC</application> controllers.</para>
+    <para>A set of <filename>dispatcher-spring.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the  <link linkend="cuba.dispatcherSpringContextConfig">cuba.dispatcherSpringContextConfig</link> application property. File order is important, because each subsequent file can override bean configurations defined by the previous files.</para>
+    <para>The Spring MVC controllers container is created with the main container (configured by  <link linkend="spring.xml">spring.xml</link> files) as its parent. Therefore, the beans of the controllers container can use the beans of the main container, while the beans of the main container cannot “see” the beans of the controllers container.</para>
+  </section>
+  <section id="menu.xml">
+    <title>menu.xml</title>
+    <para>The files of this type are used in the application <link linkend="app_tiers">blocks</link> implementing the <link linkend="gui_framework">generic user interface</link>, such as the Web Client and the Desktop Client. These files define the main menu structure of the application.</para>
+    <para>XML schema is available at  <ulink url="http://schemas.haulmont.com/cuba/5.3/menu.xsd">http://schemas.haulmont.com/cuba/5.3/menu.xsd</ulink></para>
+    <para>A set of <filename>menu.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the <link linkend="cuba.menuConfig">cuba.menuConfig</link> application property. The file has the following structure:</para>
+    <para><sgmltag>menu-config</sgmltag> – the root element.</para>
+    <para>Elements of <sgmltag>menu-config</sgmltag> form a tree structure:<itemizedlist>
+        <listitem>
+          <para><sgmltag>menu</sgmltag> – a folding menu containing menu items and other folding menus.</para>
+          <para><code>menu</code> attributes:<itemizedlist>
+              <listitem>
+                <para><sgmltag>id</sgmltag> – identifier of an element, used for name localization (see below).</para>
+              </listitem>
+              <listitem>
+                <para id="menu_insertBefore_insertAfter"><sgmltag>insertBefore</sgmltag>, <sgmltag>insertAfter</sgmltag> – determines whether the item should be inserted before or after a particular element or a menu item with specified identifier. This attribute is used to insert an element to an appropriate place in the menu defined in files of base projects. Before and after elements cannot be used at the same time.</para>
+                <para>CUBA Studio supports <sgmltag>insertBefore</sgmltag> and <sgmltag>insertAfter</sgmltag> attributes only for the top-level menu elements. Therefore the Studio menu designer should not be used if such attributes were defined manually, as Studio will delete them.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para>Menu elements:<itemizedlist>
+              <listitem>
+                <para><sgmltag>menu</sgmltag></para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>item</sgmltag> – menu item (see below).</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>separator</sgmltag> – separator.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+        <listitem>
+          <para><sgmltag>item</sgmltag> – menu item.</para>
+          <para><sgmltag>item</sgmltag> attributes:<itemizedlist>
+              <listitem>
+                <para><sgmltag>id</sgmltag> –  identifier of an element, used for name localization (see below), and for linking to one of the UI screen elements registered in <link linkend="screens.xml">screens.xml</link> file. When user clicks on a menu item, the corresponding screen will be opened in the main application window.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>shortcut</sgmltag> – a keyboard shortcut for this menu item. Possible modifiers – <literal>ALT</literal>, <literal>CTRL</literal>, <literal>SHIFT</literal> – are separated with &quot;<literal>-</literal>&quot;. For example:<programlisting>shortcut=&quot;ALT-C&quot;
+shortcut=&quot;ALT-CTRL-C&quot;
+shortcut=&quot;ALT-CTRL-SHIFT-C&quot;</programlisting></para>
+                <para>Shortcuts can also be configured in <link linkend="app_properties">application properties</link> and then used in  <filename>menu.xml</filename> file in the following way:<programlisting>shortcut=&quot;${sales.menu.customer}&quot;</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>openType</sgmltag> – screen open mode. The following modes are available: <code>WindowManager.OpenType</code>: <code>NEW_TAB</code>, <code>THIS_TAB</code>, <code>DIALOG</code>, <code>NEW_WINDOW</code>.</para>
+                <para>Default value – <code>NEW_TAB</code>. </para>
+                <para><code>NEW_WINDOW</code> mode is only supported in the Desktop Client. For the Web Client it is equivalent to <code>NEW_TAB</code> mode.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>insertBefore</sgmltag>, <sgmltag>insertAfter</sgmltag> – determines whether the item should be inserted before or after a particular element or a menu item with specified identifier.</para>
+                <para>Studio does not support <sgmltag>insertBefore</sgmltag>, <sgmltag>insertAfter</sgmltag> attributes for the <sgmltag>item</sgmltag> element. Therefore the Studio menu designer should not be used if such attributes were defined manually, as Studio will delete them.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>resizable</sgmltag> – only relevant to <code>DIALOG</code> screen open mode. Controls window resizing ability. Possible values − <code>true</code>, <code>false</code>.</para>
+                <para>By default, the main menu does not affect the ability to resize dialog windows.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para><sgmltag>item</sgmltag> elements:<itemizedlist>
+              <listitem>
+                <para><sgmltag>param</sgmltag> – screen parameters passed to the <link linkend="screen_controller">controller’s</link> <code>init()</code> method. The properties configured in <filename>menu.xml</filename> override the parameters set in <link linkend="screen_xml">screens.xml</link> with the same name.</para>
+                <para><sgmltag>param</sgmltag> attributes:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>name</sgmltag> – parameter name.</para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>value</sgmltag> – parameter value. String value, may be converted to an arbitrary object according to the following rules:<itemizedlist>
+                          <listitem>
+                            <para>If a string is an entity identifier, specified according to the rules of the <code>EntityLoadInfo</code> class, the system loads the specified entity instance.</para>
+                          </listitem>
+                          <listitem>
+                            <para>If a string has the format <code>${some_name}</code>, the value of the parameter will be set to the <property>some_name</property> application property.</para>
+                          </listitem>
+                          <listitem>
+                            <para>Strings <code>true</code> and <code>false</code> are converted to the corresponding <code>Boolean</code> values.</para>
+                          </listitem>
+                          <listitem>
+                            <para>Otherwise, the string itself becomes the parameter value.</para>
+                          </listitem>
+                        </itemizedlist></para>
+                    </listitem>
+                  </itemizedlist></para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>permissions</sgmltag> – an element defining a set of permissions required to make the menu item available to the current user. This mechanism should only be used when item availability should be tied to a specific permission, or to more than one arbitrary permissions. In most cases, the  standard capabilities of the security subsystem should be sufficient to manage the menu item availability based on screen identifiers.</para>
+                <para>The element should contain nested <sgmltag>permission</sgmltag> elements, each describing a single required permission. The menu item will only be accessible if all permissions are granted.</para>
+                <para><sgmltag>permission</sgmltag> attributes:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>type</sgmltag> – permission type. The following types are available for <code>PermissionType</code>: <code>SCREEN</code>, <code>ENTITY_OP</code>, <code>ENTITY_ATTR</code>, <code>SPECIFIC</code>, <code>UI</code>.</para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>target</sgmltag> – an object checked for permission. Depends on permission type:<itemizedlist>
+                          <listitem>
+                            <para><code>SCREEN</code> – screen identifier, for example <code>sales$Customer.lookup</code>.</para>
+                          </listitem>
+                          <listitem>
+                            <para><code>ENTITY_OP</code> – a string formatted as <code>{entity_name}:{op}</code>, where <code>{op}</code> – <code>read</code>, <code>create</code>, <code>update</code>, <code>delete</code>. For example: <code>sales$Customer:create</code>.</para>
+                          </listitem>
+                          <listitem>
+                            <para><code>ENTITY_ATTR</code> – a string formatted as <code>{entity_name}:{attribute}</code>, for example <code>sales$Customer:name</code>.</para>
+                          </listitem>
+                          <listitem>
+                            <para><code>SPECIFIC</code> – specific permission identifier, for example <code>sales.runInvoicing</code>.</para>
+                          </listitem>
+                          <listitem>
+                            <para><code>UI</code> – path to a visual component of a screen.</para>
+                          </listitem>
+                        </itemizedlist></para>
+                    </listitem>
+                  </itemizedlist></para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Example of a menu file:<programlisting language="xml">&lt;menu-config xmlns=&quot;http://schemas.haulmont.com/cuba/5.3/menu.xsd&quot;&gt;
+
+  &lt;menu id=&quot;sales&quot; insertBefore=&quot;administration&quot;&gt;
+      &lt;item id=&quot;sales$Customer.lookup&quot;/&gt;
+      &lt;separator/&gt;
+      &lt;item id=&quot;sales$Order.lookup&quot;/&gt;
+  &lt;/menu&gt;
+
+&lt;/menu-config&gt;</programlisting></para>
+    <para>A localized name of a menu element is defined the following way: the <literal>menu-config</literal> prefix with a dot at the end is added to the element identifier; the resulting string is used as a key for the <link linkend="main_message_pack">main message pack</link>. For example:<programlisting>menu-config.sales=Sales
+menu-config.sales$Customer.lookup=Customers</programlisting></para>
+  </section>
+  <section id="metadata.xml">
+    <title>metadata.xml</title>
+    <para>Files of this type are used to register non-persistent entities and assign <link linkend="meta_annotations">meta annotations</link>, see <xref linkend="metadata_framework"/>.</para>
+    <para>XML schema is available at  <ulink url="http://schemas.haulmont.com/cuba/5.3/metadata.xsd">http://schemas.haulmont.com/cuba/5.3/metadata.xsd</ulink>.</para>
+    <para>A set of <filename>metadata.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the  <link linkend="cuba.metadataConfig">cuba.metadataConfig</link> application property. </para>
+    <para>The file has the following structure:</para>
+    <para><sgmltag>metadata</sgmltag> – root element.</para>
+    <para><sgmltag>metadata</sgmltag> elements:<itemizedlist>
+        <listitem>
+          <para><sgmltag>metadata-model</sgmltag> – the project&apos;s meta model descriptor.</para>
+          <para><sgmltag>metadata-model</sgmltag> attribute:<itemizedlist>
+              <listitem>
+                <para><sgmltag>root-package</sgmltag> – the project’s root package.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para><sgmltag>metadata-model</sgmltag> elements:<itemizedlist>
+              <listitem>
+                <para><sgmltag>class</sgmltag> – a non-persistent entity class.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+        <listitem>
+          <para><sgmltag>annotations</sgmltag> – contains assignments of entity <link linkend="meta_annotations">meta annotations</link>.</para>
+          <para><sgmltag>annotations</sgmltag> elements:<itemizedlist>
+              <listitem>
+                <para><sgmltag>entity</sgmltag> – entity to assign meta annotation to.</para>
+                <para><sgmltag>entity</sgmltag> attributes:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>class</sgmltag> – entity class.</para>
+                    </listitem>
+                  </itemizedlist></para>
+                <para><sgmltag>entity</sgmltag> elements:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>annotation</sgmltag> – meta annotation element.</para>
+                      <para><sgmltag>annotation</sgmltag> attributes:<itemizedlist>
+                          <listitem>
+                            <para><sgmltag>name</sgmltag> – meta annotation name.</para>
+                          </listitem>
+                          <listitem>
+                            <para><sgmltag>value</sgmltag> – meta annotation value.</para>
+                          </listitem>
+                        </itemizedlist></para>
+                    </listitem>
+                  </itemizedlist></para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Example:<programlisting language="xml">&lt;metadata xmlns=&quot;http://schemas.haulmont.com/cuba/5.3/metadata.xsd&quot;&gt;
+
+  &lt;metadata-model root-package=&quot;com.sample.sales&quot;&gt;
+      &lt;class&gt;com.sample.sales.entity.SomeTransientEntity&lt;/class&gt;
+      &lt;class&gt;com.sample.sales.entity.OtherTransientEntity&lt;/class&gt;
+  &lt;/metadata-model&gt;
+
+  &lt;annotations&gt;
+      &lt;entity class=&quot;com.haulmont.cuba.security.entity.User&quot;&gt;
+          &lt;annotation name=&quot;com.haulmont.cuba.core.entity.annotation.TrackEditScreenHistory&quot;
+                      value=&quot;true&quot;/&gt;
+          &lt;annotation name=&quot;com.haulmont.cuba.core.entity.annotation.EnableRestore&quot;
+                      value=&quot;true&quot;/&gt;
+      &lt;/entity&gt;
+  &lt;/annotations&gt;
+
+&lt;/metadata&gt;</programlisting></para>
+  </section>
+  <section id="permissions.xml">
+    <title>permissions.xml</title>
+    <para>Files of this type are used in the Web Client and the Desktop Client blocks for registration of specific user <link linkend="permissions">permissions</link>. </para>
+    <para>A set of <filename>permissions.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the  <link linkend="cuba.permissionConfig">cuba.permissionConfig</link> application property. </para>
+    <para>XML schema is available at <ulink url="http://schemas.haulmont.com/cuba/5.3/permissions.xsd">http://schemas.haulmont.com/cuba/5.3/permissions.xsd</ulink>.</para>
+    <para>The file has the following structure:</para>
+    <para><sgmltag>permission-config</sgmltag> - root element.</para>
+    <para><sgmltag>permission-config</sgmltag> elements:</para>
+    <itemizedlist>
+      <listitem>
+        <para><code>specific</code> - specific permissions descriptor.</para>
+        <para><code>specific</code> elements:<itemizedlist>
+            <listitem>
+              <para><code>category</code> - permissions category which is used for grouping permissions in the <link linkend="roles">role</link> edit screen. <code>id</code> attribute is used as a key for retrieving a localized category name from the <link linkend="main_message_pack">main message pack</link>.</para>
+            </listitem>
+            <listitem>
+              <para><code>permission</code> - named permission. <code>id</code> attribute is used to obtain the permission value by the <code>Security.isSpecificPermitted()</code> method, and as a key for retrieving a localized permission name form the <link linkend="main_message_pack">main message pack</link> to display the permission in the <link linkend="roles">role</link> edit screen.</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+    </itemizedlist>
+    <para>For example:<programlisting language="xml">&lt;permission-config xmlns=&quot;http://schemas.haulmont.com/cuba/5.3/permissions.xsd&quot;&gt;
+    &lt;specific&gt;
+        &lt;category id=&quot;app&quot;&gt;
+            &lt;permission id=&quot;app.doSomething&quot;/&gt;
+            &lt;permission id=&quot;app.doSomethingOther&quot;/&gt;
+        &lt;/category&gt;
+    &lt;/specific&gt;
+&lt;/permission-config&gt;</programlisting> </para>
+  </section>
+  <section id="persistence.xml">
+    <title>persistence.xml</title>
+    <para>Files of this type are standard for JPA, and are used for registration of persistent entities and configuration of <link linkend="orm">ORM</link> framework parameters.</para>
+    <para>A set of <filename>persistence.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the  <link linkend="cuba.persistenceConfig">cuba.persistenceConfig</link> application property. </para>
+    <para>When the Middleware block starts, the specified files are combined into a single <filename>persistence.xml</filename>, stored in the application <link linkend="work_dir">work folder</link>. File order is important, because each subsequent file in the list can override previously defined ORM parameters. There are several DBMS specific (set in <link linkend="cuba.dbmsType">cuba.dbmsType</link>) parameters that cannot be overridden in the <filename>persistence.xml</filename>. These parameters are:<itemizedlist>
+        <listitem>
+          <para><literal>openjpa.jdbc.DBDictionary</literal></para>
+        </listitem>
+        <listitem>
+          <para><literal>openjpa.jdbc.MappingDefaults</literal></para>
+        </listitem>
+      </itemizedlist>Additionally, if the  <link linkend="cuba.disableOrmXmlGeneration">cuba.disableOrmXmlGeneration</link> application property is set to <code>false</code>, and the project contains <link linkend="extension">extended entities</link>, the <filename>orm.xml</filename> file will be created in the application work folder on application start. The path to this file is written to the <literal>openjpa.MetaDataFactory</literal> parameter, which means that this parameter cannot be defined in the <filename>persistence.xml</filename> in advance. </para>
+    <para>Example of a file:<programlisting language="xml">&lt;persistence xmlns=&quot;http://java.sun.com/xml/ns/persistence&quot; version=&quot;1.0&quot;&gt;
+  &lt;persistence-unit name=&quot;sales&quot; transaction-type=&quot;RESOURCE_LOCAL&quot;&gt;
+      &lt;class&gt;com.sample.sales.entity.Customer&lt;/class&gt;
+      &lt;class&gt;com.sample.sales.entity.Order&lt;/class&gt;
+  &lt;/persistence-unit&gt;
+&lt;/persistence&gt;</programlisting></para>
+  </section>
+  <section id="remoting-spring.xml">
+    <title>remoting-spring.xml</title>
+    <para>Files of this type configure an additional <application>Spring Framework</application> container for the Middleware block, used for exporting services and other middleware components accessed by the client tier (hereafter <firstterm>remote access container</firstterm>). </para>
+    <para>A set of <filename>remoting-spring.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the  <link linkend="cuba.remotingSpringContextConfig">cuba.remotingSpringContextConfig</link> application property. File order is important because each subsequent file overrides already defined bean configurations.</para>
+    <para>Remote access container is created with the main container (configured by <link linkend="spring.xml">spring.xml</link> files) as its parent. Therefore, the beans of the remote access container can use the beans of the main container, while the beans of the main container cannot “see” the beans of the remote access container.</para>
+    <para>The primary goal of remote access is to make Middleware services accessible to the client level using the <application>Spring HttpInvoker</application> mechanism. The <filename>cuba-remoting-spring.xml</filename> file in the <structname>cuba</structname> base project defines the <literal>servicesExporter</literal> bean of <code>RemoteServicesBeanCreator</code> type, which receives all service classes from the main container and exports them. In addition to regular annotated services, remote access container exports a number of specific beans, such as <code>LoginService</code>.</para>
+    <para>Furthermore, the <filename>cuba-remoting-spring.xml</filename> file defines a base package that serves as a starting point for lookup of annotated <application>Spring MVC</application> controller classes used for file uploading and downloading.</para>
+    <para>The <filename>remoting-spring.xml</filename> file in the application project should only be created when specific <application>Spring MVC</application> controllers are used. Application project services will be imported by the standard <literal>servicesExporter</literal> bean defined in the <structname>cuba</structname> base project.</para>
+  </section>
+  <section id="screens.xml">
+    <title>screens.xml</title>
+    <para>Files of this type are used in the <link linkend="app_tiers">generic user interface</link> of the Web Client and the Desktop Client for registration of screen XML-descriptors.</para>
+    <para>XML schema is available at  <ulink url="http://schemas.haulmont.com/cuba/5.3/screens.xsd">http://schemas.haulmont.com/cuba/5.3/screens.xsd</ulink>.</para>
+    <para>A set of <filename>screens.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the  <link linkend="cuba.windowConfig">cuba.windowConfig</link> application property.</para>
+    <para>The file has the following structure:</para>
+    <para><sgmltag>screen-config</sgmltag> – the root element.</para>
+    <para><sgmltag>screen-config</sgmltag> elements:<itemizedlist>
+        <listitem>
+          <para><sgmltag>screen</sgmltag> – screen descriptor.</para>
+          <para><sgmltag>screen</sgmltag> attributes:<itemizedlist>
+              <listitem>
+                <para><sgmltag>id</sgmltag> – screen identifier used to reference this screen from the application code (e.g. in the <code>IFrame.openWindow()</code> and other methods) and in the <link linkend="menu.xml">menu.xml</link>.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>template</sgmltag> – path to screen’s <link linkend="screen_xml">XML-descriptor</link>.      <link linkend="resources">Resources</link> interface rules apply to loading the descriptor.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>class</sgmltag> – if the <sgmltag>template</sgmltag> attribute is not set, this attribute should contain the name of the class implementing either <code>Callable</code> or <code>Runnable</code>.</para>
+                <para>In case of <code>Callable</code>, the <code>call()</code> method should return an instance of <code>Window</code>, which will be returned to the invoking code as the result of calling <code>WindowManager.openWindow()</code>. The class may contain a constructor with string parameters, defined by the nested <sgmltag>param</sgmltag> element (see below).</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>multipleOpen</sgmltag> – optional attribute, allowing a screen to be opened multiple times. If set to <literal>false</literal> or not defined and the screen with this identifier has already been opened in the main window, the system will show the existing screen instead of opening a new one. If set to <literal>true</literal>, any number of screen instances can be opened.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para><sgmltag>screen</sgmltag> elements:<itemizedlist>
+              <listitem>
+                <para><sgmltag>param</sgmltag> – defines a screen parameter submitted as a map to the <link linkend="screen_controller">controller</link>’s <code>init()</code> method. Parameters, passed to the <code>openWindow()</code> methods by the invoking code, override the matching parameters set in <filename>screens.xml</filename>.</para>
+                <para><sgmltag>param</sgmltag> attributes:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>name</sgmltag> – parameter name.</para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>value</sgmltag> – parameter value. Strings <literal>true</literal> and <literal>false</literal> are converted into the corresponding <code>Boolean</code> values.</para>
+                    </listitem>
+                  </itemizedlist></para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+        <listitem>
+          <para><sgmltag>include</sgmltag> – includes a different file, e.g. <filename>screens.xml</filename>.</para>
+          <para><sgmltag>include</sgmltag> attributes:<itemizedlist>
+              <listitem>
+                <para><sgmltag>file</sgmltag> – path to a file according to the rules of the <link linkend="resources">Resources</link> interface.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Example of a <filename>screens.xml</filename> file:<programlisting language="xml">&lt;screen-config xmlns=&quot;http://schemas.haulmont.com/cuba/5.3/screens.xsd&quot;&gt;
+
+  &lt;screen id=&quot;sales$Customer.lookup&quot; template=&quot;/com/sample/sales/gui/customer/customer-browse.xml&quot;/&gt;
+  &lt;screen id=&quot;sales$Customer.edit&quot; template=&quot;/com/sample/sales/gui/customer/customer-edit.xml&quot;/&gt;
+
+  &lt;screen id=&quot;sales$Order.lookup&quot; template=&quot;/com/sample/sales/gui/order/order-browse.xml&quot;/&gt;
+  &lt;screen id=&quot;sales$Order.edit&quot; template=&quot;/com/sample/sales/gui/order/order-edit.xml&quot;/&gt;
+
+&lt;/screen-config&gt;</programlisting></para>
+  </section>
+  <section id="spring.xml">
+    <title>spring.xml</title>
+    <para>The files of this type configure the main <application>Spring Framework</application> container for each application <link linkend="app_tiers">block</link>. </para>
+    <para>A set of <filename>spring.xml</filename> files, including the ones defined in <link linkend="base_projects">base projects</link>, is declared in the  <link linkend="cuba.springContextConfig">cuba.springContextConfig</link> application property. File order is important because each subsequent file overrides already defined bean configurations.</para>
+    <para>Most of the configuration of the main container is performed using bean annotations (e.g. <code>@ManagedBean</code>, <code>@Service</code>, <code>@Inject</code> and others), therefore the only mandatory part of <filename>spring.xml</filename> in an application project is the <sgmltag>context:component-scan</sgmltag> element, which specifies the base Java package for lookup of annotated classes. For example:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.sample.sales&quot;/&gt;</programlisting></para>
+    <para>The remaining configuration depends on the block that a container is being configured for, e.g. the registration of <link linkend="jmx_beans">JMX-beans</link> for the Middleware block, or  <link linkend="service_import">services import</link> for client blocks.</para>
+  </section>
+  <section id="views.xml">
+    <title>views.xml</title>
+    <para>Files of this type are used to describe views, see  <xref linkend="views"/>.</para>
+    <para>XML schema is available at  <ulink url="http://schemas.haulmont.com/cuba/5.3/view.xsd">http://schemas.haulmont.com/cuba/5.3/view.xsd</ulink>.</para>
+    <para><sgmltag>views</sgmltag> – root element.</para>
+    <para><sgmltag>views</sgmltag> elements:<itemizedlist>
+        <listitem>
+          <para><sgmltag>view</sgmltag> – <sgmltag>view</sgmltag> descriptor.</para>
+          <para><sgmltag>view</sgmltag> attributes:<itemizedlist>
+              <listitem>
+                <para><sgmltag>class</sgmltag> – entity class.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>entity</sgmltag> – the name of the entity, for example <code>sales$Order</code>. This attribute can be used <emphasis>instead</emphasis> of the <code>class</code> attribute.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>name</sgmltag> – view name, unique within the entity.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>systemProperties</sgmltag> – enables inclusion of system attributes defined in <link linkend="entity_base_classes">base interfaces</link> for persistent entities <code>BaseEntity</code> and <code>Updatable</code>. Optional attribute, <literal>false</literal> by default.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>overwrite</sgmltag> – enables overriding a view with the same class and name already deployed in the repository. Optional attribute, <literal>false</literal> by default.</para>
+              </listitem>
+              <listitem>
+                <para><sgmltag>extends</sgmltag> – specifies an entity view, from which the attributes should be inherited. For example, declaring <literal>extends=&quot;_local&quot;</literal>, will add all <link linkend="local_attribute">local attributes</link> of an entity to the current view. Optional attribute.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para><sgmltag>view</sgmltag> elements:<itemizedlist>
+              <listitem>
+                <para><sgmltag>property</sgmltag> – <code>ViewProperty</code> descriptor.</para>
+                <para><sgmltag>property</sgmltag> attributes:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>name</sgmltag> – entity attribute name.</para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>view</sgmltag> – for reference type attributes, specifies a view name the associated entity should be loaded with.</para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>lazy</sgmltag> – for reference type attributes, enables excluding the attribute from the fetch plan and loading it via a separate SQL query initiated by a call to the attribute. Optional attribute, <literal>false</literal> by default.</para>
+                      <para>Using <sgmltag>lazy</sgmltag> is recommended, if the current view graph contains more than one collection attribute. <literal>lazy = &quot;true&quot;</literal> should be set for all collections, except one.</para>
+                    </listitem>
+                  </itemizedlist></para>
+                <para><sgmltag>property</sgmltag> elements:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>property</sgmltag> – associated entity attribute descriptor. This allows defining an unnamed inline view for an associated entity in the current descriptor. </para>
+                    </listitem>
+                  </itemizedlist></para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+        <listitem>
+          <para><sgmltag>include</sgmltag> – include another <filename>views.xml</filename> file.</para>
+          <para><sgmltag>include</sgmltag> attributes:<itemizedlist>
+              <listitem>
+                <para><sgmltag>file</sgmltag> – file path according to the <link linkend="resources">Resources</link> interface rules.</para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Example:<programlisting language="xml">&lt;views xmlns=&quot;http://schemas.haulmont.com/cuba/5.3/view.xsd&quot;&gt;
+
+  &lt;view class=&quot;com.sample.sales.entity.Order&quot;
+        name=&quot;orderWithCustomer&quot;
+        extends=&quot;_local&quot;&gt;
+      &lt;property name=&quot;customer&quot; view=&quot;_minimal&quot;/&gt;
+  &lt;/view&gt;
+
+  &lt;view class=&quot;com.sample.sales.entity.Item&quot;
+        name=&quot;itemsInOrder&quot;&gt;
+      &lt;property name=&quot;quantity&quot;/&gt;
+      &lt;property name=&quot;product&quot; view=&quot;_minimal&quot;/&gt;
+  &lt;/view&gt;
+
+  &lt;view class=&quot;com.sample.sales.entity.Order&quot;
+        name=&quot;orderWithCustomerDefinedInline&quot;
+        extends=&quot;_local&quot;&gt;
+      &lt;property name=&quot;customer&quot;&gt;
+          &lt;property name=&quot;name&quot;/&gt;
+          &lt;property name=&quot;email&quot;/&gt;
+      &lt;/property&gt;
+  &lt;/view&gt;
+
+&lt;/views&gt;</programlisting></para>
+    <para>See also the  <link linkend="cuba.viewsConfig">cuba.viewsConfig</link> application property.</para>
+  </section>
+  <section id="web.xml">
+    <title>web.xml</title>
+    <para>The <filename>web.xml</filename> file is a standard descriptor of a <application>Java EE</application> web application and should be created for the  Middleware, Web Client and Web Portal blocks.</para>
+    <para>In an application project, <filename>web.xml</filename> files are located in the <filename>web/WEB-INF</filename> folders of the corresponding <link linkend="app_modules">modules</link>.</para>
+    <para><filename>web.xml</filename> for the Middleware block (<structname>core</structname> project module) has the following content:<programlisting language="xml">&lt;web-app xmlns=&quot;http://java.sun.com/xml/ns/javaee&quot;
+         xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+         xsi:schemaLocation=&quot;http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd&quot;
+         version=&quot;2.5&quot;&gt;
+
+  &lt;!-- Application properties config files --&gt;
+  &lt;context-param&gt;
+      &lt;param-name&gt;appPropertiesConfig&lt;/param-name&gt;
+      &lt;param-value&gt;
+          classpath:cuba-app.properties
+          classpath:app.properties
+          file:${catalina.home}/conf/app-core/local.app.properties
+      &lt;/param-value&gt;
+  &lt;/context-param&gt;
+
+  &lt;listener&gt;
+      &lt;listener-class&gt;com.haulmont.cuba.core.sys.AppContextLoader&lt;/listener-class&gt;
+  &lt;/listener&gt;
+
+  &lt;servlet&gt;
+      &lt;servlet-name&gt;remoting&lt;/servlet-name&gt;
+      &lt;servlet-class&gt;com.haulmont.cuba.core.sys.remoting.RemotingServlet&lt;/servlet-class&gt;
+      &lt;load-on-startup&gt;1&lt;/load-on-startup&gt;
+  &lt;/servlet&gt;
+
+  &lt;servlet-mapping&gt;
+      &lt;servlet-name&gt;remoting&lt;/servlet-name&gt;
+      &lt;url-pattern&gt;/remoting/*&lt;/url-pattern&gt;
+  &lt;/servlet-mapping&gt;
+
+  &lt;servlet&gt;
+      &lt;servlet-name&gt;restapi&lt;/servlet-name&gt;
+      &lt;servlet-class&gt;com.haulmont.cuba.core.sys.restapi.RestApiServlet&lt;/servlet-class&gt;
+      &lt;load-on-startup&gt;1&lt;/load-on-startup&gt;
+  &lt;/servlet&gt;
+
+  &lt;servlet-mapping&gt;
+      &lt;servlet-name&gt;restapi&lt;/servlet-name&gt;
+      &lt;url-pattern&gt;/api/*&lt;/url-pattern&gt;
+  &lt;/servlet-mapping&gt;
+&lt;/web-app&gt;</programlisting></para>
+    <para>The <sgmltag>context-param</sgmltag> elements define initializing parameters for the <code>ServletContext</code> object of the current web application. The list of <link linkend="app_properties_files">application property files</link> is also defined in the <literal>appPropertiesConfig</literal> parameter.</para>
+    <para>The <sgmltag>listener</sgmltag> element defines a listener class implementing the <code>ServletContextListener</code> interface. The Middleware block uses the <code>AppContextLoader</code> class as a listener. This class initializes the <link linkend="appContext">AppContext</link>.</para>
+    <para>Servlet descriptions follow, including the <code>RemotingServlet</code> class, mandatory for the Middleware block. This servlet is accessible via the <literal>/remoting/*</literal> URL, and is related to the remote access container (see <xref linkend="remoting-spring.xml"/>).</para>
+    <para><filename>web.xml</filename> for the Web Client block (<structname>web</structname> project module) has the following content:<programlisting language="xml">&lt;web-app xmlns=&quot;http://java.sun.com/xml/ns/javaee&quot;
+         xmlns:xsi=&quot;http://www.w3.org/2001/XMLSchema-instance&quot;
+         xsi:schemaLocation=&quot;http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd&quot;
+         version=&quot;2.5&quot;&gt;
+
+  &lt;context-param&gt;
+      &lt;description&gt;Vaadin production mode&lt;/description&gt;
+      &lt;param-name&gt;productionMode&lt;/param-name&gt;
+      &lt;param-value&gt;false&lt;/param-value&gt;
+  &lt;/context-param&gt;
+
+  &lt;context-param&gt;
+      &lt;param-name&gt;appPropertiesConfig&lt;/param-name&gt;
+      &lt;param-value&gt;
+          classpath:cuba-web-app.properties
+          classpath:web-app.properties
+          file:${catalina.home}/conf/app/local.app.properties
+      &lt;/param-value&gt;
+  &lt;/context-param&gt;
+
+  &lt;listener&gt;
+      &lt;listener-class&gt;com.haulmont.cuba.web.sys.WebAppContextLoader&lt;/listener-class&gt;
+  &lt;/listener&gt;
+
+  &lt;servlet&gt;
+      &lt;servlet-name&gt;app_servlet&lt;/servlet-name&gt;
+      &lt;servlet-class&gt;com.haulmont.cuba.web.sys.CubaApplicationServlet&lt;/servlet-class&gt;
+      &lt;init-param&gt;
+          &lt;param-name&gt;application&lt;/param-name&gt;
+          &lt;param-value&gt;com.haulmont.sales.web.App&lt;/param-value&gt;
+      &lt;/init-param&gt;
+      &lt;init-param&gt;
+          &lt;param-name&gt;widgetset&lt;/param-name&gt;
+          &lt;param-value&gt;com.haulmont.cuba.web.toolkit.ui.WidgetSet&lt;/param-value&gt;
+      &lt;/init-param&gt;
+      &lt;init-param&gt;
+          &lt;param-name&gt;UI&lt;/param-name&gt;
+          &lt;param-value&gt;com.haulmont.cuba.web.AppUI&lt;/param-value&gt;
+      &lt;/init-param&gt;
+      &lt;init-param&gt;
+          &lt;param-name&gt;UIProvider&lt;/param-name&gt;
+          &lt;param-value&gt;com.haulmont.cuba.web.sys.CubaUIProvider&lt;/param-value&gt;
+      &lt;/init-param&gt;
+  &lt;/servlet&gt;
+
+  &lt;servlet-mapping&gt;
+      &lt;servlet-name&gt;app_servlet&lt;/servlet-name&gt;
+      &lt;url-pattern&gt;/*&lt;/url-pattern&gt;
+  &lt;/servlet-mapping&gt;
+
+  &lt;filter&gt;
+      &lt;filter-name&gt;cuba_filter&lt;/filter-name&gt;
+      &lt;filter-class&gt;com.haulmont.cuba.web.sys.CubaHttpFilter&lt;/filter-class&gt;
+  &lt;/filter&gt;
+
+  &lt;filter-mapping&gt;
+      &lt;filter-name&gt;cuba_filter&lt;/filter-name&gt;
+      &lt;url-pattern&gt;/*&lt;/url-pattern&gt;
+  &lt;/filter-mapping&gt;
+
+&lt;/web-app&gt;</programlisting></para>
+    <para>The list of <link linkend="app_properties_files">application property files</link> is defined in the <literal>appPropertiesConfig</literal> parameter. The <literal>productionMode</literal> property disables the <application>Vaadin</application> framework debugging mode.</para>
+    <para>The Web Client block uses the <code>WebAppContextLoader</code> class as a <code>ServletContextListener</code>.</para>
+    <para>Next, the <code>CubaApplicationServlet</code> is defined, providing the <link linkend="gui_framework">generic user interface</link> implementation based on the <application>Vaadin</application> framework. The servlet has a number of parameters, including:<itemizedlist>
+        <listitem>
+          <para><literal>application</literal> – defines a project specific client application class, inherited from <code>com.haulmont.cuba.web.App</code>.</para>
+        </listitem>
+        <listitem>
+          <para><literal>widgetset</literal> – defines a set of <application>GWT</application> components used on the browser side.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Later, the <code>CubaHttpFilter</code> required for functioning of the Web Client block is defined.</para>
+  </section>
+</appendix>
