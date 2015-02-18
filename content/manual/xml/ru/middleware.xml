@@ -111,6 +111,13 @@ protected OrderService orderService;
 ...
 orderService.calculateTotals(order);</programlisting></para>
       </section>
+        <section id="dataService">
+            <title>DataService</title>
+            <para><code>DataService</code> является фасадом для вызова серверной релизации
+                <link linkend="dataManager">DataManager</link> с клиентского уровня. <code>DataService</code> не рекомендуется
+                использовать в прикладном коде. Вместо него и на клиентском уровне, и на Middleware следует использовать
+                <code>DataManager</code>.</para>
+        </section>
     </section>
     <section id="system_authentication">
       <title>Системная аутентификация</title>
@@ -860,118 +867,6 @@ public void someServiceMethod() {
           <para><application>Microsoft SQL Server</application></para>
           <para>Драйвер JTDS поддерживает метод <code>setQueryTimeout()</code> интерфейса <code>java.sql.Statement</code>, поэтому для <code>EntityManager</code> просто устанавливается стандартное свойство <literal>javax.persistence.query.timeout</literal>, которое соответствующим образом влияет на JDBC запросы. </para>
         </section>
-      </section>
-    </section>
-    <section id="dataService">
-      <title>DataService и DataWorker</title>
-      <para><link linkend="managed_beans">Управляемый бин</link> <code>DataWorker</code> является универсальным средством для загрузки графов сущностей из базы данных, и для сохранения изменений, произведенных в <link linkend="entity_states">Detached</link> экземплярах сущностей. <link linkend="services">Сервис</link> <code>DataService</code> является фасадом для вызова <code>DataWorker</code> с клиентского <link linkend="app_tiers">уровня</link> приложения.</para>
-      <para>Выделение бизнес-логики загрузки и сохранения в <code>DataWorker</code> дает возможность при необходимости создать свой сервис, делегирующий основную работу <code>DataWorker</code> и выполняющий дополнительные преобразования, например, перед возвратом данных на клиентский уровень.</para>
-      <para><code>DataWorker</code> всегда стартует новую транзакцию и по завершении работы выполняет коммит, таким образом возвращая сущности в состоянии <link linkend="entity_states">Detached</link>.</para>
-      <para>Методы <code>DataService</code> и <code>DataWorker</code>:<itemizedlist>
-          <listitem>
-            <para><code>load()</code>, <code>loadList()</code> - загружает граф сущностей в соответствии с параметрами переданного объекта <code>LoadContext</code>. </para>
-            <para>В <code>LoadContext</code> обязательно должен быть передан либо JPQL-запрос, либо идентификатор сущности. Если передано и то и другое, используется запрос, а идентификатор игнорируется. </para>
-            <para>Правила создания запросов аналогичны описанным в <xref linkend="query"/>. Отличием является то, что в запросе <code>LoadContext</code> могут быть использованы только именованные параметры, позиционные не поддерживаются.</para>
-            <para>Методы <code>load()</code> и <code>loadList()</code> проверяют наличие у пользователя права <code>EntityOp.READ</code> на загружаемую сущность. Кроме того, при извлечении сущностей из БД накладываются ограничения групп доступа (см. руководство <productname>Подсистема безопасности</productname>). Для отмены действия ограничений в текущем запросе можно передать в <code>LoadContext</code> атрибут <code>useSecurityConstraints = false</code>.</para>
-            <para>Примеры загрузки сущностей  в контроллере экрана:<programlisting language="java">@Inject
-private DataService dataService;
-
-private Book loadBookById(UUID bookId) {
-    LoadContext loadContext = new LoadContext(Book.class)
-            .setId(bookId).setView(&quot;book.edit&quot;);
-    return dataService.load(loadContext);
-}
-
-private List&lt;BookPublication&gt; loadBookPublications(UUID bookId) {
-    LoadContext loadContext = new LoadContext(BookPublication.class)
-            .setView(&quot;bookPublication.full&quot;);
-    loadContext.setQueryString(&quot;select p from library$BookPublication p where p.book.id = :bookId&quot;)
-            .setParameter(&quot;bookId&quot;, bookId);
-    return dataService.loadList(loadContext);
-}</programlisting></para>
-          </listitem>
-          <listitem>
-            <para><code>commit()</code> - сохраняет в базе данных набор сущностей, переданный в объекте <code>CommitContext</code>. Отдельно указываются коллекции сущностей, которые нужно сохранить, и которые нужно удалить.</para>
-            <para>Метод возвращает набор экземпляров сущностей, возвращенных из метода <code>EntityManager.merge()</code>, то есть по сути свежие экземпляры, только что обновленные в БД. Дальнейшая работа должна производиться именно с этими возвращенными экземплярами, чтобы предотвратить потерю данных или исключения оптимистичной блокировки. Для того, чтобы обеспечить наличие нужных атрибутов у возвращенных сущностей, с помощью мэп <code>CommitContext.getViews()</code> можно указать <link linkend="views">представление</link> для каждого сохраняемого экземпляра. </para>
-            <para>Метод <code>commit()</code>  проверяет наличие у пользователя права <code>EntityOp.UPDATE</code> на изменяемые сущности, и <code>EntityOp.DELETE</code> на  удаляемые. </para>
-            <para>Примеры сохранения коллекций сущностей:<programlisting language="java">@Inject
-private DataService dataService;
-
-/**
- * @param toSave    entities to update in the database
- * @param toDelete  entities to delete from the database
- */
-private void saveBookInstances(List&lt;BookInstance&gt; toSave, List&lt;BookInstance&gt; toDelete) {
-    CommitContext commitContext = new CommitContext(toSave, toDelete);
-    dataService.commit(commitContext);
-}
-
-/**
- * @param toSave    entities to update in the database
- * @param view      view to fetch each updated entity before returning it back to the client
- * @return          set of updated entities, fetched according to the view
- */
-private Set&lt;Entity&gt; saveAndReturnBookInstances(List&lt;BookInstance&gt; toSave, View view) {
-    CommitContext commitContext = new CommitContext();
-    for (BookInstance bookInstance : toSave) {
-        commitContext.getCommitInstances().add(bookInstance);
-        commitContext.getViews().put(bookInstance, view);
-    }
-    return dataService.commit(commitContext);
-}</programlisting></para>
-          </listitem>
-          <listitem>
-            <para><code>commitNotDetached()</code> - аналогичен методу <code>commit()</code>, но предназначен для сохранения в БД экземпляров, у которых отсутствует информация о <link linkend="entity_states">Detached</link> состоянии. Такие экземпляры сущностей могут быть переданы с клиентов, которые работают не напрямую с объектами, загруженными <structname>Middleware</structname>, а с дополнительными Data Transfer Objects, либо вообще не с Java объектами, а с их XML или JSON представлением (как, например, клиенты <link linkend="rest_api">REST API</link>)</para>
-          </listitem>
-        </itemizedlist></para>
-      <para>В процессе загрузки данных <code>DataWorker</code> может реализовывать дополнительную функциональность, описанную ниже.</para>
-      <section>
-        <title>Запросы с distinct</title>
-        <para>В JPQL запросах для экранов со списками сущностей, в которых включено постраничное отображение и возможна непредсказуемая модификация запроса <link linkend="gui_Filter">универсальным фильтром</link> или механизмом ограничений групп доступа, при отсутствии в запросе оператора <literal>distinct</literal> может возникать следующий эффект: <itemizedlist>
-            <listitem>
-              <para>при объединении с коллекцией на уровне извлечения из базы данных возникает набор с дубликатами строк</para>
-            </listitem>
-            <listitem>
-              <para>на клиентском уровне в источнике данных дубликаты исчезают, т.к. попадают в мэп (<code>java.util.Map</code>) </para>
-            </listitem>
-            <listitem>
-              <para>при постраничном отображении на одной странице оказывается меньшее количество строк, чем запрошено, общее количество строк наоборот завышено.</para>
-            </listitem>
-          </itemizedlist></para>
-        <para>Таким образом, рекомендуется в JPQL запросы браузеров включать предложение <literal> distinct</literal>, которое гарантирует отсутствие дубликатов записей при выборке из базы данных. Однако в некоторых серверах БД (в частности <application>PostgreSQL</application>) при большом количестве извлекаемых записей (более 10000) SQL запрос с <literal>distinct</literal> выполняется недопустимо долго.</para>
-        <para>Для решения этой проблемы в платформе реализована возможность корректной работы без <literal>distinct</literal> на уровне SQL. Данный механизм включается свойством приложения <property>
-            <link linkend="cuba.inMemoryDistinct">cuba.inMemoryDistinct</link>
-          </property>, при активации которого выполняется следующее: <itemizedlist>
-            <listitem>
-              <para>В JPQL запросе должен по-прежнему присутствовать <literal>select distinct</literal></para>
-            </listitem>
-            <listitem>
-              <para>В <code>DataWorker</code> из JPQL запроса перед отправкой в ORM <literal>distinct</literal> вырезается  </para>
-            </listitem>
-            <listitem>
-              <para>После загрузки страницы данных на <structname>Middleware</structname> удаляются дубликаты и выполняются дополнительные запросы к БД для получения нужного количества строк, которые затем и возвращаются клиенту.</para>
-            </listitem>
-          </itemizedlist></para>
-      </section>
-      <section id="query_from_selected">
-        <title>Последовательная выборка</title>
-        <para><code>DataWorker</code> может выполнять последовательную выборку данных из результатов предыдущего запроса. Эта возможность используется в <link linkend="gui_Filter">универсальном фильтре</link> при последовательном наложении фильтров. </para>
-        <para>Данный механизм работает следующим образом:<itemizedlist>
-            <listitem>
-              <para>При получении <code>LoadContext</code> с установленными атрибутами <code>prevQueries</code> и <code>queryKey</code> <code>DataWorker</code> выполняет выборку по предыдущему запросу и сохраняет идентификаторы полученных сущностей в таблице <database>SYS_QUERY_RESULT</database> (соответствующей сущности <literal>sys$QueryResult</literal>), разделяя наборы записей по идентификаторам пользовательских сессий и ключу сеанса выборки <code>queryKey</code>. </para>
-            </listitem>
-            <listitem>
-              <para>Текущий запрос модифицируется для объединения с результатами предыдущего, так что в итоге возвращает данные, соответствующие условиям обоих запросов, объединенных по &quot;И&quot;.</para>
-            </listitem>
-            <listitem>
-              <para>Далее процесс может повторяться, при  этом уменьшающийся набор предыдущих результатов удаляется из таблицы <database>SYS_QUERY_RESULT</database> и заполняется заново.</para>
-            </listitem>
-          </itemizedlist></para>
-        <para>Таблицу <database>SYS_QUERY_RESULT</database> необходимо периодически чистить от ненужных результатов запросов, оставленных завершенными пользовательскими сессиями. Для этого предназначен метод <code>deleteForInactiveSessions</code> бина <code>QueryResultsManagerAPI</code>. В прикладном проекте с включенным параметром <property>
-            <link linkend="cuba.allowQueryFromSelected">cuba.allowQueryFromSelected</link>
-          </property> необходимо вызывать этот метод из <link linkend="scheduled_tasks">назначенных заданий</link>, например:<programlisting language="xml">&lt;task:scheduled-tasks scheduler=&quot;scheduler&quot;&gt;
-    &lt;task:scheduled ref=&quot;cuba_QueryResultsManager&quot; method=&quot;deleteForInactiveSessions&quot; fixed-rate=&quot;600000&quot;/&gt;
-&lt;/task:scheduled-tasks&gt;</programlisting></para>
       </section>
     </section>
   </section>

@@ -2647,7 +2647,7 @@ order by c.createTs</programlisting></para>
               <imagedata align="center" fileref="img/gui_filter_sequential.png"/>
             </imageobject>
           </mediaobject>
-          <para>Механизм последовательного наложения фильтров основан на возможности <link linkend="dataService">DataWorker</link> выполнять <link linkend="query_from_selected">последовательные запросы</link>.</para>
+          <para>Механизм последовательного наложения фильтров основан на возможности <link linkend="dataManager">DataManager</link> выполнять <link linkend="query_from_selected">последовательные запросы</link>.</para>
           <warning>
             <para>На момент написания данного руководства механизм последовательного наложения фильтров реализован только для блока <structname>Web Client</structname>.</para>
           </warning>
@@ -7179,9 +7179,9 @@ public void init(Map&lt;String, Object&gt; params) {
       </listitem>
       <listitem>
         <para><code>CollectionDatasource</code> − источник данных, предназначенный для работы с коллекцией экземпляров сущности. Коллекция загружается при вызове метода <code>refresh()</code>, ключи экземпляров доступны через метод <code>getItemIds()</code>. Метод <code>setItem()</code> устанавливает, а <code>getItem()</code> возвращает  &quot;текущий&quot; экземпляр коллекции, т.е., например, соответствующий выбранной в данный момент строке таблицы.</para>
-        <para>Способ загрузки коллекции сущностей определяется реализацией. Наиболее типичный - загрузка с <structname>Middleware</structname> через <code>
-            <link linkend="dataService">DataService</link>
-          </code>, при этом для формирования JPQL запроса используются методы <code>setQuery()</code>, <code>setQueryFilter()</code>.</para>
+        <para>Способ загрузки коллекции сущностей определяется реализацией. Наиболее типичный - загрузка с
+            Middleware через <link linkend="dataManager">DataManager</link>, при этом для формирования JPQL запроса
+            используются методы <code>setQuery()</code>, <code>setQueryFilter()</code>.</para>
         <para>Стандартной реализацией такого источника является класс <code>CollectionDatasourceImpl</code>, который используется в экранах, отображающих списки сущностей.</para>
         <itemizedlist>
           <listitem>
@@ -7341,7 +7341,7 @@ public void init(Map&lt;String, Object&gt; params) {
     </section>
     <section id="datasource_query">
       <title>Запросы в CollectionDatasourceImpl</title>
-      <para>Класс <code> CollectionDatasourceImpl</code> и его наследники <code>GroupDatasourceImpl</code>, <code>HierarchicalDatasourceImpl</code> являются стандартной реализацией источников данных, работающих с коллекциями независимых экземпляров сущностей. Эти источники загружают данные через <code>DataService</code>, отправляя на <structname>Middleware</structname> запрос на языке JPQL. Далее рассматриваются особенности формирования таких запросов.</para>
+      <para>Класс <code> CollectionDatasourceImpl</code> и его наследники <code>GroupDatasourceImpl</code>, <code>HierarchicalDatasourceImpl</code> являются стандартной реализацией источников данных, работающих с коллекциями независимых экземпляров сущностей. Эти источники загружают данные через <code>DataManager</code>, отправляя на <structname>Middleware</structname> запрос на языке JPQL. Далее рассматриваются особенности формирования таких запросов.</para>
       <section id="datasource_query_results">
         <title>Возвращаемые значения</title>
         <para>Запрос должен возвращать сущности того типа, который указан при создании источника данных. Тип сущности при декларативном создании указывается в атрибуте <sgmltag>class</sgmltag> элемента XML, при создании через <code>DsBuilder</code> - в методе <code>setJavaClass()</code> или <code>setMetaClass()</code>.</para>
@@ -7604,16 +7604,28 @@ categoryAttrsDs.addListener(new DsListenerAdapter&lt;CategoryAttribute&gt;() {
             <para>Зависимости между источниками организуются с помощью <link linkend="datasource_query">параметров запросов</link> с префиксом <code>ds$</code>.</para>
           </listitem>
           <listitem>
-            <para>Позволяет собрать все измененные экземпляры сущностей и отправить их на <structname>Middleware</structname> в одном вызове <code>DataService.commit()</code>, т.е. сохранить в базе данных в одной транзакции. </para>
-            <para>В качестве примера предположим, что некоторый экран позволяет редактировать экземпляр сущности <code>Order</code> и коллекцию принадлежащих ему экземпляров <code>OrderLine</code>. Экземпляр <code>Order</code> находится в <code>Datasource</code>, коллекция <code>OrderLine</code> - во вложенном <code>CollectionDatasource</code>, созданном по атрибуту <code>Order.lines</code>. Допустим, пользователь изменил какой-то атрибут <code>Order</code> и создал новый экземпляр <code>OrderLine</code>. Тогда при коммите экрана в <code>
-                <link linkend="dataService">DataService</link>
-              </code> будут одновременно отправлены два экземпляра - измененный <code>Order</code> и новый <code>OrderLine</code>. Далее, они вместе попадут в один <link linkend="entityManager">персистентный контекст</link> и при коммите транзакции сохранятся в БД. Разумеется, экземпляр <code>OrderLine</code> содержится также в коллекции <code>Order.lines</code>, но если не передавать его в персистентный контекст независимо, то потребуется установка каскадности сохранения между <code>Order</code> и <code>OrderLines</code> на уровне ORM. Жесткие отношения каскадности на уровне ORM иногда вызывают нежелательные последствия в неожиданных местах, поэтому лучше их избегать, что и обеспечивает описываемый механизм <code>DsContext</code>.</para>
+            <para>Позволяет собрать все измененные экземпляры сущностей и отправить их на <structname>Middleware</structname> в одном вызове <code>DataManager.commit()</code>, т.е. сохранить в базе данных в одной транзакции. </para>
+            <para>В качестве примера предположим, что некоторый экран позволяет редактировать экземпляр сущности
+                <code>Order</code> и коллекцию принадлежащих ему экземпляров <code>OrderLine</code>. Экземпляр
+                <code>Order</code> находится в <code>Datasource</code>, коллекция <code>OrderLine</code> - во
+                вложенном <code>CollectionDatasource</code>, созданном по атрибуту <code>Order.lines</code>. Допустим,
+                пользователь изменил какой-то атрибут <code>Order</code> и создал новый экземпляр <code>OrderLine</code>.
+                Тогда при коммите экрана в <link linkend="dataManager">DataManager</link> будут одновременно отправлены
+                два экземпляра - измененный <code>Order</code> и новый <code>OrderLine</code>. Далее, они вместе попадут
+                в один <link linkend="entityManager">персистентный контекст</link> и при коммите транзакции сохранятся в
+                БД. Разумеется, экземпляр <code>OrderLine</code> содержится также в коллекции <code>Order.lines</code>,
+                но если не передавать его в персистентный контекст независимо, то потребуется установка каскадности
+                сохранения между <code>Order</code> и <code>OrderLines</code> на уровне ORM. Жесткие отношения
+                каскадности на уровне ORM иногда вызывают нежелательные последствия в неожиданных местах, поэтому лучше
+                их избегать, что и обеспечивает описываемый механизм <code>DsContext</code>.</para>
             <para>В результате коммита <code>DsContext</code> получает от  <structname>Middleware</structname> набор сохраненных экземпляров (в случае оптимистической блокировки у них, как минимум, увеличено значение атрибута <code>version</code>), и устанавливает эти экземпляры в источниках данных взамен устаревших. Это позволяет сразу после коммита работать со свежими экземплярами без необходимости лишнего обновления источников данных, связанного с запросами к <structname>Middleware</structname> и базе данных.</para>
           </listitem>
           <listitem>
-            <para>Объявляет слушателя <code>DsContext.CommitListener</code>, позволяющего получать оповещения перед коммитом измененных экземпляров и после него. Перед коммитом можно дополнить коллекцию отправляемых в <code>
-                <link linkend="dataService">DataService</link>
-              </code> на <structname>Middleware</structname> экземпляров, тем самым обеспечив сохранение в той же транзакции произвольных сущностей. После коммита можно получить коллекцию вернувшихся из <code>DataService</code> сохраненных экземпляров.</para>
+            <para>Объявляет слушателя <code>DsContext.CommitListener</code>, позволяющего получать оповещения перед
+                коммитом измененных экземпляров и после него. Перед коммитом можно дополнить коллекцию отправляемых в
+                <link linkend="dataManager">DataManager</link> на Middleware экземпляров, тем самым обеспечив сохранение
+                в той же транзакции произвольных сущностей. После коммита можно получить коллекцию вернувшихся из
+                <code>DataManager</code> сохраненных экземпляров.</para>
             <para>Данный механизм необходим, если некоторые сущности, с которыми работает экран, находятся не под управлением источников данных, а создаются и изменяются непосредственно в коде контроллера. Например, визуальный компонент <code>
                 <link linkend="gui_FileUploadField">FileUploadField</link>
               </code> после загрузки файла создает новый экземпляр сущности <code>FileDescriptor</code>, который можно сохранить вместе с другими сущностями экрана именно таким способом - добавив в <code>CommitContext</code> в методе <code>DsContext.CommitListener.beforeCommit()</code>.</para>
@@ -7639,20 +7651,14 @@ public void init(Map&lt;String, Object&gt; params) {
     </section>
     <section id="dataSupplier">
       <title>DataSupplier</title>
-      <para><code>DataSupplier</code> - интерфейс, через который код  универсального пользовательского интерфейса (в том числе и источники данных) обращается к <structname>Middleware</structname> для загрузки и сохранения сущностей. Он расширяет интерфейс <code>
-          <link linkend="dataService">DataService</link>
-        </code> и добавляет следующие полезные прикладному коду методы:<itemizedlist>
-          <listitem>
-            <para><code>reload()</code> - перезагрузить экземпляр сущности с требуемым <link linkend="views">view</link> и другими параметрами</para>
-          </listitem>
-          <listitem>
-            <para><code>commit()</code> - сохранить в БД один экземпляр сущности</para>
-          </listitem>
-          <listitem>
-            <para><code>remove()</code> - удалить из БД один экземпляр сущности.</para>
-          </listitem>
-        </itemizedlist></para>
-      <para>Ссылку на <code>DataSupplier</code> можно получить либо <link linkend="screen_controller_injection">инжекцией</link> в контроллер экрана, либо через экземпляры <code>DsContext</code> или <code>Datasource</code>.</para>
+      <para><code>DataSupplier</code> - интерфейс, через который источники данных обращаются к Middleware для
+          загрузки и сохранения сущностей. Его стандартная реализация просто делегирует выполнение
+          <link linkend="dataManager">DataManager</link>. Экран может задать свою реализацию интерфейса <code>DataSupplier</code>
+          в атрибуте <code>dataSupplier</code> элемента <code>window</code>. Собственная реализация может, например,
+          вызывать дополнительный блок Middleware для загрузки данных экрана из другой базы данных.</para>
+      <para>Ссылку на <code>DataSupplier</code> можно получить либо <link linkend="screen_controller_injection">инжекцией</link>
+          в контроллер экрана, либо через экземпляры <code>DsContext</code> или <code>Datasource</code>. В обоих случаях
+      возвращается или стандартная, или собственная реализация интерфейса (если таковая определена).</para>
     </section>
   </section>
   <section id="gui_Action">

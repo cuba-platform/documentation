@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" []>
-<section id="common_components">
+<section id="common_components" xmlns:xi="http://www.w3.org/2001/XInclude">
   <title>Общие компоненты</title>
   <para>В данной главе рассмотрены компоненты платформы, общие для всех <link linkend="app_tiers">уровней</link> приложения.</para>
   <section id="data_model">
@@ -822,11 +822,7 @@ public class Customer extends StandardEntity {
               <para>для текущего экземпляра <link linkend="entityManager">EntityManager</link> - вызовом <code>setSoftDeletion(false)</code></para>
             </listitem>
             <listitem>
-              <para>при запросе данных через <code>
-                  <link linkend="dataService">DataService</link>
-                </code> или <code>
-                  <link linkend="dataService">DataWorker</link>
-                </code> - вызовом у передаваемого объекта <code>LoadContext</code> метода <code>setSoftDeletion(false)</code></para>
+              <para>при запросе данных через <link linkend="dataManager">DataManager</link> - вызовом у передаваемого объекта <code>LoadContext</code> метода <code>setSoftDeletion(false)</code></para>
             </listitem>
             <listitem>
               <para>на уровне <link linkend="datasources">источников данных</link> - используя метод <code>CollectionDatasource.setSoftDeletion(false)</code> или атрибут <literal>softDeletion=&quot;false&quot;</literal> элемента <sgmltag>collectionDatasource</sgmltag> в <link linkend="screen_xml">XML-дескрипторе</link> экрана.</para>
@@ -1344,7 +1340,7 @@ private Double latitude;</programlisting></para>
           <para>Все связи в модели данных объявляются с признаком <link linkend="lazy_loading">загрузки по требованию</link> (<code>fetch = FetchType.LAZY</code>, см. <xref linkend="entity_annotations"/>).</para>
         </listitem>
         <listitem>
-          <para>В процессе загрузки данных через <link linkend="dataService">DataService</link> клиентский код помимо <glossterm linkend="jpql">JPQL</glossterm> запроса указывает нужное  представление.</para>
+          <para>В процессе загрузки данных через <link linkend="dataManager">DataManager</link> клиентский код помимо <glossterm linkend="jpql">JPQL</glossterm> запроса указывает нужное  представление.</para>
         </listitem>
         <listitem>
           <para>На основе представления формируется так называемый <firstterm>Fetch Plan</firstterm> - особенность лежащего в основе <link linkend="orm">слоя ORM</link> фреймворка <application>Apache OpenJPA</application>. Fetch Plan влияет на формирование SQL запроса к базе данных: как на список возвращаемых полей, так и на соединения с другими таблицами, содержащими связанные сущности.</para>
@@ -1386,9 +1382,13 @@ private Double latitude;</programlisting></para>
           <para><code>view</code> - для ссылочных атрибутов задает представление, с которым необходимо загружать связанную сущность</para>
         </listitem>
         <listitem>
-          <para><code>lazy</code> - для ссылочных атрибутов признак того, что данный атрибут нужно не  включать в Fetch Plan, а загружать отдельным SQL запросом, инициированным обращением к атрибуту. Следует иметь в виду, что при использовании <code>
-              <link linkend="dataService">DataService</link>
-            </code> и <link linkend="datasources">источников данных</link> атрибут в любом случае будет загружен, данный признак влияет только на способ загрузки. Если же представление с <code>lazy</code> атрибутами используется на уровне ORM, то после загрузки экземпляров их обязательно нужно передать в метод <code><link linkend="entityManager">EntityManager</link>.fetch()</code> до окончания транзакции, иначе <code>lazy</code> атрибуты загружены не будут.</para>
+          <para><code>lazy</code> - для ссылочных атрибутов признак того, что данный атрибут нужно не  включать в
+              Fetch Plan, а загружать отдельным SQL запросом, инициированным обращением к атрибуту. Следует иметь в виду,
+              что при использовании <link linkend="dataManager">DataManager</link> и <link linkend="datasources">источников данных</link>
+              атрибут в любом случае будет загружен, данный признак влияет только на способ загрузки. Если же
+              представление с <code>lazy</code> атрибутами используется на уровне ORM, то после загрузки экземпляров их
+              обязательно нужно передать в метод <link linkend="entityManager">EntityManager</link>.fetch() до окончания
+              транзакции, иначе <code>lazy</code> атрибуты загружены не будут.</para>
         </listitem>
       </itemizedlist></para>
     <warning>
@@ -2041,11 +2041,134 @@ Date date = timeSource.currentTimestamp();</programlisting><programlisting langu
       <title>UserSessionSource</title>
       <para>Обеспечивает получение объекта сессии текущего пользователя. Подробнее см. <xref linkend="authentication"/></para>
     </section>
-    <section>
+    <section id="uuidSource">
       <title>UuidSource</title>
       <para>Обеспечивает получение значений <code>UUID</code>, в том числе для идентификаторов сущностей. Применение <code>UUID.randomUUID()</code> в прикладном коде не рекомендуется.</para>
       <para>Для вызова из статического контекста можно использовать класс <code>UuidProvider</code>, который имеет также дополнительный метод <code>fromString()</code>, работающий быстрее, чем стандартный метод <code>UUID.fromString()</code>.</para>
     </section>
+      <section id="dataManager">
+        <title>DataManager</title>
+        <para>Интерфейс <code>DataManager</code> является универсальным средством для загрузки графов сущностей из
+            базы данных, и для сохранения изменений, произведенных в detached экземплярах сущностей. </para>
+        <para><code>DataManager</code> всегда стартует новую транзакцию и по завершении работы выполняет коммит, таким
+            образом возвращая сущности в <link linkend="entity_states">detached состоянии</link>.</para>
+        <para>Методы <code>DataManager</code>:<itemizedlist>
+            <listitem>
+              <para><code>load()</code>, <code>loadList()</code> - загружает граф сущностей в соответствии с параметрами
+                  переданного объекта <code>LoadContext</code>. </para>
+              <para>В <code>LoadContext</code> обязательно должен быть передан либо JPQL-запрос, либо идентификатор
+                  сущности. Если передано и то и другое, используется запрос, а идентификатор игнорируется. </para>
+              <para>Правила создания запросов аналогичны описанным в <xref linkend="query"/>. Отличием является то,
+                  что в запросе <code>LoadContext</code> могут быть использованы только именованные параметры,
+                  позиционные не поддерживаются.</para>
+              <para>Методы <code>load()</code> и <code>loadList()</code> проверяют наличие у пользователя
+                  <link linkend="permissions">права</link> <code>EntityOp.READ</code> на загружаемую сущность.
+                  Кроме того, при извлечении сущностей из БД накладываются <link linkend="constraints">ограничения</link>
+                  групп доступа. Для отмены действия ограничений в текущем запросе можно передать в <code>LoadContext</code>
+                  атрибут <code>useSecurityConstraints = false</code>.</para>
+              <para>Примеры загрузки сущностей  в контроллере экрана:
+                  <programlisting language="java"><xi:include href="../../source/common/dataManager_1.java" encoding="UTF-8" parse="text"/></programlisting>
+              </para>
+            </listitem>
+            <listitem>
+              <para><code>commit()</code> - сохраняет в базе данных набор сущностей, переданный в объекте
+                  <code>CommitContext</code>. Отдельно указываются коллекции сущностей, которые нужно сохранить,
+                  и которые нужно удалить.</para>
+              <para>Метод возвращает набор экземпляров сущностей, возвращенных из метода
+                  <link linkend="entityManager">EntityManager</link>.merge(), то есть по сути свежие экземпляры,
+                  только что обновленные в БД. Дальнейшая работа должна производиться именно с этими возвращенными
+                  экземплярами, чтобы предотвратить потерю данных или исключения оптимистичной блокировки. Для того,
+                  чтобы обеспечить наличие нужных атрибутов у возвращенных сущностей, с помощью мэп
+                  <code>CommitContext.getViews()</code> можно указать <link linkend="views">представление</link> для
+                  каждого сохраняемого экземпляра. </para>
+              <para>Метод <code>commit()</code>  проверяет наличие у пользователя <link linkend="permissions">права</link>
+                  <code>EntityOp.UPDATE</code> на изменяемые сущности, и <code>EntityOp.DELETE</code> на  удаляемые. </para>
+              <para>Примеры сохранения коллекций сущностей:
+                  <programlisting language="java"><xi:include href="../../source/common/dataManager_2.java" encoding="UTF-8" parse="text"/></programlisting>
+              </para>
+            </listitem>
+            <listitem>
+                <para><code>reload()</code> - удобные методы для перезагрузки экземпляра сущности с требуемым
+                    <link linkend="views">представлением</link>. Делегируют выполнение методу <code>load()</code>.</para>
+            </listitem>
+            <listitem>
+                <para><code>remove()</code> - удаляет экземпляр сущности из базы данных. Делегируют выполнение методу
+                    <code>commit()</code>.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>В процессе загрузки данных <code>DataManager</code> может реализовывать дополнительную функциональность,
+            описанную ниже.</para>
+        <section id="query_with_distinct">
+          <title>Запросы с distinct</title>
+          <para>В JPQL запросах для экранов со списками сущностей, в которых включено постраничное отображение и
+              возможна непредсказуемая модификация запроса <link linkend="gui_Filter">универсальным фильтром</link> или
+              механизмом ограничений групп доступа, при отсутствии в запросе оператора <literal>distinct</literal> может
+              возникать следующий эффект: <itemizedlist>
+              <listitem>
+                <para>при объединении с коллекцией на уровне извлечения из базы данных возникает набор с дубликатами строк</para>
+              </listitem>
+              <listitem>
+                <para>на клиентском уровне в источнике данных дубликаты исчезают, т.к. попадают в мэп
+                    (<code>java.util.Map</code>) </para>
+              </listitem>
+              <listitem>
+                <para>при постраничном отображении на одной странице оказывается меньшее количество строк, чем запрошено,
+                    общее количество строк наоборот завышено.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para>Таким образом, рекомендуется в JPQL запросы браузеров включать предложение <literal> distinct</literal>,
+              которое гарантирует отсутствие дубликатов записей при выборке из базы данных. Однако в некоторых серверах БД
+              (в частности <application>PostgreSQL</application>) при большом количестве извлекаемых записей (более 10000)
+              SQL запрос с <literal>distinct</literal> выполняется недопустимо долго.</para>
+          <para>Для решения этой проблемы в платформе реализована возможность корректной работы без
+              <literal>distinct</literal> на уровне SQL. Данный механизм включается свойством приложения
+              <link linkend="cuba.inMemoryDistinct">cuba.inMemoryDistinct</link>, при активации которого выполняется
+              следующее:
+              <itemizedlist>
+              <listitem>
+                <para>В JPQL запросе должен по-прежнему присутствовать <literal>select distinct</literal></para>
+              </listitem>
+              <listitem>
+                <para>В <code>DataManager</code> из JPQL запроса перед отправкой в ORM <literal>distinct</literal>
+                    вырезается  </para>
+              </listitem>
+              <listitem>
+                <para>После загрузки страницы данных на <structname>Middleware</structname> удаляются дубликаты и
+                    выполняются дополнительные запросы к БД для получения нужного количества строк, которые затем и
+                    возвращаются клиенту.</para>
+              </listitem>
+            </itemizedlist></para>
+        </section>
+        <section id="query_from_selected">
+          <title>Последовательная выборка</title>
+          <para><code>DataManager</code> может выполнять последовательную выборку данных из результатов предыдущего
+              запроса. Эта возможность используется в <link linkend="gui_Filter">универсальном фильтре</link> при
+              последовательном наложении фильтров. </para>
+          <para>Данный механизм работает следующим образом:<itemizedlist>
+              <listitem>
+                <para>При получении <code>LoadContext</code> с установленными атрибутами <code>prevQueries</code> и
+                    <code>queryKey</code> <code>DataManager</code> выполняет выборку по предыдущему запросу и сохраняет
+                    идентификаторы полученных сущностей в таблице <database>SYS_QUERY_RESULT</database> (соответствующей
+                    сущности <literal>sys$QueryResult</literal>), разделяя наборы записей по идентификаторам
+                    пользовательских сессий и ключу сеанса выборки <code>queryKey</code>. </para>
+              </listitem>
+              <listitem>
+                <para>Текущий запрос модифицируется для объединения с результатами предыдущего, так что в итоге возвращает
+                    данные, соответствующие условиям обоих запросов, объединенных по &quot;И&quot;.</para>
+              </listitem>
+              <listitem>
+                <para>Далее процесс может повторяться, при  этом уменьшающийся набор предыдущих результатов удаляется из таблицы <database>SYS_QUERY_RESULT</database> и заполняется заново.</para>
+              </listitem>
+            </itemizedlist></para>
+          <para>Таблицу <database>SYS_QUERY_RESULT</database> необходимо периодически чистить от ненужных результатов
+              запросов, оставленных завершенными пользовательскими сессиями. Для этого предназначен метод
+              <code>deleteForInactiveSessions</code> бина <code>QueryResultsManagerAPI</code>. В прикладном проекте с
+              включенным параметром <link linkend="cuba.allowQueryFromSelected">cuba.allowQueryFromSelected</link> необходимо
+              вызывать этот метод из <link linkend="scheduled_tasks">назначенных заданий</link>, например:<programlisting language="xml">&lt;task:scheduled-tasks scheduler=&quot;scheduler&quot;&gt;
+      &lt;task:scheduled ref=&quot;cuba_QueryResultsManager&quot; method=&quot;deleteForInactiveSessions&quot; fixed-rate=&quot;600000&quot;/&gt;
+  &lt;/task:scheduled-tasks&gt;</programlisting></para>
+        </section>
+      </section>
   </section>
   <section id="appContext">
     <title>AppContext</title>

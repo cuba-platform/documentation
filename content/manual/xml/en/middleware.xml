@@ -103,6 +103,12 @@ protected OrderService orderService;
 ...
 orderService.calculateTotals(order);</programlisting></para>
     </section>
+    <section id="dataService">
+      <title>DataService</title>
+      <para><code>DataService</code> provides a facade for calling <link linkend="dataManager">DataManager</link>
+          middleware implementation from the client tier. The usage of <code>DataService</code> interface in the
+          application code is not recommended. Instead, use <code>DataManager</code> directly on both middle and client tiers.</para>
+    </section>
   </section>
   <section id="system_authentication">
     <title>System Authentication</title>
@@ -837,119 +843,6 @@ public void someServiceMethod() {
         <para><application>Microsoft SQL Server</application></para>
         <para>JTDS driver supports the  <code>setQueryTimeout()</code> method of the   <code>java.sql.Statement</code> interface, so you can just set the standard <code>EntityManager</code> property <literal>javax.persistence.query.timeout</literal>, which will automatically apply to JDBC queries. </para>
       </simplesect>
-    </section>
-  </section>
-  <section id="dataService">
-    <title>DataService and DataWorker</title>
-    <para>The  <code>DataWorker</code> <link linkend="managed_beans">managed bean</link> is the universal tool for loading entity graphs from the database and saving changes applied to  <link linkend="entity_states">Detached</link> entities instances.  <code>DataService</code> <link linkend="services">service</link> is the facade for calling  <code>DataWorker</code> from the client <link linkend="app_tiers">tier</link> of the application.</para>
-    <para>Encapsulation of loading and saving business logic to the <code>DataWorker</code> allows you to create your own service, which delegates main operations to   <code>DataWorker</code> and performs additional transformations – for example, before the data is returned to the client tier.</para>
-    <para><code>DataWorker</code> always starts a new transaction and commits it on operation completion, thus returning entities in the <link linkend="entity_states">Detached</link> state.</para>
-    <para><code>DataService</code> and <code>DataWorker</code> methods are listed below:</para>
-    <para><itemizedlist>
-        <listitem>
-          <para><code>load()</code>, <code>loadList()</code> – loads a graph of entities according to the parameters of the <code>LoadContext</code> object passed to it. </para>
-          <para><code>LoadContext</code> must include either a JPQL query or an entity identifier. If both are defined, the query will be used and the identifier will be ignored.
-The rules for queries creation are similar to those described in <xref linkend="query"/>. The difference is that the query in <code>LoadContext</code> may only use named parameters, positional parameters are not supported.
-</para>
-          <para><code>load()</code> and <code>loadList()</code> methods check user permission <code>EntityOp.READ</code> for the entity being loaded. Additionally, loading entities from DB is subject for access group limitations (see <xref linkend="constraints"/>). It is possible to ignore access constraints by passing <code>useSecurityConstraints = false</code> to <code>LoadContext</code>.</para>
-          <para>Examples of loading entities in the screen controller:</para>
-          <programlisting language="java">@Inject
-private DataService dataService;
-
-private Book loadBookById(UUID bookId) {
-  LoadContext loadContext = new LoadContext(Book.class)
-          .setId(bookId).setView(&quot;book.edit&quot;);
-  return dataService.load(loadContext);
-}
-
-private List&lt;BookPublication&gt; loadBookPublications(UUID bookId) {
-  LoadContext loadContext = new LoadContext(BookPublication.class)
-          .setView(&quot;bookPublication.full&quot;);
-  loadContext.setQueryString(&quot;select p from library$BookPublication p where p.book.id = :bookId&quot;)
-          .setParameter(&quot;bookId&quot;, bookId);
-  return dataService.loadList(loadContext);
-}</programlisting>
-        </listitem>
-        <listitem>
-          <para><code>commit()</code> –  saves the set  of entities passed in  <code>CommitContext</code> to the database. Collections of entities which should be saved and which should be deleted must be specified separately. </para>
-          <para>The method returns the set of entity instances returned by  <code>EntityManager.merge()</code>, essentially these are fresh instances just updated in DB. Further work should be performed with these returned instances to prevent data loss or optimistic locking. You can ensure that required attributes are present in the returned entities by setting a <link linkend="views">view</link> for each saved instance using <code>CommitContext.getViews()</code> map.</para>
-          <para>This method    checks user permissions <code>EntityOp.UPDATE</code> for the updated entities, and <code>EntityOp.DELETE</code> for the deleted ones. </para>
-          <para>Examples for saving a collection of entities:</para>
-          <programlisting language="java">@Inject
-private DataService dataService;
-
-/**
-* @param toSave    entities to update in the database
-* @param toDelete  entities to delete from the database
-*/
-private void saveBookInstances(List&lt;BookInstance&gt; toSave, List&lt;BookInstance&gt; toDelete) {
-  CommitContext commitContext = new CommitContext(toSave, toDelete);
-  dataService.commit(commitContext);
-}
-
-/**
-* @param toSave    entities to update in the database
-* @param view      view to fetch each updated entity before returning it back to the client
-* @return          set of updated entities, fetched according to the view
-*/
-
-private Set&lt;Entity&gt; saveAndReturnBookInstances(List&lt;BookInstance&gt; toSave, View view) {
-  CommitContext commitContext = new CommitContext();
-  for (BookInstance bookInstance : toSave) {
-      commitContext.getCommitInstances().add(bookInstance);
-      commitContext.getViews().put(bookInstance, view);
-  }
-  return dataService.commit(commitContext);
-}</programlisting>
-        </listitem>
-        <listitem>
-          <para><code>commitNotDetached()</code> is similar to <code>commit()</code>, but is intended for saving instances which have no information about the <link linkend="entity_states">Detached</link> state. Such instances can be passed by the clients, which do not work with the objects loaded by Middleware directly, but rather with extra Data Transfer Objects, or even not with Java objects, but their XML or JSON representations (e.g. <link linkend="rest_api">REST API</link> clients).</para>
-        </listitem>
-      </itemizedlist></para>
-    <para>While loading data,  <code>DataWorker</code> may also implement additional functionality described below.</para>
-    <section id="query_with_distinct">
-      <title>Queries with distinct</title>
-      <para>The following may happen when <literal>distinct</literal> operator is omitted in JPQL queries for screens with lists of entities with enabled paging and where unpredictable modification of the query can happen as result of applying a <link linkend="gui_Filter">generic filter</link> or access group <link linkend="constraints">constraints</link> mechanisms: <itemizedlist>
-          <listitem>
-            <para>If a collection is joined at database level, the dataset will contain duplicate rows.</para>
-          </listitem>
-          <listitem>
-            <para>On client level the duplicates disappear in the datasource as they are added to a map (<code>java.util.Map</code>). </para>
-          </listitem>
-          <listitem>
-            <para>In case of paged table, a page may show fewer lines than requested, while the total number of lines exceeds requested.</para>
-          </listitem>
-        </itemizedlist></para>
-      <para>Thus, we recommend including <literal> distinct</literal> in JPQL queries, which ensures the absence of duplicates in the dataset returned from DB. However, certain DB servers  (<application>PostgreSQL</application> in particular) may take unacceptably long time to execute an SQL query with <literal>distinct</literal>, if the number of returned records is big (more than 10000). </para>
-      <para>To solve this, the platform implements a mechanism to operate correctly without <literal>distinct</literal> at SQL level. This mechanism is enabled by <link linkend="cuba.inMemoryDistinct">cuba.inMemoryDistinct</link> application property. When activated, it does the following:<itemizedlist>
-          <listitem>
-            <para>The JPQL query should still include <literal>select distinct</literal>.</para>
-          </listitem>
-          <listitem>
-            <para><code>DataWorker</code> cuts  <literal>distinct</literal> out of the JPQL query before sending it to ORM.</para>
-          </listitem>
-          <listitem>
-            <para>After the data page is loaded by <code>DataWorker</code>, it deletes the duplicates and runs additional queries to DB in order to retrieve the necessary number of rows which are then returned to the client.</para>
-          </listitem>
-        </itemizedlist></para>
-    </section>
-    <section id="query_from_selected">
-      <title>Sequential Queries</title>
-      <para><code>DataWorker</code> can select data from the results of previous requests. This ability is used by the <link linkend="gui_Filter">generic filter</link> for sequential application of filters. </para>
-      <para>The mechanism works as follows:<itemizedlist>
-          <listitem>
-            <para>If a  <code>LoadContext</code> with defined attributes <code>prevQueries</code> and <code>queryKey</code> is provided, the  <code>DataWorker</code> executes the previous query and saves identifiers of retrieved entities in <database>SYS_QUERY_RESULT</database> table  (corresponding to  <literal>sys$QueryResult</literal> entity), separating the sets of records by user sessions and the query session key <code>queryKey</code>. </para>
-          </listitem>
-          <listitem>
-            <para>The current query is modified to be combined with the results of the previous one, so that the resulting data complies with the conditions of both queries combined by AND.</para>
-          </listitem>
-          <listitem>
-            <para>The process may be further repeated. In this case the gradually reduced set of previous results gets deleted from <database>SYS_QUERY_RESULT</database> table and refilled again.</para>
-          </listitem>
-        </itemizedlist></para>
-      <para>The table  <database>SYS_QUERY_RESULT</database> should be periodically cleaned of all unnecessary query results left by terminated user sessions. This is done by the  <code>deleteForInactiveSessions()</code> method of the <code>QueryResultsManagerAPI</code> bean. In an application with enabled <link linkend="cuba.allowQueryFromSelected">cuba.allowQueryFromSelected</link> property this method should be called by <link linkend="scheduled_tasks">scheduled tasks</link>, for example:<programlisting language="xml">&lt;task:scheduled-tasks scheduler=&quot;scheduler&quot;&gt;
-  &lt;task:scheduled ref=&quot;cuba_QueryResultsManager&quot; method=&quot;deleteForInactiveSessions&quot; fixed-rate=&quot;600000&quot;/&gt;
-&lt;/task:scheduled-tasks&gt;</programlisting></para>
     </section>
   </section>
 </section>

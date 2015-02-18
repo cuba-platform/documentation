@@ -2436,7 +2436,7 @@ click  <inlinemediaobject>
               <imagedata align="center" fileref="img/gui_filter_sequential.png"/>
             </imageobject>
           </mediaobject>
-          <para>The sequential  filter application mechanism is based on the <link linkend="dataService">DataWorker</link> ability to run  <link linkend="query_from_selected">sequential queries</link>.</para>
+          <para>The sequential  filter application mechanism is based on the <link linkend="dataManager">DataManager</link> ability to run  <link linkend="query_from_selected">sequential queries</link>.</para>
           <warning>
             <para>When this manual is being written, the sequential applying filters mechanism has been implemented only for  <structname>Web Client</structname>.</para>
           </warning>
@@ -6861,7 +6861,7 @@ public void init(Map&lt;String, Object&gt; params) {
       </listitem>
       <listitem>
         <para><code>CollectionDatasource</code> is a data source designed to work with a collection of entity instances. The collection is loaded with the invocation of the <code>refresh()</code> method, instance keys are accessible through the <code>getItemIds()</code> method. The <code>setItem()</code> method sets the “current” instance of the collection and <code>getItem()</code> returns it, i.e., for example, the one that corresponds to the currently selected table row.</para>
-        <para>The way to load collections is determined by implementation. The most typical one is loading from Middleware via <link linkend="dataService">DataService</link>; in this case, <code>setQuery()</code>, <code>setQueryFilter()</code> are used to form a JPQL query.</para>
+        <para>The way to load collections is determined by implementation. The most typical one is loading from Middleware via <link linkend="dataManager">DataManager</link>; in this case, <code>setQuery()</code>, <code>setQueryFilter()</code> are used to form a JPQL query.</para>
         <para><code>CollectionDatasourceImpl</code> class is the standard implementation of such sources, which is used on screens with entity lists.</para>
         <itemizedlist>
           <listitem>
@@ -7006,7 +7006,7 @@ public void init(Map&lt;String, Object&gt; params) {
       </section>
     </section><section id="datasource_query">
       <title>CollectionDatasourceImpl Queries</title>
-      <para>The <code>CollectionDatasourceImpl</code> class and its inheritors, <code>GroupDatasourceImpl</code>, <code>HierarchicalDatasourceImpl</code> are standard implementation of datasources that work with collections of independent entity instances. These sources load data via <code>DataService</code> by sending a JPQL query to <structname>Middleware</structname>. The format of these queries is described below.</para>
+      <para>The <code>CollectionDatasourceImpl</code> class and its inheritors, <code>GroupDatasourceImpl</code>, <code>HierarchicalDatasourceImpl</code> are standard implementation of datasources that work with collections of independent entity instances. These sources load data via <code>DataManager</code> by sending a JPQL query to <structname>Middleware</structname>. The format of these queries is described below.</para>
       <section>
         <title>Returned values</title>
         <para>A query should return entities of the type which is specified at the moment of creating a data source. In case of declarative creation, the entity type is specified in the <sgmltag>class</sgmltag> attribute of an XML element, if <code>DsBuilder</code> is used – in the <code>setJavaClass()</code> or <code>setMetaClass()</code> method.</para>
@@ -7253,14 +7253,25 @@ categoryAttrsDs.addListener(new DsListenerAdapter&lt;CategoryAttribute&gt;() {
             <para>Dependencies between sources are organized using <link linkend="datasource_query">query parameters</link> with the <code>ds$</code> prefix.</para>
           </listitem>
           <listitem>
-            <para>Allows to collect all changed entity instances and send them to <structname>Middleware</structname> in a single invocation of <code>DataService.commit()</code>, i.e. to save them into a data base using a single transaction. </para>
-            <para>As an example, let&apos;s assume that some screen allows to edit an instance of the <code>Order</code> entity and a collection of <code>OrderLine</code> instances belonging to it. The <code>Order</code> instance is located in <code>Datasource</code>; the <code>OrderLine</code> collection – in nested <code>CollectionDatasource</code>, which is created using the <code>Order.lines</code> attribute. If user changes some attribute of <code>Order</code> and creates a new instance, <code>OrderLine</code>. Then, when a screen is committed to <code>
-                <link linkend="dataService">DataService</link>
-              </code>, two instances – changed <code>Order</code> and new <code>OrderLine</code> – will be sent simultaneously. After that, they will together get into one <link linkend="entityManager">persistent context</link> and will be saved into the DB with transaction commit. The <code>OrderLine</code> instance is also contained in the <code>Order.lines</code> collection, but if it&apos;s not passed into persistent context independently, the cascade saving between <code>Order</code> and <code>OrderLines</code> at the ORM level should be set. Tight cascade relations at the ORM level sometimes cause unwanted consequences in unexpected places, so it will be better to avoid them, as described in the <code>DsContext</code> mechanism.</para>
+            <para>Allows to collect all changed entity instances and send them to <structname>Middleware</structname> in a single invocation of <code>DataManager.commit()</code>, i.e. to save them into a data base using a single transaction. </para>
+            <para>As an example, let&apos;s assume that some screen allows to edit an instance of the <code>Order</code>
+                entity and a collection of <code>OrderLine</code> instances belonging to it. The <code>Order</code>
+                instance is located in <code>Datasource</code>; the <code>OrderLine</code> collection – in nested
+                <code>CollectionDatasource</code>, which is created using the <code>Order.lines</code> attribute. If
+                user changes some attribute of <code>Order</code> and creates a new instance, <code>OrderLine</code>.
+                Then, when a screen is committed to <link linkend="dataManager">DataManager</link>, two instances –
+                changed <code>Order</code> and new <code>OrderLine</code> – will be sent simultaneously. After that,
+                they will together get into one <link linkend="entityManager">persistent context</link> and will be
+                saved into the DB with transaction commit. The <code>OrderLine</code> instance is also contained in
+                the <code>Order.lines</code> collection, but if it&apos;s not passed into persistent context
+                independently, the cascade saving between <code>Order</code> and <code>OrderLines</code> at the ORM
+                level should be set. Tight cascade relations at the ORM level sometimes cause unwanted consequences in
+                unexpected places, so it will be better to avoid them, as described in the <code>DsContext</code>
+                mechanism.</para>
             <para>As a result of committing transaction, <code>DsContext</code> receives a set of saved instances from <structname>Middleware</structname> (in case of optimistic blocking they at least have an increased value of the <code>version</code> attribute), and sets these instances in datasources instead of outdated ones. This allows to work with latest instances immediately after committing without an extra data source refresh that is related to queries to <structname>Middleware</structname> and the database.</para>
           </listitem>
           <listitem>
-            <para>Declares a listener, <code>DsContext.CommitListener</code>, which allows to receive notifications before and after committing modified instances. Before the commit it&apos;s possible to supplement a collection of instances sent to <link linkend="dataService">DataService</link> at <structname>Middleware</structname> which will lead to saving arbitrary entities in the same transaction. A collection of saved instances that are returned from <code>DataService</code> can be obtained after commit.</para>
+            <para>Declares a listener, <code>DsContext.CommitListener</code>, which allows to receive notifications before and after committing modified instances. Before the commit it&apos;s possible to supplement a collection of instances sent to <link linkend="dataManager">DataManager</link> at <structname>Middleware</structname> which will lead to saving arbitrary entities in the same transaction. A collection of saved instances that are returned from <code>DataManager</code> can be obtained after commit.</para>
             <para>This mechanism is required if some entities, with which a screen works, are not under control of datasources, but are created and changed directly in the controller code. For example, a visual component, <link linkend="gui_FileUploadField">
                 <code>FileUploadField</code>
               </link>, after uploading a file, creates a new entity instance, <code>FileDescriptor</code>, which can be saved together with other screen entities by adding to <code>CommitContext</code> in the <code>DsContext.CommitListener.beforeCommit()</code> method..</para>
@@ -7285,20 +7296,14 @@ public void init(Map&lt;String, Object&gt; params) {
         </orderedlist></para>
     </section><section id="dataSupplier">
       <title>DataSupplier</title>
-      <para><code>DataSupplier</code> – interface, through which the code of a universal user interface (including datasources) refers to <structname>Middleware</structname> for loading and saving entities. It extends the <code>
-          <link linkend="dataService">DataService</link>
-        </code> interface and adds the following methods that are useful for an application code:<itemizedlist>
-          <listitem>
-            <para><code>reload()</code> –  reloads an entity instance with required view and other parameters.</para>
-          </listitem>
-          <listitem>
-            <para><code>commit()</code> – saves one entity instance to the DB.</para>
-          </listitem>
-          <listitem>
-            <para><code>remove()</code> – removes one entity instance from the DB.</para>
-          </listitem>
-        </itemizedlist></para>
-      <para>A reference to <code>DataSupplier</code> can be obtained either by injection into a screen controller, or through the <code>DsContext</code> or <code>Datasource</code> instances.</para>
+      <para><code>DataSupplier</code> – interface, through which the datasources refer to Middleware for loading and
+          saving entities. The standard implementation simply delegates to <link linkend="dataManager">DataManager</link>.
+          A screen can define its implementation of the <code>DataSupplier</code> in <code>dataSupplier</code> attribute
+          of the <code>window</code> element. Such own implementation may, for example, call an additional middleware
+          block for loading data for the screen from different database.</para>
+      <para>A reference to <code>DataSupplier</code> can be obtained either by injection into a screen controller or
+          through the <code>DsContext</code> or <code>Datasource</code> instances. In both cases, an own implementation
+          is returned if defined for the screen.</para>
     </section></section>
   <section id="gui_Action">
     <title>Actions. The Action Interface</title>

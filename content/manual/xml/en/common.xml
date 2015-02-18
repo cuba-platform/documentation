@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
-<section id="common_components">
+<section id="common_components" xmlns:xi="http://www.w3.org/2001/XInclude">
   <title>Common Components</title>
   <para>This chapter covers platform components, which are common for all   <link linkend="app_tiers">tiers</link> of the application.</para>
   <section id="data_model"><title>Data Model</title>Problem domain is modeled with the help of interconnected Java classes, which are called entity classes or simply entities.<para>Entities are divided into two categories:<itemizedlist>
@@ -811,7 +811,7 @@ public class Customer extends StandardEntity {
             </listitem>
             <listitem>
               <para>Calling <code>setSoftDeletion(false)</code> for <code>LoadContext</code> object when requesting data via
-                  <link linkend="dataService">DataService</link> or <link linkend="dataService">DataWorker</link>. </para>
+                  <link linkend="dataManager">DataManager</link>. </para>
             </listitem>
             <listitem>
               <para>On <link linkend="datasources">datasource</link> level – calling <code>CollectionDatasource.setSoftDeletion(false)</code>  or setting <literal>softDeletion=&quot;false&quot;</literal> attribute of  <sgmltag>collectionDatasource</sgmltag> element in  <link linkend="screen_xml">XML-descriptor</link> screen.</para>
@@ -1306,7 +1306,7 @@ private Double latitude;</programlisting></para>
           <para>All relations in the data model are declared with lazy fetching property (<code>fetch = FetchType.LAZY</code>. See <xref linkend="entity_annotations"/>). </para>
         </listitem>
         <listitem>
-          <para>In the process of data loading using  <link linkend="dataService">DataService</link> the client code provides required view together with  <glossterm linkend="jpql">JPQL</glossterm> query.</para>
+          <para>In the process of data loading using  <link linkend="dataManager">DataManager</link> the client code provides required view together with  <glossterm linkend="jpql">JPQL</glossterm> query.</para>
         </listitem>
         <listitem>
           <para>The so-called  <firstterm>Fetch Plan</firstterm> is produced on the  base of the view – this is a special feature of <application>Apache OpenJPA</application> framework lying in the base of  <link linkend="orm"> ORM layer</link>. Fetch Plan affects the generation of SQL queries to the database: both the list of returned fields and joins with the other tables containing related entities. </para>
@@ -1350,7 +1350,7 @@ private Double latitude;</programlisting></para>
           <para><code>view</code> – for reference attributes, specifies the view which which will be used to load the related entity. </para>
         </listitem>
         <listitem>
-          <para><code>lazy</code> – for reference attributes, indicates that this attribute should not be included into Fetch Plan, but loaded as a separate SQL query, initiated by accessing the attribute. It is important to mention that, if requesting data through <link linkend="dataService">DataService</link> or <link linkend="datasource_query">datasource query</link>, the attribute is loaded anyway, this property affects only the method of fetching. But if the view with lazy attributes is used on the ORM layer, after loading instances they should be passed to <link linkend="entityManager">EntityManager</link>.fetch() method, otherwise the lazy attributes will not be fetched.</para>
+          <para><code>lazy</code> – for reference attributes, indicates that this attribute should not be included into Fetch Plan, but loaded as a separate SQL query, initiated by accessing the attribute. It is important to mention that, if requesting data through <link linkend="dataManager">DataManager</link> or <link linkend="datasource_query">datasource query</link>, the attribute is loaded anyway, this property affects only the method of fetching. But if the view with lazy attributes is used on the ORM layer, after loading instances they should be passed to <link linkend="entityManager">EntityManager</link>.fetch() method, otherwise the lazy attributes will not be fetched.</para>
         </listitem>
       </itemizedlist></para>
     <warning>
@@ -1959,7 +1959,17 @@ Class calculatorClass = scripting.loadClass(&quot;com.abc.sales.PriceCalculator&
     </section>
     <section id="security">
       <title>Security</title>
-      <para>This interface provides authorization – checking user access rights to different objects in the system. Most of the <code>Security</code> interface methods just obtain the current user session from  <link linkend="userSessionSource">UserSessionSource</link> and delegate authorization process to it. See more in <xref linkend="authentication"/>.</para>
+        <para>This interface provides authorization – checking user access rights to different objects in the system.
+            Most of the interface methods delegate to the corresponding methods of current <link linkend="userSession">UserSession</link>
+            object, but before this they search for an original meta-class of the entity, which is important for projects with
+            <link linkend="extension">extensions</link>. Besides methods duplicating <code>UserSession</code> functionality,
+            this interface contains <code>isEntityAttrReadPermitted()</code> and <code>isEntityAttrUpdatePermitted()</code>
+            methods that check attribute path availability with respect to availability of all attributes and entities
+            included in the path.
+        </para>
+        <para>The <code>Security</code> interface is recommended to use everywhere instead of direct calling of
+            <code>UserSession</code>'s <code>is...Permitted()</code> methods.</para>
+        <para>See more in <xref linkend="authentication"/>.</para>
     </section>
     <section id="timeSource">
       <title>TimeSource</title>
@@ -1978,6 +1988,126 @@ Date date = timeSource.currentTimestamp();</programlisting><programlisting langu
       <para>The interface is used to obtain  <code>UUID</code> values, including those used for entity identifiers. Using  <code>UUID.randomUUID()</code> in the application code is not recommended. </para>
       <para>To call from a static context, you can use the <code>UuidProvider</code> class, which also has an additional <code>fromString()</code> method that works faster than the standard <code>UUID.fromString()</code> method.</para>
     </section>
+      <section id="dataManager">
+          <title>DataManager</title>
+          <para><code>DataManager</code> interface provides CRUD functionality on both middle and client tiers. It is the universal
+              tool for loading entity graphs from the database and saving changes applied to detached entity instances.</para>
+          <para><code>DataManager</code> always starts a new <link linkend="transactions">transaction</link> and commits
+              it on operation completion, thus returning entities in the <link linkend="entity_states">detached state</link>.</para>
+          <para>DataManager methods are listed below:
+              <itemizedlist>
+                  <listitem>
+                      <para><code>load()</code>, <code>loadList()</code> – loads a graph of entities according to the parameters of the
+                          <code>LoadContext</code> object passed to it.</para>
+                      <para><code>LoadContext</code> must include either a JPQL query or an entity identifier. If both
+                          are defined, the query is used, and the identifier is ignored. The rules for queries creation
+                          are similar to those described in <xref linkend="query"/> . The difference is that the query
+                          in <code>LoadContext</code> may only use named parameters; positional parameters are not supported.</para>
+                      <para><code>load()</code> and <code>loadList()</code> methods check user
+                          <link linkend="permissions">permission</link> <code>EntityOp.READ</code> for the entity being
+                          loaded. Additionally, loading entities from DB is subject for access group
+                          <link linkend="constraints">constraints</link>. It is possible to ignore access constraints
+                          by passing <code>useSecurityConstraints = false</code> to <code>LoadContext</code>.</para>
+                      <para>Examples of loading entities in the screen controller:
+                          <programlisting language="java"><xi:include href="../../source/common/dataManager_1.java" encoding="UTF-8" parse="text"/></programlisting>
+                      </para>
+                  </listitem>
+                  <listitem>
+                      <para><code>commit()</code> – saves the set of entities passed in <code>CommitContext</code> to
+                          the database. Collections of entities for updating and deletion must be specified separately.</para>
+                      <para>The method returns the set of entity instances returned by
+                          <link linkend="entityManager">EntityManager</link>.merge(); essentially these are fresh
+                          instances just updated in DB. Further work should be performed with these returned instances
+                          to prevent data loss or optimistic locking. You can ensure that required attributes are
+                          present in the returned entities by setting a view for each saved instance using
+                          <code>CommitContext.getViews()</code> map.</para>
+                      <para>This method checks user <link linkend="permissions">permissions</link> <code>EntityOp.UPDATE</code>
+                          for the updated entities and <code>EntityOp.DELETE</code> for the deleted ones.</para>
+                      <para>Examples for saving a collection of entities:
+                          <programlisting language="java"><xi:include href="../../source/common/dataManager_2.java" encoding="UTF-8" parse="text"/></programlisting>
+                      </para>
+                  </listitem>
+                  <listitem>
+                      <para><code>reload()</code> - convenience methods to reload the specified instance from the
+                          database with the required <link linkend="views">view</link>. They delegate to
+                          <code>load()</code> method.</para>
+                  </listitem>
+                  <listitem>
+                      <para><code>remove()</code> - removes the specified instance from the database.
+                          Delegates to <code>commit()</code> method.</para>
+                  </listitem>
+              </itemizedlist>
+          </para>
+          <para>While loading data, <code>DataManager</code> may also implement additional functionality described below.</para>
+          <section id="query_with_distinct">
+            <title>Queries with distinct</title>
+            <para>The following may happen when <literal>distinct</literal> operator is omitted in JPQL queries for screens
+                with lists of entities with enabled paging and where unpredictable modification of the query can happen
+                as result of applying a <link linkend="gui_Filter">generic filter</link> or access group
+                <link linkend="constraints">constraints</link> mechanisms: <itemizedlist>
+                <listitem>
+                  <para>If a collection is joined at database level, the dataset will contain duplicate rows.</para>
+                </listitem>
+                <listitem>
+                  <para>On client level the duplicates disappear in the datasource as they are added to a map
+                      (<code>java.util.Map</code>). </para>
+                </listitem>
+                <listitem>
+                  <para>In case of paged table, a page may show fewer lines than requested, while the total number of
+                      lines exceeds requested.</para>
+                </listitem>
+              </itemizedlist></para>
+            <para>Thus, we recommend including <literal> distinct</literal> in JPQL queries, which ensures the absence
+                of duplicates in the dataset returned from DB. However, certain DB servers
+                (<application>PostgreSQL</application> in particular) may take unacceptably long time to execute an
+                SQL query with <literal>distinct</literal>, if the number of returned records is big (more than 10000). </para>
+            <para>To solve this, the platform implements a mechanism to operate correctly without <literal>distinct</literal>
+                at SQL level. This mechanism is enabled by <link linkend="cuba.inMemoryDistinct">cuba.inMemoryDistinct</link>
+                application property. When activated, it does the following:<itemizedlist>
+                <listitem>
+                  <para>The JPQL query should still include <literal>select distinct</literal>.</para>
+                </listitem>
+                <listitem>
+                  <para><code>DataManager</code> cuts  <literal>distinct</literal> out of the JPQL query before sending
+                      it to ORM.</para>
+                </listitem>
+                <listitem>
+                  <para>After the data page is loaded by <code>DataManager</code>, it deletes the duplicates and runs
+                      additional queries to DB in order to retrieve the necessary number of rows which are then returned
+                      to the client.</para>
+                </listitem>
+              </itemizedlist></para>
+          </section>
+          <section id="query_from_selected">
+            <title>Sequential Queries</title>
+            <para><code>DataManager</code> can select data from the results of previous requests. This ability is used
+                by the <link linkend="gui_Filter">generic filter</link> for sequential application of filters. </para>
+            <para>The mechanism works as follows:<itemizedlist>
+                <listitem>
+                  <para>If a  <code>LoadContext</code> with defined attributes <code>prevQueries</code> and
+                      <code>queryKey</code> is provided, the  <code>DataManager</code> executes the previous query and
+                      saves identifiers of retrieved entities in <database>SYS_QUERY_RESULT</database> table  (corresponding
+                      to  <literal>sys$QueryResult</literal> entity), separating the sets of records by user sessions
+                      and the query session key <code>queryKey</code>. </para>
+                </listitem>
+                <listitem>
+                  <para>The current query is modified to be combined with the results of the previous one, so that the
+                      resulting data complies with the conditions of both queries combined by AND.</para>
+                </listitem>
+                <listitem>
+                  <para>The process may be further repeated. In this case the gradually reduced set of previous results
+                      gets deleted from <database>SYS_QUERY_RESULT</database> table and refilled again.</para>
+                </listitem>
+              </itemizedlist></para>
+            <para>The table  <database>SYS_QUERY_RESULT</database> should be periodically cleaned of all unnecessary
+                query results left by terminated user sessions. This is done by the  <code>deleteForInactiveSessions()</code>
+                method of the <code>QueryResultsManagerAPI</code> bean. In an application with enabled
+                <link linkend="cuba.allowQueryFromSelected">cuba.allowQueryFromSelected</link> property this method should
+                be called by <link linkend="scheduled_tasks">scheduled tasks</link>, for example:<programlisting language="xml">&lt;task:scheduled-tasks scheduler=&quot;scheduler&quot;&gt;
+        &lt;task:scheduled ref=&quot;cuba_QueryResultsManager&quot; method=&quot;deleteForInactiveSessions&quot; fixed-rate=&quot;600000&quot;/&gt;
+      &lt;/task:scheduled-tasks&gt;</programlisting></para>
+          </section>
+      </section>
   </section>
   <section id="appContext">
     <title>AppContext</title>
