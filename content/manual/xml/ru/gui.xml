@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" []>
-<section id="gui_framework">
+<section id="gui_framework" xmlns:xi="http://www.w3.org/2001/XInclude">
   <title>Универсальный пользовательский интерфейс</title>
   <para>Подсистема универсального пользовательского интерфейса (Generic UI, GUI) позволяет разрабатывать экраны пользовательского интерфейса, используя  XML и Java. Созданные таким образом экраны одинаково работоспособны в двух
 стандартных клиентских <link linkend="app_tiers">блоках</link>: <structname>Web Client</structname> и <structname>Desktop Client</structname>. </para>
@@ -1199,7 +1199,7 @@ protected Job job;</programlisting></para>
 &lt;layout&gt;
   &lt;button action=&quot;someAction&quot;/&gt;</programlisting></para>
         <para>Кнопке можно назначить любое действие, имеющееся в каком-либо компоненте, реализующем интерфейс <code>Component.ActionsHolder</code> (это актуально для  <link linkend="gui_Table">Table</link>, <link linkend="gui_GroupTable">GroupTable</link>, <link linkend="gui_TreeTable">TreeTable</link>, <link linkend="gui_Tree">Tree</link>). Причем неважно, каким образом эти действия добавлены - декларативно в XML-дескрипторе или программно в контроллере. В любом случае для использования такого действия достаточно в атрибуте <code>action</code> указать через точку имя компонента и идентификатор нужного действия. Например, в следующем примере кнопке назначается действие <code>create</code> таблицы <code>coloursTable</code>:<programlisting language="xml">&lt;button action=&quot;coloursTable.create&quot;/&gt;</programlisting></para>
-        <para>Действие для кнопки можно также создавать программно, в контроллере экрана, используя наследование от класса <link linkend="abstractAction">AbstractAction</link>.</para>
+        <para>Действие для кнопки можно также создавать программно, в контроллере экрана, используя наследование от класса <link linkend="baseAction">AbstractAction</link>.</para>
         <para>Если для <code>Button</code> установлен экземпляр <code>Action</code>, то кнопка возьмет из него следующие свои свойства: <link linkend="gui_attr_basic_caption">caption</link>, <link linkend="gui_attr_basic_description">description</link>, <link linkend="gui_attr_basic_icon">icon</link>, <link linkend="gui_attr_basic_enable">enable</link>, <link linkend="gui_attr_basic_visible">visible</link>. Свойства <code>caption</code> и <code>description</code> будут проставлены из действия только в том случае, если они не установлены в самом <code>Button</code>. Остальные перечисленные свойства действия имеют безусловный приоритет над свойствами кнопки. Если свойства действия меняются уже после установки этого <code>Action</code> для <code>Button</code>, то соответственно меняться будут и свойства <code>Button</code>, то есть кнопка слушает изменение свойств действия. В этом случае меняется и свойства <code>caption</code> и <code>description</code>, причем даже если они изначально были назначены на саму кнопку.</para>
         <para>Атрибуты <sgmltag>button</sgmltag>:</para>
         <informaltable frame="none" pgwide="0" align="left">
@@ -7741,7 +7741,7 @@ public void init(Map&lt;String, Object&gt; params) {
           <para><code>addOwner()</code>, <code>removeOwner()</code>, <code>getOwner()</code>, <code>getOwners()</code> - методы для управления связью действия с визуальными компонентами.</para>
         </listitem>
       </itemizedlist></para>
-    <para>Для реализации действий рекомендуется использовать <link linkend="declarative_actions">декларативное создание</link> действий, либо наследоваться от класса <link linkend="abstractAction">AbstractAction</link>. Кроме того, существует набор <link linkend="standard_actions">стандартных действий</link>, применимых для работы с таблицами и компонентами выбора. От стандартных действий также можно наследоваться для модификации их поведения или перехвата событий.</para>
+    <para>Для реализации действий рекомендуется использовать <link linkend="declarative_actions">декларативное создание</link> действий, либо наследоваться от класса <link linkend="baseAction">AbstractAction</link>. Кроме того, существует набор <link linkend="standard_actions">стандартных действий</link>, применимых для работы с таблицами и компонентами выбора. От стандартных действий также можно наследоваться для модификации их поведения или перехвата событий.</para>
     <para>Визуальные компоненты, связанные с действием, могут быть двух типов:<itemizedlist>
         <listitem>
           <para>Визуальный компонент, содержащий одно действие, реализует интерфейс <code>Component.ActionOwner</code>. Это <link linkend="gui_Button">Button</link> и <link linkend="gui_LinkButton">LinkButton</link>.</para>
@@ -8079,94 +8079,69 @@ carCreateAction.setInitialValues(values);</programlisting></para>
 &lt;/searchPickerField&gt;</programlisting></para>
       </section>
     </section>
-    <section id="abstractAction">
-      <title>AbstractAction</title>
-      <para><code>AbstractAction</code> - базовый класс реализации <link linkend="gui_Action">действий</link>. От него рекомендуется наследовать собственные нестандартные действия, если возможностей <link linkend="declarative_actions">декларативного создания действий</link> не хватает. </para>
-      <para>При создании конкретного класса действия необходимо определить метод <code>actionPerform()</code> и передать в конструктор <code>AbstractAction</code> идентификатор действия. Можно также переопределить любые методы получения свойств действия: <code>getCaption()</code>, <code>getDescription()</code>, <code>getIcon()</code>, <code>getShortcut()</code>, <code>isEnabled()</code>, <code>isVisible()</code>. Стандартные реализации этих методов возвращают значения, установленные соответствующими set-методами. Исключение составляет метод <code>getCaption()</code>: если название действия  явно не установлено методом <code>setCaption()</code>, то он обращается в <link linkend="message_packs">пакет локализованных сообщений</link> с именем, соответствующим пакету класса действия, и возвращает сообщение с ключом, равным идентификатору действия. Если сообщения с таким ключом нет, то возвращается сам ключ, то есть идентификатор действия. </para>
+    <section id="baseAction">
+      <title>BaseAction</title>
+      <para><code>BaseAction</code> - базовый класс реализации <link linkend="gui_Action">действий</link>. От него
+          рекомендуется наследовать собственные нестандартные действия, если возможностей
+          <link linkend="declarative_actions">декларативного создания действий</link> не хватает. </para>
+      <para>При создании конкретного класса действия необходимо определить метод <code>actionPerform()</code> и передать
+          в конструктор <code>BaseAction</code> идентификатор действия. Можно также переопределить любые методы получения
+          свойств действия: <code>getCaption()</code>, <code>getDescription()</code>, <code>getIcon()</code>,
+          <code>getShortcut()</code>, <code>isEnabled()</code>, <code>isVisible()</code>. Стандартные реализации этих
+          методов возвращают значения, установленные соответствующими set-методами. Исключение составляет метод
+          <code>getCaption()</code>: если название действия  явно не установлено методом <code>setCaption()</code>, то
+          он обращается в <link linkend="message_packs">пакет локализованных сообщений</link> с именем, соответствующим
+          пакету класса действия, и возвращает сообщение с ключом, равным идентификатору действия. Если сообщения с
+          таким ключом нет, то возвращается сам ключ, то есть идентификатор действия. </para>
+        <para><code>BaseAction</code> может изменять свои свойства <code>enabled</code> и <code>visible</code> в
+            соответствии с <link linkend="permissions">разрешениями</link> пользователя и текущим контекстом.</para>
+        <para><code>BaseAction</code> видим (visible), если:
+          <itemizedlist>
+              <listitem><para>метод <code>setVisible(false)</code> не вызывался;</para></listitem>
+              <listitem><para>для действия не установлено UI разрешение <userinput>hide</userinput>.</para></listitem>
+          </itemizedlist>
+        </para>
+        <para>Действие разрешено (enabled), если:
+            <itemizedlist>
+                <listitem><para>метод <code>setEnabled(false)</code> не вызывался;</para></listitem>
+                <listitem><para>для действия не установлено UI разрешений <userinput>hide</userinput> или <userinput>read-only</userinput>;</para></listitem>
+                <listitem><para>метод <code>isPermitted()</code> возвращает true;</para></listitem>
+                <listitem><para>метод <code>isApplicable()</code> возвращает true.</para></listitem>
+            </itemizedlist>
+        </para>
       <para>Примеры использования:<itemizedlist>
           <listitem>
-            <para>Действие кнопки:<programlisting language="java">@Inject
-private Button helloBtn;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  helloBtn.setAction(new AbstractAction(&quot;hello&quot;) {
-      @Override
-      public void actionPerform(Component component) {
-          showNotification(&quot;Hello!&quot;, NotificationType.TRAY);
-      }
-  });
-}</programlisting>В данном случае кнопка <code>helloBtn</code> получит в качестве заголовка строку, находящуюся в пакете сообщений с ключом <code>hello</code>. Для того, чтобы получить название кнопки каким-либо иным способом, можно переопределить метод <code>getCaption()</code> действия.</para>
+            <para>Действие кнопки:
+                <programlisting language="java"><xi:include href="../../source/gui/baseAction_1.java" encoding="UTF-8" parse="text"/></programlisting>
+                В данном случае кнопка <code>helloBtn</code> получит в качестве заголовка строку, находящуюся в пакете
+                сообщений с ключом <code>hello</code>. Для того, чтобы получить название кнопки каким-либо иным способом,
+                можно переопределить метод <code>getCaption()</code> действия.</para>
           </listitem>
           <listitem>
-            <para>Действие кнопки программно создаваемого <link linkend="gui_PickerField">PickerField</link>:<programlisting language="java">@Inject
-private ComponentsFactory componentsFactory;
-
-@Inject
-private BoxLayout box;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  PickerField pickerField = componentsFactory.createComponent(PickerField.NAME);
-
-  pickerField.addAction(new AbstractAction(&quot;hello&quot;) {
-      @Override
-      public String getCaption() {
-          return null;
-      }
-
-      @Override
-      public String getDescription() {
-          return getMessage(&quot;helloDescription&quot;);
-      }
-
-      @Override
-      public String getIcon() {
-          return &quot;icons/hello.png&quot;;
-      }
-
-      @Override
-      public void actionPerform(Component component) {
-          showNotification(&quot;Hello!&quot;, NotificationType.TRAY);
-      }
-  });
-
-  box.add(pickerField);
-}</programlisting>Здесь анонимный класс-наследник <code>AbstractAction</code> используется для задания действия кнопки поля выбора. Заголовок кнопки не отображается, вместо него используется значок и описание, всплывающее  при наведении курсора мыши.</para>
+            <para>Действие кнопки программно создаваемого <link linkend="gui_PickerField">PickerField</link>:
+                <programlisting language="java"><xi:include href="../../source/gui/baseAction_2.java" encoding="UTF-8" parse="text"/></programlisting>
+                Здесь анонимный класс-наследник <code>BaseAction</code> используется для задания действия кнопки поля
+                выбора. Заголовок кнопки не отображается, вместо него используется значок и описание, всплывающее  при
+                наведении курсора мыши.</para>
           </listitem>
           <listitem>
-            <para>Действие таблицы:<programlisting language="java">@Inject
-private Table table;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  table.addAction(new HelloAction());
-}
-
-private class HelloAction extends AbstractAction {
-
-  public AddRoleAction() {
-      super(&quot;hello&quot;);
-  }
-
-  public void actionPerform(Component component) {
-      showNotification(&quot;Hello All!&quot;, NotificationType.TRAY);
-  }
-}</programlisting>Здесь объявлен класс <code>HelloAction</code>, экземпляр которого добавляется в список действий таблицы. </para>
+            <para>Действие таблицы:
+                <programlisting language="java"><xi:include href="../../source/gui/baseAction_3.java" encoding="UTF-8" parse="text"/></programlisting>
+                Здесь объявлен класс <code>HelloAction</code>, экземпляр которого добавляется в список действий таблицы.
+                Действие разрешено пользователям, имеющим специфическое разрешение <userinput>myapp.allow-greeting</userinput>,
+                и только когда выбрана одна строка таблицы. Последнее условие реализуется с помощью метода
+                <code>getTargetSelection()</code> действия, который возвращает <code>Set</code> экземпляров сущности,
+                выбранных в данный момент в компоненте, являющимся target для действия - в данном случае это таблица.
+                Свойство target автоматически устанавливается когда действие добавляется в <code>ListComponent</code>
+                (<code>Table</code> или <code>Tree</code>).
+            </para>
           </listitem>
           <listitem>
-            <para>Действие таблицы, отслеживающее наличие выбранной строки:<programlisting language="java">@Inject
-private Table table;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  table.addAction(new ItemTrackingAction(&quot;hello&quot;) {
-      @Override
-      public void actionPerform(Component component) {
-          showNotification(&quot;Hello &quot; + table.getSelected().iterator().next(), NotificationType.TRAY);
-      }
-  });
-}</programlisting>Здесь для реализации действия используется класс <code>ItemTrackingAction</code>, который слушает изменение состояния источника данных таблицы, и делает действие недоступным, если ни одна строка не выбрана.</para>
+              <para>Если необходимо действие, которое доступно, когда выделены одна или более строк таблицы,
+                  удобно воспользоваться наследником <code>BaseAction</code> - классом <code>ItemTrackingAction</code>,
+                  который добавляет стандартную реализацию метода <code>isPermitted()</code>:
+                  <programlisting language="java"><xi:include href="../../source/gui/baseAction_4.java" encoding="UTF-8" parse="text"/></programlisting>
+                  </para>
           </listitem>
         </itemizedlist></para>
     </section>

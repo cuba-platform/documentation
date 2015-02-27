@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
-<section id="gui_framework">
+<section id="gui_framework" xmlns:xi="http://www.w3.org/2001/XInclude">
   <title>Generic User Interface</title>
   <para>Generic user interface (Generic UI, GUI) subsystem allows you to create UI screens using XML and Java. The screens created using this approach work identically in both standard client  <link linkend="app_tiers">blocks</link>: Web Client и Desktop Client. </para>
   <figure>
@@ -1016,13 +1016,15 @@ protected Job job;</programlisting>
 }</programlisting>
         <para id="gui_attr_button_action">The <code>invoke</code> attribute is ignored if <code>action</code> attribute is set. The action attribute contains an   <link linkend="gui_Action">Action</link> name corresponding to the button.</para>
         <para>Example of a button with an  <sgmltag>action</sgmltag>:</para>
-        <programlisting language="java">&lt;actions&gt;
- &lt;action id=&quot;someAction&quot; caption=&quot;msg://someAction&quot;/&gt;
-&lt;/actions&gt;
-&lt;layout&gt;
-  &lt;button action=&quot;someAction&quot;/&gt;</programlisting>
+        <programlisting language="xml"><![CDATA[<actions>
+    <action id="someAction" caption="msg://someAction"/>
+</actions>
+<layout>
+    <button action="someAction"/>
+  ]]></programlisting>
         <para>Any action present in the component implementing  <code>Component.ActionsHolder</code> interface can be assigned to a button. This applies to  <link linkend="gui_Table">Table</link>, <link linkend="gui_GroupTable">GroupTable</link>, <link linkend="gui_TreeTable">TreeTable</link>, <link linkend="gui_Tree">Tree</link>. The way of adding components (declaratively in the XML descriptor or programmatically in the controller) is irrelevant. In any case, for using an action, the name of the component and the identifier of the required action  must be specified in the  <code>action</code> attribute, separated by dot. For instance, in the next example the  <code>create</code> action of the <code>coloursTable</code> table is assigned to a button:<programlisting language="xml">&lt;button action=&quot;coloursTable.create&quot;/&gt;</programlisting></para>
-        <para>Button actions can be also created programmatically in the screen controller by deriving them from  <link linkend="abstractAction">AbstractAction</link> class.</para>
+        <para>Button actions can be also created programmatically in the screen controller by deriving them from
+            <link linkend="baseAction">BaseAction</link> class.</para>
         <para>If an <code>Action</code> instance is defined for a <code>Button</code>, the button will import the following properties from it: <link linkend="gui_attr_basic_caption">caption</link>, <link linkend="gui_attr_basic_icon">icon</link>, <link linkend="gui_attr_basic_enable">enable</link>, <link linkend="gui_attr_basic_visible">visible</link>. <code>caption</code> property will be imported from <code>Action</code> only if it is not set in the <code>Button</code> itself. All other listed <code>Action</code> properties have priority over the <code>Button</code> properties. If <code>Action</code> properties are changed after the <code>Action</code> is set for a <code>Button</code>, then <code>Button</code> properties also change accordingly, i.e. the button listens to the changes in <code>Action</code> properties and the    <code>caption</code> property will change even if it was initially assigned to the button itself.
 </para>
         <para><sgmltag>button</sgmltag> attibutes:</para>
@@ -7374,7 +7376,12 @@ public void init(Map&lt;String, Object&gt; params) {
     </section></section>
   <section id="gui_Action">
     <title>Actions. The Action Interface</title>
-    <para><code>Action</code> is an interface that abstracts an action (in other words, some function) from a visual component. It is particularly useful when the same action can be invoked from different visual components. In addition, this interface allows you to provide the action with additional properties, such as name, flags of accessibility and visibility, etc.</para>
+      <para>
+          <code>Action</code> is an interface that abstracts an action (in other words, some function) from a visual
+          component. It is particularly useful when the same action can be invoked from different visual components ((for example, from
+          button and table context menu). In addition, this interface allows you to provide the action with additional
+          properties, such as name, flags of accessibility and visibility, etc.
+      </para>
     <para>Below are the   <code>Action</code> interface methods:<itemizedlist>
         <listitem>
           <para><code>actionPerform()</code> is invoked by a visual component associated with this action. An instance of the caller is passed to the method.</para>
@@ -7395,7 +7402,10 @@ public void init(Map&lt;String, Object&gt; params) {
           <para><code>addOwner()</code>, <code>removeOwner()</code>, <code>getOwner()</code>, <code>getOwners()</code> – methods used to control relation between the action and visual components.</para>
         </listitem>
       </itemizedlist></para>
-    <para>It is recommended to implement actions using the  <link linkend="declarative_actions">declarative creation</link> or by inheriting from the  <link linkend="abstractAction">AbstractAction</link> class. Furthermore, there is a set of  <link linkend="standard_actions">standard actions</link> applicable for tables and picker components. You can also derive action classes from standard actions to modify their behavior or to intercept events.</para>
+    <para>It is recommended to implement actions using the  <link linkend="declarative_actions">declarative creation</link>
+        or by inheriting from the  <link linkend="baseAction">BaseAction</link> class. Furthermore, there is a set of
+        <link linkend="standard_actions">standard actions</link> applicable for tables and picker components. You can
+        also derive action classes from standard actions to modify their behavior or to intercept events.</para>
     <para>Visual components associated with an action  can be of two types:<itemizedlist>
         <listitem>
           <para>Visual component with a single action implements the   <code>Component.ActionOwner</code> interface. These are  <link linkend="gui_Button">Button</link> and <link linkend="gui_LinkButton">LinkButton</link>.</para>
@@ -7734,94 +7744,68 @@ carCreateAction.setInitialValues(values);</programlisting></para>
 &lt;/searchPickerField&gt;</programlisting></para>
       </section>
     </section>
-    <section id="abstractAction">
-      <title>AbstractAction</title>
-      <para><code>AbstractAction</code> is a base class for   <link linkend="gui_Action">actions</link> implementation. It is recommended to derive custom actions from it when   <link linkend="declarative_actions">declarative actions creation</link> functionality is insufficient.</para>
-      <para>When creating a custom action class, you should implement <code>actionPerform()</code> method and pass action identifier to the <code>AbstractAction</code> constructor. You can override any property getters: <code>getCaption()</code>, <code>getDescription()</code>, <code>getIcon()</code>, <code>getShortcut()</code>, <code>isEnabled()</code>, <code>isVisible()</code>. Standard implementations of these methods return values set by setter methods, except the <code>getCaption()</code> method. If the action name is not explicitly set by <code>setCaption()</code> method, it retrieves message using action identifier as key from the  the <link linkend="message_packs">localized message pack</link> corresponding to the action class package. If there is no message with such key, then the key itself, i.e. the action identifier, is returned.</para>
+    <section id="baseAction">
+      <title>BaseAction</title>
+      <para><code>BaseAction</code> is a base class for   <link linkend="gui_Action">actions</link> implementation.
+          It is recommended to derive custom actions from it when   <link linkend="declarative_actions">declarative
+          actions creation</link> functionality is insufficient.</para>
+      <para>When creating a custom action class, you should implement <code>actionPerform()</code> method and pass
+          action identifier to the <code>BaseAction</code> constructor. You can override any property
+          getters: <code>getCaption()</code>, <code>getDescription()</code>, <code>getIcon()</code>,
+          <code>getShortcut()</code>, <code>isEnabled()</code>, <code>isVisible()</code>. Standard implementations of
+          these methods return values set by setter methods, except the <code>getCaption()</code> method. If the action
+          name is not explicitly set by <code>setCaption()</code> method, it retrieves message using action identifier
+          as key from the  the <link linkend="message_packs">localized message pack</link> corresponding to the action
+          class package. If there is no message with such key, then the key itself, i.e. the action identifier,
+          is returned.</para>
+      <para><code>BaseAction</code> can change its <code>enabled</code> and <code>visible</code> properties depending on
+          the user <link linkend="permissions">permissions</link> and current context.</para>
+      <para>The <code>BaseAction</code> is visible if the following conditions are met:
+        <itemizedlist>
+            <listitem><para><code>setVisible(false)</code> method was not called;</para></listitem>
+            <listitem><para>there is no <userinput>hide</userinput> UI permission for this action.</para></listitem>
+        </itemizedlist>
+      </para>
+      <para>The action is enabled if the following conditions are met:
+          <itemizedlist>
+              <listitem><para><code>setEnabled(false)</code> method was not called;</para></listitem>
+              <listitem><para>there are no <userinput>hide</userinput> and <userinput>read-only</userinput> UI permissions
+                  for this action;</para></listitem>
+              <listitem><para><code>isPermitted()</code> method returns true;</para></listitem>
+              <listitem><para><code>isApplicable()</code> method returns true.</para></listitem>
+          </itemizedlist>
+      </para>
       <para>Usage examples:<itemizedlist>
           <listitem>
-            <para><link linkend="gui_Button">Button</link> action:<programlisting language="java">@Inject
-private Button helloBtn;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  helloBtn.setAction(new AbstractAction(&quot;hello&quot;) {
-      @Override
-      public void actionPerform(Component component) {
-          showNotification(&quot;Hello!&quot;, NotificationType.TRAY);
-      }
-  });
-}</programlisting>In this case, the <code>helloBtn</code> button caption will be set to the string located in the message pack with <code>hello</code> key.  You can override the <code>getCaption()</code> action method to initialize button name in a different way.</para>
+            <para><link linkend="gui_Button">Button</link> action:
+                <programlisting language="java"><xi:include href="../../source/gui/baseAction_1.java" encoding="UTF-8" parse="text"/></programlisting>
+                In this case, the <code>helloBtn</code> button caption will be set to the string located in the message
+                pack with <code>hello</code> key.  You can override the <code>getCaption()</code> action method to
+                initialize button name in a different way.</para>
           </listitem>
           <listitem>
-            <para>Action of a programmatically created   <link linkend="gui_PickerField">PickerField</link>:<programlisting language="java">@Inject
-private ComponentsFactory componentsFactory;
-
-@Inject
-private BoxLayout box;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  PickerField pickerField = componentsFactory.createComponent(PickerField.NAME);
-
-  pickerField.addAction(new AbstractAction(&quot;hello&quot;) {
-      @Override
-      public String getCaption() {
-          return null;
-      }
-
-      @Override
-      public String getDescription() {
-          return getMessage(&quot;helloDescription&quot;);
-      }
-
-      @Override
-      public String getIcon() {
-          return &quot;icons/hello.png&quot;;
-      }
-
-      @Override
-      public void actionPerform(Component component) {
-          showNotification(&quot;Hello!&quot;, NotificationType.TRAY);
-      }
-  });
-
-  box.add(pickerField);
-}</programlisting>In the example an anonymous <code>AbstractAction</code> derived class is used to set the action of the picker field button. The button caption is not displayed, an icon is used instead with a  description, which pops up when hovering mouse cursor.</para>
+            <para>Action of a programmatically created   <link linkend="gui_PickerField">PickerField</link>:
+                <programlisting language="java"><xi:include href="../../source/gui/baseAction_2.java" encoding="UTF-8" parse="text"/></programlisting>
+                In the example an anonymous <code>BaseAction</code> derived class is used to set the action of the
+                picker field button. The button caption is not displayed, an icon is used instead with a  description,
+                which pops up when hovering mouse cursor.</para>
           </listitem>
           <listitem>
-            <para><link linkend="gui_Table">Table</link> action:<programlisting language="java">@Inject
-private Table table;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  table.addAction(new HelloAction());
-}
-
-private class HelloAction extends AbstractAction {
-
-  public AddRoleAction() {
-      super(&quot;hello&quot;);
-  }
-
-  public void actionPerform(Component component) {
-      showNotification(&quot;Hello All!&quot;, NotificationType.TRAY);
-  }
-}</programlisting>In the example the <code>HelloAction</code> class is declared and its instance is added to the table&apos;s actions list.</para>
+            <para><link linkend="gui_Table">Table</link> action:
+                <programlisting language="java"><xi:include href="../../source/gui/baseAction_3.java" encoding="UTF-8" parse="text"/></programlisting>
+                In the example, the <code>HelloAction</code> class is declared, and its instance is added to the table's
+                actions list. The action is enabled for users that have <userinput>myapp.allow-greeting</userinput>
+                and only when exactly one table row is selected. The latter is possible because
+                BaseAction's <code>getTargetSelection()</code> method returns set of entities currently selected in the
+                action's target - a table, in this case. The target is automatically assigned to the action when it is
+                added to a <code>ListComponent</code> descendant (<code>Table</code> or <code>Tree</code>).</para>
           </listitem>
           <listitem>
-            <para>A table action, which checks that there is a selected row:<programlisting language="java">@Inject
-private Table table;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  table.addAction(new ItemTrackingAction(&quot;hello&quot;) {
-      @Override
-      public void actionPerform(Component component) {
-          showNotification(&quot;Hello &quot; + table.getSelected().iterator().next(), NotificationType.TRAY);
-      }
-  });
-}</programlisting>In the example the <code>ItemTrackingAction</code> class is used to implement the action. It listens to changes of the table data source state and disables action if no row is selected. </para>
+            <para>If you need an action, that gets enabled when one or more table rows are selected, use BaseAction's
+                descendant - <code>ItemTrackingAction</code>, which adds default implementation of <code>isPermitted()</code>
+                method:
+                <programlisting language="java"><xi:include href="../../source/gui/baseAction_4.java" encoding="UTF-8" parse="text"/></programlisting>
+                </para>
           </listitem>
         </itemizedlist></para>
     </section>

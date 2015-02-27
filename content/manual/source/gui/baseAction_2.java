@@ -1,0 +1,34 @@
+@Inject
+private ComponentsFactory componentsFactory;
+
+@Inject
+private BoxLayout box;
+
+@Override
+public void init(Map<String, Object>params) {
+    PickerField pickerField = componentsFactory.createComponent(PickerField.NAME);
+
+    pickerField.addAction(new BaseAction("hello") {
+        @Override
+        public String getCaption() {
+            return null;
+        }
+
+        @Override
+        public String getDescription() {
+            return getMessage("helloDescription");
+        }
+
+        @Override
+        public String getIcon() {
+            return"icons/hello.png";
+        }
+
+        @Override
+        public void actionPerform(Component component) {
+            showNotification("Hello!", NotificationType.TRAY);
+        }
+    });
+
+    box.add(pickerField);
+}
