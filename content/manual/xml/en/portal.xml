@@ -52,6 +52,9 @@
         <listitem>
           <para>Data representation in JSON and XML formats.</para>
         </listitem>
+         <listitem>
+         <para>Middleware service calls.</para>
+         </listitem>
         <listitem>
           <para>User authentication.</para>
         </listitem>
@@ -191,12 +194,12 @@ locale: en</programlisting>
       </section>
       <section id="rest_api.commit">
         <title>Committing New and Modified Instances, Removal</title>
-        <para>The commit function allows to perform operations on objects passed to it, and returns their old and new states. The format of the result depends on format (JSON or XML) used for the request (the  <code>Content-Type</code> header). </para>
+        <para>The commit function allows performing operations on objects passed to it and returning their new state. The format of the result depends on format (JSON or XML) used for the request (the  <code>Content-Type</code> header). </para>
         <variablelist>
           <varlistentry>
             <term>JSON format</term>
             <listitem>
-              <para>You should use   <code>Content-Type</code> as the value of <code>application/json</code> header.</para>
+              <para><code>application/json</code> should be used as the value of the <code>Content-Type</code> header.</para>
               <para>Creating a <code>Customer</code> entity with an automatically generated identifier:</para>
               <programlisting language="json">{
   &quot;commitInstances&quot;: [{
@@ -215,7 +218,7 @@ locale: en</programlisting>
       }
   ]
 }</programlisting>
-              <para>Creating the <code>Order</code> entity,  specifying a link to a new <code>Customer</code> entity and filling the <code>Customer</code> entity with attributes:</para>
+              <para>Creating the <code>Order</code> entity, specifying a link to a new <code>Customer</code> entity and filling the <code>Customer</code> entity with attributes:</para>
               <programlisting language="json">{
   &quot;commitInstances&quot;: [{
       &quot;id&quot;: &quot;NEW-sales$Order&quot;,
@@ -234,11 +237,11 @@ locale: en</programlisting>
               <programlisting language="json">{
   &quot;commitInstances&quot;: [{
         &quot;id&quot;: &quot;sales$Customer-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff&quot;,
-        &quot;email&quot;: &quot;fletcher@mail.ru&quot;
+        &quot;email&quot;: &quot;fletcher@mail.com&quot;
       },
       {
         &quot;id&quot;: &quot;sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab&quot;,
-        &quot;email&quot;: &quot;lawrence@mail.ru&quot;
+        &quot;email&quot;: &quot;lawrence@mail.com&quot;
       }
   ]
 }</programlisting>
@@ -252,7 +255,7 @@ locale: en</programlisting>
 }</programlisting>
               <itemizedlist>
                 <listitem>
-                  <para>The  <code>commitInstances</code> array contains created and modified entities.</para>
+                  <para>The <code>commitInstances</code> array contains created and modified entities.</para>
                   <itemizedlist>
                     <listitem>
                       <para>When creating an entity, <code>id</code> or   <code>NEW-&lt;entityName&gt;</code> should be specified as the value of the <code>NEW-&lt;entityName&gt;-&lt;uuid&gt;</code> field.</para>
@@ -271,7 +274,7 @@ locale: en</programlisting>
       }
   ]
 }</programlisting>
-                      <para>Here, the <code>customer-edit</code> view must contain the <code>channel</code> attribute, otherwise the value will not change. To set a local attribute to <code>null</code>, you can specify the <code>_local</code> view, which is always available. </para>
+                      <para>Here, the <code>customer-edit</code> view must contain the <code>channel</code> attribute, otherwise the value will not change.</para>
                     </listitem>
                   </itemizedlist>
                 </listitem>
@@ -282,62 +285,64 @@ locale: en</programlisting>
                   <para>The  <code>softDeletion</code> field controls  <link linkend="soft_deletion">soft deletion</link> mode.</para>
                 </listitem>
               </itemizedlist>
-              <para>Commit function is invoked by POST request to  <code>{host:port}/app-portal/api/commit?s=&lt;sessionId&gt;</code>. JSON is passed in the request body. The function returns an array of JSON object pairs. For example, if  <code>email</code> field of the customer entity is being changed, the following array of JSON object pairs will be returned:</para>
-              <programlisting language="json">[
-  [
-      {&quot;id&quot;:&quot;sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab&quot;,
-          &quot;createTs&quot;:null,
-          &quot;createdBy&quot;:null,
-          &quot;deleteTs&quot;:null,
-          &quot;deletedBy&quot;:null,
-          &quot;email&quot;:&quot;lawrence@mail.com&quot;,
-          &quot;name&quot;:null,
-          &quot;updateTs&quot;:null,
-          &quot;updatedBy&quot;:null,
-          &quot;version&quot;:null
-      },
-      {&quot;id&quot;:&quot;sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab&quot;,
-          &quot;createTs&quot;:&quot;2013-06-14T14:07:15.040&quot;,
-          &quot;createdBy&quot;:&quot;admin&quot;,
-          &quot;deleteTs&quot;:null,
-          &quot;deletedBy&quot;:null,
-          &quot;email&quot;:&quot;lawrence@mail.com&quot;,
-          &quot;name&quot;:&quot;Lawrence&quot;,
-          &quot;updateTs&quot;:&quot;2013-06-14T15:07:03.463&quot;,
-          &quot;updatedBy&quot;:&quot;admin&quot;,
-          &quot;version&quot;:&quot;3&quot;
-      }
-  ]
-]</programlisting>
-              <para>In the pair, the provided object comes first and the modified object comes second.</para>
+              <para>The function is called by a POST request to <code>{host:port}/app-portal/api/commit?s=&lt;sessionId&gt;</code>. JSON is passed in the request body. The function returns a JSON objects array. For example, te following JSON objects array will be returned when the <code>email</code> field of the <code>Customer</code> entity is changed:</para>
+              <programlisting language="json"><![CDATA[
+    [
+       {"id":"sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab",
+           "createTs":"2013-06-14T14:07:15.040",
+           "createdBy":"admin",
+           "deleteTs":null,
+           "deletedBy":null,
+           "email":"fletcher@mail.com",
+           "name":"Fletcher",
+           "updateTs":"2013-06-14T15:07:03.463",
+           "updatedBy":"admin",
+           "version":"3"
+       }
+    ]            ]]></programlisting>
             </listitem>
           </varlistentry>
           <varlistentry>
             <term>XML format</term>
             <listitem>
-              <para><code>text/xml</code> should be used as the value of   <code>Content-Type</code> header. </para>
+              <para><code>text/xml</code> should be used as the value of <code>Content-Type</code> header. </para>
               <para>XML format example:</para>
-              <programlisting language="xml">&lt;CommitRequest&gt;
-  &lt;commitInstances&gt;
-      &lt;instance id=&quot;sales$Customer-9873c8a8-d4e7-11e2-85c0-33423bc08c84&quot;&gt;
-          &lt;basic name=&quot;name&quot;&gt;Jenkins&lt;/basic&gt;
-          &lt;basic name=&quot;email&quot;&gt;jenkins@mail.com&lt;/basic&gt;
-      &lt;/instance&gt;
-  &lt;/commitInstances&gt;
-  &lt;removeInstances&gt;
-      &lt;instance id=&quot;sales$Order-d67c10f0-4d28-4904-afca-4bc45654985d&quot;/&gt;
-  &lt;/removeInstances&gt;
-  &lt;softDeletion&gt;true&lt;/softDeletion&gt;
-&lt;/CommitRequest&gt;</programlisting>
-              <para>XML document fields semantics is defined in <ulink url="http://schemas.haulmont.com/cuba/5.4/restapi-commit.xsd">http://schemas.haulmont.com/cuba/5.4/restapi-commit.xsd</ulink> scheme.</para>
-              <para>This function is invoked by POST request to <code>{host:port}/app-portal/api/commit?s=&lt;sessionId&gt;</code>. XML is passed in the request body. The function returns an array of XML object pairs.</para>
-              <programlisting language="xml">&lt;mapping&gt;
-  &lt;pair&gt;
-      &lt;instance ...&gt;
-      &lt;instance ...&gt;
-  &lt;/pair&gt;
-&lt;/mapping&gt;</programlisting>
-              <para>The schema containing the description of the function call result is located at <ulink url="http://schemas.haulmont.com/cuba/5.4/restapi-instances.xsd">http://schemas.haulmont.com/cuba/5.4/restapi-instances.xsd</ulink></para>
+              <programlisting language="xml"><![CDATA[
+<CommitRequest>
+    <commitInstances>
+        <instance id="sales$Order-9873c8a8-d4e7-11e2-85c0-33423bc08c84">
+            <field name="date">2015-01-30</field>
+            <field name="amount">3500.00</field>
+            <reference name="customer" id="sales$Customer-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab"/>
+        </instance>
+    </commitInstances>
+    <removeInstances>
+        <instance id="sales$Customer-d67c10f0-4d28-4904-afca-4bc45654985d"/>
+    </removeInstances>
+    <softDeletion>true</softDeletion>
+</CommitRequest> ]]></programlisting>
+              <para>XML document fields semantics is defined in <ulink url="http://schemas.haulmont.com/cuba/5.4/restapi-commit-v2.xsd">http://schemas.haulmont.com/cuba/5.4/restapi-commit-v2.xsd</ulink> scheme.</para>
+                <para>In case of an XML request, fields are set to null with the help of the <code>null="true"</code> attribute.
+                    In addition to that, the identifier must contain the <link linkend="views">view</link>, which contains
+                   the attribute. For example:
+                    <programlisting language="xml"><![CDATA[
+<CommitRequest>
+    <commitInstances>
+        <instance id="Order-9873c8a8-d4e7-11e2-85c0-33423bc08c84">
+            <field name="amount" null="true"/>
+                 <reference name="customer" null="true"/>
+        </instance>
+    </commitInstances>
+</CommitRequest>]]>
+                    </programlisting></para>
+                <para>The function is called with a POST request to <code>{host:port}/app-portal/api/commit?s=&lt;sessionId&gt;</code>.
+                    XML is passed in the request body. The request returns array of XML objects similar to the one below: </para>
+                <programlisting language="xml"><![CDATA[
+<instances>
+    <instance ...>
+    <instance ...>
+</instances>              ]]></programlisting>
+               <para>The schema containing the description of the function call result is located at <ulink url="http://schemas.haulmont.com/cuba/5.4/restapi-instance-v2.xsd">http://schemas.haulmont.com/cuba/5.4/restapi-instance-v2.xsd"></ulink></para>
             </listitem>
           </varlistentry>
         </variablelist>
@@ -359,7 +364,188 @@ locale: en</programlisting>
       </section>
       <section id="rest_api.deployViews">
         <title>Creating New Views on Server</title>
-        <para>The  <code>/deployViews?s=&lt;sessionId&gt;</code> POST request allows to load to middleware descriptions of <link linkend="views">view</link> objects, required for the client. The view objects are sent as standard XML description of a view used in the platform. XML is placed in the request body. For more information about the format, see  <xref linkend="views"/>.</para>
+        <para>The <code>/deployViews?s=&lt;sessionId&gt;</code> POST request allows to load to middleware descriptions of <link linkend="views">view</link> objects, required for the client. The view objects are sent as standard XML description of a view used in the platform. XML is placed in the request body. For more information about the format, see  <xref linkend="views"/>.</para>
       </section>
-    </section></section>
+      <section id="rest_api.invokeService">
+          <title>Service Calls</title>
+          <para><link linkend="services">Service</link> methods available for API calls are listed in a configuration file.
+              The name of the file is defined by the <link linkend="cuba.restServicesConfig">cuba.restServicesConfig</link> property.</para>
+          <para>A sample REST API services configuration file:</para>
+          <programlisting language="xml"><![CDATA[
+<services xmlns="http://schemas.haulmont.com/cuba/5.4/restapi-service-v2.xsd">
+    <service name="refapp_PortalTestService">
+        <method name="findAllCars"/>
+        <method name="updateCarVin"/>
+    </service>
+</services>]]></programlisting>
+          <para>Service method call can be performed both by GET and POST requests. Additionally, POST requests allow passing entities or entity collections to the invoked method.</para>
+          <section>
+              <title>Service Call by GET Request</title>
+              <para>Request format:</para>
+              <programlisting><![CDATA[{host:port}/app-portal/api/service.<format>?service=<serviceName>&method=<methodName>&view=<view>&param0=<value 0>&paramN=<value N>&param0_type=<type 0>&paramN_type=<type N>&s=<sessionId>]]></programlisting>
+              <itemizedlist>
+                  <listitem><code>format</code> - defines the output format. Two values are accepted: <code>xml</code> or <code>json</code>.</listitem>
+                  <listitem><code>service</code> - the name of the service called.</listitem>
+                  <listitem><code>method</code> - the name of the method invoked.</listitem>
+                  <listitem><code>param0 .. paramN</code> - parameter values of the method.</listitem>
+                  <listitem><code>param0_type .. paramN_type</code> - parameter types of the method.</listitem>
+                  <listitem><code>s</code> - the current session identifier.</listitem>
+              </itemizedlist>
+              <para>If a service has a single method with the specified name and number of parameters, explicit parameter type definition is not required. In other cases, parameter type must be specified.</para>
+          </section>
+          <section>
+              <title>Service Call by GET Request</title>
+              <para>Request format:</para><programlisting><![CDATA[{host:port}/app-portal/api/service?s=<sessionId>]]></programlisting>
+              <itemizedlist>
+                  <listitem><code>s</code> - the current session identifier.</listitem>
+              </itemizedlist>
+              <para>JSON or XML with the description of the method call is passed in the request body.</para>
+              <variablelist>
+                  <varlistentry>
+                      <term>JSON format</term>
+                      <listitem>
+                          <para>The <code>Content-Type</code> header value is <code>application/json</code>.</para>
+                          <programlisting language="json"><![CDATA[
+{
+"service": "refapp_PortalTestService",
+"method": "updateCarVin",
+"view": "carEdit",
+"params": {
+    "param0": {
+        "id": "ref$Car-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab",
+        "vin": "WV00001",
+        "colour" : {
+            "id": "ref$Colour-b32a6412-d4d9-11e2-a20b-87b22b1460c7",
+            "name": "Red"
+        },
+        "driverAllocations": [
+            {
+                "id": "ref$DriverAllocation-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff"
+            },
+            {
+                "id": "NEW-ref$DriverAllocation"
+            }
+        ]
+    },
+        "param1": "WV00001",
+        "param0_type": "com.haulmont.refapp.core.entity.Car",
+        "param1_type": "java.lang.String"
+        }
+    }]]>
+                          </programlisting>
+                          <para>Properties of the passed object:</para>
+                          <itemizedlist>
+                              <listitem><code>service</code> - the name of the service called.</listitem>
+                              <listitem><code>method</code> - the name of the method invoked.</listitem>
+                              <listitem><code>param0 .. paramN</code> - method parameter values.</listitem>
+                              <listitem><code>param0_type .. paramN_type</code> - method parameter types.</listitem>
+                          </itemizedlist>
+                      </listitem>
+                  </varlistentry>
+                  <varlistentry>
+                      <term>XML format</term>
+                      <listitem>
+                          <para>The <code>Content-Type</code> header value is <code>text/xml</code>.</para>
+                          <programlisting language="xml"><![CDATA[
+<ServiceRequest xmlns="http://schemas.haulmont.com/cuba/5.4/restapi-service-v2.xsd">
+    <service>refapp_PortalTestService</service>
+    <method>updateCarVin</method>
+    <view>carEdit</view>
+    <params>
+        <param name="param0">
+            <instance id="ref$Car-32261b09-b7f7-4b8c-88cc-6dee6fa8e6ab">
+                <field name="vin">WV00000</field>
+                <reference name="colour">
+                    <instance id="ref$Colour-b32a6412-d4d9-11e2-a20b-87b22b1460c7">
+                        <field name="name">Red</field>
+                    </instance>
+                </reference>
+                <collection name="driverAllocations">
+                    <instance id="ref$DriverAllocation-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff"/>
+                    <instance id="NEW-ref$DriverAllocation"/>
+                </collection>
+            </instance>
+        </param>
+        <param name="param1">WV00001</param>
+        <param name="param0_type">com.haulmont.refapp.core.entity.Car</param>
+        <param name="param1_type">java.lang.String</param>
+        </params>
+</ServiceRequest>]]>
+                          </programlisting>
+                          <para>The main elements of the passed document are:</para>
+                          <itemizedlist>
+                              <listitem><code>service</code> - the name of the service called.</listitem>
+                              <listitem><code>method</code> - the name of the method invoked.</listitem>
+                              <listitem><code>param</code> - the value of the parameter method or the parameter type. The name of the parameter (<code>name</code> attribute) must have the format <code>param0 .. paramN</code> or <code>param0_type .. paramN_type</code>.</listitem>
+                          </itemizedlist>
+                          <para>If a service has a single method with the specified name and number of parameters, explicit parameter type definition is not required. In other cases, parameter types must be specified.</para>
+                          <para><code><![CDATA[<param>]]></code> element may contain both plain text (for setting primitive type values) and nested
+                              <code><![CDATA[<instance>]]></code> elements for entities or <code><![CDATA[<instances>]]></code> for entity collections.</para>
+                          <para>The XSD of the request is available at <ulink url="http://schemas.haulmont.com/cuba/5.4/restapi-service-v2.xsd">http://schemas.haulmont.com/cuba/5.4/restapi-service-v2.xsd</ulink>.</para>
+                      </listitem>
+                  </varlistentry>
+              </variablelist>
+          </section>
+          <section>
+              <title>Supported Service Method Parameter Types</title>
+              <itemizedlist>
+                  <listitem>primitive Java types. <code>long</code>, <code>int</code>, <code>boolean</code>, etc. is specified as the type name.</listitem>
+                  <listitem>primitive Java type wrappers. The full class name is specified as the type name: <code>java.lang.Boolean</code>, <code>java.lang.Integer</code>, etc.</listitem>
+                  <listitem>string (<code>java.lang.String</code>).</listitem>
+                  <listitem>date (<code>java.util.Date</code>).</listitem>
+                  <listitem>UUID (<code>java.util.UUID</code>).</listitem>
+                  <listitem>BigDecimal (<code>java.math.BigDecimal</code>)</listitem>
+                  <listitem>entity (for POST requests only). The full class name is specified as the type name, e.g. <code>com.haulmont.cuba.security.entity.User</code>.</listitem>
+                  <listitem>entity collections (for POST requests only). The full class or collection interface name is specified as the type name, e.g. <code>java.util.List</code>.</listitem>
+              </itemizedlist>
+          </section>
+          <section>
+              <title>Service Call Result</title>
+              <para>The result may be in JSON или XML, depending on the method call declaration. Currently, methods can return primitive data types, entities and entity collections.</para>
+              <variablelist>
+                  <varlistentry>
+                      <term>Example of a JSON result:</term>
+                      <listitem>
+                          <para>Primitive data type:</para>
+                          <programlisting language="json"><![CDATA[
+{
+    "result": "10"
+} ]]>
+                          </programlisting>
+                          <para>Entity:</para>
+                          <programlisting language="json"><![CDATA[
+{
+    "result": {
+        "id" : "ref$Colour-b32e43e8-d4d9-11e2-8c8b-2b2939d67fff",
+           "name": "Red"
+        }
+}	]]>
+                     </programlisting>
+                      </listitem>
+                  </varlistentry>
+                  <varlistentry>
+                      <term>Example of XML result:</term>
+                      <listitem>
+                          <para>Primitive data type:</para>
+                          <programlisting language="xml"><![CDATA[
+<result>
+        10
+</result>]]>
+                          </programlisting>
+                          <para>Entity:</para>
+                          <programlisting language="xml"><![CDATA[
+<result>
+    <instance id="ref$Colour-b32a6412-d4d9-11e2-a20b-87b22b1460c7">
+        <field name="name">Red</field>
+    </instance>
+</result>]]>
+                          </programlisting>
+<para>The XSD of the result is available at <ulink url="http://schemas.haulmont.com/cuba/5.4/restapi-service-v2.xsd">http://schemas.haulmont.com/cuba/5.4/restapi-service-v2.xsd</ulink>.</para>
+                      </listitem>
+                  </varlistentry>
+              </variablelist>
+          </section>
+      </section>
+    </section>
+  </section>
 </section>
