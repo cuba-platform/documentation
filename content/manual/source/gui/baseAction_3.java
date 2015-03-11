@@ -27,6 +27,6 @@ private class HelloAction extends BaseAction {
 
     @Override
     public boolean isApplicable() {
-        return getTargetSelection().size() == 1;
+        return target != null && target.getSelected().size() == 1;
     }
 }
