@@ -435,117 +435,12 @@ cuba.useLocalServiceInvocation = false</programlisting></para>
   </section>
   <section id="project_creation">
     <title lang="en">Creating a Project</title>
-    <para>The recommended way to create a new project is to use   <application>CUBA Studio</application>. An example can be found in the Quick Start chapter of this manual: <xref linkend="qs_studio_setup"/>.</para>
-    <para>If  <application>CUBA Studio</application> cannot be used for some reasons, you should take the following steps to create a new project:<itemizedlist>
-        <listitem>
-          <para>Download the project template described in  <xref linkend="qs_setup"/> of the Quick Start chapter and extract it into a local directory.</para>
-        </listitem>
-        <listitem>
-          <para>Choose the project name. The name must contain only Latin letters in lowercase and should not be too long. In the example below, the  <code>bookstore</code> name is used.</para>
-        </listitem>
-        <listitem>
-          <para>Choose the  root Java package. In the example below,  <code>com.sample.bookstore</code> is used.</para>
-        </listitem>
-        <listitem>
-          <para>Change the project name in the  <filename>settings.gradle</filename> file:<programlisting>rootProject.name = &apos;bookstore&apos;</programlisting></para>
-        </listitem>
-        <listitem>
-          <para>Make the following changes to the  <filename>build.gradle</filename> file:<itemizedlist>
-              <listitem>
-                <para>Specify the  group name for artifacts in the  <code>ext.artifactGroup</code> variable. This parameter is used only to export the assembled application artifacts to the  <link linkend="artifact_repository">repository</link>. For example:<programlisting>allprojects {
-    ext.artifactGroup = &apos;com.sample.bookstore&apos;
-...</programlisting></para>
-              </listitem>
-              <listitem>
-                <para>Specify the directory the files will be copied from for the  <code>deployConf</code> task in the configuration sections of the  <structname>gui</structname> and <structname>web</structname> modules. For example:</para>
-                <programlisting>configure(guiModule) {
-...
-    task deployConf(type: Copy) {
-        from file(&apos;src&apos;)
-        include &quot;com/sample/bookstore/**&quot;
-        into &quot;$tomcatDir/conf/app&quot;
-    }
-}
-
-
-configure(webModule) {
-...
-    task deployConf(type: Copy) {
-        from file(&apos;src&apos;)
-        include &quot;com/sample/bookstore/**&quot;
-        into &quot;$tomcatDir/conf/app&quot;
-    }
-}</programlisting>
-              </listitem>
-              <listitem>
-                <para>Specify the database name for the  <code>startDB</code>, <code>stopDb</code>,    <code>createDb</code> and  <code>updateDb</code> tasks in the configuration section of the  <structname>core</structname> module. For example:<programlisting>configure(coreModule) {
-...
-    task startDb(description: &apos;Starts local HSQLDB server&apos;, type: CubaHsqlStart) {
-        dbName = &apos;bookstore&apos;
-    }
-
-    task stopDb(description: &apos;Stops local HSQLDB server&apos;, type: CubaHsqlStop)  {
-        dbName = &apos;bookstore&apos;
-    }
-
-    task createDb(dependsOn: assemble, description: &apos;Creates local database&apos;, type: CubaDbCreation) {
-        host = &apos;localhost&apos;
-        dbms = &apos;hsql&apos;
-        dbName = &apos;bookstore&apos;
-        dbUser = &apos;sa&apos;
-        dbPassword = &apos;&apos;
-    }
-
-    task updateDb(dependsOn: assemble, description: &apos;Updates local database&apos;, type: CubaDbUpdate) {
-        host = &apos;localhost&apos;
-        dbms = &apos;hsql&apos;
-        dbName = &apos;bookstore&apos;
-        dbUser = &apos;sa&apos;
-        dbPassword = &apos;&apos;
-    }
-...</programlisting></para>
-              </listitem>
-            </itemizedlist></para>
-        </listitem>
-        <listitem>
-          <para>In the  <structname>core</structname>  module: </para>
-          <para> Change the database connection URL in the  <link linkend="context.xml">context.xml</link> file:<programlisting language="xml">&lt;Context&gt;
-    &lt;!-- PostgreSQL connection --&gt;
-    &lt;Resource
-...
-      username=&quot;sa&quot;
-      password=&quot;&quot;
-      url=&quot;jdbc:hsqldb:hsql://localhost/bookstore&quot;/&gt;
-...</programlisting></para>
-          <para> Change the base search package for annotated beans in the   <link linkend="spring.xml">spring.xml</link> file:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.sample.bookstore&quot;/&gt;</programlisting></para>
-          <para>Change the value of the <link linkend="cuba.mainMessagePack">
-              <property>cuba.mainMessagePack</property>
-            </link> application property in the <filename>app.properties</filename> file:<programlisting>cuba.mainMessagePack=com.haulmont.cuba.core com.sample.bookstore.core</programlisting> </para>
-        </listitem>
-        <listitem>
-          <para>In the  <structname>web</structname> module: </para>
-          <para>Move the  <code>App</code> class and the  <link linkend="main_message_pack">localized message files</link> to the <code>com.sample.bookstore.web</code> package, and  specify the new location of this class for the  <code>app_servlet</code> in the web/WEB-INF/<link linkend="web.xml">web.xml</link> file:<programlisting language="xml">&lt;servlet&gt;
-    &lt;servlet-name&gt;app_servlet&lt;/servlet-name&gt;
-    &lt;servlet-class&gt;com.haulmont.cuba.web.sys.CubaApplicationServlet&lt;/servlet-class&gt;
-    &lt;init-param&gt;
-        &lt;param-name&gt;application&lt;/param-name&gt;
-        &lt;param-value&gt;com.sample.bookstore.web.App&lt;/param-value&gt;
-    &lt;/init-param&gt;
-...</programlisting></para>
-          <para>Change the value of <link linkend="cuba.mainMessagePack">cuba.mainMessagePack</link> application property in <filename>web-app.properties</filename>:<programlisting>cuba.mainMessagePack=com.haulmont.cuba.web com.sample.bookstore.web</programlisting></para>
-          <para> Change the base search package for annotated beans in the  <filename>web-spring.xml</filename> file:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.sample.bookstore&quot;/&gt;</programlisting> </para>
-        </listitem>
-        <listitem>
-          <para>In the  <structname>global</structname> module:</para>
-          <para>Correct the project root package in the   <link linkend="metadata.xml">metadata.xml</link> file:<programlisting language="xml">&lt;metadata-model root-package=&quot;com.sample.bookstore&quot;/&gt;</programlisting></para>
-          <para>Correct the <code>persistence-unit</code> element in the  <link linkend="persistence.xml">persistence.xml</link> file:<programlisting language="xml">&lt;persistence-unit name=&quot;bookstore&quot; transaction-type=&quot;RESOURCE_LOCAL&quot;&gt;
-&lt;/persistence-unit&gt;</programlisting></para>
-        </listitem>
-      </itemizedlist></para>
-    <para>Once the steps described above are completed, you can build the new project:</para>
-    <para><prompt>gradlew idea assemble setupTomcat deploy</prompt></para>
+    <para>The recommended way to create a new project is to use   <application>CUBA Studio</application>.
+      An example can be found in the <link linkend="qs_create_project">Quick Start</link> chapter of this manual.</para>
+    <para>Once the project is created, you can keep developing it in the Studio, or create <application>IntelliJ IDEA</application> or
+      <application>Eclipse</application> project files and open the project in the IDE.</para>
   </section>
-  <section id="db_dev" lang="en">
+  <section id="db_dev">
     <title>Designing the Database</title>
     <para>This section provides practical advice on working with a database during application development.</para>
     <para>Recommendations for working with a database in production are provided in <xref linkend="db_update_in_prod"/>.</para>
