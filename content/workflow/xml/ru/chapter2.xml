@@ -1,0 +1,775 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter id="ch2_quick_start" lang="ru">
+  <title>Быстрый старт</title>
+  <para>В данной главе мы рассмотрим применение подсистемы Workflow в приложении-примере <application>Библиотека</application>, исходные тексты которого доступны по адресу <ulink url="https://www.cuba-platform.com/ru/download">https://www.cuba-platform.com/ru/download</ulink>.</para>
+  <para>Задача - добавить в приложение возможность создавать и учитывать электронные версии изданий книг, имеющихся в библиотеке. При этом процесс создания электронной версии должен быть следующим:<itemizedlist>
+      <listitem>
+        <para>Произвольный пользователь системы создает объект <code>EBook</code> и указывает в нем издание книги, для которого нужно нужно создать электронную версию, а затем стартует процесс оцифровки.</para>
+      </listitem>
+      <listitem>
+        <para>Пользователь с ролью <userinput>Manager</userinput> получает назначение, которое предписывает ему одобрить или запретить оцифровку данной книги. Если менеджер одобрил оцифровку, то процесс продолжается, иначе - завершается.</para>
+      </listitem>
+      <listitem>
+        <para>После одобрения менеджером для данного <code>EBook</code> создается назначение пользователю с ролью <userinput>Operator</userinput>. Оператор выполняет оцифровку, и в случае успеха прикладывает к <code>EBook</code> файл с электронной версией книги.</para>
+      </listitem>
+      <listitem>
+        <para>По завершении процесса объект <code>EBook</code> может находиться в одном из трех состояний:<itemizedlist>
+            <listitem>
+              <para><userinput>Done</userinput> - оцифровка выполнена успешно, и объект содержит вложенный файл с электронной версией.</para>
+            </listitem>
+            <listitem>
+              <para><userinput>Failed</userinput> - оцифровка не удалась.</para>
+            </listitem>
+            <listitem>
+              <para><userinput>Disapproved</userinput> - оцифровка не одобрена менеджером.</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+    </itemizedlist></para>
+  <section>
+    <title>Настройка проекта</title>
+    <orderedlist>
+      <listitem>
+        <para>Загрузите архив с проектом <application>Библиотека</application> со страницы <ulink url="https://www.cuba-platform.com/ru/download">https://www.cuba-platform.com/ru/download</ulink> и распакуйте его в локальный каталог, например <filename>c:\work\library</filename>.</para>
+      </listitem>
+      <listitem>
+        <para>Запустите <application>CUBA Studio</application>, импортируйте проект из <filename>c:\work\library</filename> и откройте его.</para>
+      </listitem>
+      <listitem>
+        <para>Откройте окно свойств проекта <guibutton>Project properties</guibutton> -&gt; <guibutton>Edit</guibutton> и в списке <guilabel>Base projects</guilabel> включите проект <structname>workflow</structname>, затем сохраните изменения. Studio предложит пересоздать скрипты Gradle. Согласитесь.</para>
+      </listitem>
+      <listitem>
+        <para>Запустите <guimenu>Run</guimenu> -&gt; <guimenu>Deploy</guimenu>. На этом этапе будет произведена сборка приложения и оно будет развернуто на сервере Tomcat в подкаталоге <filename>build/tomcat</filename>.</para>
+      </listitem>
+      <listitem>
+        <para>Создайте базу данных приложения: <guimenu>Run</guimenu> -&gt; <guimenu>Create database</guimenu>. Сервером базы данных HSQL в данном случае является Studio, файлы БД располагаются в каталоге <filename>${user.home}/.haulmont/studio/hsqldb/library</filename>.</para>
+      </listitem>
+      <listitem>
+        <para>Запустите сервер приложения: <guimenu>Run</guimenu> -&gt; <guimenu>Start application server</guimenu>. </para>
+      </listitem>
+      <listitem>
+        <para>Откройте веб-интерфейс приложения по адресу <ulink url="http://localhost:8080/app">http://localhost:8080/app</ulink>. Войдите в систему с именем <userinput>admin</userinput> и паролем <userinput>admin</userinput>. В главном меню среди прочих должен быть доступен пункт <guimenu>Workflow</guimenu>, предоставляющий доступ к  экранам управления подсистемой Workflow.</para>
+      </listitem>
+      <listitem>
+        <para>В Studio выполните <guimenu>Build</guimenu> -&gt; <guimenu>Create IDEA project files</guimenu>, затем откройте проект <filename>c:\work\library\library.ipr</filename> в IntelliJ IDEA.</para>
+      </listitem>
+    </orderedlist>
+  </section>
+  <section>
+    <title>Создание модели данных</title>
+    <para>Создадим класс сущности <code>EBook</code>, представляющий собой электронную версию издания книги. Класс <code>EBook</code> должен быть унаследован от <code>Card</code> (карточки процесса), чтобы управлять состоянием <code>EBook</code> в соответствии с требуемым бизнес-процессом.</para>
+    <para>Перейдите на вкладку <guilabel>Entities</guilabel> панели навигатора Studio, выберите пакет <code>com.sample.library.entity</code> и нажмите <guibutton>New entity</guibutton>. Введите следующие значения свойств сущности:<itemizedlist>
+        <listitem>
+          <para><guilabel>Class name</guilabel> - <code>EBook</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Table</guilabel> - <code>LIBRARY_EBOOK</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Parent class</guilabel> - <code>Card [wf$Card]</code>. Для класса <code>Card</code> определена стратегия наследования <code>InheritanceType.JOINED</code>, поэтому <code>EBook</code> будет храниться в отдельной таблице и его первичный ключ будет одновременно внешним ключом,  сылающимся на первичный ключ <code>Card</code>.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Discriminator</guilabel> - <code>10</code>. Дискриминатор - это значение поля базового типа, которое будет установлено в базе данных для всех экземпляров конкретного типа. В данном случае для базового класса <code>Card</code> определены аннотации: <programlisting language="java">@DiscriminatorColumn(name = &quot;CARD_TYPE&quot;, discriminatorType = DiscriminatorType.INTEGER)
+@DiscriminatorValue(&quot;0&quot;)</programlisting> Это означает, что в поле <database>CARD_TYPE</database> должно храниться значение целого типа, и для экземпляров базового типа это будет значение <literal>0</literal>. Поэтому для типа <code>EBook</code> можно задать любое значение, отличное от <literal>0</literal>.</para>
+        </listitem>
+        <listitem>
+          <para>В поле <guilabel>Primary key join column</guilabel> Studio автоматически сформирует имя <database>CARD_ID</database> для первичного ключа создаваемой сущности.</para>
+        </listitem>
+        <listitem>
+          <para>В поле <guilabel>Referenced primary key column</guilabel> Studio выберет первичный ключ таблицы <database>WF_CARD</database>, хранящей базовую сущность <code>Card</code>, то есть <database>ID</database>.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Далее, создадим атрибут сущности, содержащий ссылку на издание книги.</para>
+    <para>Нажмите <guibutton>New</guibutton> под списком атрибутов и в окне <guilabel>Create attribute</guilabel> задайте следующие свойства:<itemizedlist>
+        <listitem>
+          <para><guilabel>Name</guilabel> - <code>publication</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Attribute type</guilabel> - <code>ASSOCIATION</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Type</guilabel> - <code>BookPublication [library$BookPublication]</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Mandatory</guilabel> - <code>on</code>. Атрибут будет обязательным для заполнения.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Cardinality</guilabel> - <code>MANY_TO_ONE</code>. Это означает, что несколько экземпляров <code>EBook</code> могут быть созданы для одного экземпляра <code>BookPublication</code>.</para>
+        </listitem>
+        <listitem>
+          <para>В поле <guilabel>Column</guilabel> будет предложено подходящее имя колонки - <database>PUBLICATION_ID</database>.</para>
+        </listitem>
+      </itemizedlist></para>
+    <figure>
+      <title>Редактор сущности</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_entity_designer.png" align="center"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <para>Сохраните изменения. В результате будет создан следующий класс сущности:<programlisting language="java">package com.sample.library.entity;
+
+import javax.persistence.*;
+
+import com.haulmont.workflow.core.entity.Card;
+
+@PrimaryKeyJoinColumn(name = &quot;CARD_ID&quot;, referencedColumnName = &quot;ID&quot;)
+@DiscriminatorValue(&quot;10&quot;)
+@Table(name = &quot;LIBRARY_EBOOK&quot;)
+@Entity(name = &quot;library$EBook&quot;)
+public class EBook extends Card {
+    private static final long serialVersionUID = -7326357893869004530L;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = &quot;PUBLICATION_ID&quot;)
+    protected BookPublication publication;
+
+    public void setPublication(BookPublication publication) {
+        this.publication = publication;
+    }
+
+    public BookPublication getPublication() {
+        return publication;
+    }
+}</programlisting></para>
+    <para>После создания класса сущности Studio сообщит о том, что модель данных изменена по сравнению с текущей схемой базы данных. Требуется сгенерировать скрипты и запустить создание или обновление БД. </para>
+    <para>Нажмите <guibutton>Generate DB scripts</guibutton> в секции <guilabel>Entites</guilabel> на панели навигатора. Studio сгенерирует скрипты обновления и инициализации БД, включающие в себя создание таблицы <database>LIBRARY_EBOOK</database> и ее внешних ключей. Так как в нашей БД еще нет никаких данных, и мы можем безболезненно пересоздать ее, скрипты на вкладке <guilabel>Update scripts</guilabel> можно сразу удалить. После этого сохраните изменения.</para>
+    <para>Остановите сервер приложения командой <guimenu>Run</guimenu> -&gt; <guimenu>Stop application server</guimenu>. Через несколько секунд станет доступным пункт меню <guimenu>Run</guimenu> -&gt; <guimenu>Create database</guimenu>, который и нужно выполнить.</para>
+  </section>
+  <section>
+    <title>Создание стандартных экранов</title>
+    <para>Создадим стандартные экраны просмотра списка и редактирования сущности <code>EBook</code>. Для этого сначала определим представления (views) для этих экранов.</para>
+    <para>Выберите <code>EBook</code> в секции <guilabel>Entities</guilabel> на панели навигатора и нажмите <guibutton>New view</guibutton>. Задайте имя представления в поле <guilabel>Name</guilabel> -  <code>eBook.browse</code>. В панели <guilabel>Attributes</guilabel> по умолчанию выбраны все локальные (не ссылочные) атрибуты сущности. Отключите их все и включите единственный интересующий нас на данном этапе атрибут <code>publication</code>. Так как этот атрибут представляет собой ссылку на сущность <code>BookPublication</code>, в дереве отобразятся атрибуты этой сущности. Выберите атрибут <code>book</code> и в правой панели параметров задайте для него представление <code>_minimal</code>. Сохраните изменения. <figure>
+        <title>Редактор представления</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_view_designer.png" align="center"/>
+          </imageobject>
+        </mediaobject>
+      </figure></para>
+    <para>Теперь, если открыть файл с представлениями в IDE, в нем можно найти следующий описатель:<programlisting language="xml">
+        &lt;view class=&quot;com.sample.library.entity.EBook&quot;
+                  name=&quot;eBook.browse&quot;&gt;
+              &lt;property name=&quot;publication&quot;&gt;
+                        &lt;property name=&quot;book&quot;
+                                     view=&quot;_minimal&quot;/&gt;
+              &lt;/property&gt;
+        &lt;/view&gt;</programlisting></para>
+    <para>Аналогочно создадим представление <code>eBook.edit</code> для экрана редактирования. На данном этапе это представление идентично <code>eBook.browse</code>, однако в будущем они станут различными.</para>
+    <para>После создания представлений снова выберите <code>EBook</code> в секции <guilabel>Entities</guilabel> панели навигатора и нажмите <guibutton>Create standard screens</guibutton>. В появившемся окне выберите <code>eBook.browse</code> для <guilabel>Browse view</guilabel>, <code> eBook.edit</code> для <guilabel>Edit view</guilabel>, и нажмите <guibutton>Create</guibutton>. Studio откроет секцию Screens панели навигатора и покажет созданные экраны.</para>
+    <para>Добавим в главное меню элемент для доступа к списку <code>EBook</code>.</para>
+    <para>Откройте секцию <guilabel>Main menu</guilabel> панели навигатора и нажмите <guibutton>Edit</guibutton> для <guilabel>web-menu.xml</guilabel>. Выделите элемент <code>library</code> и нажмите <guibutton>New</guibutton>. В появившемся окне выберите <code>library$EBook.lookup</code> в поле <guilabel>Id</guilabel>. Задайте заголовок пункта меню, нажав <guibutton>edit</guibutton> в поле <guilabel>Caption</guilabel>. Сохраните изменения. <figure>
+        <title>Редактор меню</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_menu_designer.png" align="center"/>
+          </imageobject>
+        </mediaobject>
+      </figure></para>
+    <para>После создания стандартных экранов и регистрации в главном меню можно запустить сервер (<guimenu>Run</guimenu> -&gt; <guimenu>Start application server</guimenu>), войти в приложение и убедиться в работоспособности сущности <code>EBook</code>.</para>
+  </section>
+  <section>
+    <title>Создание процесса</title>
+    <para>Перейдем к основной части примера - описанию бизнес-процесса и реализации обработки объектов <code>EBook</code> в соответствии с ним. В данном разделе мы создадим дизайн процесса и затем развернем его для выполнения.</para>
+    <section>
+      <title>Дизайн процесса</title>
+      <para>В веб-интерфейсе запущенного приложения откройте экран <guimenu>Workflow</guimenu> -&gt; <guimenu>Processes Design</guimenu> и нажмите <guibutton>Create</guibutton>. Введите имя дизайна процесса, например, <userinput>Book scanning</userinput>, и нажмите <guibutton>OK</guibutton>. Откроется новое окно браузера <guilabel>CUBA Workflow Designer</guilabel>.</para>
+      <para>Перетащите на рабочую панель узел <guilabel>Start</guilabel>, а затем узел <guilabel>Assignment</guilabel>. Соедините выход <guilabel>Start</guilabel> со входом <guilabel>Assignment</guilabel>. В узле <guilabel>Assignment</guilabel> задайте имя <userinput>Approval</userinput> и роль <userinput>Manager</userinput>. Нажмите кнопку <guibutton>+</guibutton> внутри узла <guilabel>Assignment</guilabel> для создания выхода и дайте ему имя <userinput>Approve</userinput>. Затем добавьте еще один выход - <userinput>Deny</userinput>. В результате во время выполнения процесса при переходе в состояние <userinput>Approval</userinput> пользователю с ролью <userinput>Manager</userinput> будет создано назначение. Процесс остановит выполнение и продолжит его, когда пользователь выберет один из выходов - <userinput>Approve</userinput> или <userinput>Deny</userinput>.</para>
+      <para>В случае отказа менеджера процесс должен перейти в состояние <userinput>Disapproved</userinput> и завершиться. Для регистрации этого состояния добавьте узел <guilabel>State</guilabel> с именем <userinput>Disapproved</userinput> и соедините его вход с выходом <userinput>Deny</userinput> узла <userinput>Approval</userinput>. Затем добавьте узел <guilabel>End</guilabel> и соедините его с выходом узла <userinput>Disapproved</userinput>. При выполнении процесс запишет состояние <userinput>Disapproved</userinput> в карточку (объект <code>EBook</code>) и, не останавливаясь, завершит выполнение.</para>
+      <para>На данном этапе должна получиться следующая схема:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_design_1.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Нажмите <guibutton>Save</guibutton> для сохранения промежуточных результатов редактирования.</para>
+      <para>Добавьте еще один узел <guilabel>Assignment</guilabel> и задайте для него имя <userinput>Scanning</userinput> и роль <userinput>Operator</userinput>. Добавьте выходы <userinput>Success</userinput> и <userinput>Fail</userinput>. Соедините вход <userinput>Scanning</userinput> с выходом <userinput>Approve</userinput> узла <userinput>Approval</userinput>. В результате во время выполнения при одобрении менеджером процесс перейдет в состояние <userinput>Scanning</userinput>, остановится и выдаст назначение пользователю с ролью <userinput>Operator</userinput>. Выполнение продолжится, когда пользователь завершит назначение, выбрав один из выходов.</para>
+      <para>Для регистрации финального состояния процесса добавьте два узла <guilabel>State</guilabel> с именами <userinput>Done</userinput> и <userinput>Failed</userinput> и соедините их с соответствующими выходами узла <userinput>Scanning</userinput>. Затем добавьте еще один узел <guilabel>End</guilabel> и соедините с ним выходы узлов <userinput>Done</userinput> и <userinput>Failed</userinput>.</para>
+      <para>В итоге  схема должна приобрести следующий вид:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_design_2.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>При успешном выполнении оцифровки оператор должен приложить к объекту файл с электронной версией. Для реализации этого добавим в процесс форму взаимодействия с пользователем.</para>
+      <para>Выберите узел <userinput>Scanning</userinput>, в правой панели дизайнера раскройте секцию <guilabel>Forms</guilabel> и нажмите <guibutton>Add</guibutton>. Установите следующие атрибуты:<itemizedlist>
+          <listitem>
+            <para><guilabel>Transition</guilabel> - имя выхода, при котором будет показана данная форма. Выберите значение <userinput>Success</userinput>. </para>
+          </listitem>
+          <listitem>
+            <para><guilabel>Form</guilabel> - тип формы. Выберите значение <code>Transition</code>.</para>
+          </listitem>
+          <listitem>
+            <para><guilabel>Hide Attachments</guilabel> - скрыть элементы выбора вложений. Оставьте в выключенном состоянии.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Вид правой панели дизайнера с параметрами формы:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_design_3.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Таким образом, при завершении назначения в направлении <userinput>Success</userinput> перед оператором возникнет диалоговая форма, в которой он сможет добавить вложения - файлы с с электронной версией книги.</para>
+      <para>Сохраните дизайн процесса и закройте окно браузера <guilabel>CUBA Workflow Designer</guilabel>.</para>
+    </section>
+    <section>
+      <title>Развертывание процесса</title>
+      <para>Созданный дизайн процесса необходимо скомпилировать, то есть создать на основе схемы исполняемый код процесса. Выберите строку с дизайном в окне <guilabel>Processes Design</guilabel> и нажмите <guibutton>Compile</guibutton>. В случае успешной компиляции в колонке <guilabel>Compilation date </guilabel>появится текущее время. </para>
+      <para>Следующий этап - развертывание процесса. Выберите строку со скомпилированным дизайном и нажмите <guibutton>Deploy</guibutton>. В диалоговом окне оставьте отмеченным флажок <guilabel>Create new process</guilabel> и нажмите <guibutton>Deploy</guibutton>. В результате происходит следующее:<itemizedlist>
+          <listitem>
+            <para>В базе данных приложения создается новый объект <code>Proc</code> и соответствующие имеющимся в дизайне ролям объекты <code>ProcRole</code>.</para>
+          </listitem>
+          <listitem>
+            <para>В подкаталоге <filename>process</filename> конфигурационного каталога среднего слоя приложения создается каталог с именем вида <filename>proc_&lt;date_time&gt;</filename>, где <code>date_time</code> - момент времени развертывания процесса. Данный каталог содержит файлы, необходимые для исполнения процесса: jPDL, описатель форм, пакет локализованных сообщений.</para>
+          </listitem>
+          <listitem>
+            <para>Файл jPDL отправляется в механизм исполнения jBPM, который  создает соответствующие записи в таблицах <database>JBPM4_DEPLOYMENT</database> и <database>JBPM4_DEPLOYPROP</database>. Идентификатором процесса jBPM становится строка, идентичная имени каталога развертывания (<code>proc_&lt;date_time&gt;</code>). Данный идентификатор записывается также в атрибут <code>jbpmProcessKey</code> объекта <code>Proc</code>.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Процесс готов к запуску, однако для целей нашего примера выполним еще одно подготовительное действие - назначим исполнителей по умолчанию для  ролей в процессе.</para>
+      <para>Откройте экран <guimenu>Workflow</guimenu> -&gt; <guimenu>Processes</guimenu>, выберите созданный процесс и откройте его на редактирование. В списке ролей процесса выберите поочередно роли <userinput>Manager</userinput> и <userinput>Operator</userinput> и в списке <guilabel>Default participants</guilabel> добавьте для них исполнителей - предварительно созданных пользователей системы <userinput>manager</userinput> и <userinput>operator</userinput> соответственно. Экран редактирования процесса примет следующий вид:
+          <mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_edit.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Кроме явно указанных в дизайне ролей система создала роль <userinput>CARD_CREATOR</userinput> с признаком <guilabel>Assign to creator</guilabel>. Эту роль можно использовать для того, чтобы пользователь, создавший карточку, автоматически  становился участником процесса. В описываемом примере данная роль не используется.</para>
+      <para>Атрибут <guilabel>Code</guilabel> процесса желательно установить в некоторое осмысленное уникальное значение, так как в программном коде по этому атрибуту удобно находить процесс для запуска. В данном случае задаем значение <userinput>book_scanning</userinput>.</para>
+      <para>Как правило, дизайн процесса разрабатывается итеративно, поэтому система предоставляет возможность неоднократно развертывать один и тот же изменяющийся дизайн, обновляя имеющийся  процесс. Фактически при развертывании дизайна в существующий процесс происходит следующее:<itemizedlist>
+          <listitem>
+            <para>Производится проверка возможности миграции незавершенных экземпляров процесса (другими словами, <firstterm>активных карточек</firstterm>) на новую схему процесса. </para>
+          </listitem>
+          <listitem>
+            <para>Создается новый каталог <filename>proc_&lt;date_time&gt;</filename>, где <code>date_time</code> - текущий момент времени развертывания процесса.</para>
+          </listitem>
+          <listitem>
+            <para>В механизме исполнения jBPM создается новое описание процесса с новым идентификатором, эквивалентным имени каталога развертывания. Этот новый идентификатор устанавливается в атрибуте <code>jbpmProcessKey</code> объекта <code>Proc</code>.</para>
+          </listitem>
+          <listitem>
+            <para>Производится миграция активных карточек.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Для обновления процесса в соответствии с измененным дизайном достаточно при развертывании последнего снять флажок <guilabel>Create new process</guilabel> и в выпадающем списке <guilabel>Existing process</guilabel> указать процесс, который необходимо обновить.</para>
+    </section>
+  </section>
+  <section>
+    <title>Адаптация экранов к процессу</title>
+    <para>В данном разделе мы изменим экраны просмотра списка и редактирования сущности <code>EBook</code> так, чтобы пользователи могли работать с ними в соответствии с бизнес-процессом.</para>
+    <section>
+      <title>Экран редактирования</title>
+      <para>Основная логика, связанная с  процессом, реализуется в экране редактирования <code>EBook</code>.</para>
+      <para>Начнем с доработки представления (view), с которым в экран загружается экземпляр <code>EBook</code>. Вернитесь в Studio, найдите в секции <guilabel>Entities</guilabel> на панели навигатора представление <code>eBook.edit</code> и откройте его на редактирование.</para>
+      <para>Выберите для поля <guilabel>Extends</guilabel> значение <code>_local</code>, что означает, что текущее представление будет включать все нессылочные атрибуты сущности. Дополнительно включите атрибут <code>proc</code> и установите для него в поле <guilabel>View</guilabel> значение <code>start-process</code>.
+          <figure>
+          <title>Редактор представления eBook.edit для работы с процессом</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="img/qs_view_edit.png" align="center"/>
+            </imageobject>
+          </mediaobject>
+        </figure></para>
+      <section>
+        <title>Компоновка экрана редактирования</title>
+        <para>Перейдем собственно к экрану. Найдите в секции <guilabel>Screens</guilabel> на панели навигатора экран <code>ebook-edit.xml</code> и откройте его на редактирование. Перейдите на вкладку <guilabel>XML</guilabel> и полностью замените ее содержимое на следующий код: <programlisting language="xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;
+&lt;window xmlns=&quot;http://schemas.haulmont.com/cuba/5.4/window.xsd&quot;
+        caption=&quot;msg://editCaption&quot;
+        class=&quot;com.sample.library.gui.ebook.EBookEdit&quot;
+        datasource=&quot;eBookDs&quot;
+        focusComponent=&quot;fieldGroup&quot;
+        messagesPack=&quot;com.sample.library.gui.ebook&quot;&gt;
+    &lt;dsContext&gt;
+        &lt;datasource id=&quot;eBookDs&quot;
+                    class=&quot;com.sample.library.entity.EBook&quot;
+                    view=&quot;eBook.edit&quot;/&gt;
+        &lt;collectionDatasource id=&quot;attachmentsDs&quot;
+                              class=&quot;com.haulmont.workflow.core.entity.CardAttachment&quot;
+                              view=&quot;card-edit&quot;&gt;
+            &lt;query&gt;
+                &lt;![CDATA[select a from wf$CardAttachment a where a.card.id = :ds$eBookDs order by a.createTs]]&gt;
+            &lt;/query&gt;
+        &lt;/collectionDatasource&gt;
+    &lt;/dsContext&gt;
+    &lt;layout expand=&quot;windowActions&quot;
+            spacing=&quot;true&quot;&gt;
+        &lt;hbox spacing=&quot;true&quot;&gt;
+            &lt;fieldGroup id=&quot;fieldGroup&quot;
+                        datasource=&quot;eBookDs&quot;
+                        width=&quot;400px&quot;&gt;
+                &lt;field id=&quot;publication&quot;
+                       width=&quot;100%&quot;/&gt;
+                &lt;field id=&quot;description&quot;
+                       width=&quot;100%&quot;/&gt;
+            &lt;/fieldGroup&gt;
+        &lt;/hbox&gt;
+        &lt;groupBox caption=&quot;Process&quot;
+                  orientation=&quot;horizontal&quot;
+                  spacing=&quot;true&quot;
+                  width=&quot;400px&quot;&gt;
+            &lt;label id=&quot;stateLabel&quot;
+                   align=&quot;MIDDLE_LEFT&quot;/&gt;
+            &lt;hbox id=&quot;actionsBox&quot;
+                  align=&quot;MIDDLE_RIGHT&quot;
+                  spacing=&quot;true&quot;/&gt;
+        &lt;/groupBox&gt;
+        &lt;groupBox caption=&quot;Attachments&quot;
+                  width=&quot;400px&quot;&gt;
+            &lt;table id=&quot;attachmentsTable&quot;
+                   height=&quot;100px&quot;
+                   width=&quot;100%&quot;&gt;
+                &lt;rows datasource=&quot;attachmentsDs&quot;/&gt;
+                &lt;columns&gt;
+                    &lt;column id=&quot;file&quot;/&gt;
+                    &lt;column id=&quot;file.size&quot;/&gt;
+                    &lt;column id=&quot;createTs&quot;/&gt;
+                &lt;/columns&gt;
+            &lt;/table&gt;
+        &lt;/groupBox&gt;
+        &lt;iframe id=&quot;windowActions&quot;
+                height=&quot;100%&quot;
+                screen=&quot;editWindowActions&quot;/&gt;
+    &lt;/layout&gt;
+&lt;/window&gt;</programlisting></para>
+        <para>Перейдите на вкладку <guilabel>Layout</guilabel>. Компоновка экрана станет  следующей: <mediaobject>
+            <imageobject>
+              <imagedata fileref="img/qs_edit_layout.png" align="center"/>
+            </imageobject>
+          </mediaobject> </para>
+        <para>Рассмотрим добавленные элементы экрана.<itemizedlist>
+            <listitem>
+              <para>Поле <code>description</code> компонента <code>fieldGroup</code> отображает значение атрибута <code>description</code> карточки.</para>
+            </listitem>
+            <listitem>
+              <para><code>groupBox</code> с заголовком <userinput>Process</userinput> содержит следующие элементы:<itemizedlist>
+                  <listitem>
+                    <para><code>label</code> с идентификатором <code>stateLabel</code> предназначен для отображения текущего состояния карточки.</para>
+                  </listitem>
+                  <listitem>
+                    <para>Внутри контейнера <code>hbox</code> с идентификатором <code>actionsBox</code> мы будем программно создавать кнопки, позволяющие пользователю выбрать выход из назначения, другими словами - действия по процессу.</para>
+                  </listitem>
+                  <listitem>
+                    <para>Таблица <code>attachmentsTable</code> предназначена для отображения вложений, созданных оператором на этапе <userinput>Scanning</userinput> процесса. Таблица соединена с источником данных <code>attachmentsDs</code>.</para>
+                  </listitem>
+                </itemizedlist></para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+      <section>
+        <title>Контроллер экрана редактирования</title>
+        <para>Перейдите на вкладку <guilabel>Controller</guilabel> и замените ее содержимое на следующий код: <programlisting language="java">package com.sample.library.gui.ebook;
+
+import com.haulmont.cuba.core.entity.Entity;
+import com.haulmont.cuba.core.global.CommitContext;
+import com.haulmont.cuba.core.global.LoadContext;
+import com.haulmont.cuba.core.global.PersistenceHelper;
+import com.haulmont.cuba.gui.components.*;
+import com.haulmont.cuba.gui.data.DataSupplier;
+import com.haulmont.cuba.gui.data.DsContext;
+import com.haulmont.cuba.gui.export.ExportDisplay;
+import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
+import com.haulmont.workflow.core.app.WfService;
+import com.haulmont.workflow.core.entity.*;
+import com.haulmont.workflow.core.global.AssignmentInfo;
+import com.haulmont.workflow.core.global.WfConstants;
+import com.haulmont.workflow.gui.base.action.ProcessAction;
+import com.sample.library.entity.EBook;
+
+import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class EBookEdit extends AbstractEditor&lt;EBook&gt; {
+
+    @Inject
+    protected WfService wfService;
+    @Inject
+    protected ComponentsFactory componentsFactory;
+    @Inject
+    protected BoxLayout actionsBox;
+    @Inject
+    protected DataSupplier dataSupplier;
+    @Inject
+    protected Label stateLabel;
+    @Inject
+    protected FieldGroup fieldGroup;
+    @Inject
+    protected Table attachmentsTable;
+    @Inject
+    protected ExportDisplay exportDisplay;
+
+    @Override
+    public void init(Map&lt;String, Object&gt; params) {
+    }
+
+    @Override
+    protected void postInit() {
+        EBook eBook = getItem();
+
+        if (PersistenceHelper.isNew(eBook)) {
+            initProcess(eBook);
+        }
+
+        if (eBook.getState() == null) {
+            stateLabel.setValue(&quot;State: not started&quot;);
+        } else {
+            stateLabel.setValue(&quot;State: &quot; + eBook.getLocState());
+            fieldGroup.setEditable(false);
+        }
+
+        initProcessActions(eBook);
+
+        initAttachmentsTable();
+    }
+
+    private void initProcess(final EBook eBook) {
+        LoadContext loadContext = new LoadContext(Proc.class);
+        loadContext.setQueryString(&quot;select p from wf$Proc p where p.code = :code&quot;)
+                .setParameter(&quot;code&quot;, &quot;book_scanning&quot;);
+        loadContext.setView(&quot;start-process&quot;);
+        Proc proc = dataSupplier.load(loadContext);
+        if (proc != null)
+            eBook.setProc(proc);
+        else
+            throw new IllegalStateException(&quot;Process not found&quot;);
+
+        eBook.setRoles(new ArrayList&lt;CardRole&gt;());
+
+        for (ProcRole procRole : proc.getRoles()) {
+            if (procRole.getAssignToCreator())
+                continue;
+            CardRole cardRole = new CardRole();
+            cardRole.setCard(eBook);
+            cardRole.setProcRole(procRole);
+            List&lt;DefaultProcActor&gt; defaultProcActors = procRole.getDefaultProcActors();
+            if (defaultProcActors.isEmpty())
+                throw new IllegalStateException(&quot;Default actor is not assigned for role &quot; + procRole.getName());
+            cardRole.setUser(defaultProcActors.get(0).getUser());
+            eBook.getRoles().add(cardRole);
+        }
+
+        getDsContext().addListener(new DsContext.CommitListener() {
+            @Override
+            public void beforeCommit(CommitContext context) {
+                context.getCommitInstances().addAll(eBook.getRoles());
+            }
+
+            @Override
+            public void afterCommit(CommitContext context, Set&lt;Entity&gt; result) {
+            }
+        });
+    }
+
+    private void initProcessActions(EBook eBook) {
+        AssignmentInfo assignmentInfo = wfService.getAssignmentInfo(eBook);
+        if (eBook.getJbpmProcessId() == null &amp;&amp; eBook.getState() == null) {
+            addProcessAction(WfConstants.ACTION_START, assignmentInfo);
+        } else if (assignmentInfo != null) {
+            for (String actionName : assignmentInfo.getActions()) {
+                addProcessAction(actionName, assignmentInfo);
+            }
+        }
+    }
+
+    private void addProcessAction(String actionName, AssignmentInfo assignmentInfo) {
+        ProcessAction action = new ProcessAction(getItem(), actionName, assignmentInfo, this);
+        Button button = componentsFactory.createComponent(Button.NAME);
+        button.setAction(action);
+        button.setAlignment(Alignment.MIDDLE_RIGHT);
+        actionsBox.add(button);
+    }
+
+    private void initAttachmentsTable() {
+        attachmentsTable.addGeneratedColumn(&quot;file&quot;, new Table.ColumnGenerator&lt;CardAttachment&gt;() {
+            @Override
+            public Component generateCell(final CardAttachment attachment) {
+                LinkButton link = componentsFactory.createComponent(LinkButton.NAME);
+                link.setCaption(attachment.getFile().getName());
+                link.setAction(new AbstractAction(&quot;&quot;) {
+                    @Override
+                    public void actionPerform(Component component) {
+                        exportDisplay.show(attachment.getFile());
+                    }
+                });
+                return link;
+            }
+        });
+    }
+}</programlisting></para>
+        <para>Рассмотрим фрагменты кода контроллера.</para>
+        <para>Метод <code>postInit()</code> вызывается после инициализации экрана и загрузки экземпляра <code>EBook</code> с представлением, указанным в XML-дескрипторе (в данном случае - <code>eBook.edit</code>). </para>
+        <para>После получения установленного в экране экземпляра <code>EBook</code> производится проверка, новый ли это экземпляр, или загруженный из БД. В первом случае управление передается методу <code>initProcess()</code>, который осуществляет подготовку карточки и экрана к старту нового экземпляра процесса:</para>
+        <programlisting language="java">    protected void postInit() {
+        EBook eBook = getItem();
+
+        if (PersistenceHelper.isNew(eBook)) {
+            initProcess(eBook);
+        }</programlisting>
+        <para>Далее в зависимости от состояния карточки производится инициализация компонентов - <code>stateLabel</code> отображает текущее состояние, а для <code>fieldGroup</code> запрещается редактирование, если процесс уже стартовал:</para>
+        <programlisting language="java">    protected void postInit() {
+    ...
+        if (eBook.getState() == null) {
+            stateLabel.setValue(&quot;State: not started&quot;);
+        } else {
+            stateLabel.setValue(&quot;State: &quot; + eBook.getLocState());
+            fieldGroup.setEditable(false);
+        }</programlisting>
+        <para>Далее вызываются методы, производящие инициализацию возможных действий пользователя и таблицы вложений:</para>
+        <programlisting language="java">    protected void postInit() {
+    ...
+        initProcessActions(eBook);
+
+        initAttachmentsTable();
+    }</programlisting>
+        <para>Рассмотрим метод <code>initProcess()</code>.</para>
+        <para>В начале метода производится загрузка из базы данных экземпляра объекта <code>Proc</code> с кодом <userinput>book_scanning</userinput>, то есть созданного нами процесса. Если загрузка прошла успешно, то экземпляр <code>Proc</code> устанавливается в карточке <code>EBook</code>:</para>
+        <programlisting language="java">    private void initProcess(final EBook eBook) {
+        LoadContext loadContext = new LoadContext(Proc.class);
+        loadContext.setQueryString(&quot;select p from wf$Proc p where p.code = :code&quot;)
+                .setParameter(&quot;code&quot;, &quot;book_scanning&quot;);
+        loadContext.setView(&quot;start-process&quot;);
+        Proc proc = dataSupplier.load(loadContext);
+        if (proc != null)
+            eBook.setProc(proc);
+        else
+            throw new IllegalStateException(&quot;Process not found&quot;);</programlisting>
+        <para>Далее производится инициализация объектов <code>CardRole</code> - исполнителей ролей для данной карточки. Инициализировать роли можно различными способами, в том числе интерактивно - например, позволяя создателю карточки самому выбрать исполнителей. Главное, чтобы на момент перехода процесса в какое-либо состояние типа <guilabel>Assignment</guilabel> роль, требуемая для этого этапа, была назначена. Для целей нашего примера исполнители заданы в объектах <code>DefaultProcActor</code> на этапе настройки процесса, поэтому мы возьмем их оттуда и перенесем в объекты <code>CardRole</code>:</para>
+        <programlisting language="java">    private void initProcess(final EBook eBook) {
+    ...
+        eBook.setRoles(new ArrayList&lt;CardRole&gt;());
+
+        for (ProcRole procRole : proc.getRoles()) {
+            if (procRole.getAssignToCreator())
+                continue;
+            CardRole cardRole = new CardRole();
+            cardRole.setCard(eBook);
+            cardRole.setProcRole(procRole);
+            List&lt;DefaultProcActor&gt; defaultProcActors = procRole.getDefaultProcActors();
+            if (defaultProcActors.isEmpty())
+                throw new IllegalStateException(&quot;Default actor is not assigned for role &quot; + procRole.getName());
+            cardRole.setUser(defaultProcActors.get(0).getUser());
+            eBook.getRoles().add(cardRole);
+        }</programlisting>
+        <para>В следующем фрагменте производится добавление всех созданных объектов <code>CardRole</code> в <code>CommitContext</code> перед коммитом экрана. Дело в том, что между <code>Card</code> и <code>CardRole</code> нет отношений  каскадности сохранения, и если явно не сохранить созданные объекты <code>CardRole</code> в той же транзакции, что и ссылающийся на них объект <code>Card</code>, на Middleware возникнет ошибка. Обычно за включением в <code>CommitContext</code> всех измененных экземпляров следят источники данных (datasources), однако в данном случае мы создаем и связываем объекты вручную, поэтому данный код необходим:</para>
+        <programlisting language="java">    private void initProcess(final EBook eBook) {
+    ...
+        getDsContext().addListener(new DsContext.CommitListener() {
+            @Override
+            public void beforeCommit(CommitContext context) {
+                context.getCommitInstances().addAll(eBook.getRoles());
+            }
+
+            @Override
+            public void afterCommit(CommitContext context, Set&lt;Entity&gt; result) {
+            }
+        });
+    }</programlisting>
+        <para>Теперь рассмотрим методы инициализации кнопок, соответствующих возможным действиям пользователя по процессу, и таблицы вложений.</para>
+        <para>В методе <code>initProcessActions()</code> для данной карточки загружаются данные о текущем назначении, и если таковое имеется для текущего пользователя, в методе <code>addProcessAction()</code> создаются соответствующие кнопки:</para>
+        <programlisting language="java">    private void initProcessActions(EBook eBook) {
+        AssignmentInfo assignmentInfo = wfService.getAssignmentInfo(eBook);
+        if (eBook.getJbpmProcessId() == null &amp;&amp; eBook.getState() == null) {
+            addProcessAction(WfConstants.ACTION_START, assignmentInfo);
+        } else if (assignmentInfo != null) {
+            for (String actionName : assignmentInfo.getActions()) {
+                addProcessAction(actionName, assignmentInfo);
+            }
+        }
+    }
+
+    private void addProcessAction(String actionName, AssignmentInfo assignmentInfo) {
+        ProcessAction action = new ProcessAction(getItem(), actionName, assignmentInfo, this);
+        Button button = componentsFactory.createComponent(Button.NAME);
+        button.setAction(action);
+        button.setAlignment(Alignment.MIDDLE_RIGHT);
+        actionsBox.add(button);
+    }</programlisting>
+        <para>Таблица вложений представляет собой обычный компонент <code>Table</code>, связанный с источником данных <code>attachmentsDs</code>, извлекающим экземпляры <code>CardAttachment</code> данной карточки. Для загрузки файла вложения щелчком по имени файла в таблице создается  генерируемая колонка для атрибута <code>file</code>. В результате ячейки данной колонки отображают компонент <code>LinkButton</code>, который по щелчку вызывает выгрузку соответствующего файла через интерфейс <code>ExportDisplay</code>. </para>
+        <programlisting language="java">    private void initAttachmentsTable() {
+        attachmentsTable.addGeneratedColumn(&quot;file&quot;, new Table.ColumnGenerator&lt;CardAttachment&gt;() {
+            @Override
+            public Component generateCell(final CardAttachment attachment) {
+                LinkButton link = componentsFactory.createComponent(LinkButton.NAME);
+                link.setCaption(attachment.getFile().getName());
+                link.setAction(new AbstractAction(&quot;&quot;) {
+                    @Override
+                    public void actionPerform(Component component) {
+                        exportDisplay.show(attachment.getFile());
+                    }
+                });
+                return link;
+            }
+        });
+    }</programlisting>
+      </section>
+    </section>
+    <section>
+      <title>Экран просмотра списка</title>
+      <para>Доработаем представления (view), с которым в экран загружается список экземпляров <code>EBook</code>. Найдите в секции <guilabel>Entities</guilabel> на панели навигатора представление <code>eBook.browse</code> и откройте его на редактирование. Включите атрибуты <code>proc</code>, <code>state</code> и <code>description</code>. Для атрибута <code>proc</code> установите в поле <guilabel>View</guilabel> значение <code>_local</code>.<figure>
+          <title>Редактор представления eBook.browse для работы с процессом</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="img/qs_view_browse.png" align="center"/>
+            </imageobject>
+          </mediaobject>
+        </figure>. </para>
+      <section>
+        <title>Компоновка экрана списка</title>
+        <para>Найдите в секции <guilabel>Screens</guilabel> панели навигатора экран <code>ebook-browse.xml</code> и откройте его на редактирование. Перейдите на вкладку <guilabel>XML</guilabel> и полностью замените ее содержимое на следующий код: <programlisting language="xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;
+&lt;window xmlns=&quot;http://schemas.haulmont.com/cuba/5.4/window.xsd&quot;
+        caption=&quot;msg://browseCaption&quot;
+        class=&quot;com.sample.library.gui.ebook.EBookBrowse&quot;
+        lookupComponent=&quot;eBookTable&quot;
+        messagesPack=&quot;com.sample.library.gui.ebook&quot;&gt;
+    &lt;dsContext&gt;
+        &lt;collectionDatasource id=&quot;eBookDs&quot;
+                              class=&quot;com.sample.library.entity.EBook&quot;
+                              view=&quot;eBook.browse&quot;&gt;
+            &lt;query&gt;
+                &lt;![CDATA[select e from library$EBook e order by e.createTs]]&gt;
+            &lt;/query&gt;
+        &lt;/collectionDatasource&gt;
+    &lt;/dsContext&gt;
+    &lt;layout expand=&quot;eBookTable&quot;
+            spacing=&quot;true&quot;&gt;
+        &lt;filter id=&quot;filter&quot;
+                datasource=&quot;eBookDs&quot;&gt;
+            &lt;properties include=&quot;.*&quot;/&gt;
+        &lt;/filter&gt;
+        &lt;table id=&quot;eBookTable&quot;
+               height=&quot;100%&quot;
+               width=&quot;100%&quot;&gt;
+            &lt;rows datasource=&quot;eBookDs&quot;/&gt;
+            &lt;columns&gt;
+                &lt;column id=&quot;publication&quot;/&gt;
+                &lt;column id=&quot;description&quot;/&gt;
+                &lt;column id=&quot;locState&quot;/&gt;
+            &lt;/columns&gt;
+            &lt;rowsCount/&gt;
+            &lt;actions&gt;
+                &lt;action id=&quot;remove&quot;/&gt;
+            &lt;/actions&gt;
+            &lt;buttonsPanel id=&quot;buttonsPanel&quot;
+                          alwaysVisible=&quot;true&quot;&gt;
+                &lt;button id=&quot;createBtn&quot;
+                        action=&quot;eBookTable.create&quot;/&gt;
+                &lt;button id=&quot;editBtn&quot;
+                        action=&quot;eBookTable.edit&quot;/&gt;
+                &lt;button id=&quot;removeBtn&quot;
+                        action=&quot;eBookTable.remove&quot;/&gt;
+            &lt;/buttonsPanel&gt;
+        &lt;/table&gt;
+    &lt;/layout&gt;
+&lt;/window&gt;
+</programlisting></para>
+        <para>Отличия от стандартного экрана списка здесь следующие:<itemizedlist>
+            <listitem>
+              <para>В список колонок таблицы <code>eBookTable</code> добавлены <code>description</code> и <code>locState</code> - описание карточки и локализованное название текущего состояния.</para>
+            </listitem>
+            <listitem>
+              <para>Из списка декларативно создаваемых <code>actions</code> таблицы <code>eBookTable</code> исключены <code>create</code> и <code>edit</code>. При этом соответствующие кнопки на панели <code>buttonsPanel</code> оставлены, потому что эти <code>actions</code> мы создадим программно в коде контроллера.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Перейдите на вкладку <guilabel>Layout</guilabel>. Компоновка экрана станет  следующей:<mediaobject>
+            <imageobject>
+              <imagedata fileref="img/qs_browse_layout.png" align="center"/>
+            </imageobject>
+          </mediaobject></para>
+      </section>
+      <section>
+        <title>Контроллер экрана списка</title>
+        <para>Перейдите на вкладку <guilabel>Controller</guilabel> и замените ее содержимое на следующий код:<programlisting language="java">package com.sample.library.gui.ebook;
+
+import java.util.Map;
+
+import com.haulmont.cuba.core.entity.Entity;
+import com.haulmont.cuba.gui.components.AbstractLookup;
+import com.haulmont.cuba.gui.components.Table;
+import com.haulmont.cuba.gui.components.actions.CreateAction;
+import com.haulmont.cuba.gui.components.actions.EditAction;
+
+import javax.inject.Inject;
+
+public class EBookBrowse extends AbstractLookup {
+
+    @Inject
+    protected Table eBookTable;
+
+    @Override
+    public void init(Map&lt;String, Object&gt; params) {
+        eBookTable.addAction(new CreateAction(eBookTable) {
+            @Override
+            protected void afterCommit(Entity entity) {
+                eBookTable.getDatasource().refresh();
+            }
+        });
+        eBookTable.addAction(new EditAction(eBookTable) {
+            @Override
+            protected void afterCommit(Entity entity) {
+                eBookTable.getDatasource().refresh();
+            }
+        });
+    }
+}</programlisting></para>
+        <para>Здесь в методе <code>init()</code> в таблицу <code>eBookTable</code> добавляются стандартные действия <code>CreateAction</code> и <code>EditAction</code>, но с переопределенным методом <code>afterCommit()</code>, в котором производится перезагрузка источника данных таблицы. Это делается для того, чтобы отобразить в таблице измененное состояние карточки сразу после ее сохранения и передвижения по процессу.</para>
+        <para>Стандартные действия <code>CreateAction</code> и <code>EditAction</code> не производят перезагрузки источника данных после коммита открываемого экрана редактирования. Вместо этого они получают сохраненный экземпляр сущности с Middleware и просто устанавливают его в источнике данных вместо исходного. </para>
+        <para>В нашем же случае перезагрузка из БД необходима потому, что после сохранения редактируемой сущности <code>EBook</code> запуск процесса производится в отдельной транзакции, и состояние карточки меняется как раз в этот момент. То есть после коммита экрана редактирования в источник данных возвращается экземпляр <code>EBook</code>, в котором еще нет изменений, внесенных процессом. Для отображения этих изменений необходимо перечитать сущности из базы данных. </para>
+      </section>
+    </section>
+  </section>
+  <section>
+    <title>Запуск приложения</title>
+    <para>Запустите сервер <guimenu>Run</guimenu> -&gt; <guimenu>Start application server</guimenu> и  войдите в приложение как пользователь <userinput>admin</userinput>.</para>
+    <para>Откройте экран <guimenu>Library</guimenu> -&gt; <guimenu>E-books</guimenu> и создайте новую запись. Выберите издание книги и введите полное описание в поле <guilabel>Description</guilabel>. На данном этапе экран редактирования выглядит следующим образом:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_create_card.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Теперь можно либо просто сохранить карточку, нажав <guibutton>OK</guibutton>, либо сразу начать процесс нажатием на кнопку <guibutton>Start process</guibutton>. После старта процесса окно редактирования закроется, и  в таблице в колонке <guilabel>State (loc.)</guilabel> отобразится значение <userinput>Approval</userinput>. Это означает, что карточка перешла в состояние ожидания одобрения менеджером.<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_browse_1.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Если теперь открыть карточку на редактирование, вы увидите, что все поля ввода запрещены, и никаких действий по процессу не доступно.</para>
+    <para>Выйдите из системы и войдите снова пользователем <userinput>manager</userinput>. Откройте экран <guimenu>Workflow</guimenu> -&gt; <guimenu>Assignments</guimenu>. Вы увидите поступившее вам назначение:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_assignment_1.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Нажав <guibutton>Open</guibutton>, вы увидите экран редактирования карточки с возможностью одобрить или запретить сканирование книги:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_edit_card_1.png" align="center" conformance=""/>
+        </imageobject>
+      </mediaobject></para>
+    <para>В этот же экран можно попасть обычным образом, выбрав строку в таблице        экрана просмотра списка и нажав <guibutton>Edit</guibutton>.</para>
+    <para>Нажмите <guibutton>Approve</guibutton>. Если вы открывали экран редактирования из списка назначений, то этот список теперь пуст - у пользователя <userinput>manager</userinput> на данный момент больше нет назначений. Если же вы открывали экран редактирования из экрана списка <code>EBook</code>, то вы увидите изменившееся состояние карточки:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_browse_2.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Открыв карточку на редактирование вы опять не увидите возможности что-либо изменить или продолжить процесс, так как следующее действие должен выполнять пользователь <userinput>operator</userinput>.</para>
+    <para>Выйдите из системы и войдите  пользвателем <userinput>operator</userinput>. Откройте экран <guimenu>Workflow</guimenu> -&gt; <guimenu>Assignments</guimenu>. Вы увидите поступившее вам назначение:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_assignment_2.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Нажмите <guibutton>Open</guibutton> в этом экране, либо перейдите в экран <guimenu>Library</guimenu> -&gt; <guimenu>E-books</guimenu> и откройте карточку на редактирование там. Вы увидите доступные действия по процессу: <userinput>Success</userinput> и <userinput>Fail</userinput>.<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_edit_card_2.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Предположим, вы как оператор выполнили сканирование книги. Нажмите <guibutton>Success</guibutton>. Перед вами появится форма перехода, заданная в процессе:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_transition_form.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Нажмите <guibutton>Add</guibutton> и добавьте один или несколько файлов вложений. Затем нажмите <guibutton>OK</guibutton>. Форма закроется, назначение исчезнет, а карточка перейдет в состояние <userinput>Done</userinput>:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_browse_3.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Открыв карточку на редактирование, можно увидеть состояние процесса и список вложений, добавленных оператором:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_edit_card_3.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+  </section>
+</chapter>

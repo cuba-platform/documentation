@@ -1,0 +1,762 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter id="ch2_quick_start" lang="en">
+  <title>Quick Start</title>
+  <para>In this chapter we will cover the use of the Workflow subsystem in the  <application>Library </application>sample application. The source code is available at <ulink url="https://www.cuba-platform.com/download">https://www.cuba-platform.com/download</ulink>.</para>
+  <para>Our task is to provide the application with the ability to create and keep track of electronic versions of books that are available in the library. The process of creating an electronic version must follow these steps:<itemizedlist>
+      <listitem>
+        <para>An arbitrary system user creates an  <code>EBook</code> object and specifies a publication for which an electronic version must be created. Then the scanning process begins.</para>
+      </listitem>
+      <listitem>
+        <para>A user with the  <userinput>Manager</userinput> role receives an assignment to approve or reject the book scanning. If the manager approves the scanning, the process continues to the next stage. Otherwise, the process finishes.</para>
+      </listitem>
+      <listitem>
+        <para>After the manager approves this <code>EBook</code>, an assignment is created and sent to a user who has the <userinput>Operator</userinput> role. The operator digitizes the book and, if successful, attaches a file containing the electronic version of the book to the <code>EBook</code>.</para>
+      </listitem>
+      <listitem>
+        <para>At the end of the process, the <code>EBook</code> object can be in one of the three states:<itemizedlist>
+            <listitem>
+              <para><userinput>Done</userinput> - scanning was successful and the object contains an attached file with the electronic version of the book.</para>
+            </listitem>
+            <listitem>
+              <para><userinput>Failed</userinput> - scanning failed.</para>
+            </listitem>
+            <listitem>
+              <para><userinput>Not approved</userinput> - scanning was not approved by the manager.</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+    </itemizedlist></para>
+  <section>
+    <title>Project Configuration</title>
+    <orderedlist>
+      <listitem>
+        <para>Download the archive with the <application>Library</application> project from <ulink url="https://www.cuba-platform.com/download">https://www.cuba-platform.com/download</ulink> and unzip it into a local directory, for example <filename>c:\work\library</filename>.</para>
+      </listitem>
+      <listitem>
+        <para>Launch <application>CUBA Studio</application>, import the project from <filename>c:\work\library</filename> and then open it.</para>
+      </listitem>
+      <listitem>
+        <para>Open the project properties window (<guibutton>Project properties</guibutton> -&gt; <guibutton>Edit</guibutton>) and activate the <structname>workflow</structname> project in the <guilabel>Base projects</guilabel> projects list. Save the changes. Studio will prompt to recreate Gradle scripts. Choose &quot;Yes&quot;.</para>
+      </listitem>
+      <listitem>
+        <para>Choose <guimenu>Run</guimenu> -&gt; <guimenu>Deploy</guimenu>. At this stage, the application will be built and deployed to the Tomcat server in the <filename>build/tomcat</filename> subdirectory.</para>
+      </listitem>
+      <listitem>
+        <para>Create the application database: <guimenu>Run</guimenu> -&gt; <guimenu>Create database</guimenu>. In this case, the HSQL database server is the Studio itself, and the database files are located in the <filename>${user.home}/.haulmont/studio/hsqldb/library</filename> directory.</para>
+      </listitem>
+      <listitem>
+        <para>Launch the application server: <guimenu>Run</guimenu> -&gt; <guimenu>Start application server</guimenu>. </para>
+      </listitem>
+      <listitem>
+        <para>Open the application web interface at <ulink url="http://localhost:8080/app">http://localhost:8080/app</ulink>. Log in to the system by entering the username <userinput>admin</userinput> and password <userinput>admin</userinput>. The main menu should include the  <guimenu>Workflow</guimenu> option that provides access to Workflow subsystem management screens.</para>
+      </listitem>
+      <listitem>
+        <para>Choose <guimenu>Build</guimenu> -&gt; <guimenu>Create IDEA project files</guimenu> in Studio and then open the project <filename>c:\work\library\library.ipr</filename> in IntelliJ IDEA.</para>
+      </listitem>
+    </orderedlist>
+  </section>
+  <section>
+    <title>Creating the Data Model</title>
+    <para>Let us create an <code>EBook</code> entity class that will represent the electronic version of the book publication. The <code>Ebook</code> class must be derived from the <code>Card</code> (process card) in order to manage the <code>EBook</code> state in accordance with the required business process.</para>
+    <para>Go to the <guilabel>Entities</guilabel> tab on the Studio navigation panel, select the <code>com.sample.library.entity</code> package and click <guibutton>New entity</guibutton>. Specify the following entity properties:<itemizedlist>
+        <listitem>
+          <para><guilabel>Class name</guilabel> - <code>EBook</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Table</guilabel> - <code>LIBRARY_EBOOK</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Parent class</guilabel> - <code>Card [wf$Card]</code>. The <code>InheritanceType.JOINED</code> inheritance strategy is defined for the <code>Card</code> class, thus <code>EBook</code> will be stored in a separate table, and its primary key will be an external key that references the <code>Card</code> primary key.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Discriminator</guilabel> - <code>10</code>. A discriminator is the value of a base type field that will be set in the database for all instances of this specific type. In this case, the following annotations have been defined for the <code>Card</code> base class: <programlisting language="java">@DiscriminatorColumn(name = &quot;CARD_TYPE&quot;, discriminatorType = DiscriminatorType.INTEGER)
+@DiscriminatorValue(&quot;0&quot;)</programlisting> This means that the <database>CARD_TYPE</database> field must store an integer value, which will be equal to <literal>0</literal> for base type instances. Therefore, it is sufficient to assign any value other than <code>0</code> for the <code>EBook</code> type.</para>
+        </listitem>
+        <listitem>
+          <para>In the <guilabel>Primary key join column</guilabel> field, the <database>CARD_ID</database> name for the primary key of the created entity is automatically generated.</para>
+        </listitem>
+        <listitem>
+          <para>In the <guilabel>Referenced primary key column</guilabel> field, the primary key for the <database>WF_CARD</database> table that stores the base <code>Card</code> entity is selected. In this case, it is <database>ID</database>.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Next, let us create an entity attribute containing a link to the book publication.</para>
+    <para>Click <guibutton>New</guibutton> under the list of attributes and specify the following properties in the <guilabel>Create attribute</guilabel> window:<itemizedlist>
+        <listitem>
+          <para><guilabel>Name</guilabel> - <code>publication</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Attribute type</guilabel> - <code>ASSOCIATION</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Type</guilabel> - <code>BookPublication [library$BookPublication]</code></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Mandatory</guilabel> - <code>on</code>. This means the attribute is required.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Cardinality</guilabel> - <code>MANY_TO_ONE</code>. This means that several <code>EBook</code> instances can be created for one <code>BookPublication</code> instance.</para>
+        </listitem>
+        <listitem>
+          <para>The <guilabel>Column</guilabel> field will contain the appropriate column name - <database>PUBLICATION_ID</database>.</para>
+        </listitem>
+      </itemizedlist></para>
+    <figure>
+      <title>Entity Editor </title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_entity_designer.png" align="center"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <para>Save the changes. As a result, the following entity class will be created:<programlisting language="java">package com.sample.library.entity;
+
+import javax.persistence.*;
+
+import com.haulmont.workflow.core.entity.Card;
+
+@PrimaryKeyJoinColumn(name = &quot;CARD_ID&quot;, referencedColumnName = &quot;ID&quot;)
+@DiscriminatorValue(&quot;10&quot;)
+@Table(name = &quot;LIBRARY_EBOOK&quot;)
+@Entity(name = &quot;library$EBook&quot;)
+public class EBook extends Card {
+    private static final long serialVersionUID = -7326357893869004530L;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = &quot;PUBLICATION_ID&quot;)
+    protected BookPublication publication;
+
+    public void setPublication(BookPublication publication) {
+        this.publication = publication;
+    }
+
+    public BookPublication getPublication() {
+        return publication;
+    }
+}</programlisting></para>
+    <para>After the entity class is created, the Studio will report that the data model has been changed and now differs from the current database schema. It is necessary to generate the scripts and to start the database creation or update process.</para>
+    <para>Click <guibutton>Generate DB scripts</guibutton> in the <guilabel>Entites</guilabel> section of the navigation panel. The Studio will generate the database update and initialization scripts, which include the creation of the <database>LIBRARY_EBOOK</database> table and its foreign keys. Since our database contains no data and can be easily recreated, you can safely delete the scripts in the <guilabel>Update scripts</guilabel> tab. After that, save the changes.</para>
+    <para>Choose <guimenu>Run</guimenu> -&gt; <guimenu>Stop application server</guimenu> to stop the application server. The <guimenu>Run</guimenu> -&gt; <guimenu>Create database</guimenu> menu item, which should be used, will become available in a few seconds.</para>
+  </section>
+  <section>
+    <title>Creating Standard Screens</title>
+    <para>Let us create the standard browser and editor for the <code>EBook</code> entity. To do this, we must first define views for these screens.</para>
+    <para>Select <code>EBook</code> in the <guilabel>Entities</guilabel> section of the navigation panel and click <guibutton>New view</guibutton>. Set the view name in the <guilabel>Name</guilabel> field to <code>eBook.browse</code>. All local (non-reference) entity attributes in the <guilabel>Attributes</guilabel> panel are selected by default. Uncheck them all and select <code>publication</code>, which is the only attribute that we need at this stage. Since this attribute is a reference to the <code>BookPublication</code> entity, the tree displays the attributes of this entity. Check the <code>book</code> attribute, and select <code>_minimal</code> in the <guilabel>View</guilabel> field on the settings panel on the right. Save the changes.<figure>
+        <title>View Editor</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_view_designer.png" align="center"/>
+          </imageobject>
+        </mediaobject>
+      </figure></para>
+    <para>Now, if you open the views file in IDE, it will contain the following descriptor:<programlisting language="xml">&lt;view class=&quot;com.sample.library.entity.EBook&quot;
+      name=&quot;eBook.browse&quot;&gt;
+    &lt;property name=&quot;publication&quot;&gt;
+        &lt;property name=&quot;book&quot;
+                  view=&quot;_minimal&quot;/&gt;
+    &lt;/property&gt;
+&lt;/view&gt;</programlisting></para>
+    <para>Similarly, let us create an <code>eBook.edit</code> view for the editor. At this stage, this view is identical to <code>eBook.browse</code>, but they will be different in the future.</para>
+    <para>After creating the views, select <code>EBook</code> in the <guilabel>Entities</guilabel> section of the navigation panel once again and click <guibutton>Create standard screens</guibutton>. In the window that appears, select <code>eBook.browse</code> for <guilabel>Browse view</guilabel>, <code> eBook.edit</code> for <guilabel>Edit view</guilabel>, and click <guibutton>Create</guibutton>. The Studio will open the <guilabel>Screens</guilabel> section of the navigation panel and display the created screens.</para>
+    <para>After creating the standard screens, you can launch the server (<guimenu>Run</guimenu> -&gt; <guimenu>Start application server</guimenu>), log in to the application and make sure that the <code>EBook</code> entity is functional.</para>
+  </section>
+  <section>
+    <title>Creating a Process</title>
+    <para>Now, we can move on to the main part of the tutorial, which involves designing the business process and implementing the <code>EBook</code> objects processing in accordance with the business process. In this section, we will create a process design and then deploy it for execution.</para>
+    <section>
+      <title>Process Design</title>
+      <para>Open the <guimenu>Workflow</guimenu> -&gt; <guimenu>Processes Design</guimenu> screen in the web interface of the running application and click <guibutton>Create</guibutton>. Enter the name of the process design, for example <userinput>Book scanning</userinput>, and click <guibutton>OK</guibutton>. A new <guilabel>CUBA Workflow Designer</guilabel> window will open.</para>
+      <para>First, drag and drop the <guilabel>Start</guilabel> node onto the designer workspace. Then, drag and drop the <guilabel>Assignment</guilabel> node. Connect the <guilabel>Start</guilabel> node with the <guilabel>Assignment</guilabel> node input. Connect the <guilabel>Start</guilabel> output with the <guilabel>Assignment</guilabel> input. In the <guilabel>Assignment</guilabel> node, set the name to <userinput>Approval</userinput> and the role to <userinput>Manager</userinput>. Click the <guibutton>+</guibutton> button in the <guilabel>Assignment</guilabel> node to create an output and specify its name: <userinput>Approve</userinput>. Then, add another output: <userinput>Deny</userinput>. As a result, an assignment will be generated for a user with the <guilabel>Manager</guilabel> role when the running process transitions to the <userinput>Approval</userinput> state. The process will stop running until the user selects one of the outputs: <userinput>Approve</userinput> or <userinput>Deny</userinput>.</para>
+      <para>If the manager rejects the process, it should transition to the <userinput>Not approved</userinput> state and finish. To register this state, add the <guilabel>State</guilabel> node with the name <userinput>Not approved</userinput> and connect its input to the <userinput>Deny</userinput> output in the <guilabel>Approval</guilabel> node. Then, add the <guilabel>End</guilabel> node and connect it with the output of the <guilabel>Not approved</guilabel> node. The running process will record the <userinput>Not approved</userinput> state in the card (an <code>EBook</code> instance) and finish without stopping.</para>
+      <para>The following schema should be produced at this stage:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_design_1.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Click <guibutton>Save</guibutton> to save the current changes.</para>
+      <para>Add another <guilabel>Assignment</guilabel> node, set its name to <userinput>Scanning</userinput>, and assign the <userinput>Operator</userinput> role to it. Add the <userinput>Success</userinput> and <userinput>Fail</userinput> outputs. Connect the <userinput>Scanning</userinput> input to the <userinput>Approve</userinput> output of the <userinput>Approval</userinput> node. As a result, when the process is approved by the manager at runtime, it will transition to the <userinput>Scanning</userinput> state, stop running and issue an assignment to a user with the <userinput>Operator</userinput> role. The process will resume running after the user completes the assignment by selecting one of the outputs.</para>
+      <para>To register the final process state, add two <guilabel>State</guilabel> nodes, <userinput>Done</userinput> and <userinput>Failed</userinput>, and connect them to the appropriate <userinput>Scanning</userinput> output nodes. Then, add another <guilabel>End</guilabel> node and connect it to the <userinput>Done</userinput> and <userinput>Failed</userinput> node outputs.</para>
+      <para>As a result the schema should look like this:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_design_2.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>If the scanning is successful, the operator must attach the file with the electronic version of the book to the object. To implement this, we will add the form that will be used for interaction between the process and the user.</para>
+      <para>Select the <userinput>Scanning</userinput> node and expand the <guilabel>Forms</guilabel> section in the right panel of the designer. Click <guibutton>Add</guibutton>. Set the following attributes:<itemizedlist>
+          <listitem>
+            <para><guilabel>Transition</guilabel> - the name of the output where the form will be shown. Select <userinput>Success</userinput>.</para>
+          </listitem>
+          <listitem>
+            <para><guilabel>Form</guilabel> - the type of the form. Select <code>Transition</code>.</para>
+          </listitem>
+          <listitem>
+            <para><guilabel>Hide Attachments</guilabel> - hide the components for attachment selection. Leave this box empty.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Below are the form settings on the right panel of the designer:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_design_3.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Thus, if the assignment is completed with <userinput>Success</userinput>, a dialog form will be displayed, and the operator will be able to add the attachments, i.e. files with the scanned version of the book.</para>
+      <para>Save the process design and close the <guilabel>CUBA Workflow Designer</guilabel> window.</para>
+    </section>
+    <section>
+      <title>Process Deployment</title>
+      <para>The created process design must be compiled. In other words, it is necessary to create scheme-based executable code for the process. Select the line with the design in the <guilabel>Processes Design</guilabel> window and click <guibutton>Compile</guibutton>. If the compilation is successful, the <guilabel>Compilation date</guilabel> column will contain the current time. </para>
+      <para>The next step is the deployment of the process. Select the line with the compiled design and click <guibutton>Deploy</guibutton>. In the dialog window, leave the <guilabel>Create new</guilabel> process box checked and click <guibutton>Deploy</guibutton>. The following actions will be performed:<itemizedlist>
+          <listitem>
+            <para>A new <code>Proc</code> object will be created in the application database along with the <code>ProcRole</code> objects that correspond to roles used in the design.</para>
+          </listitem>
+          <listitem>
+            <para>A directory with the name <code>proc_&lt;date_time&gt;</code> (where <code>date_time</code> is the time process deployment) will be created in the <code>process</code> subdirectory of the Middleware configuration directory. This directory contains the following files required for process execution: jPDL, the forms descriptor, and the localized message pack.</para>
+          </listitem>
+          <listitem>
+            <para>The jPDL file is sent to the jBPM execution engine, which creates the corresponding entries in the <database>JBPM4_DEPLOYMENT</database> and <database>JBPM4_DEPLOYPROP</database> tables. The jBPM process identifier is a string that is identical to the deployment directory name (<code>proc_&lt;date_time&gt;</code>). This identifier is also recorded in the <code>jbpmProcessKey</code> attribute of the <code>Proc</code> object.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>The process is ready for running. However, for the purposes of our example, we need one extra preparation - assigning default holders for process roles.</para>
+      <para>Open the <guimenu>Workflow</guimenu> -&gt; <guimenu>Processes</guimenu> screen, select the created process and open it for editing. In the list of process roles, select the <guilabel>Manager</guilabel> and <guilabel>Operator</guilabel> roles, and add role holders in the <guilabel>Default participants</guilabel> list. Role holders must be system users (<userinput>manager</userinput> and <userinput>operator</userinput>, respectively). The process editor will look as follows:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/qs_process_edit.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Apart from the roles explicitly specified in the design, the system has created the <userinput>CARD_CREATOR</userinput> role with the <guilabel>Assign to creator</guilabel> attribute. This role can be used to allow the user who created the card to become a process participant automatically. This role is not used in the described example.</para>
+      <para>It is recommended to set the process <guilabel>Code</guilabel> attribute to some meaningful unique value, since in the software code this attribute helps easily locate the process that should be run. In this case, set the value to <userinput>book_scanning</userinput>.</para>
+      <para>Typically, the process design is developed iteratively, so the system provides the ability to deploy the same changeable design repeatedly by updating the existing process. In fact, the following occurs when we deploy the design in the existing process:<itemizedlist>
+          <listitem>
+            <para>The ability to migrate incomplete process instances (in other words, <firstterm>active cards</firstterm>) for the new process schema is verified. </para>
+          </listitem>
+          <listitem>
+            <para>A new <filename>proc_&lt;date_time&gt;</filename> directory is created, where <code>date_time</code> is the process deployment time.</para>
+          </listitem>
+          <listitem>
+            <para>A new process description with an identifier that is equivalent to the name of the deployment directory is created in the jBPM execution engine. This new identifier is set in the j<code>bpmProcessKey</code> attribute of the <code>Proc</code> object.</para>
+          </listitem>
+          <listitem>
+            <para>Active cards are migrated.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>To update the process in accordance with the changed design, uncheck the <guilabel>Create new process</guilabel> checkbox during design deployment and choose the process to be updated from the <guilabel>Existing process</guilabel> drop-down list.</para>
+    </section>
+  </section>
+  <section>
+    <title>Adapting Screens to the Process</title>
+    <para>In this section, we will adjust the browser and editor for the <code>EBook</code> entity so that users can work with them in accordance with the business process.</para>
+    <section>
+      <title>The Editor</title>
+      <para>The basic logic associated with the process is implemented in the <code>EBook</code> editor.</para>
+      <para>Let us start with revising the view that is used to load the <code>EBook</code> entity in the screen. Return to Studio, find the <code>eBook.edit</code> view in the <guilabel>Entities</guilabel> section of the navigation panel and open it for editing.</para>
+      <para>Select the <code>_local</code> value for the <code>Extends</code> field, which means that the current view will include all non-reference entity attributes. In addition, include the <code>proc</code> attribute and set the <code>start-process</code> view for it in the <guilabel>View</guilabel> field. <figure>
+          <title>eBook.edit View Editor for Working with Processes </title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="img/qs_view_edit.png" align="center"/>
+            </imageobject>
+          </mediaobject>
+        </figure></para>
+      <section>
+        <title>Editor Layout</title>
+        <para>Now let us return to the screen. Find the <code>ebook-edit.xml</code> screen on the <guilabel>Screens</guilabel> section of the navigation panel and open it for editing. Choose the <guilabel>XML</guilabel> tab and completely replace its contents with the following code: <programlisting language="xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;
+&lt;window xmlns=&quot;http://schemas.haulmont.com/cuba/5.4/window.xsd&quot;
+        caption=&quot;msg://editCaption&quot;
+        class=&quot;com.sample.library.gui.ebook.EBookEdit&quot;
+        datasource=&quot;eBookDs&quot;
+        focusComponent=&quot;fieldGroup&quot;
+        messagesPack=&quot;com.sample.library.gui.ebook&quot;&gt;
+    &lt;dsContext&gt;
+        &lt;datasource id=&quot;eBookDs&quot;
+                    class=&quot;com.sample.library.entity.EBook&quot;
+                    view=&quot;eBook.edit&quot;/&gt;
+        &lt;collectionDatasource id=&quot;attachmentsDs&quot;
+                              class=&quot;com.haulmont.workflow.core.entity.CardAttachment&quot;
+                              view=&quot;card-edit&quot;&gt;
+            &lt;query&gt;
+                &lt;![CDATA[select a from wf$CardAttachment a where a.card.id = :ds$eBookDs order by a.createTs]]&gt;
+            &lt;/query&gt;
+        &lt;/collectionDatasource&gt;
+    &lt;/dsContext&gt;
+    &lt;layout expand=&quot;windowActions&quot;
+            spacing=&quot;true&quot;&gt;
+        &lt;hbox spacing=&quot;true&quot;&gt;
+            &lt;fieldGroup id=&quot;fieldGroup&quot;
+                        datasource=&quot;eBookDs&quot;
+                        width=&quot;400px&quot;&gt;
+                &lt;field id=&quot;publication&quot;
+                       width=&quot;100%&quot;/&gt;
+                &lt;field id=&quot;description&quot;
+                       width=&quot;100%&quot;/&gt;
+            &lt;/fieldGroup&gt;
+        &lt;/hbox&gt;
+        &lt;groupBox caption=&quot;Process&quot;
+                  orientation=&quot;horizontal&quot;
+                  spacing=&quot;true&quot;
+                  width=&quot;400px&quot;&gt;
+            &lt;label id=&quot;stateLabel&quot;
+                   align=&quot;MIDDLE_LEFT&quot;/&gt;
+            &lt;hbox id=&quot;actionsBox&quot;
+                  align=&quot;MIDDLE_RIGHT&quot;
+                  spacing=&quot;true&quot;/&gt;
+        &lt;/groupBox&gt;
+        &lt;groupBox caption=&quot;Attachments&quot;
+                  width=&quot;400px&quot;&gt;
+            &lt;table id=&quot;attachmentsTable&quot;
+                   height=&quot;100px&quot;
+                   width=&quot;100%&quot;&gt;
+                &lt;rows datasource=&quot;attachmentsDs&quot;/&gt;
+                &lt;columns&gt;
+                    &lt;column id=&quot;file&quot;/&gt;
+                    &lt;column id=&quot;file.size&quot;/&gt;
+                    &lt;column id=&quot;createTs&quot;/&gt;
+                &lt;/columns&gt;
+            &lt;/table&gt;
+        &lt;/groupBox&gt;
+        &lt;iframe id=&quot;windowActions&quot;
+                height=&quot;100%&quot;
+                screen=&quot;editWindowActions&quot;/&gt;
+    &lt;/layout&gt;
+&lt;/window&gt;</programlisting></para>
+        <para>Return to the <guilabel>Layout</guilabel> tab. The resulting screen layout is shown below: <mediaobject>
+            <imageobject>
+              <imagedata fileref="img/qs_edit_layout.png" align="center"/>
+            </imageobject>
+          </mediaobject> </para>
+        <para>Below are the new screen elements.</para>
+          <itemizedlist>
+            <listitem>
+              <para>The <code>description</code> field of the <code>fieldGroup</code> component displays the value of the <code>description</code> card attribute.</para>
+            </listitem>
+            <listitem>
+              <para><code>groupBox</code> with the <userinput>Process</userinput> header contains the following elements:<itemizedlist>
+                  <listitem>
+                    <para><code>label</code> with the <code>stateLabel</code> identifier shows the current state of the card.</para>
+                  </listitem>
+                  <listitem>
+                    <para>Inside the <code>hbox</code> container with the <code>actionsBox</code> identifier, we will programmatically create the buttons that allow the user to select an output of the assignment, or, in other words, an action for the process.</para>
+                  </listitem>
+                  <listitem>
+                    <para>The <code>attachmentsTable</code> table is used to show attachments that are created by the operator at the <userinput>Scanning</userinput> stage of the process. The table is linked to the <code>attachmentsDs</code> datasource.</para>
+                  </listitem>
+                </itemizedlist></para>
+            </listitem>
+          </itemizedlist>
+        </section>
+      <section><title>Editor Controller</title><para>Choose the <guilabel>Controller</guilabel> tab and replace its contents with the following code: <programlisting language="java">package com.sample.library.gui.ebook;
+
+import com.haulmont.cuba.core.entity.Entity;
+import com.haulmont.cuba.core.global.CommitContext;
+import com.haulmont.cuba.core.global.LoadContext;
+import com.haulmont.cuba.core.global.PersistenceHelper;
+import com.haulmont.cuba.gui.components.*;
+import com.haulmont.cuba.gui.data.DataSupplier;
+import com.haulmont.cuba.gui.data.DsContext;
+import com.haulmont.cuba.gui.export.ExportDisplay;
+import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
+import com.haulmont.workflow.core.app.WfService;
+import com.haulmont.workflow.core.entity.*;
+import com.haulmont.workflow.core.global.AssignmentInfo;
+import com.haulmont.workflow.core.global.WfConstants;
+import com.haulmont.workflow.gui.base.action.ProcessAction;
+import com.sample.library.entity.EBook;
+
+import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class EBookEdit extends AbstractEditor&lt;EBook&gt; {
+
+    @Inject
+    protected WfService wfService;
+    @Inject
+    protected ComponentsFactory componentsFactory;
+    @Inject
+    protected BoxLayout actionsBox;
+    @Inject
+    protected DataSupplier dataSupplier;
+    @Inject
+    protected Label stateLabel;
+    @Inject
+    protected FieldGroup fieldGroup;
+    @Inject
+    protected Table attachmentsTable;
+    @Inject
+    protected ExportDisplay exportDisplay;
+
+    @Override
+    public void init(Map&lt;String, Object&gt; params) {
+    }
+
+    @Override
+    protected void postInit() {
+        EBook eBook = getItem();
+
+        if (PersistenceHelper.isNew(eBook)) {
+            initProcess(eBook);
+        }
+
+        if (eBook.getState() == null) {
+            stateLabel.setValue(&quot;State: not started&quot;);
+        } else {
+            stateLabel.setValue(&quot;State: &quot; + eBook.getLocState());
+            fieldGroup.setEditable(false);
+        }
+
+        initProcessActions(eBook);
+
+        initAttachmentsTable();
+    }
+
+    private void initProcess(final EBook eBook) {
+        LoadContext loadContext = new LoadContext(Proc.class);
+        loadContext.setQueryString(&quot;select p from wf$Proc p where p.code = :code&quot;)
+                .setParameter(&quot;code&quot;, &quot;book_scanning&quot;);
+        loadContext.setView(&quot;start-process&quot;);
+        Proc proc = dataSupplier.load(loadContext);
+        if (proc != null)
+            eBook.setProc(proc);
+        else
+            throw new IllegalStateException(&quot;Process not found&quot;);
+
+        eBook.setRoles(new ArrayList&lt;CardRole&gt;());
+
+        for (ProcRole procRole : proc.getRoles()) {
+            if (procRole.getAssignToCreator())
+                continue;
+            CardRole cardRole = new CardRole();
+            cardRole.setCard(eBook);
+            cardRole.setProcRole(procRole);
+            List&lt;DefaultProcActor&gt; defaultProcActors = procRole.getDefaultProcActors();
+            if (defaultProcActors.isEmpty())
+                throw new IllegalStateException(&quot;Default actor is not assigned for role &quot; + procRole.getName());
+            cardRole.setUser(defaultProcActors.get(0).getUser());
+            eBook.getRoles().add(cardRole);
+        }
+
+        getDsContext().addListener(new DsContext.CommitListener() {
+            @Override
+            public void beforeCommit(CommitContext context) {
+                context.getCommitInstances().addAll(eBook.getRoles());
+            }
+
+            @Override
+            public void afterCommit(CommitContext context, Set&lt;Entity&gt; result) {
+            }
+        });
+    }
+
+    private void initProcessActions(EBook eBook) {
+        AssignmentInfo assignmentInfo = wfService.getAssignmentInfo(eBook);
+        if (eBook.getJbpmProcessId() == null &amp;&amp; eBook.getState() == null) {
+            addProcessAction(WfConstants.ACTION_START, assignmentInfo);
+        } else if (assignmentInfo != null) {
+            for (String actionName : assignmentInfo.getActions()) {
+                addProcessAction(actionName, assignmentInfo);
+            }
+        }
+    }
+
+    private void addProcessAction(String actionName, AssignmentInfo assignmentInfo) {
+        ProcessAction action = new ProcessAction(getItem(), actionName, assignmentInfo, this);
+        Button button = componentsFactory.createComponent(Button.NAME);
+        button.setAction(action);
+        button.setAlignment(Alignment.MIDDLE_RIGHT);
+        actionsBox.add(button);
+    }
+
+    private void initAttachmentsTable() {
+        attachmentsTable.addGeneratedColumn(&quot;file&quot;, new Table.ColumnGenerator&lt;CardAttachment&gt;() {
+            @Override
+            public Component generateCell(final CardAttachment attachment) {
+                LinkButton link = componentsFactory.createComponent(LinkButton.NAME);
+                link.setCaption(attachment.getFile().getName());
+                link.setAction(new AbstractAction(&quot;&quot;) {
+                    @Override
+                    public void actionPerform(Component component) {
+                        exportDisplay.show(attachment.getFile());
+                    }
+                });
+                return link;
+            }
+        });
+    }
+}</programlisting></para>
+          <para>Below is the explanation of the controller code fragments.</para>
+          <para>The <code>postInit()</code> method is called after the screen is initialized and the <code>EBook</code> instance is loaded with the view specified in the XML-descriptor (in this case, it is <code>eBook.edit</code>).</para>
+          <para>When the <code>EBook</code> instance specified in the screen is loaded, the application verifies whether this instance is new or retrieved from the database. In the first case, the control is passed to the <code>initProcess()</code> method, which prepares the card and the screen for the launch of the new process instance.</para>
+          <programlisting language="java">
+        protected void postInit() {
+        EBook eBook = getItem();
+
+        if (PersistenceHelper.isNew(eBook)) {
+            initProcess(eBook);
+        }</programlisting><para>Then, depending on the state of the card, components are initialized: <code>stateLabel</code> displays the current state, and for <code>fieldGroup</code> editing is prevented if the process has already started:</para><programlisting language="java">    protected void postInit() {
+    ...
+        if (eBook.getState() == null) {
+            stateLabel.setValue(&quot;State: not started&quot;);
+        } else {
+            stateLabel.setValue(&quot;State: &quot; + eBook.getLocState());
+            fieldGroup.setEditable(false);
+        }</programlisting><para>Then methods are invoked that initialize possible user actions and attachments table:</para><programlisting language="java">    protected void postInit() {
+    ...
+        initProcessActions(eBook);
+
+        initAttachmentsTable();
+    }</programlisting>
+     <para>Below is the <code>initProcess()</code> method.</para>
+     <para>Initially, the method loads a <code>Proc</code> object instance from the database with the <userinput>book_scanning</userinput> code, which is the process that we have created. If the data is loaded successfully, the <code>Proc</code> instance is set for the <code>EBook</code> card:</para>
+     <programlisting language="java">
+     private void initProcess(final EBook eBook) {
+        LoadContext loadContext = new LoadContext(Proc.class);
+        loadContext.setQueryString(&quot;select p from wf$Proc p where p.code = :code&quot;)
+                .setParameter(&quot;code&quot;, &quot;book_scanning&quot;);
+        loadContext.setView(&quot;start-process&quot;);
+        Proc proc = dataSupplier.load(loadContext);
+        if (proc != null)
+            eBook.setProc(proc);
+        else
+            throw new IllegalStateException(&quot;Process not found&quot;);</programlisting>
+     <para>Then, the <code>CardRole</code> objects (role holders for this card) are initialized. The roles may be initialized in various ways, including interactive, for example, by allowing the card creator to choose role holders. The main concern when the process is changed to any state of the <guilabel>Assignment</guilabel> type is to ensure that the role required for this state has been assigned. In our example, the role holders have been assigned in <code>DefaultProcActor</code> objects during the process setup stage. Therefore, we will retrieve them from there and transfer them to <code>CardRole</code> objects:</para>
+     <programlisting language="java">
+     private void initProcess(final EBook eBook) {
+    ...
+        eBook.setRoles(new ArrayList&lt;CardRole&gt;());
+
+        for (ProcRole procRole : proc.getRoles()) {
+            if (procRole.getAssignToCreator())
+                continue;
+            CardRole cardRole = new CardRole();
+            cardRole.setCard(eBook);
+            cardRole.setProcRole(procRole);
+            List&lt;DefaultProcActor&gt; defaultProcActors = procRole.getDefaultProcActors();
+            if (defaultProcActors.isEmpty())
+                throw new IllegalStateException(&quot;Default actor is not assigned for role &quot; + procRole.getName());
+            cardRole.setUser(defaultProcActors.get(0).getUser());
+            eBook.getRoles().add(cardRole);
+        }</programlisting>
+     <para>In the next fragment, all the created <code>CardRole</code> objects are added to <code>CommitContext</code> before committing the screen. As there is no cascade saving for <code>Card</code> and <code>CardRole</code>, the <structname>Middleware</structname> will throw an error if the created <code>CardRole</code> objects referenced by the <code>Card</code> object are not explicitly saved in the same transaction. Typically, the inclusion of all changed instances in <code>CommitContext</code> is controlled by datasources. However, in this case we will create and link objects manually, so the following code is required:</para>
+     <programlisting language="java">
+     private void initProcess(final EBook eBook) {
+    ...
+        getDsContext().addListener(new DsContext.CommitListener() {
+            @Override
+            public void beforeCommit(CommitContext context) {
+                context.getCommitInstances().addAll(eBook.getRoles());
+            }
+
+            @Override
+            public void afterCommit(CommitContext context, Set&lt;Entity&gt; result) {
+            }
+        });
+    }</programlisting>
+    <para>The methods below initialize the buttons that correspond to possible user actions on the process, and the attachments table.</para>
+    <para>The information about the current assignment for this card is loaded in the <code>initProcessActions()</code> method. If such an assignment exists for the current user, the corresponding buttons are created in the <code>addProcessAction()</code> method:</para>
+    <programlisting language="java">    private void initProcessActions(EBook eBook) {
+        AssignmentInfo assignmentInfo = wfService.getAssignmentInfo(eBook);
+        if (eBook.getJbpmProcessId() == null &amp;&amp; eBook.getState() == null) {
+            addProcessAction(WfConstants.ACTION_START, assignmentInfo);
+        } else if (assignmentInfo != null) {
+            for (String actionName : assignmentInfo.getActions()) {
+                addProcessAction(actionName, assignmentInfo);
+            }
+        }
+    }
+
+    private void addProcessAction(String actionName, AssignmentInfo assignmentInfo) {
+        ProcessAction action = new ProcessAction(getItem(), actionName, assignmentInfo, this);
+        Button button = componentsFactory.createComponent(Button.NAME);
+        button.setAction(action);
+        button.setAlignment(Alignment.MIDDLE_RIGHT);
+        actionsBox.add(button);
+    }</programlisting>
+    <para>The attachments table is a standard <code>Table</code> component associated with the <code>attachmentsDs</code> datasource that loads <code>CardAttachment</code> instances related to this card. In the table, a column is generated for the <code>file</code> attribute, which provides the ability to download the attachment by clicking the filename. The column cells display the <code>LinkButton</code> component, which invokes the corresponding file download on click using the <code>ExportDisplay</code> interface.</para>
+    <programlisting language="java">    private void initAttachmentsTable() {
+        attachmentsTable.addGeneratedColumn(&quot;file&quot;, new Table.ColumnGenerator&lt;CardAttachment&gt;() {
+            @Override
+            public Component generateCell(final CardAttachment attachment) {
+                LinkButton link = componentsFactory.createComponent(LinkButton.NAME);
+                link.setCaption(attachment.getFile().getName());
+                link.setAction(new AbstractAction(&quot;&quot;) {
+                    @Override
+                    public void actionPerform(Component component) {
+                        exportDisplay.show(attachment.getFile());
+                    }
+                });
+                return link;
+            }
+        });
+    }</programlisting>
+    </section>
+    </section>
+    <section>
+      <title>The Browser</title>
+      <para>Let us update the views that are used to load the <code>EBook</code> instances list into the screen. Find the <code>eBook.browse</code> view on the <guilabel>Entities</guilabel> section of the navigation panel and open it for editing. Include the <code>proc</code>, <code>state</code> and <code>description</code> attributes. For the <code>proc</code> attribute, set the <code>_local</code> view in the <guilabel>View</guilabel> field.
+          <figure>
+          <title>eBook.browse View Editor for Working with Processes </title>
+          <mediaobject>
+            <imageobject>
+              <imagedata fileref="img/qs_view_browse.png" align="center"/>
+            </imageobject>
+          </mediaobject>
+        </figure>.</para>
+      <section>
+        <title>Browser Layout</title>
+        <para>Find the <code>ebook-browse.xml</code> screen on the <guilabel>Screens</guilabel> section of the navigation panel and open it for editing. Choose the <guilabel>XML</guilabel> tab and completely replace its contents with the following code:
+        <programlisting language="xml">&lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;
+&lt;    window xmlns=&quot;http://schemas.haulmont.com/cuba/5.4/window.xsd&quot;
+        caption=&quot;msg://browseCaption&quot;
+        class=&quot;com.sample.library.gui.ebook.EBookBrowse&quot;
+        lookupComponent=&quot;eBookTable&quot;
+        messagesPack=&quot;com.sample.library.gui.ebook&quot;&gt;
+    &lt;dsContext&gt;
+        &lt;collectionDatasource id=&quot;eBookDs&quot;
+                              class=&quot;com.sample.library.entity.EBook&quot;
+                              view=&quot;eBook.browse&quot;&gt;
+            &lt;query&gt;
+                &lt;![CDATA[select e from library$EBook e order by e.createTs]]&gt;
+            &lt;/query&gt;
+        &lt;/collectionDatasource&gt;
+    &lt;/dsContext&gt;
+    &lt;layout expand=&quot;eBookTable&quot;
+            spacing=&quot;true&quot;&gt;
+        &lt;filter id=&quot;filter&quot;
+                datasource=&quot;eBookDs&quot;&gt;
+            &lt;properties include=&quot;.*&quot;/&gt;
+        &lt;/filter&gt;
+        &lt;table id=&quot;eBookTable&quot;
+               height=&quot;100%&quot;
+               width=&quot;100%&quot;&gt;
+            &lt;rows datasource=&quot;eBookDs&quot;/&gt;
+            &lt;columns&gt;
+                &lt;column id=&quot;publication&quot;/&gt;
+                &lt;column id=&quot;description&quot;/&gt;
+                &lt;column id=&quot;locState&quot;/&gt;
+            &lt;/columns&gt;
+            &lt;rowsCount/&gt;
+            &lt;actions&gt;
+                &lt;action id=&quot;remove&quot;/&gt;
+            &lt;/actions&gt;
+            &lt;buttonsPanel id=&quot;buttonsPanel&quot;
+                          alwaysVisible=&quot;true&quot;&gt;
+                &lt;button id=&quot;createBtn&quot;
+                        action=&quot;eBookTable.create&quot;/&gt;
+                &lt;button id=&quot;editBtn&quot;
+                        action=&quot;eBookTable.edit&quot;/&gt;
+                &lt;button id=&quot;removeBtn&quot;
+                        action=&quot;eBookTable.remove&quot;/&gt;
+            &lt;/buttonsPanel&gt;
+        &lt;/table&gt;
+    &lt;/layout&gt;
+&lt;/window&gt;
+</programlisting></para>
+        <para>The code contains the following differences from the standard browser screen:<itemizedlist>
+            <listitem>
+              <para><code>description</code> and <code>locState</code> have been added to the columns list of the <code>eBookTable</code>. These attributes provide the description of the card and the localized name of the current state.</para>
+            </listitem>
+            <listitem>
+              <para><code>create</code> and <code>edit</code> have been removed from the list of declaratively created actions in the <code>eBookTable</code> table. The corresponding buttons in the <code>buttonsPanel</code> have been kept because we will programmatically create these actions in the controller code.</para>
+            </listitem>
+          </itemizedlist></para>
+        <para>Return to the <guilabel>Layout</guilabel> tab. The layout of the screen will be as follows:</para>
+      </section>
+      <section>
+        <title>Browser Controller</title>
+        <para>Open the <guilabel>Controller</guilabel> tab and replace its contents with the following code:
+            <programlisting language="java">package com.sample.library.gui.ebook;
+
+import java.util.Map;
+
+import com.haulmont.cuba.core.entity.Entity;
+import com.haulmont.cuba.gui.components.AbstractLookup;
+import com.haulmont.cuba.gui.components.Table;
+import com.haulmont.cuba.gui.components.actions.CreateAction;
+import com.haulmont.cuba.gui.components.actions.EditAction;
+
+import javax.inject.Inject;
+
+public class EBookBrowse extends AbstractLookup {
+
+    @Inject
+    protected Table eBookTable;
+
+    @Override
+    public void init(Map&lt;String, Object&gt; params) {
+        eBookTable.addAction(new CreateAction(eBookTable) {
+            @Override
+            protected void afterCommit(Entity entity) {
+                eBookTable.getDatasource().refresh();
+            }
+        });
+        eBookTable.addAction(new EditAction(eBookTable) {
+            @Override
+            protected void afterCommit(Entity entity) {
+                eBookTable.getDatasource().refresh();
+            }
+        });
+    }
+}</programlisting></para>
+        <para>The standard <code>CreateAction</code> and <code>EditAction</code> are added to the <code>eBookTable</code> table in the <code>init()</code> method with an overridden <code>afterCommit()</code> method that is responsible for refreshing the table datasource. This allows displaying the altered state of the card in the table immediately when the changes are saved and the process moves on to the next stage.</para>
+        <para>The <code>CreateAction</code> and <code>EditAction</code> standard actions do not reload the datasource after the opened editor is committed; they receive the saved entity instance from the <structname>Middleware</structname> and simply substitute it in the datasource for the original. </para>
+        <para>In our case, it is necessary to reload the entity from the database because the process is launched in a separate transaction after saving the edited <code>EBook</code> instance, and the state of the card is changed at the same time. In other words, the <code>EBook</code> instance, which has not yet been changed by the process, is returned after the editor is committed to the datasource. It is necessary to reload the entity from the database in order to display these changes. </para>
+      </section>
+    </section>
+  </section>
+  <section>
+    <title>Running the Application</title>
+    <para>Launch the server by clicking <guimenu>Run</guimenu> -&gt; <guimenu>Start application server</guimenu> and log into the application as <userinput>admin</userinput>.</para>
+    <para>Open the <guimenu>Library</guimenu> -&gt; <guimenu>E-books</guimenu> screen and create a new entry. Select a book publication and enter a full description in the <guilabel>Description</guilabel> field. At this stage, the editor will look as follows:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_create_card.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Now you can simply save the card by clicking <guibutton>OK</guibutton> or immediately start the process by clicking <guibutton>Start process</guibutton>. After the process is started, the editor will close, and the table will show the <code>Approval</code> value in the <guilabel>State (loc.)</guilabel> column. This means that the card is awaiting approval by a manager.<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_browse_1.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>If you now open the card for editing, you will see that all input fields are disabled, and none of the process actions are accessible.</para>
+    <para>Log out of the system and log in again as <userinput>manager</userinput>. Open the <guimenu>Workflow</guimenu> -&gt; <guimenu>Assignments</guimenu> screen. You will see the assignment that has been nominated to you:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_assignment_1.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>When you click <guibutton>Open</guibutton>, you will see the card editor that allows you to approve or deny the book scanning:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_edit_card_1.png" align="center" conformance=""/>
+        </imageobject>
+      </mediaobject></para>
+    <para>The same screen can be accessed in the usual way by selecting a row in the browser and then clicking <guibutton>Edit</guibutton>.</para>
+    <para>Click <guibutton>Approve</guibutton>. If you have opened the edit screen from the assignments list, this list will now be empty. At this point, the <userinput>manager</userinput> has no assignments. If you have opened the edit screen from the <code>EBook</code> list, you will see the changed state of the card:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_browse_2.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>When you open the card for editing, you will no longer be able to change anything or continue the process, since the next action must be performed by the <userinput>operator</userinput>.</para>
+    <para>Log out of the system and log in again as <userinput>operator</userinput>. Open the <guimenu>Workflow</guimenu> -&gt; <guimenu>Assignments</guimenu> screen. You will see the assignment that has been nominated to you:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_assignment_2.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Click <guibutton>Open</guibutton> in this screen, or go to the <guimenu>Library</guimenu> -&gt; <guimenu>E-books</guimenu> screen and open the card for editing there. You will see the available process actions: <userinput>Success</userinput> and <userinput>Fail</userinput>.
+        <mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_edit_card_2.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Let us assume that you have completed the book scanning process as the operator. Click <guibutton>Success</guibutton>. You will see the transition form that was specified in the process.<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_transition_form.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Click <guibutton>Add</guibutton> and add one or several file attachments. Then click <guibutton>OK</guibutton>. The form will close, the assignment will disappear, and the card will be assigned the <userinput>Done</userinput> state:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_browse_3.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>When you open the card for editing, you will see the process state and the list of attachments that were added by the operator:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/qs_run_edit_card_3.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+  </section>
+</chapter>
