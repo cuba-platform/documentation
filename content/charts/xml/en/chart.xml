@@ -1,0 +1,429 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter id="chart" lang="en">
+  <title>Displaying Charts</title>
+  <para>CUBA platform charts display subsystem supports various chart types: pie charts, line plots, bubble charts, radar charts, funnel charts and more. It is also possible to export charts. Most chart types support zoom and scrolling. At the moment of writing, the chart display subsystem supports only the  <structname>Web Client</structname> for <application>Vaadin7</application>.</para>
+  <para><application>AmCharts</application> library which is the basis of the chart display subsystem is distributed under a license, which allows its free use if you keep the link to the library website. Alternatively, you can  <ulink url="http://www.amcharts.com/online-store/">purchase</ulink> an <application>AmCharts</application> license for your project and remove the link.</para>
+  <section id="chart_configuration">
+    <title>Configuring Charts</title>
+    <para>Charts are displayed using the  <code>Chart</code> component acting as a universal canvas. Chart type is defined by the <code>configuration</code> property, which has the  <code>AbstractChart</code> type. </para>
+    <figure>
+      <title>Chart Types Hierarchy </title>
+      <mediaobject>
+        <imageobject>
+          <imagedata align="center" fileref="img/chart/charts_hierarchy_dia.png"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <para>Charts can be described in a screen XML-descriptor. To do this, you should connect the corresponding <code>namespace</code>:<programlisting language="xml">&lt;window xmlns=&quot;http://schemas.haulmont.com/cuba/5.3/window.xsd&quot;
+        xmlns:chart=&quot;http://schemas.haulmont.com/charts/5.3/charts.xsd&quot;
+        ...&gt;</programlisting></para>
+    <para>XML elements corresponding to different chart types:</para>
+    <itemizedlist>
+      <listitem>
+        <para><code>chart:xyChart</code> - XYChart</para>
+      </listitem>
+      <listitem>
+        <para><code>chart:serialChart</code> - SerialChart</para>
+      </listitem>
+      <listitem>
+        <para><code>chart:pieChart</code> - PieChart</para>
+      </listitem>
+      <listitem>
+        <para><code>chart:funnelChart</code> - FunnelChart</para>
+      </listitem>
+      <listitem>
+        <para><code>chart:gaugeChart</code> - AngularGaugeChart</para>
+      </listitem>
+      <listitem>
+        <para><code>chart:radarChart</code> - RadarChart</para>
+      </listitem>
+    </itemizedlist>
+    <para>Each chart type has its own set of attributes and methods, which replicate the functionality of the corresponding charts from AmCharts library. Documentation on the properties and methods of the charts is available at  <ulink url="http://docs.amcharts.com/3/javascriptcharts">http://docs.amcharts.com/javascriptcharts</ulink>. </para>
+    <para>Any configuration attribute can be set to  <code>null</code>; in this case the system will use the default value (except the cases specified in the <application>AmCharts</application> documentation).  </para>
+  </section>
+  <section id="chart_data_binding">
+    <title>Connecting Data</title>
+    <para>There are two ways how you can pass data to a chart: through the <code>DataProvider</code> interface or using the data source mechanism. </para>
+    <itemizedlist>
+      <listitem>
+        <para>The  <code>DataProvider</code> interface has a standard implementation:  <code>ListDataProvider</code>. class. It contains a list of  <code>DataItem</code> instances, each one containing a set of key-value pairs. An instance of  <code>DataProvider</code> is passed to the <code>setDataProvider()</code> method of chart configuration. This approach to providing chart data is the most universal, but it requires you to create instances of   <code>DataProvider</code> and  <code>DataItem</code> in a screen controller.</para>
+      </listitem>
+      <listitem>
+        <para>A  <code>CollectionDatasource</code> type data source can be assigned to a  <code>Chart</code> component by invoking the <code>setDatasource()</code> method. This approach requires an entity that will represent chart data. It may be convenient when such entity already exists in the application data model and also when chart data should be displayed as a table.</para>
+      </listitem>
+    </itemizedlist>
+    <para><xref linkend="chart_example"/> illustrates both approaches to providing chart data.</para>
+    <para>Entity properties or the values contained in an instance of  <code>DataProvider</code> which are used for display purposes are defined in the chart attributes. The set of chart attributes may differ for different chart types. For example, for the  <sgmltag>chart:pieChart</sgmltag> component, you should define the  <sgmltag>valueField</sgmltag> and  <sgmltag>titleField</sgmltag>.
+attributes. The following types are allowed for attribute values:  <code>Integer</code>, <code>Long</code>, <code>Double</code>, <code>String</code>, <code>Boolean</code>, <code>Date</code>. </para>
+    <para>Dynamic addition of data to an existing chart is not supported; you should redraw the entire chart to display new data. This can be done using the  <code>repaint()</code> method.
+</para>
+  </section>
+  <section id="chart_listeners">
+    <title>Events</title>
+    <para>It is possible to configure handling of different event types. The following listener types are available:</para>
+    <itemizedlist>
+      <listitem>
+        <para><code>AxisZoomListener</code> - chart axis scaling.</para>
+      </listitem>
+      <listitem>
+        <para><code>ChartClickListener</code> - click on the canvas.</para>
+      </listitem>
+      <listitem>
+        <para><code>RightClickListener</code> - right click on the canvas.</para>
+      </listitem>
+      <listitem>
+        <para><code>CursorPeriodSelectListener</code> - selection of the display period with a cursor.</para>
+      </listitem>
+      <listitem>
+        <para><code>CursorZoomListener</code> - scaling of the chart area with a cursor.</para>
+      </listitem>
+      <listitem>
+        <para><code>GraphClickListener</code> - click on a graph.</para>
+      </listitem>
+      <listitem>
+        <para><code>GraphItemClickListener</code> - click on a graph item.</para>
+      </listitem>
+      <listitem>
+        <para><code>LegendItemHideListener</code> - hiding a legend item.</para>
+      </listitem>
+      <listitem>
+        <para><code>LegendItemShowListener</code> - showing a legend item.</para>
+      </listitem>
+      <listitem>
+        <para><code>LegendItemClickListener</code> - click on a legend item.</para>
+      </listitem>
+      <listitem>
+        <para><code>SliceClickListener</code> - click on a slice in a pie chart.</para>
+      </listitem>
+      <listitem>
+        <para><code>SliceRightClickListener</code> - right-click on a slice in a pie chart.</para>
+      </listitem>
+      <listitem>
+        <para><code>SlicePullInListener</code> - shift of a slice of a pie chart into the chart.</para>
+      </listitem>
+      <listitem>
+        <para><code>SlicePullOutListener</code> - shift of a slice of a pie chart out of the chart.</para>
+      </listitem>
+      <listitem>
+        <para><code>ZoomListener</code> - scaling of the canvas.</para>
+      </listitem>
+    </itemizedlist>
+    <para>Event handling examples are available in     <xref linkend="section_use_of_events"/>.</para>
+  </section>
+  <section id="chart_example">
+    <title>Example of Working with Charts</title>
+    <para>This chapter shows how you can use the chart display subsystem using the sample <application>Library</application>
+      application as example; source code for the application is available at
+      <ulink url="https://www.cuba-platform.com/download">www.cuba-platform.com/download</ulink>.</para>
+    <section id="chart_project_setup">
+      <title>Setting up the Application Project</title>
+      <section>
+        <title>Setting up the Application Project in CUBA Studio</title>
+        <orderedlist>
+          <listitem>
+            <para>Download the archive with the <application>Library</application> project from
+              <ulink url="https://www.cuba-platform.com/download">www.cuba-platform.com/download</ulink> and unpack it
+              to a local folder, for example <filename>c:\work\library</filename>.</para>
+          </listitem>
+          <listitem>
+            <para>Run <application>CUBA Studio</application>, import the project from <filename>c:\work\library</filename> and open it.</para>
+          </listitem>
+          <listitem>
+            <para>Open <guibutton>Project properties</guibutton> -&gt; <guibutton>Edit</guibutton> and include the <structname>charts</structname> project into the list of  <guilabel>Base projects</guilabel>; save changes. Confirm when <application>Studio</application> will suggest recreating Gradle scripts. </para>
+          </listitem>
+          <listitem>
+            <para>Select  <guimenu>Run</guimenu> -&gt; <guimenu>Deploy</guimenu>. At this point, the application will be assembled and deployed to the <filename>build\tomcat</filename> subfolder of the Tomcat server.</para>
+          </listitem>
+          <listitem>
+            <para>Create the application database by selecting  <guimenu>Run</guimenu> -&gt; <guimenu>Create database</guimenu>. database. In this project Studio acts as an <application>HSQL</application> database server; DB files are located in the  <filename>${user.home}\.haulmont\studio\hsqldb\library</filename>.</para>
+          </listitem>
+          <listitem>
+            <para>Select <guimenu>Build</guimenu> -&gt; <guimenu>Create or update IDEA project files</guimenu> to create project files for <application>IntelliJ IDEA</application>.</para>
+          </listitem>
+        </orderedlist>
+        <para>Once the steps above are complete, the chart display functionality will be connected to the application and ready to be used. </para>
+      </section>
+      <section>
+        <title>Setting up the Application Project Manually</title>
+        <orderedlist>
+          <listitem>
+            <para>Download the archive with the <application>Library</application> project from
+              <ulink url="https://www.cuba-platform.com/ru/download">www.cuba-platform.com/download</ulink> and extract it to a local folder, for example  <filename>c:\work\library</filename>.</para>
+          </listitem>
+          <listitem>
+            <para>Start the command line in the work directory  <filename>c:\work\library</filename>.</para>
+          </listitem>
+          <listitem>
+            <para>Execute the following command to build the project, create project files for <application>IntelliJ IDEA</application>, install <application>Apache Tomcat</application>, deploy built project assets and libraries, start <application>HyperSQL</application> database server and create the project database:</para>
+            <para><prompt>gradlew assemble idea setupTomcat deploy startDb createDb</prompt></para>
+          </listitem>
+          <listitem>
+            <para>Open the project in <application>IntelliJ IDEA</application>; add <structname>charts-global</structname>, <structname>charts-gui</structname> and <structname>charts-web</structname> modules in <code>build.gradle</code> to the dependences of the corresponding application modules: </para>
+            <programlisting>configure(guiModule) {
+        dependencies {
+            ...
+            compile(&quot;com.haulmont.charts:charts-gui:$cubaVersion&quot;)
+            ...
+        }
+    }</programlisting>
+            <programlisting>configure(webModule) {
+        dependencies {
+            ...
+            compile(&quot;com.haulmont.charts:charts-web:$cubaVersion&quot;)
+            ...
+        }
+    }</programlisting>
+            <programlisting>configure(globalModule) {
+        dependencies {
+            ...
+            compile(&quot;com.haulmont.charts:charts-global:$cubaVersion&quot;)
+            ...
+        }
+    }</programlisting>
+          </listitem>
+          <listitem>
+            <para>Add <structname> charts-global</structname>, <structname>charts-gui</structname> and <structname>charts-web</structname> libraries to  <code>appJars</code> of the  <code>deploy</code> task for the  <structname>core</structname> and  <structname>web</structname> modules.</para>
+            <programlisting>configure(coreModule) {
+        ...
+        task deploy(dependsOn: assemble, type: CubaDeployment) {
+            appName = &apos;app-core&apos;
+            appJars(&apos;cuba-core&apos;, &apos;reports-core&apos;, &apos;cuba-global&apos;, &apos;charts-global&apos;, &apos;reports-global&apos;,
+                    &apos;app-global&apos;, &apos;app-core&apos;)
+        }
+    }
+
+    configure(webModule) {
+        ...
+        task deploy(dependsOn: [assemble, cleanConf], type: CubaDeployment) {
+            appName = &apos;app&apos;
+            appJars(&apos;cuba-web&apos;, &apos;charts-web&apos;, &apos;reports-web&apos;, &apos;cuba-global&apos;, &apos;charts-global&apos;, &apos;reports-global&apos;,
+                    &apos;cuba-gui&apos;, &apos;cuba-client&apos;, &apos;charts-gui&apos;, &apos;reports-gui&apos;, &apos;app-global&apos;, &apos;app-gui&apos;, &apos;app-web&apos;)
+        }
+    }</programlisting>
+          </listitem>
+          <listitem>
+            <para>Add deployment of web browser widgets from the <structname>charts</structname> project. </para>
+            <programlisting>configure(webModule) {
+        dependencies {
+            ...
+            // webcontent(&quot;com.haulmont.cuba:cuba-web-toolkit:$cubaVersion:web@zip&quot;)
+            webcontent(&quot;com.haulmont.charts:charts-web-toolkit:$cubaVersion:web@zip&quot;)
+            webcontent(&quot;com.haulmont.charts:charts-web:$cubaVersion:web@zip&quot;)
+            ...
+        }
+    }</programlisting>
+            <para>Note that the set of <structname>cuba</structname> project widgets is no longer needed and should be commented out.</para>
+          </listitem>
+          <listitem>
+            <para>Change the <parameter>widgetset</parameter> parameter in <filename>web.xml</filename> of the web module:</para>
+            <programlisting language="xml">&lt;init-param&gt;
+            &lt;description&gt;Widgetset name&lt;/description&gt;
+            &lt;param-name&gt;widgetset&lt;/param-name&gt;
+            &lt;param-value&gt;com.haulmont.charts.web.toolkit.ui.ChartsWidgetSet&lt;/param-value&gt;
+    &lt;/init-param&gt;</programlisting>
+          </listitem>
+          <listitem>
+            <para>In the <code>App</code> class of the application, import components from the <structname>charts</structname> project:</para>
+            <programlisting language="java">public class App extends DefaultApp {
+
+        static {
+            WebUIPaletteManager.registerPalettes(new ChartComponentPalette());
+        }
+    }</programlisting>
+          </listitem>
+        </orderedlist>
+        <para>Project configuration and installation of the <structname>charts</structname> modules is now complete.</para>
+      </section>
+    </section>
+    <section>
+      <title>Creating Data Extraction Service</title>
+      <para>In this section, we shall create a service allowing us to extract data for the chart from the database. </para>
+      <orderedlist>
+        <listitem>
+          <para>One of the methods of the service will return a list of non-persistent entities, therefore let us start by creating and registering a class for this entity.</para>
+          <para>Create the <code>com.sample.library.entity</code> class in the  <structname>global</structname>  <code>BooksByGenre</code> package of the global module:  </para>
+          <programlisting language="java"><xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../source/chart/BooksByGenre.java" encoding="UTF-8" parse="text"/></programlisting>
+          <para>An instance of this class contains the number of books of a certain genre. Then, we should register the entity class in the <filename>metadata.xml</filename> file of the global module:</para>
+          <programlisting language="xml">&lt;metadata-model root-package=&quot;com.sample.library&quot;&gt;
+        &lt;class&gt;com.sample.library.entity.BooksByGenre&lt;/class&gt;
+    &lt;/metadata-model&gt;</programlisting>
+        </listitem>
+        <listitem>
+          <para>An interface and a service class can be created using CUBA Studio. For this, open the  <guilabel>Services</guilabel> tab of the navigation panel and click  <guibutton>New</guibutton>. In a window that opens, fill in the <guilabel>Interface</guilabel> field with the following value:  <userinput>com.sample.library.service.StatisticsService</userinput>. <guilabel>Bean</guilabel> and <guilabel>Service</guilabel> name fields will be updated with suitable values of <userinput>com.sample.library.service.StatisticsServiceBean</userinput> and  <userinput>library_StatisticsService</userinput> respectively. Save changes. </para>
+          <para>Open the interface of the  <code>StatisticsService</code> service in IDE and declare the methods retrieving data from the database:</para>
+          <programlisting language="java"><xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../source/chart/StatisticsService.java" encoding="UTF-8" parse="text"/></programlisting>
+        </listitem>
+        <listitem>
+          <para>Then, open the  <code>StatisticsServiceBean</code> service class and replace its content with the following code:</para>
+          <programlisting language="java"><xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../source/chart/StatisticsServiceBean.java" encoding="UTF-8" parse="text"/></programlisting>
+          <para>The  <code>getCountOfBooksByGenre()</code> method returns the number of books of every genre as a list of  <code>BooksByGenre</code> entities. The  <code>getTopPublishers(int count)</code> method sorts publishes by the number of issued books available in the library in descending order, and returns the first  <code>count</code> of publishers. The  <code>getCountOfBooksByPublisherAndYear()</code> method returns the number of books issued by publishers in a given year.</para>
+        </listitem>
+      </orderedlist>
+    </section>
+    <section id="qs_adding_charts">
+      <title>Creating Charts</title>
+      <simplesect>
+        <title>Screen XML Descriptor </title>
+        <para>Open the  <guilabel>Screens</guilabel> tab in CUBA Studio and create a screen in the <structname>web</structname> module. Enter the value  <userinput>com/sample/library/web/charts/statistics.xml</userinput> in the  <guilabel>Reference</guilabel> field. The fields - <guilabel>Id</guilabel>, <guilabel>Controller Name</guilabel> and <guilabel>Messages Pack</guilabel> will be filled in with appropriate values. Save changes. Open the <guilabel>XML</guilabel> tab and replace its content with the following code:</para>
+        <programlisting language="xml"><xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../source/chart/statistics.xml" encoding="UTF-8" parse="text"/></programlisting>
+        <para>The root element of the screen descriptor contains a new <code>xmlns:chart</code> attribute:</para>
+        <programlisting language="xml">&lt;window xmlns:chart=&quot;http://schemas.haulmont.com/charts/5.3/charts.xsd&quot;
+    ...
+    &gt;</programlisting>
+        <para>The screen that we created contains a panel with two tabs. The first tab contains a pie chart showing the distribution of books by genre:</para>
+        <programlisting language="xml">&lt;chart:pieChart id=&quot;pieChart&quot;
+                    angle=&quot;30&quot;
+                    balloonText=&quot;[[genre]] - [[percents]]%&quot;
+                    datasource=&quot;pieDs&quot;
+                    depth3D=&quot;15&quot;
+                    height=&quot;100%&quot;
+                    titleField=&quot;genre&quot;
+                    valueField=&quot;countOfBooks&quot;
+                    width=&quot;100%&quot;&gt;
+        &lt;chart:exportConfig menuTop=&quot;0px&quot;&gt;
+            &lt;chart:menuItems&gt;
+                &lt;chart:menu format=&quot;PNG&quot;
+                            icon=&quot;VAADIN/resources/amcharts/images/export.png&quot;/&gt;
+            &lt;/chart:menuItems&gt;
+        &lt;/chart:exportConfig&gt;
+    &lt;/chart:pieChart&gt;</programlisting>
+        <para>The chart retrieves data from the  <code>pieDs</code> datasource defined in the  <code>datasource</code> attribute. Names and values are displayed using the <code>genre</code> and <code>countOfBooks</code> attributes of the <code>BooksByGenre</code> entity; the list of instances for this entity is stored in the datasource. The data source is also connected to a table that shows the same data as the chart.</para>
+        <para>The  <sgmltag>pieChart</sgmltag> component contains the following attributes:</para>
+        <itemizedlist>
+          <listitem>
+            <para><sgmltag>angle</sgmltag> - defines the chart angle. May have a value from <literal>0</literal> to <literal>90</literal>.</para>
+          </listitem>
+          <listitem>
+            <para><sgmltag>balloonText</sgmltag> - defines text for the tooltip that appears when hovering over a pie slice. You can use the following tags: <literal>[[value]]</literal>, <literal>[[title]]</literal>, <literal>[[persents]]</literal>, <literal>[[description]]</literal>,as well as keys from the <code>DataItem</code> listed in a  <code>DataProvider</code> instance, or names of the entity attributes from the datasource.</para>
+          </listitem>
+          <listitem>
+            <para><sgmltag>depth3D</sgmltag> - chart thickness. When used in combination with the <code>angle</code> attribute, helps to create a 3D effect.</para>
+          </listitem>
+          <listitem>
+            <para><sgmltag>titleField</sgmltag> - a key from the list of pairs contained in the <code>DataItem</code> objects listed in a <code>DataProvider</code> instance; this key is used to determine the name of a pie chart slice. </para>
+          </listitem>
+          <listitem>
+            <para><sgmltag>valueField</sgmltag> - a key from the list of pairs contained in the <code>DataItem</code> objects listed in a <code>DataProvider</code> instance; this key is used to determine the value of a pie chart slice.</para>
+          </listitem>
+        </itemizedlist>
+        <para>The  <code>pieChart</code> component contains the following elements:</para>
+        <itemizedlist>
+          <listitem>
+            <para><sgmltag>chart:legend</sgmltag> -  defines chart legend. The <sgmltag>position</sgmltag> attribute defines the location of the legend relative to the chart, and <sgmltag>markerType</sgmltag> defines the shape of the information marker for pie chart slices.</para>
+          </listitem>
+          <listitem>
+            <para><sgmltag>chart:exportConfig</sgmltag> – enables chart export. The  <sgmltag>menuTop</sgmltag>, <sgmltag>menuLeft</sgmltag>, <sgmltag>menuRight</sgmltag> and <sgmltag>menuBottom</sgmltag> attributes define the Save button location. In our example, the button is located in the top right corner of the chart.</para>
+            <para>The  <sgmltag>chart:menuItems</sgmltag> element contains export settings. In addition to the  <filename>png</filename> format used in our example, the chart can also be exported as <filename>jpg</filename>, <filename>svg</filename> or <filename>pdf</filename>. The  <sgmltag>icon</sgmltag> attribute contains a path to an image that should be used as an icon for the export button.</para>
+          </listitem>
+        </itemizedlist>
+        <para>The second tab contains a chart showing the number of books issued by several publishers in different years:</para>
+        <programlisting language="xml">&lt;chart:serialChart id=&quot;stackedChart&quot;
+                       categoryField=&quot;year&quot;
+                       height=&quot;100%&quot;
+                       width=&quot;100%&quot;&gt;
+       &lt;chart:chartCursor/&gt;
+       &lt;chart:legend markerType=&quot;TRIANGLE_RIGHT&quot;
+                     position=&quot;TOP&quot;
+                     valueAlign=&quot;LEFT&quot;/&gt;
+       &lt;chart:categoryAxis startOnAxis=&quot;true&quot;
+                           title=&quot;msg://year&quot;/&gt;
+       &lt;chart:valueAxes&gt;
+          &lt;chart:axis position=&quot;LEFT&quot;
+                      stackType=&quot;REGULAR&quot;
+                      title=&quot;msg://countOfBooks&quot;/&gt;
+       &lt;/chart:valueAxes&gt;
+       &lt;chart:exportConfig menuTop=&quot;0px&quot;&gt;
+          &lt;chart:menuItems&gt;
+             &lt;chart:menu format=&quot;PNG&quot;
+                         icon=&quot;VAADIN/resources/amcharts/images/export.png&quot;/&gt;
+          &lt;/chart:menuItems&gt;
+       &lt;/chart:exportConfig&gt;
+    &lt;/chart:serialChart&gt;</programlisting>
+        <para>This chart retrieves data through the  <code>DataProvider</code> created in the controller (see below), so the  <code>datasource</code> attribute is not defined.</para>
+        <para><sgmltag>chart:serialChart</sgmltag> attributes:</para>
+        <itemizedlist>
+          <listitem>
+            <para><sgmltag>categoryField</sgmltag> - a key from the set of pairs contained in the <code>DataItem</code> objects listed in a  <code>DataProvider</code> instance; this key is used to determine the labels for the category axis.</para>
+          </listitem>
+        </itemizedlist>
+        <para>The elements of  <sgmltag>chart:serialChart</sgmltag>: </para>
+        <itemizedlist>
+          <listitem>
+            <para><sgmltag>chart:chartCursor</sgmltag> - an optional element adding a cursor to the chart; the cursor follows the mouse pointer and shows a tooltip with the value of the corresponding point on a chart.</para>
+          </listitem>
+          <listitem>
+            <para><sgmltag>chart:categoryAxis</sgmltag> - an element that describes the category axis. Setting <code>startOnAxis</code> to <structname>true</structname> causes drawing the chart right from the value axis. The default value for this attribute is <code>false</code>. In this case, there will be a small gap between the value axis and the chart. The <code>title</code> attribute defines the title of the value axis.</para>
+          </listitem>
+          <listitem>
+            <para><sgmltag>chart:valueAxes</sgmltag> - an element that defines vertical value axes. In our case, only one vertical axis is used; the axis is described by the  <sgmltag>chart:axis</sgmltag> element. The  <sgmltag>position</sgmltag> attribute defines position of the value axis relative to the chart. Setting <sgmltag>stackType</sgmltag> to  <literal>REGULAR</literal> говорит о том, makes the chart display a rolling value. Setting this attribute to  <literal>none</literal> refers to a non-rolling value.</para>
+          </listitem>
+        </itemizedlist>
+      </simplesect>
+      <simplesect>
+        <title>Screen Controller</title>
+        <para>Open the <guilabel>Controller</guilabel> tab and replace its content with the following code:</para>
+        <programlisting language="java"><xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../source/chart/Statistics.java" encoding="UTF-8" parse="text"/></programlisting>
+        <para>The <code>initPieChart()</code> method populates the <code>pieDs</code> datasource with the data retrieved from the service. The  <code>refresh()</code> method initializes the data source. This method should be invoked regardless of the  <code>refreshMode=&quot;NEVER&quot;</code> attribute declared in the XML-descriptor. </para>
+        <para>The  <code>initStackedChart(List&lt;String&gt; allPublishers)</code> method submits data to the chart as a rolling value. This type of charts shows the ratio of separate parts to their total value. The method accepts a list of publishers who have published the largest number of books available in the library. For each publisher, a separate graph is rendered showing the number of books issued in different years. The graph corresponds to an instance of the <code>Graph</code>  class. Let’s have a look at different graph configuration options:</para>
+        <itemizedlist>
+          <listitem>
+            <para><code>setFillAlphas(0.6)</code> - defines fill opacity.</para>
+          </listitem>
+          <listitem>
+            <para><code>setLineAlpha(0.4)</code> - defines graph line width. Possible values are from  <literal>0</literal> to <literal>1</literal>.</para>
+          </listitem>
+          <listitem>
+            <para><code>setTitle(publisher)</code> - defines the graph title.</para>
+          </listitem>
+          <listitem>
+            <para><code>setType(GraphType.LINE)</code> - defines data display style.</para>
+          </listitem>
+          <listitem>
+            <para><code>setValueField(publisher)</code> - a key from the list of pairs contained in the  <code>DataItem</code> objects listed in a <code>DataProvider</code> instance; this key is used to determine graph values.</para>
+          </listitem>
+          <listitem>
+            <para><code>setBaloonText(publisher + &quot; - [[year]] year: [[&quot; + publisher + &quot;]] books&quot;)</code> - defines tooltip content.</para>
+          </listitem>
+        </itemizedlist>
+      </simplesect>
+      <simplesect>
+        <title>Chart Screenshots</title>
+        <para>Below are the screenshots of the screen that we have just created. Add the screen to the menu, then rebuild the project using  <guimenu>Run</guimenu> -&gt; <guimenu>Restart application server</guimenu> and log in to the system. Open the statistics screen.</para>
+        <figure>
+          <title>Pie Chart </title>
+          <mediaobject>
+            <imageobject>
+              <imagedata align="center" fileref="img/chart/pie_chart.png"/>
+            </imageobject>
+          </mediaobject>
+        </figure>
+        <figure>
+          <title>Rolling Chart</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata align="center" fileref="img/chart/stacked_chart.png"/>
+            </imageobject>
+          </mediaobject>
+        </figure>
+        <para>The rolling chart illustrates the cursor showing detailed information on the number of books issued by the publishers during the selected year.</para>
+      </simplesect>
+    </section>
+    <section id="section_use_of_events">
+      <title>Using Events</title>
+      <para>Let us consider the use of events. We will add handling of a slice shift out to the screen created in <xref linkend="qs_adding_charts"/>. Open the screen XML descriptor in the IDE and inject the chart:</para>
+      <programlisting language="java">@Inject
+    private Chart pieChart;</programlisting>
+      <para>Then add a listener in the <code>initPieChart() </code>method:</para>
+      <programlisting language="java"><xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="../../source/chart/SlicePullOutListener.java" encoding="UTF-8" parse="text"/></programlisting>
+      <para>To see the results, rebuild the project using  <guimenu>Run</guimenu> -&gt; <guimenu>Restart application server</guimenu> and log in to the system. Open the screen and click one of the pie slices to shift it out.</para>
+      <figure>
+        <title>Chart that handles slice pull out event </title>
+        <mediaobject>
+          <imageobject>
+            <imagedata align="center" fileref="img/chart/chart_with_event.png"/>
+          </imageobject>
+        </mediaobject>
+      </figure>
+    </section>
+  </section>
+</chapter>
