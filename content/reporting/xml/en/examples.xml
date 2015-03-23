@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter lang="en" id="examples">
+  <title>Sample Report</title>
+  <para>In this chapter we will consider the structure of one of reports from the sample Library application, which source code is available at <ulink url="https://www.cuba-platform.com/download">https://www.cuba-platform.com/download</ulink>.</para>
+  <para>Open the  <guimenu>Reports</guimenu> -&gt; <guimenu>Reports</guimenu> screen and click on the  <guibutton>Import</guibutton> button to import the report. Choose  <filename>Reports.zip</filename> in the project root directory. Two reports will appear in the table, one of them will be  <userinput>Books by author</userinput>. This report displays the list of book publications for selected author; books will be grouped by book name and publisher. The output format is XLS.</para>
+  <orderedlist>
+    <listitem>
+      <para><link linkend="structure">Report data structure</link>.<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/sample1_structure.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Let us consider report bands.<itemizedlist>
+          <listitem>
+            <para><userinput>header</userinput>  band - report header. It contains the dataset with the Groovy script which outputs the report  <link linkend="parameters">external parameters</link> values:<programlisting>[[&apos;authorName&apos; : (params[&apos;author&apos;].firstName + &apos; &apos; + params[&apos;author&apos;].lastName)]]</programlisting></para>
+          </listitem>
+          <listitem>
+            <para>The  <userinput>book</userinput> band outputs the list of books by running the following SQL query:<programlisting language="sql">select b.name as book_name, b.id as book_id
+from library_book b 
+    join library_book_author_link ba on ba.book_id = b.id
+    join library_author a on a.id = ba.author_id
+where a.id = ${author}</programlisting></para>
+            <para>This query uses the external report parameter -  <userinput>author</userinput>. The parameter has the  <guilabel>Entity</guilabel> type, however in SQL queries you can compare it directly with entity identifier fields; the conversion will be done automatically.</para>
+          </listitem>
+          <listitem>
+            <para>The <userinput>publisher</userinput> band, which is child band of the  <userinput>book</userinput>, outputs the book publishers by running the following SQL query:<programlisting language="sql">select p.name as publisher, bp.year, p.id as publisher_id
+from library_book_publication bp
+    join library_publisher p on p.id = bp.publisher_id
+where bp.book_id = ${book.book_id}</programlisting></para>
+            <para>This query uses the parent band field  <code>book_id</code> as a parameter. This provides dependency between the parent and child bands.</para>
+          </listitem>
+          <listitem>
+            <para>The <userinput>publisher</userinput> band, which is a child of the <userinput>publication</userinput> band, outputs the book publications by running the following SQL query:<programlisting language="sql">select ld.name as department, count(bi.id) as amount
+from library_book_instance bi
+    join library_book_publication bp on bp.id = bi.book_publication_id
+    join library_library_department ld on ld.id = bi.library_department_id
+where bp.publisher_id = ${publisher.publisher_id} and bp.book_id = ${book.book_id}
+group by ld.name</programlisting></para>
+            <para>This query uses both parent bands fields as parameters - <code>book_id</code> and  <code>publisher_id</code>. </para>
+          </listitem>
+        </itemizedlist></para>
+    </listitem>
+    <listitem>
+      <para>Report <link linkend="parameters">parameters</link>. </para>
+      <para>The  <guilabel>Parameters and Formats</guilabel> tab contains one declared report external parameter -  <userinput>Author</userinput>:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/sample1_param.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>When running the report, the user will have to enter this parameter. The author selection will be performed via the  <code>library$Author.lookup</code> screen, available in the application.</para>
+    </listitem>
+    <listitem>
+      <para>Report <link linkend="template">templates</link>.</para>
+      <para>The  <guilabel>Templates</guilabel> tab contains a single defined XLS template, loaded from <filename>BooksByAuthor.xls</filename>:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/sample1_template.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+    </listitem>
+    <listitem>
+      <para> Report Name <link linkend="localization">Localization</link>.</para>
+      <para>The <guilabel>Localization</guilabel> tab contains the report name for the Russian locale:<programlisting>ru = Книги по автору</programlisting></para>
+    </listitem>
+  </orderedlist>
+  <para>You can  <link linkend="running">run</link> report from the generic browser in the  <guimenu>Reports</guimenu> -&gt; <guimenu>Run Reports</guimenu> screen.</para>
+</chapter>

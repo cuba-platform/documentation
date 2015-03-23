@@ -1,0 +1,575 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter id="creation" lang="en">
+  <title>Creating Reports</title>
+  <para>Creating a report in the system involves two dependent elements: visual presentation template and description of the data extracted for the report. The template is created in XLS(X), DOC(X), ODT, HTML formats using external tools, and the description of report data is created in the report designer screen.</para>
+  <para>Depending on the template and report parameters, the generated report can be in PDF, XLS(X), DOC(X) or HTML.</para>
+  <para>The report data structure can either be described in the report designer by creating bands, queries and other elements, or programmed in a Java class that implements a special interface. The report can take parameters from the user or from the calling code. You can specify users who will have access to the report, and system screens where it should appear.</para>
+  <para>The main components of the report generator are shown in the following diagram:<mediaobject>
+      <imageobject>
+        <imagedata fileref="img/reporting.png" align="center"/>
+      </imageobject>
+    </mediaobject></para>
+  <itemizedlist>
+    <listitem>
+      <para>YARG - framework, which is the core of the report generator. </para>
+    </listitem>
+    <listitem>
+      <para>Report Engine integrates YARG into CUBA platform and provides additional functionality such as access rights to reports and integration with screens.</para>
+    </listitem>
+    <listitem>
+      <para>Report Designer is a tool for describing and storing reports. It includes the infrastructure for storing report descriptions and templates, as well as screens to create and manage reports.</para>
+    </listitem>
+    <listitem>
+      <para>Report - report data structure descriptor, including <firstterm>Bands</firstterm> (report bands) and <firstterm>Datasets</firstterm> (datasets which are being output in the bands).</para>
+    </listitem>
+    <listitem>
+      <para>Report Template - report visual presentation template.</para>
+    </listitem>
+  </itemizedlist>
+  <section id="structure">
+    <title>Report Data Structure</title>
+    <para>The  <guilabel>Report structure</guilabel> tab of the report editor is described below:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_structure.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>The top part contains fields to enter general report properties: <itemizedlist>
+        <listitem>
+          <para><guilabel>Name</guilabel> - report name. The name can be localized in the  <guilabel>Localization</guilabel> tab.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Group</guilabel> - report group, which is used for grouping in the standard report browser.
+
+</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Default template</guilabel> - report output  <link linkend="template">template</link>.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>System code</guilabel> - optional code, which you may use to identify the report in the application code.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>The main element of the report data structure is the band hierarchy -  <guilabel>Report bands</guilabel>.</para>
+    <para>A report band has the following parameters:<itemizedlist>
+        <listitem>
+          <para><guilabel>Band name</guilabel> - unique band name within the report. It must contain only Latin letters, numbers or underscores.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Orientation</guilabel> - band orientation:  <guilabel>Horizontal</guilabel> or <guilabel>Vertical</guilabel>. Horizontal bands are copied downwards, vertical - to the right. Horizontal bands may contain sub-bands.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Parent band</guilabel> - parent band.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Each band includes one or more Datasets. At the moment when a report is run, datasets are transformed into lists of rows, where each row contains a map of name-value pairs. A band appears in the report as many times as there are rows in its longest dataset. Field names are specified in the report template and are replaced with corresponding values from the dataset when the report is produced. When describing datasets, you can use  <link linkend="parameters">external parameters</link> of the report as well as fields from other bands - this allows creating linked bands.</para>
+    <para>Each report has the  <guilabel>Root</guilabel> band. You can create datasets in it and refer to their fields from other bands, but you cannot use the <guilabel>Root</guilabel> band in the report template.</para>
+    <para>The  <guilabel>Dataset name</guilabel> column value is used for user convenience only.</para>
+    <para>Supported dataset types are provided below:<orderedlist>
+        <listitem>
+          <para><guilabel>SQL</guilabel> - the dataset is produced as result of SQL query execution. It is recommended to use aliases for query result fields with the help of the <code>as</code> operator. It is also recommended to enclose the aliases in double quotes to prevent possible case conversion by the DBMS:<programlisting>select u.name as &quot;userName&quot;, u.login as &quot;userLogin&quot; 
+from sec_user u</programlisting></para>
+          <para>You can use report input parameters and parent bands fields in the query. Parameters should be addressed by name enclosed in <code>${}</code>, for example  <code>${dateFrom}</code>. Parent band fields should be addressed similarly, by adding the band name in front of the field name: <code>${band1.field1}</code>. </para>
+          <para>Below is an example of an SQL query with a  <code>groupId</code> parameter, obtained from the  <code>group</code> parent band and an external   <code>active</code> parameter:<programlisting>select u.name as &quot;userName&quot;, u.login as &quot;userLogin&quot; 
+from sec_user u
+where u.group_id = ${group.groupId} 
+    and u.active = ${active}
+    and u.delete_ts is null</programlisting></para>
+          <warning>
+            <para>You should manually include conditions to filter soft deleted records for SQL queries.</para>
+          </warning>
+        </listitem>
+        <listitem>
+          <para><guilabel>JPQL</guilabel> - the dataset is produced as result of JPQL query execution. The resulted query fields must have aliases provided using the <code>as</code> operator.  You can use report input parameters and parent bands fields in the JPQL query, similar to SQL query.</para>
+          <para>Below is an example of a JPQL query with a  <code>groupId</code> parameter, obtained from the  <code>group</code> parent band and an external   <code>active</code> parameter:<programlisting>select u.name as userName, u.login as userLogin
+from sec$User u
+where u.group.id = ${group.groupId}
+    and u.active = ${active}</programlisting></para>
+          <para>JPQL queries automatically support soft deletion and return only records which are not deleted.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Groovy</guilabel> - the dataset is produced as result of a Groovy script execution. The script must return an object of the  <code>List&lt;Map&lt;String, Object&gt;&gt;</code> type. Each element of this list - an object of the <code>Map&lt;String, Object&gt;</code> type - corresponds to one dataset record.</para>
+          <para>The following objects are passed into the script:<itemizedlist>
+              <listitem>
+                <para><code>params</code> - external report parameters map. Below is an example to get a parameter value:<programlisting>def active = params[&apos;active&apos;]</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>parentBand</code> - родительская полоса в виде объекта типа <code>com.haulmont.yarg.structure.BandData</code>. Через этот объект методом <code>getParameterValue()</code> можно получить значение поля родительской полосы, например:<programlisting>def groupId = parentBand.getParameterValue(&apos;groupId&apos;)</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>persistence</code> - parent band as an object of the  <code>com.haulmont.cuba.core.Persistence</code> type. You can use this object to get a parent band field value using the  <code>EntityManager</code> method, for example:<programlisting>def tx = persistence.createTransaction()
+try {
+    def em = persistence.getEntityManager()
+    def query = em.createQuery(&apos;select g from sec$Group g&apos;)
+...
+    tx.commit()
+} finally {
+    tx.end()
+}</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>metadata</code> - an object of the  <code>com.haulmont.cuba.core.global.Metadata</code> type, providing access the application metadata. For example:<programlisting>def metaClass = metadata.getClassNN(&apos;sec$User&apos;)</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>transactional</code> - a method that takes a closure, which should be executed in a new transaction, as parameter. The current  <code>EntityManager</code> becomes the closure parameter. For example:<programlisting>transactional { em -&gt;
+    def query = em.createQuery(&apos;select g from sec$Group g&apos;)
+    ...
+}</programlisting></para>
+              </listitem>
+            </itemizedlist></para>
+          <tip>
+            <para>You can use static methods of the <code>AppBeans</code> class to access any Spring beans of the middleware tier, for example:<programlisting>def dataWorker = com.haulmont.cuba.core.global.AppBeans.get(&apos;cuba_DataWorker&apos;)</programlisting></para>
+          </tip>
+          <para>Below is an example of the Groovy script which extracts users by the group which is output in the parent band and by the <code>active</code> external parameter:<programlisting>def result = []
+transactional { em -&gt;
+    def query = em.createQuery(&apos;select u from sec$User u where u.group.id = ?1 and u.active = ?2&apos;)
+    query.setParameter(1, parentBand.getParameterValue(&apos;groupId&apos;))
+    query.setParameter(2, params[&apos;active&apos;])
+    query.resultList.each { user -&gt;
+        result.add([&apos;userLogin&apos;: user.login, &apos;userName&apos;: user.name])
+    }
+}
+return result</programlisting></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Entity</guilabel> - the dataset consists of a single row and is produced using attributes of a single entity instance and the entities related to it.</para>
+          <para>The data source is produced from an external parameter of the  <guilabel>Entity</guilabel> type, which must be described in the  <guilabel>Parameters and Formats</guilabel> tab. The value in the  <guilabel>Entity parameter name</guilabel> field must match the parameter alias.  </para>
+          <para>The report template must contain fields with entity attribute names. Attributes used in the template should be listed in the special window, which is invoked by the  <guibutton>Entity attributes</guibutton> button.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>List of entities</guilabel> - the dataset is produced using a list of entity instances.</para>
+          <para>The data source is produced using an external parameter being a <guilabel>List of entities</guilabel>, which must be described in the  <guilabel>Parameters and Formats</guilabel> tab. The value in the  <guilabel>Entity parameter name</guilabel> field must match the parameter alias. </para>
+          <para>The report template must contain fields with entity attribute names. Attributes used in the template should be listed in the special window, which is invoked by the  <guibutton>Entity attributes</guibutton> button.</para>
+        </listitem>
+      </orderedlist></para>
+  </section>
+  <section id="template">
+    <title>Report Template</title>
+    <para>You can create several templates for a single report in the  <guilabel>Templates</guilabel> tab of the report editor. One of them must be selected as the default template in the  <guilabel>Report structure</guilabel> tab.</para>
+    <para>Below is the form to add a template:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_template.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <itemizedlist>
+      <listitem>
+        <para><guilabel>Template code</guilabel> - template code for its identification.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Output type</guilabel> - report output type. It should be consistent with the template file type according to the rules described in  <xref linkend="template_to_output"/>.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Template file</guilabel> - template file, which is loaded from the file system and saved to the database along with the report structure description.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Output name pattern</guilabel> - optional file name pattern, which will be used for the produced report download.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Defined with class</guilabel> - flag to use the template,  <link linkend="template_custom">defined by a class</link>.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Custom class name</guilabel> - template class name used if the  <guilabel>Defined with class</guilabel> flag is set.</para>
+      </listitem>
+    </itemizedlist>
+    <section id="template_xls">
+      <title>XLSX and XLS Templates</title>
+      <para>You can create XLSX and XLS templates using Microsoft Office or OpenOffice / LibreOffice.  </para>
+      <para>Each report band must have a corresponding region in the template, which is named as the band. To create named regions, select the desired cell ranges and enter the name in the field in the application top left corner. To edit existing named regions, use the  <guimenu>Formulas</guimenu> -&gt; <guimenu>Name Manager</guimenu> menu command in Microsoft Office, and the  <guimenu>Insert</guimenu> -&gt; <guimenu>Names</guimenu> -&gt; <guimenu>Manage</guimenu> command in OpenOffice.</para>
+      <para>The bands are output in the order specified in the  <link linkend="structure">report structure</link>.</para>
+      <para>Horizontal bands may contain sub-bands. Therefore, for sub-bands, you need to create named regions directly under the regions that correspond to the parent bands.</para>
+      <para>The band dataset fields are placed in the template using strings having <code>${field_name}</code>, format, where field_name is the corresponding band field name. For example:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/report_template_xls.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Cells may contain formatting as well as multiple fields inside. To output images or formulas, you need to place them entirely into the corresponding named region.</para>
+    </section>
+    <section id="template_doc">
+      <title>DOCX, DOC and ODT Templates</title>
+      <para>You can create an ODT template using OpenOffice / LibreOffice. In order to create DOC and DOCX templates, you can use OpenOffice or Microsoft Office. </para>
+      <para>A template of these types can include document text and optionally one or more tables. The document text outputs the data from the first rows of arbitrary bands. In a table, you can output an arbitrary number of band rows.</para>
+      <para>To place a field in the document text, you should use a string having <code>${band_name.field_name}</code> format, where  <code>band_name</code> is the band name,  <code>field_name</code> - name of a band&apos;s field.</para>
+      <para>In order to output data into a table, you should tie it to a band. This is done by specifying  <code>##band=band_name</code> in the table&apos;s first cell, where  <code>band_name</code> is the band name. The table fields are placed using  <code>${field_name}</code> format, where <code>field_name</code> is the field name of the band associated with the table. You can use band name prefix to access fields of other bands, same as in the document text fields. You can output several fields in a single table cell.</para>
+      <warning>
+        <para>The table must contain either one or two rows. If the table has two rows, then the corresponding band fields must be in the second row. The first row should contain the marker with the corresponding band name and, if necessary, static text or other band fields. </para>
+      </warning>
+      <para>Below is an example of a template which outputs a report consisting of two bands, Book and Authors. The first band outputs a book name and genre, and the second outputs a list of authors of this book.<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/report_template_doc.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+    </section>
+    <section id="template_html">
+      <title>HTML Template</title>
+      <para>An HTML template is defined in an  <filename>.html</filename> file (<code>UTF-8</code> encoding without <code>BOM</code>). FreeMarker tags are used to place data (FreeMarker documentation is available at  <ulink url="http://freemarker.org/docs">http://freemarker.org/docs</ulink>). </para>
+      <para>The FreeMarker document model has the following structure:<programlisting>Band { 
+      bands [ bandName : [ band, .. ], .. ] 
+      fields [ fieldName : fieldValue, .. ] 
+}</programlisting></para>
+      <para>For example, you should use the following expression to access the   <code>name</code> field in a row having index 0 of the  <code>band</code> band:<programlisting>Root.bands.band[0].fields.name</programlisting></para>
+      <para>You may variables for convenience, e.g.:<programlisting language="html">&lt;#assign headerRow = Root.bands.Header[0]&gt;
+&lt;p&gt;Date: ${headerRow.fields.reportDate}&lt;/p&gt;</programlisting></para>
+      <para>Below is an example of a template which outputs a report consisting of two bands, Book and Authors. The first band outputs a book name and genre, and the second outputs a list of authors of this book.<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+&lt;head&gt;&lt;/head&gt;
+&lt;body&gt;
+    &lt;#assign book = Root.bands.Book[0] /&gt;
+    &lt;#assign authors = Root.bands.Authors /&gt;
+
+    &lt;p&gt;Name: ${book.fields.name}&lt;/p&gt;
+    &lt;p&gt;Genre: ${book.fields.literatureType.name}&lt;/p&gt;
+    &lt;table border=&quot;1&quot; cellpadding=&quot;5&quot; cellspacing=&quot;0&quot; width=&quot;200&quot;&gt;
+        &lt;thead&gt;
+            &lt;tr&gt;
+                &lt;td&gt;First name&lt;/td&gt;
+                &lt;td&gt;Last name&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+        &lt;#list authors as author&gt;
+            &lt;tr&gt;
+                &lt;td&gt;${author.fields.firstName}&lt;/td&gt;
+                &lt;td&gt;${author.fields.lastName}&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/#list&gt;
+        &lt;/tbody&gt;
+    &lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+      <para>Below is a more complex example. Let us assume we have the following bands structure:<programlisting>Root {
+    HeaderBand {
+        query = return [[ &quot;name&quot; : &quot;Column1&quot; ],[ &quot;name&quot; : &quot;Column2&quot; ]]
+    }
+    Band1 { 
+        query = return [
+            [&quot;field1&quot; : &quot;Value 11&quot;, &quot;field2&quot; : &quot;Value 12&quot;], 
+            [&quot;field1&quot; : &quot;Value 21&quot; , &quot;field2&quot; : &quot;Value 22&quot;]
+        ]
+    }
+    Band2 {
+        query = return [[ &quot;header&quot; : &quot;Header1&quot; ], [ &quot;header&quot; : &quot;Header2&quot; ]]
+        SubBand1 {
+            query = return [[&quot;header&quot; : &apos;SubHeader1&apos;] , [ &quot;header&quot; : &apos;SubHeader2&apos; ]]
+        }
+    }
+}</programlisting></para>
+      <itemizedlist>
+        <listitem>
+          <para>Inserting a field:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; Simple template &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Tree1 = Root.bands.Band2&gt;
+        &lt;h1&gt; Header &lt;/h1&gt;
+        &lt;p&gt;
+            ${Tree1[1].bands.SubBand1[0].fields.header}
+        &lt;/p&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Inserting a list:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; List &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Table1Header = Root.bands.HeaderBand&gt;
+        
+        &lt;#if Table1Header?has_content&gt;
+        &lt;ol&gt; 
+            &lt;#list Table1Header as header&gt;
+            &lt;li&gt; ${header.fields.name} &lt;/li&gt;
+            &lt;/#list&gt;  
+        &lt;/ol&gt;
+        &lt;/#if&gt; 
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Inserting a table:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; Table &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Table1Header = Root.bands.HeaderBand&gt;
+        &lt;#assign Table1 = Root.bands.Band1&gt;       
+        &lt;table border=&quot;1&quot; cellpadding=&quot;5&quot; cellspacing=&quot;0&quot; width=&quot;200&quot;&gt;
+            &lt;thead&gt;
+                &lt;tr&gt;
+                &lt;#list Table1Header as header&gt;
+                    &lt;td&gt; ${header.fields.name} &lt;/td&gt;
+                &lt;/#list&gt;
+                &lt;/tr&gt;
+            &lt;/thead&gt;
+            &lt;tbody&gt;
+            &lt;#list Table1 as row&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;
+                        ${row.fields.field1}
+                    &lt;/td&gt;
+                    &lt;td&gt;
+                        ${row.fields.field2}
+                    &lt;/td&gt;
+                &lt;/tr&gt;
+            &lt;/#list&gt;
+            &lt;/tbody&gt;
+        &lt;/table&gt;  
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Inserting a multi-level list:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; Multi-level list &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Tree1 = Root.bands.Band2&gt;        
+        &lt;ul&gt;
+            &lt;#list Tree1 as item&gt;
+            &lt;li&gt;
+                &lt;h2&gt; ${item.fields.header} &lt;/h2&gt;
+                &lt;#if item.bands.SubBand1?has_content&gt;
+                &lt;ul&gt;
+                    &lt;#list item.bands.SubBand1 as subitem&gt;
+                    &lt;li&gt;
+                        &lt;h3&gt; ${subitem.fields.header} &lt;/h3&gt;
+                    &lt;/li&gt;
+                    &lt;/#list&gt;
+                &lt;/ul&gt;
+                &lt;/#if&gt;
+            &lt;/li&gt;
+            &lt;/#list&gt;
+        &lt;/ul&gt;  
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+      </itemizedlist>
+      <section id="html_to_pdf">
+        <title>Converting HTML to PDF</title>
+        <para>Reports which have a template in HTML format and the PDF output format do not always properly display fonts. To resolve this, add <filename>cuba/fonts</filename> subdirectory with required <filename>.ttf</filename> fonts to the Middleware configuration directory (<filename>tomcat/conf/app-core</filename> in default deployment configuration). Additionally, you can use existing operating system fonts by specifying their path in the  <link linkend="cuba.reporting.fontsDir">cuba.reporting.fontsDir</link> application property.</para>
+        <para>In order to resolve the fonts issue on a Ubuntu server, you should do the following:<itemizedlist>
+            <listitem>
+              <para>Install the <filename>ttf-mscorefonts-installer</filename> package:</para>
+              <para><prompt>$ sudo apt-get install ttf-mscorefonts-installer</prompt></para>
+            </listitem>
+            <listitem>
+              <para>Set the  <link linkend="cuba.reporting.fontsDir">cuba.reporting.fontsDir</link> application property:<programlisting>cuba.reporting.fontsDir = /usr/share/fonts/truetype/msttcorefonts</programlisting></para>
+            </listitem>
+            <listitem>
+              <para>Explicitly specify fonts in HTML templates, for example:<programlisting language="html">&lt;html&gt;
+&lt;head&gt;
+    &lt;style type=&quot;text/css&quot;&gt;
+        * {
+            font-family: Times New Roman;
+        }
+    &lt;/style&gt;</programlisting></para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+    </section>
+    <section id="template_custom">
+      <title>Class-Defined Template</title>
+      <para>Class-defined templates are used when it is too difficult or impossible to select data using SQL, JPQL or Groovy. They are used, for example, when the report is a result of combining several other reports. </para>
+      <para>The class defining the template must implement the <code>com.haulmont.yarg.formatters.CustomReport</code> interface. In the class, you need to define the  <code>createReport()</code> method, which returns an array of bytes and takes the following input parameters:<itemizedlist>
+          <listitem>
+            <para><code>report</code> - report descriptor of the  <code>com.haulmont.yarg.structure.Report</code> type.</para>
+          </listitem>
+          <listitem>
+            <para><code>rootBand</code> - root band data of the <code>com.haulmont.yarg.structure.BandData</code> type.</para>
+          </listitem>
+          <listitem>
+            <para><code>params</code> - map of external report parameters.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Below is an example of a simple class-defined template. It creates an HTML document showing the name of a book selected as report parameter: <programlisting language="java">package com.sample.library.report;
+
+import com.haulmont.yarg.formatters.CustomReport;
+import com.haulmont.yarg.structure.BandData;
+import com.haulmont.yarg.structure.Report;
+import com.sample.library.entity.Book;
+import java.util.Map;
+
+public class BookReport implements CustomReport {
+    @Override
+    public byte[] createReport(Report report, BandData rootBand, Map&lt;String, Object&gt; params) {
+        Book book = (Book) params.get(&quot;book&quot;);
+        String html = &quot;&lt;html&gt;&lt;body&gt;&quot;;
+        html += &quot;&lt;p&gt;Name: &quot; + book.getName() + &quot;&lt;/p&gt;&quot;;
+        html += &quot;&lt;/body&gt;&lt;/html&gt;&quot;;
+        return html.getBytes();
+    }
+}</programlisting></para>
+    </section>
+    <section id="template_to_output">
+      <title>Template Type Conformity to Output Type</title>
+      <para><informaltable frame="all">
+          <tgroup cols="8">
+            <colspec colname="c1"/>
+            <colspec colname="c2"/>
+            <colspec colname="c3"/>
+            <colspec colname="c4"/>
+            <colspec colname="c5"/>
+            <colspec colname="cgen1"/>
+            <colspec colname="c6"/>
+            <colspec colname="c7"/>
+            <thead>
+              <row>
+                <entry>Шаблон / Вывод</entry>
+                <entry align="center">XLSX</entry>
+                <entry align="center">XLS</entry>
+                <entry align="center">DOCX</entry>
+                <entry align="center">DOC</entry>
+                <entry align="center">ODT</entry>
+                <entry align="center">PDF</entry>
+                <entry align="center">HTML</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry role="">XLSX</entry>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>XLS</entry>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>DOCX</entry>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry/>
+                <entry align="center">+ <superscript>2</superscript></entry>
+                <entry align="center">+</entry>
+              </row>
+              <row>
+                <entry>DOC</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>ODT</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>HTML</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry align="center">+</entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable></para>
+      <para><superscript>1</superscript> - OpenOffice must be <link linkend="open_office">installed</link> for output.</para>
+      <para><superscript>2</superscript> - depending on the  <link linkend="cuba.reporting.openoffice.docx.useOfficeForPdfConversion">cuba.reporting.openoffice.docx.useOfficeForPdfConversion</link> application property, the output can be performed with or without OpenOffice. In the latter case, you need to provide required fonts, as described in  <xref linkend="html_to_pdf"/>.</para>
+    </section>
+  </section>
+  <section id="parameters">
+    <title>External Report Parameters</title>
+    <para>External parameters are passed from the outside when running a report and can be used as conditions in datasets. All external parameters become fields for each report band, so you can use them directly in the template as dataset fields. If any dataset contains field with the same name, it overrides the external parameter in the corresponding band and the report uses the dataset field value.</para>
+    <para>You can describe the external parameters in the  <guilabel>Parameters and Formats</guilabel> tab of the report editor. The form for adding parameters is provided below:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_parameter.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para><guilabel>Properties</guilabel> tab:</para>
+    <itemizedlist>
+      <listitem>
+        <para><guilabel>Parameter name</guilabel> - parameter name, as it will appear in the parameter input form when running the report.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Parameter alias</guilabel> - parameter alias used to access it in datasets.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Parameter type</guilabel> - parameter type.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Required parameter</guilabel> - flag determining if the parameter is mandatory.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Entity</guilabel> - if the  <guilabel>Entity</guilabel> or  <guilabel>List of entities</guilabel> of entities parameter type is selected, then you need to select the entity type in this field.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Enumeration</guilabel> - if the  <guilabel>Enumeration</guilabel> parameter type is specified, then you need to select the enumeration type in this field.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Entity selection screen</guilabel> - optional screen identifier, which will be used to select entity instances. If the screen is not specified, selection will be made from a special screen generic for all entities.</para>
+      </listitem>
+    </itemizedlist>
+    <para>In the  <guilabel>Localization</guilabel> tab, you can define the parameter name for different locales. In order to do this, you should enter the  <code>locale_name = parameter_name</code> pairs, for example:<programlisting>ru = Книга</programlisting></para>
+  </section>
+  <section id="formatters">
+    <title>Field Value Formats</title>
+    <para>You can specify the formatting for any field output by the report in the <guilabel>Parameters and Formats</guilabel> tab of the report editor. Below is the form to add a format:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_formatter.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <itemizedlist>
+      <listitem>
+        <para><guilabel>Value name</guilabel> - report field name with the band prefix, for example  <code>Book.name</code>.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Format string</guilabel> - field format. For number values, you must specify the format according to the  <code>java.text.DecimalFormat</code> rules, for dates -  <code>java.text.SimpleDateFormat</code>.</para>
+      </listitem>
+    </itemizedlist>
+    <para>With the help of formats, it is possible to insert images and HTML blocks into the document.</para>
+    <itemizedlist>
+      <listitem>
+        <para>In order to insert an image, you must specify the image URL as the field value and the format string must be as follows: <code>${image:&lt;Width&gt;x&lt;Height&gt;}</code>,  for example  <code>${image:200x300}</code>.</para>
+      </listitem>
+      <listitem>
+        <para>In order to insert an HTML block, you should return an HTML markup in the field, and select <code>${html}</code> as the format string. In the output value, you may omit top-level tags up to  <code>&lt;body&gt;</code> inclusive. If necessary, all missing top-level tags will be added automatically. All blocks should be encoded with  <code>UTF-8</code>. CSS and the  <literal>style</literal> attribute are not supported.</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+  <section id="permissions">
+    <title>Report Access Rights</title>
+    <para>You can define user rights to access the report as well as report availability in certain application screens in the  <guilabel>Roles and Screens</guilabel> tab of the report editor.</para>
+    <para>If the report roles list contains at least one role, the report will be available only to users with this role. If no roles are specified, the report is available to everyone.</para>
+    <para>The screens list allows to specify, which screens the report will be available in when invoking  RunReportAction, TablePrintFormAction or  EditorPrintFormAction actions. If no screen is specified, the report will be available from any screen.</para>
+  </section>
+  <section id="localization">
+    <title>Report Name Localization</title>
+    <para>You can localize the report name - show the name in the language, which the user is logged in with, in the report list. In order to do this, you need to go to the  <guilabel>Localization</guilabel> tab and enter pairs,  <code>locale_name = report_name</code>, as separate lines in the text field, for example:</para>
+    <programlisting>en = Books by author
+ru = Книги по автору</programlisting>
+  </section>
+  <section>
+    <title>Report Creation Wizard</title>
+    <para>The wizard provides a quick way to create data structure and template for reports based on an entity  instance or instances list.</para>
+    <para>Click on   <guibutton>Create</guibutton> -&gt; <guibutton>Using wizard</guibutton> in the   <guimenu>Reports</guimenu> screen to start the wizard and follow the wizard instructions. You can refine the created report in the usual way in the editor, and run it either from the  <link linkend="run_common">generic reports browser</link> or using  <code>TablePrintFormAction</code> and <code>EditorPrintFormAction</code> <link linkend="run_actions">actions</link>. </para>
+  </section>
+</chapter>

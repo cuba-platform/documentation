@@ -1,0 +1,185 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter id="ch1_general_info" lang="ru">
+  <title>Обзор подсистемы Workflow</title>
+  <para>Сутью Workflow является последовательное изменение состояния некоторой сущности (<firstterm>карточка</firstterm>)
+в соответствии с заданным <firstterm>процессом</firstterm>,
+вовлекающее пользователей системы и автоматические механизмы. Типичным
+примером является процесс
+согласования некоторого документа между сотрудниками в
+организации.</para>
+  <para>Рассмотрим структуру подсистемы Workflow платформы CUBA.</para>
+  <figure>
+    <title>Структура подсистемы Workflow</title>
+    <mediaobject>
+      <imageobject>
+        <imagedata fileref="img/Workflow.png" align="center"/>
+      </imageobject>
+    </mediaobject>
+  </figure>
+  <para>Основными элементами структуры являются:<itemizedlist>
+      <listitem>
+        <para><firstterm>Process Design</firstterm> (дизайн процесса) - схема процесса, а также набор связанных с ней скриптов, переменных, параметров оповещения и локализации сообщений. Дизайн является исходным материалом для процесса, который создается или обновляется на основе дизайна в результате <firstterm>развертывания</firstterm> последнего в приложении.</para>
+      </listitem>
+      <listitem>
+        <para><firstterm>Process</firstterm> (процесс) - исполняемое описание бизнес-процесса. Механизм исполнения основан на фреймворке <application>jBPM 4</application>, поэтому основным элементом процесса является  описатель графа состояний на языке jPDL. Кроме того, процесс включает в себя описатели форм пользовательского интерфейса, списки пользователей, назначенных для исполнения ролей процесса, локализованные сообщения и т.д.</para>
+      </listitem>
+      <listitem>
+        <para><firstterm>Card</firstterm> (карточка) - сущность модели данных, непосредственно связанная с экземпляром процесса. В большинстве случаев карточкой процесса может являться объект предметной области, состояние которого меняется в соответствии с процессом. Это, например, документ для согласования, или тикет в системе отслеживания дефектов. В случае если такого объекта в предметной области нет, карточкой может являться искусственная сущность, просто отражающая текущее состояние экземпляра процесса.</para>
+      </listitem>
+    </itemizedlist></para>
+  <para>Можно сказать, что процесс задает тип бизнес-процесса, а карточка представляет собой один экземпляр этого бизнес-процесса.</para>
+  <para>Процесс задает набор <firstterm>состояний</firstterm> (узлов) и переходов между ними, а также следующие ассоциированные объекты:<itemizedlist>
+      <listitem>
+        <para><firstterm>Activities</firstterm> (действия) - программный код, выполняющийся при переходе в некоторое состояние.</para>
+      </listitem>
+      <listitem>
+        <para><firstterm>Forms</firstterm> (формы) - экраны, позволяющие взаимодействовать с пользователем во время принятия им решений о переходе по процессу.</para>
+      </listitem>
+      <listitem>
+        <para><firstterm>Timers</firstterm> (таймеры) - программный код, автоматически срабатывающий по истечении заданного времени после входа в некоторое состояние.</para>
+      </listitem>
+    </itemizedlist></para>
+  <para>Во время выполнения процесса возникают объекты <firstterm>Assignments</firstterm> (назначения), сигнализирующие пользователю о том, что он должен предпринять
+некоторые действия по процессу.</para>
+  <para>В подсистему Workflow платформы интегрирован визуальный редактор процессов <firstterm>Visual Designer</firstterm>, который позволяет создавать дизайн процессов и разворачивать их прямо в процессе работы приложения. Набор
+возможных состояний, действий, форм и таймеров, из которых конструируются процессы, закладывается в приложение на этапе разработки.</para>
+  <section>
+    <title>Модель данных</title>
+    <para>Рассмотрим диаграмму классов основных элементов подсистемы Workflow.</para>
+    <figure>
+      <title>Диаграмма классов Workflow</title>
+      <mediaobject>
+        <imageobject>
+          <imagedata fileref="img/WorkflowEntities.png" align="center"/>
+        </imageobject>
+      </mediaobject>
+    </figure>
+    <itemizedlist>
+      <listitem>
+        <para><code>Design</code> - объект, хранящий дизайн процесса.</para>
+      </listitem>
+      <listitem>
+        <para><code>Proc</code> - исполняемый процесс. Атрибуты процесса:<itemizedlist>
+            <listitem>
+              <para><code>design</code> - ссылка на дизайн, по которому был создан данный процесс.</para>
+            </listitem>
+            <listitem>
+              <para><code>name</code> - имя процесса, понятное пользователям. Имя задается на этапе дизайна, однако может быть задано и в экране редактирования процесса.</para>
+            </listitem>
+            <listitem>
+              <para><code>jbpmProcessKey</code> - ключ процесса в исполняющем механизме jBPM. Формируется автоматически при развертывании дизайна процесса.</para>
+            </listitem>
+            <listitem>
+              <para><code>code</code> - код процесса для обращения к нему программными средствами. По умолчанию равен <code>jbpmProcessKey</code>, однако может быть изменен в экране редактирования процесса.</para>
+            </listitem>
+            <listitem>
+              <para><code>messagesPack</code> - имя пакета сообщений, в котором содержатся локализованные названия состояний, переходов, различных описаний и сообщений процесса. Данный пакет сообщений формируется автоматически на этапе развертывания дизайна процесса и хранится вместе с другими файлами процесса в соответствующем подкаталоге конфигурационного каталога приложения.</para>
+            </listitem>
+            <listitem>
+              <para><code>roles</code> - список объектов типа <code>ProcRole</code>, определяющих роли участников процесса.</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+      <listitem>
+        <para><code>ProcRole</code> - роль в процессе. Объекты данного типа создаются автоматически при развертывании дизайна процесса если он содержит состояния вида <firstterm>Назначение</firstterm>, то есть те, которые выдают задачи пользователям и останавливают выполнение процесса до принятия пользователем необходимых действий. Изначально объекты <code>ProcRole</code> не связываются ни с какими пользователями системы, однако в экране редактирования процесса для каждой роли можно назначить исполнителя по умолчанию.</para>
+      </listitem>
+      <listitem>
+        <para><code>DefaultProcActor</code> - список исполнителей некоторой роли, задаваемый на уровне процесса.</para>
+      </listitem>
+      <listitem>
+        <para><code>Card</code> - карточка процесса. Как правило, от класса <code>Card</code> наследуется некоторая сущность предметной области, которая тем самым приобретает возможность двигаться по процессу. Атрибуты карточки:<itemizedlist>
+            <listitem>
+              <para><code>description</code> - опциональное текстовое описание данного экземпляра карточки, позволяющее пользователю различать карточки без загрузки атрибутов конкретного типа, расширяющего <code>Card</code>. Например, если карточка отражает документ, то в поле <code>description</code> имеет смысл записать тип, номер и дату этого документа.</para>
+            </listitem>
+            <listitem>
+              <para><code>proc</code> - ссылка на процесс.</para>
+            </listitem>
+            <listitem>
+              <para><code>roles</code> - список объектов типа CardRole, определяющих исполнителей ролей процесса для данной карточки.</para>
+            </listitem>
+            <listitem>
+              <para><code>jbpmProcessId</code> - идентификатор экземпляра процесса в механизме исполнения jBPM.</para>
+            </listitem>
+            <listitem>
+              <para><code>state</code> - название текущего состояния процесса.</para>
+            </listitem>
+            <listitem>
+              <para><code>assignments</code> - список объектов типа <code>Assignment</code>, созданных в данном экземпляре процесса.</para>
+            </listitem>
+            <listitem>
+              <para><code>attachments</code> - список объектов типа <code>CardAttachment</code>, позволяющих привязывать к карточке загружаемые во время выполнения процесса файлы.</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+      <listitem>
+        <para><code>CardRole</code> - сущность, определяющая исполнителей ролей процесса для данной карточки. Атрибуты <code>CardRole</code>:<itemizedlist>
+            <listitem>
+              <para><code>card</code> - карточка, для которой определяется исполнитель роли.</para>
+            </listitem>
+            <listitem>
+              <para><code>procRole</code> - роль в процессе.</para>
+            </listitem>
+            <listitem>
+              <para><code>user</code> - исполнитель роли (типа <code>User</code> - пользователь системы).</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+      <listitem>
+        <para><code>CardAttachment</code> - вложение, предоставляет возможность ассоциировать с карточкой загружаемые файлы. Атрибуты (вместе с суперклассом <code>Attachment</code>):<itemizedlist>
+            <listitem>
+              <para><code>card</code> - карточка.</para>
+            </listitem>
+            <listitem>
+              <para><code>assignment</code> - если файл загружен на этапе выполнения назначения, то этот атрибут содержит ссылку на соответствующий объект <code>Assignment</code>.</para>
+            </listitem>
+            <listitem>
+              <para><code>file</code> - загруженный файл типа <code>FileDescriptor</code>.</para>
+            </listitem>
+            <listitem>
+              <para><code>name</code> - название вложения.</para>
+            </listitem>
+            <listitem>
+              <para><code>comment</code> - комментарий к вложению.</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+      <listitem>
+        <para><code>Assignment</code> - назначение. Объекты данного типа создаются в системе при переходе процесса в состояние &quot;назначение&quot;. В этом состоянии процесс останавливает выполнение и ожидает команды от пользователя или от автоматического механизма. При получении команды о завершении в назначении заполняются атрибуты <code>finished</code>, <code>finishedByUser</code> и <code>outcome</code>, и процесс переходит в следующее состояние. Для одной карточки и пользователя может существовать не более одного незавершенного назначения. Атрибуты назначения:<itemizedlist>
+            <listitem>
+              <para><code>card</code> - карточка.</para>
+            </listitem>
+            <listitem>
+              <para><code>user</code> - пользователь системы, для которого выдано назначение.</para>
+            </listitem>
+            <listitem>
+              <para><code>proc</code> (процесс) - тот же процесс, который в момент создания назначения установлен для карточки.</para>
+            </listitem>
+            <listitem>
+              <para><code>name</code> - наименование назначения.</para>
+            </listitem>
+            <listitem>
+              <para><code>description</code> - описание назначения.</para>
+            </listitem>
+            <listitem>
+              <para><code>jbpmProcessId</code> - идентификатор экземпляра процесса jBPM, исполняемого по карточке в момент создания назначения.</para>
+            </listitem>
+            <listitem>
+              <para><code>dueDate</code> - момент времени, до которого назначение должно быть выполнено.</para>
+            </listitem>
+            <listitem>
+              <para><code>finished</code> - фактический момент времени завершения назначения. Равен <code>null</code>, пока назначение не завершено.</para>
+            </listitem>
+            <listitem>
+              <para><code>finishedByUser</code> - пользователь, фактически завершивший назначение. Равен <code>null</code>, пока назначение не завершено.</para>
+            </listitem>
+            <listitem>
+              <para><code>outcome</code> - наименование выхода из состояния назначения, которое выбрал пользователь. Например, в схеме бизнес-процесса может быть узел-назначение, который предписывает пользователю проверить факт исправления некоторого дефекта и выбрать один из двух путей дальнейшего следования процесса: &quot;OK&quot; или &quot;Not OK&quot;. Тогда, если пользователь выбрал &quot;OK&quot;, то в поле <code>outcome</code> назначения запишется эта строка, и наоборот.</para>
+            </listitem>
+            <listitem>
+              <para><code>attachments</code> - список объектов типа <code>CardAttchment</code>, которые были созданы для этого назначения.</para>
+            </listitem>
+          </itemizedlist></para>
+      </listitem>
+    </itemizedlist>
+  </section>
+</chapter>

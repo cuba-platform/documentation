@@ -1,0 +1,162 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter id="ch2_quick_start" lang="ru">
+  <title>Быстрый старт</title>
+  <para>В данной главе мы рассмотрим применение подсистемы полнотекстового поиска в приложении-примере
+    <application>Библиотека</application>, исходные тексты которого доступны по адресу
+    <ulink url="https://www.cuba-platform.com/ru/download">www.cuba-platform.com/ru/download</ulink>.</para>
+  <para>Разобьем задачу на следующие этапы:<orderedlist>
+      <listitem>
+        <para>Подключим функциональность поиска к проекту, настроим вызов процесса индексирования и убедимся в его работоспособности.</para>
+      </listitem>
+      <listitem>
+        <para>Настроим конфигурационный файл FTS для работы с сущностями модели данных примера <application>Библиотека</application>.</para>
+      </listitem>
+      <listitem>
+        <para>Для иллюстрации возможностей поиска по загруженным файлам используем сущность <code>EBook</code> и функциональность, описанную в руководстве <application>Подсистема Workflow</application>. </para>
+      </listitem>
+    </orderedlist></para>
+  <section>
+    <title>Настройка проекта</title>
+    <orderedlist>
+      <listitem>
+        <para>Загрузите архив с проектом <application>Библиотека</application> со страницы
+          <ulink url="https://www.cuba-platform.com/ru/download">www.cuba-platform.com/ru/download</ulink> и распакуйте
+          его в локальный каталог, например <filename>c:\work\library</filename>.</para>
+      </listitem>
+      <listitem>
+        <para>Запустите <application>CUBA Studio</application>, импортируйте проект из <filename>c:\work\library</filename> и откройте его.</para>
+      </listitem>
+      <listitem>
+        <para>Откройте окно свойств проекта <guibutton>Project properties</guibutton> -&gt; <guibutton>Edit</guibutton> и в списке <guilabel>Base projects</guilabel> включите проект <structname>fts</structname>, затем сохраните изменения. Studio предложит пересоздать скрипты Gradle - согласитесь.</para>
+      </listitem>
+      <listitem>
+        <para>Запустите <guimenu>Run</guimenu> -&gt; <guimenu>Deploy</guimenu>. На этом этапе будет произведена сборка приложения и оно будет развернуто на сервере Tomcat в подкаталоге <filename>build/tomcat</filename>.</para>
+      </listitem>
+      <listitem>
+        <para>Создайте базу данных приложения: <guimenu>Run</guimenu> -&gt; <guimenu>Create database</guimenu>. Сервером базы данных HSQL в данном случае является Studio, файлы БД располагаются в каталоге <filename>${user.home}/.haulmont/studio/hsqldb/library</filename>.</para>
+      </listitem>
+      <listitem>
+        <para>Запустите сервер приложения: <guimenu>Run</guimenu> -&gt; <guimenu>Start application server</guimenu>. </para>
+      </listitem>
+      <listitem>
+        <para>Откройте веб-интерфейс приложения по адресу <ulink url="http://localhost:8080/app">http://localhost:8080/app</ulink>. Войдите в систему с именем <userinput>admin</userinput> и паролем <userinput>admin</userinput>. </para>
+      </listitem>
+      <listitem>
+        <para>Для того, чтобы включить функциональность полнотекстового поиска, в главном меню приложения откройте <guimenu>Administration</guimenu> -&gt; <guimenu>JMX Console</guimenu>, найдите и откройте JMX-бин <code>app-core.fts:type=FtsManager</code>, двойным щелчком откройте атрибут <guilabel>Enable</guilabel> и включите флажок <guilabel>Value</guilabel>.</para>
+      </listitem>
+    </orderedlist>
+    <para>После выполнения вышеописанных действий функциональность полнотекстового поиска подключена к приложению и готова к работе. Если выйти из системы и снова выполнить логин, в правой части верхней панели главного окна приложения появится поле поиска. Однако поиск не будет давать результатов, так как никакие данные еще не проиндексированы.</para>
+    <para>Для однократного запуска индексации текущего состояния базы данных (а точнее, сущностей, описанных в конфигурационном файле FTS по умолчанию), снова откройте в экране <guimenu>JMX Console</guimenu> JMX-бин <code>app-core.fts:type=FtsManager</code> и вызовите последовательно сначала метод <code>reindexAll()</code>, а затем <code>processQueue()</code>. После этого поиск например строки &quot;adm&quot; должен выдавать следующие результаты:  <mediaobject>
+        <imageobject>
+          <imagedata fileref="img/SearchResults1.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+  </section>
+  <section>
+    <title>Настройка вызова процесса индексирования</title>
+    <para>Для периодического вызова процесса индексирования удобно воспользоваться механизмом назначенных заданий платформы (см. <application>Руководство по разработке приложений</application> -&gt; Назначенные задания CUBA).</para>
+    <para>Сначала необходимо активировать весь механизм запуска задач. Добавьте в файл <filename>app.properties</filename> модуля <structname>core</structname> проекта приложения следующее свойство:<programlisting>cuba.schedulingActive = true</programlisting></para>
+    <para>Перезапустите сервер приложения, войдите в систему пользователем <userinput>admin</userinput>, откройте экран <guimenu>JMX Console</guimenu>, найдите и откройте JMX-бин <code>app-core.cuba:type=Scheduling</code> и убедитесь, что  атрибут <guilabel>Active</guilabel> имеет значение <code>true</code>. </para>
+    <para>Далее откройте экран <guimenu>Administration</guimenu> -&gt; <guimenu>Scheduled Tasks</guimenu>, нажмите <guibutton>Create</guibutton> и задайте следующие значения атрибутов новой задачи:<itemizedlist>
+        <listitem>
+          <para><guilabel>Defined by</guilabel>: Bean</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Bean name</guilabel>: cuba_FtsManager</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Method name</guilabel>: processQueue()</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Singleton</guilabel>: true</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Period, sec</guilabel>: 30</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Сохраните задачу, выделите ее в таблице  и нажмите <guibutton>Activate</guibutton>. С этого момента каждые 30 секунд будет вызываться процесс индексирования измененных сущностей.</para>
+    <warning>
+      <para>Автоматическое индексирование не затрагивает сущности, созданные до его запуска. Для индексации таких сущностей откройте экран <guimenu>JMX Console</guimenu> и последовательно вызовите    методы <code>reindexAll()</code> и <code>processQueue()</code> JMX-бина <code>app-core.fts:type=FtsManager</code>.</para>
+    </warning>
+  </section>
+  <section>
+    <title>Настройка файла конфигурации</title>
+    <para>Создайте в каталоге исходных текстов модуля <structname>core</structname> файл <filename>fts.xml</filename> следующего содержания:<programlisting language="xml">&lt;fts-config&gt;
+    &lt;entities&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.Author&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.Book&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.BookInstance&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.BookPublication&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.LibraryDepartment&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.LiteratureType&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.Publisher&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.Town&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+    &lt;/entities&gt;
+&lt;/fts-config&gt;</programlisting></para>
+    <para>Это файл конфигурации FTS, в данном случае включающий в индексирование все сущности предметной области со всеми их атрибутами.</para>
+    <para>Добавьте в файл <filename>app.properties</filename> модуля <structname>core</structname> приложения следующее свойство:</para>
+    <programlisting>cuba.ftsConfig = cuba-fts.xml fts.xml</programlisting>
+    <para>В результате индексироваться будут и сущности, определенные в платформе в файле <filename>cuba-fts.xml</filename>, и описанные в файле проекта <filename>fts.xml</filename>.</para>
+    <para>Перезапустите сервер приложения. На данном этапе полнотекстовый поиск должен работать по всем сущностям модели приложения, а также по сущностям подсистемы безопасности платформы: <code>Role</code>, <code>Group</code>, <code>User</code>.</para>
+  </section>
+  <section>
+    <title>Поиск по содержимому загруженных файлов</title>
+    <para>Для иллюстрации возможностей поиска по содержимому загруженных файлов необходимо сначала подключить базовый проект <structname>workflow</structname>, добавить в проект сущность <code>EBook</code>, создать и пройти процесс сканирования книги, как это описано в руководстве <application>Подсистема Workflow</application> (см. раздел <xref linkend="additional_info"/>). Далее в данном разделе предполагается, что в приложении создан экземпляр <code>EBook</code> и в результате выполнения процесса <userinput>Book scanning</userinput> загружен соответствующий файл с оригиналом книги.</para>
+    <para>Добавьте в файл <filename>fts.xml</filename> проекта следующие элементы:<programlisting language="xml">...
+        &lt;entity class=&quot;com.sample.library.entity.EBook&quot;&gt;
+            &lt;include name=&quot;publication.book&quot;/&gt;
+            &lt;include name=&quot;attachments.file&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.haulmont.workflow.core.entity.CardAttachment&quot; show=&quot;false&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+            &lt;exclude name=&quot;card&quot;/&gt;
+
+            &lt;searchables&gt;
+                searchables.add(entity.card)
+            &lt;/searchables&gt;
+        &lt;/entity&gt;
+
+    &lt;/entities&gt;
+&lt;/fts-config&gt;</programlisting></para>
+    <para>Для правильного отображения экземпляров <code>EBook</code> в экране результатов поиска добавьте классу <code>EBook</code> аннотацию <code>@NamePattern</code>:<programlisting language="java">@NamePattern(&quot;%s|publication&quot;)
+public class EBook extends Card {
+...</programlisting></para>
+    <para>После этого перезапустите сервер приложения. Чтобы переиндексировать имеющиеся в базе данных сущности и файлы в соответствии с новой конфигурацией поиска, откройте в экране <guimenu>JMX Console</guimenu> JMX-бин <code>app-core.fts:type=FtsManager</code> и вызовите последовательно сначала метод <code>reindexAll()</code>, а затем <code>processQueue()</code>. Все вновь добавляемые и изменяемые данные будут индексироваться автоматически, с задержкой, определяемой интервалом вызова назначенного задания, т.е.  не более 30 секунд.</para>
+    <para>В результате, при наличии в базе данных книги с названием <userinput>Alice&apos;s Adventures</userinput> и загруженным оригиналом в формате PDF, результаты поиска строки &quot;alice&quot; выглядят следующим образом:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/SearchResults2.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>а результаты поиска строки &quot;rabbit&quot; так:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/SearchResults3.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+  </section>
+</chapter>

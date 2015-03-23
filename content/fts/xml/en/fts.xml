@@ -1,0 +1,208 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd" []>
+<book id="fts" lang="en">
+  <bookinfo>
+    <copyright>
+      <year>2015</year>
+      <holder>Haulmont (<ulink url="http://www.haulmont.com/">www.haulmont.com</ulink>)</holder>
+    </copyright>
+    <title>CUBA Platform. Full Text Search</title>
+    <author><othername>Version 5.4</othername></author>
+  </bookinfo>
+  <preface id="preface">
+    <title>Preface</title>
+    <para>This document serves as a guide for using <firstterm>full text search</firstterm> (<firstterm>FTS</firstterm>)
+      subsystem of the CUBA platform. </para>
+    <simplesect id="audience">
+      <title>Target Audience</title>
+      <para>This manual is intended for developers building CUBA applications with full-text search support. It is
+        assumed that the reader is familiar with the <application>Developer's Manual</application>, which is available at
+        <ulink url="https://www.cuba-platform.com/en/manual">www.cuba-platform.com/en/manual</ulink>.</para>
+    </simplesect>
+    <simplesect id="additional_info">
+      <title>Additional Materials</title>
+      <para>This guide, as well as any other CUBA platform documentation, is available at
+        <ulink url="https://www.cuba-platform.com/en/manual">www.cuba-platform.com/en/manual</ulink>.</para>
+      <para>CUBA full text search subsystem is based on the  <application>Apache Lucene</application> framework,
+        therefore familiarity with the framework will be beneficial. See
+        <ulink url="http://lucene.apache.org/core">lucene.apache.org/core</ulink>.</para>
+    </simplesect>
+    <simplesect id="feedback">
+      <title>Feedback</title>
+      <para>If you have any feedback or would like to suggest an improvement for this manual, please contact us at
+        <ulink url="https://www.cuba-platform.com/support/topics">www.cuba-platform.com/support/topics</ulink>. </para>
+      <para>If you find an error in the document, please specify section number and attach a small piece of surrounding
+        text to help us locate it.  </para>
+    </simplesect>
+  </preface>
+  <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="chapter1.xml" encoding="UTF-8"/>
+  <xi:include xmlns:xi="http://www.w3.org/2001/XInclude" href="chapter2.xml" encoding="UTF-8"/>
+  <appendix>
+    <title>FTS Configuration File</title>
+    <para>The full-text search configuration file is an XML file, which is usually located in the  <filename>src</filename> directory of the <structname>core</structname> module and contains the description of indexed entities and their attributes.</para>
+    <para>The set of FTS configuration files, including those defined in the base projects, is specified in the   <link linkend="cuba.ftsConfig">
+        <property>cuba.ftsConfig</property>
+      </link> application property. 
+</para>
+    <para>The file has the following structure: </para>
+    <para><sgmltag>fts-config</sgmltag> - root element. </para>
+    <para><sgmltag>fts-config</sgmltag> elements: <itemizedlist>
+        <listitem>
+          <para><sgmltag>entities</sgmltag> - list of entities to be indexed and searched.</para>
+          <para><sgmltag>entities</sgmltag> elements: <itemizedlist>
+              <listitem>
+                <para><sgmltag>entity</sgmltag> - indexed entity description.</para>
+                <para><sgmltag>entity</sgmltag> attributes:<itemizedlist>
+                    <listitem>
+                      <para><sgmltag>class</sgmltag> - entity Java class. </para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>show</sgmltag>  - defines whether this entity should appear in the search results. The   <code>false</code> value is used for connecting entities which are not of interest to the user, but are required, for example, to link uploaded files and entities of the domain model. Default is <code>true</code>.  </para>
+                    </listitem>
+                  </itemizedlist></para>
+                <para><sgmltag>entity</sgmltag> elements: <itemizedlist>
+                    <listitem>
+                      <para><sgmltag>include</sgmltag> - determines whether to include a single or multiple entity attributes in the index.</para>
+                      <para><sgmltag>include</sgmltag> attributes: <itemizedlist>
+                          <listitem>
+                            <para><sgmltag>re</sgmltag> - regular expression to select attributes by name. Only the following attribute types are allowed: string, number, date, enumeration.</para>
+                          </listitem>
+                          <listitem>
+                            <para><sgmltag>name</sgmltag> - attribute name. It can be reference attributes path (divided by period). The type is not checked. However, if the name is defined by a path, then the final attribute must be an entity. Including non-entity type attribute does not make sense here, as it must be indexed within its owning entity.  </para>
+                          </listitem>
+                        </itemizedlist></para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>exclude</sgmltag> - lists attributes which should be excluded. Possible attributes are the same as in   <sgmltag>include</sgmltag>.</para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>searchables</sgmltag> - a Groovy script to add arbitrary entities associated with the changed one to the indexing queue.</para>
+                      <para>For example, when a <code>CardAttachment</code> instance is either added or removed, the associated  <code>Card</code> instance should also be re-indexed. The reason is that the   <code>Card</code> instance itself will not be added to the queue, as it has not been changed (it stores a collection of <code>CardAttachment</code> istances). Thus it will not be shown in search results if matching data is found in its linked entity - a newly added <code>CardAttachment</code>.</para>
+                      <para>The following objects are passed into the script at invocation: 
+<itemizedlist>
+                          <listitem>
+                            <para><code>searchables</code> - the  list of entities that should be appended.</para>
+                          </listitem>
+                          <listitem>
+                            <para><code>entity</code> - the current entity instance, which is being added to the queue automatically.</para>
+                          </listitem>
+                        </itemizedlist></para>
+                      <para>Script example:<programlisting language="xml">&lt;entity class=&quot;com.haulmont.workflow.core.entity.CardAttachment&quot; show=&quot;false&quot;&gt;
+...
+    &lt;searchables&gt;
+        searchables.add(entity.card)
+    &lt;/searchables&gt;
+&lt;/entity&gt;</programlisting></para>
+                    </listitem>
+                    <listitem>
+                      <para><sgmltag>searchableIf</sgmltag> - a Groovy script to exclude certain instances of the indexed entity from the queue. </para>
+                      <para>For example, you may not want to index old versions of documents. </para>
+                      <para>When running the script, the   <code>entity</code> variable – the current entity instance - is passed into it. The script should return a boolean value:  <code>true</code> if the current instance should be indexed and   <code>false</code> otherwise.</para>
+                      <para>Script example:<programlisting language="xml">&lt;entity class=&quot;com.haulmont.docflow.core.entity.Contract&quot;&gt;
+...
+    &lt;searchableIf&gt;
+        entity.versionOf == null
+    &lt;/searchableIf&gt;
+&lt;/entity&gt;</programlisting></para>
+                    </listitem>
+                  </itemizedlist></para>
+              </listitem>
+            </itemizedlist></para>
+        </listitem>
+      </itemizedlist></para>
+    <para>FTS configuration file example:<programlisting lang="xml">&lt;fts-config&gt;
+    &lt;entities&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.Author&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.Book&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.BookInstance&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.BookPublication&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.Publisher&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.sample.library.entity.EBook&quot;&gt;
+            &lt;include name=&quot;publication.book&quot;/&gt;
+            &lt;include name=&quot;attachments.file&quot;/&gt;
+        &lt;/entity&gt;
+
+        &lt;entity class=&quot;com.haulmont.workflow.core.entity.CardAttachment&quot; show=&quot;false&quot;&gt;
+            &lt;include re=&quot;.*&quot;/&gt;
+            &lt;exclude name=&quot;card&quot;/&gt;
+
+            &lt;searchables&gt;
+                searchables.add(entity.card)
+            &lt;/searchables&gt;
+        &lt;/entity&gt;
+
+    &lt;/entities&gt;
+&lt;/fts-config&gt;</programlisting></para>
+  </appendix>
+  <appendix id="appendix_fts_properties">
+    <title>Application Properties</title>
+    <para>This section lists the application properties that are relevant to the full-text search subsystem.</para>
+    <variablelist>
+      <varlistentry id="cuba.ftsConfig">
+        <term>cuba.ftsConfig</term>
+        <listitem>
+          <para>Configuration parameter, specifies a set of FTS configuration files in the project.</para>
+          <para>The value of the property should include a list of files separated with spaces. Files are loaded according to the rules of the   <code>Resources</code> interface.  </para>
+          <para>Used in the Middleware block.</para>
+          <para>Example:<programlisting>cuba.ftsConfig = cuba-fts.xml fts.xml</programlisting></para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+    <para>All properties that are described below are runtime parameters stored in the database and available in the application code via the  <code>FtsConfig</code> configuration interface.</para>
+    <variablelist>
+      <varlistentry id="cuba.fts.enabled">
+        <term>cuba.fts.enabled</term>
+        <listitem>
+          <para>The flag enabling the FTS functionality in the project. </para>
+          <para>Can be changed via the  <guilabel>Enabled</guilabel> attribute of the   <code>app-core.fts:type=FtsManager</code> JMX bean.   </para>
+          <para>Default value:  <code>false</code></para>
+        </listitem>
+      </varlistentry>
+      <varlistentry id="cuba.fts.indexDir">
+        <term>cuba.fts.indexDir</term>
+        <listitem>
+          <para>Absolute path to the directory storing indexed files. If not specified, the ftsindex subdirectory of the application work directory (defined by the cuba.dataDir property) is used; in the default deployment configuration, it is   <filename>tomcat/work/app-core/ftsindex</filename>.    </para>
+          <para>Default value: unspecified</para>
+        </listitem>
+      </varlistentry>
+      <varlistentry id="cuba.fts.indexingBatchSize">
+        <term>cuba.fts.indexingBatchSize</term>
+        <listitem>
+          <para>Number of records extracted from the indexing queue per one invocation of   <code>processQueue()</code>. </para>
+          <para>This limitation is relevant to the situation when the indexing queue contains a very large number of records, for example, after executing the  <code>reindexAll()</code> method of the    <code>app-core.fts:type=FtsManager</code> JMX bean.  In this case, indexing is done in batches, which takes more time, but creates a limited and predictable server load.</para>
+          <para>Default value:  <code>300</code></para>
+        </listitem>
+      </varlistentry>
+      <varlistentry id="cuba.fts.maxSearchResults">
+        <term>cuba.fts.maxSearchResults</term>
+        <listitem>
+          <para>The maximum number of entries in the search result. </para>
+          <para>Default value: <code>100</code></para>
+        </listitem>
+      </varlistentry>
+      <varlistentry id="cuba.fts.searchResultsBatchSize">
+        <term>cuba.fts.searchResultsBatchSize</term>
+        <listitem>
+          <para>Number of elements in a single batch of search results. A user will need to click “More” on the results screen to view the next batch.   </para>
+          <para>Default value:   <code>5</code></para>
+        </listitem>
+      </varlistentry>
+    </variablelist>
+  </appendix>
+</book>

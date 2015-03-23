@@ -1,0 +1,577 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter id="creation" lang="ru">
+  <title>Создание отчетов</title>
+  <para>Создание отчета в системе заключается в создании двух взаимосвязанных элементов: шаблона визуального представления и описания извлекаемых для отчета данных. Шаблон создается в формате XLS(X), DOC(X), ODT, HTML внешними средствами, а описание данных отчета производится
+в экране дизайнера отчетов.</para>
+  <para>Сгенерированный отчет в зависимости от заданных при описании параметров
+и исходного шаблона может быть выдан в форматах PDF, XLS(X), DOC(X), HTML.</para>
+  <para>Структура данных, выводимых отчетом, может быть либо описана в дизайнере отчета путем создания полос, запросов и других элементов, либо запрограммирована в классе Java, реализующим специальный интерфейс. Отчет может принимать параметры от пользователя, либо из вызывающего кода. Для отчета можно задать, каким пользователям он доступен, и в каких экранах системы он должен появляться.</para>
+  <para>Основные компоненты генератора отчетов приведены на следующей
+диаграмме:<mediaobject>
+      <imageobject>
+        <imagedata fileref="img/reporting.png" align="center"/>
+      </imageobject>
+    </mediaobject></para>
+  <itemizedlist>
+    <listitem>
+      <para>YARG - фреймворк, являющийся ядром генератора отчетов. </para>
+    </listitem>
+    <listitem>
+      <para>Report Engine интегрирует фреймворк YARG в платформу CUBA и предоставляет дополнительную функциональность, такую как  права доступа к отчетам и связь с экранами.</para>
+    </listitem>
+    <listitem>
+      <para>Report Designer - средство описания и хранения отчетов. Включает в себя инфраструктуру хранения описаний и шаблонов отчетов, экраны создания и управления отчетами.</para>
+    </listitem>
+    <listitem>
+      <para>Report - описатель структуры данных отчета, включающий в себя Bands - полосы отчета, и Datasets - наборы данных, выводимые в полосах.</para>
+    </listitem>
+    <listitem>
+      <para>Report Template - шаблон визуального представления отчета.</para>
+    </listitem>
+  </itemizedlist>
+  <section id="structure">
+    <title>Структура данных отчета</title>
+    <para>Рассмотрим вкладку <guilabel>Report structure</guilabel> редактора отчета.<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_structure.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>В верхней части находятся поля ввода общих свойств отчета: <itemizedlist>
+        <listitem>
+          <para><guilabel>Name</guilabel> - имя отчета. Имя может быть локализовано на вкладке <guilabel>Localization</guilabel>.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Group</guilabel> - группа отчетов, применяется для группировки в общем списке браузера отчетов.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Default template</guilabel> - <link linkend="template">шаблон</link>, по которому будет выводиться отчет.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>System code</guilabel> - необязательный код отчета, по которому его можно при необходимости  идентифицировать в  программном коде системы.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Основным элементом структуры данных отчета является иерархия полос - <guilabel>Report bands</guilabel>.</para>
+    <para>Полоса отчета характеризуется следующими параметрами:<itemizedlist>
+        <listitem>
+          <para><guilabel>Band name</guilabel> - уникальное в рамках отчета имя полосы. Должно содержать только латинские буквы, цифры или символ подчеркивания.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Orientation</guilabel> - ориентация полосы: <guilabel>Horizontal</guilabel> или <guilabel>Vertical</guilabel>. Горизонтальные полосы в выводимом отчете копируются вниз, вертикальные - вправо. Горизонтальные полосы могут содержать вложенные полосы.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Parent band</guilabel> - родительская полоса.</para>
+        </listitem>
+      </itemizedlist></para>
+    <para>Каждая полоса включает в себя один или несколько наборов данных - Datasets. Наборы данных при выполнении отчета представлют собой списки строк, а каждая строка - список полей, то есть пар имя-значение. Полоса выводится в отчет столько раз, сколько строк в ее самом длинном наборе данных. Имена полей указываются в шаблоне отчета, и при выводе полосы имена заменяются на соответствующие значения. При формировании наборов данных можно использовать <link linkend="parameters">внешние параметры</link> отчета, а также поля других полос - это позволяет делать  полосы связанными.</para>
+    <para>В каждом отчете присутствует корневая полоса <guilabel>Root</guilabel>. В ней можно создавать наборы данных и ссылаться на их поля из других полос, однако использовать полосу <guilabel>Root</guilabel> в шаблоне нельзя.</para>
+    <para>Имя набора данных в колонке <guilabel>Dataset name</guilabel> не имеет значения и служит только для удобства пользователя.</para>
+    <para> Рассмотрим возможные типы наборов данных.<orderedlist>
+        <listitem>
+          <para><guilabel>SQL</guilabel> - набор данных формируется выполнением SQL-запроса к базе данных. Поля результирующего набора запроса желательно снабдить алиасами с помощью оператора <code>as</code>. Для исключения возможного преобразования базой данных регистра символов алиасы желательно заключить в двойные кавычки:<programlisting>select u.name as &quot;userName&quot;, u.login as &quot;userLogin&quot; 
+from sec_user u</programlisting></para>
+          <para>В запросе можно использовать входные параметры отчета и поля  родительских полос. К параметрам нужно обращаться по имени, заключенному в конструкцию <code>${}</code>, например <code>${dateFrom}</code>. К полям родительской полосы нужно обращаться аналогично, добавляя имя полосы перед именем поля: <code>${band1.field1}</code>. </para>
+          <para>Пример SQL-запроса с параметром <code>groupId</code>, полученным из родительской полосы <code>group</code>, и внешним параметром <code>active</code>:<programlisting>select u.name as &quot;userName&quot;, u.login as &quot;userLogin&quot; 
+from sec_user u
+where u.group_id = ${group.groupId} 
+    and u.active = ${active}
+    and u.delete_ts is null</programlisting></para>
+          <warning>
+            <para>В запросы на SQL необходимо вручную включать условия фильтрации мягко удаленных записей.</para>
+          </warning>
+        </listitem>
+        <listitem>
+          <para><guilabel>JPQL</guilabel> - набор данных формируется выполнением JPQL-запроса к базе данных. Поля результирующего набора запроса необходимо снабдить алиасами с помощью оператора <code>as</code>. В JPQL-запросе можно использовать входные параметры отчета и поля  родительских полос аналогично описанному для SQL-запроса.</para>
+          <para>Пример JPQL-запроса с параметром <code>groupId</code>, полученным из родительской полосы <code>group</code>, и внешним параметром <code>active</code>:<programlisting>select u.name as userName, u.login as userLogin
+from sec$User u
+where u.group.id = ${group.groupId}
+    and u.active = ${active}</programlisting></para>
+          <para>Запросы на JPQL автоматически поддерживают мягкое удаление и возвращают только неудаленные записи.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Groovy</guilabel> - набор данных формируется выполнением Groovy-скрипта. Скрипт должен возвращать объект типа <code>List&lt;Map&lt;String, Object&gt;&gt;</code>. Элемент этого списка, то есть объект типа <code>Map&lt;String, Object&gt;</code> соответствует одной записи набора данных.</para>
+          <para>В скрипт передаются следующие объекты:<itemizedlist>
+              <listitem>
+                <para><code>params</code> - мэп внешних параметров отчета. Пример получения значения параметра:<programlisting>def active = params[&apos;active&apos;]</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>parentBand</code> - родительская полоса в виде объекта типа <code>com.haulmont.yarg.structure.BandData</code>. Через этот объект методом <code>getParameterValue()</code> можно получить значение поля родительской полосы, например:<programlisting>def groupId = parentBand.getParameterValue(&apos;groupId&apos;)</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>persistence</code> - объект типа <code>com.haulmont.cuba.core.Persistence</code>, позволяющий управлять транзакциями и получать ссылку на <code>EntityManager</code>. Например:<programlisting>def tx = persistence.createTransaction()
+try {
+    def em = persistence.getEntityManager()
+    def query = em.createQuery(&apos;select g from sec$Group g&apos;)
+...
+    tx.commit()
+} finally {
+    tx.end()
+}</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>metadata</code> - объект типа <code>com.haulmont.cuba.core.global.Metadata</code>, позволяющий обращаться к метаданным приложения. Например:<programlisting>def metaClass = metadata.getClassNN(&apos;sec$User&apos;)</programlisting></para>
+              </listitem>
+              <listitem>
+                <para><code>transactional</code> - метод, принимающий на вход замыкание, которое нужно выполнить в новой транзакции. Параметром замыкания становится текущий <code>EntityManager</code>. Пример использования:<programlisting>transactional { em -&gt;
+    def query = em.createQuery(&apos;select g from sec$Group g&apos;)
+    ...
+}</programlisting></para>
+              </listitem>
+            </itemizedlist></para>
+          <tip>
+            <para>Для обращения к любым бинам Spring среднего слоя можно использовать статические методы класса <code>AppBeans</code>, например:<programlisting>def dataWorker = com.haulmont.cuba.core.global.AppBeans.get(&apos;cuba_DataWorker&apos;)</programlisting></para>
+          </tip>
+          <para>Пример Groovy-скрипта извлечения пользователей по группе, выводимой в родительской полосе и по внешнему параметру <code>active</code>:<programlisting>def result = []
+transactional { em -&gt;
+    def query = em.createQuery(&apos;select u from sec$User u where u.group.id = ?1 and u.active = ?2&apos;)
+    query.setParameter(1, parentBand.getParameterValue(&apos;groupId&apos;))
+    query.setParameter(2, params[&apos;active&apos;])
+    query.resultList.each { user -&gt;
+        result.add([&apos;userLogin&apos;: user.login, &apos;userName&apos;: user.name])
+    }
+}
+return result</programlisting></para>
+        </listitem>
+        <listitem>
+          <para><guilabel>Entity</guilabel> - набор данных состоит из одной строки и  формируется по атрибутам одного экземпляра сущности и связанных с ним сущностей.</para>
+          <para>Источником данных является  внешний параметр типа <guilabel>Entity</guilabel>, который должен быть описан на вкладке <guilabel>Parameters and Formats</guilabel>. Значение в поле <guilabel>Entity parameter name</guilabel> должно соответствовать алиасу параметра. </para>
+          <para>Шаблон отчета должен содержать поля с именами атрибутов сущности. Атрибуты, используемые в шаблоне, необходимо указать в специальном окне, вызываемом кнопкой <guibutton>Entity attributes</guibutton>.</para>
+        </listitem>
+        <listitem>
+          <para><guilabel>List of entities</guilabel> - набор данных формируется по списку экземпляров сущности.</para>
+          <para>Источником данных является  внешний параметр типа <guilabel>List of entities</guilabel>, который должен быть описан на вкладке <guilabel>Parameters and Formats</guilabel>. Значение в поле <guilabel>Entity parameter name</guilabel> должно соответствовать алиасу параметра. </para>
+          <para>Шаблон отчета должен содержать поля с именами атрибутов сущности. Атрибуты, используемые в шаблоне, необходимо указать в специальном окне, вызываемом кнопкой <guibutton>Entity attributes</guibutton>.</para>
+        </listitem>
+      </orderedlist></para>
+  </section>
+  <section id="template">
+    <title>Шаблон отчета</title>
+    <para>Для одного отчета на вкладке <guilabel>Templates</guilabel> редактора отчета может быть создано несколько шаблонов, и один из них должен быть выбран как шаблон по умолчанию на вкладке <guilabel>Report structure</guilabel>.</para>
+    <para>Рассмотрим форму добавления шаблона:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_template.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <itemizedlist>
+      <listitem>
+        <para><guilabel>Template code</guilabel> - код шаблона для его идентификации.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Output type</guilabel> - тип вывода отчета. Должен быть согласован с типом файла шаблона по правилам, описанным в <xref linkend="template_to_output"/>.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Template file</guilabel> - файл шаблона, который загружается из файловой системы и сохраняется в базе данных вместе с описанием структуры отчета.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Output name pattern</guilabel> - необязательное имя файла, которое будет использоваться для выгрузки готового отчета.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Defined with class</guilabel> - признак использования шаблона, <link linkend="template_custom">определяемого классом</link>.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Custom class name</guilabel> - имя класса шаблона, если установлен признак <guilabel>Defined with class</guilabel>.</para>
+      </listitem>
+    </itemizedlist>
+    <section id="template_xls">
+      <title>Шаблоны XLSX и XLS</title>
+      <para>Шаблоны XLSX и XLS создаются с помощью <application>Microsoft Office</application> или <application>OpenOffice / LibreOffice</application>. </para>
+      <para>Для каждой полосы отчета в шаблоне должен быть определен регион с именем полосы. Именованные регионы создаются путем выделения нужного диапазона ячеек и ввода имени в поле в левом верхнем углу приложения. Для редактирования уже созданных именованных регионов в Microsoft Office используется команда меню <guimenu>Formulas</guimenu> -&gt; <guimenu>Name Manager</guimenu>, а в OpenOffice команда <guimenu>Insert</guimenu> -&gt; <guimenu>Names</guimenu> -&gt; <guimenu>Manage</guimenu>.</para>
+      <para>Полосы выводятся в том порядке, в котором заданы в <link linkend="structure">структуре отчета</link>.</para>
+      <para>Горизонтальные полосы могут содержать вложенные полосы. Поэтому для вложенных полос необходимо создавать именованные регионы непосредственно под регионами, соответствующими родительским полосам.</para>
+      <para>Поля наборов данных полосы размечаются в шаблоне с помощью строк вида <code>${field_name}</code>, где field_name - имя поля. Например:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/report_template_xls.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Ячейки могут содержать форматирование и сразу несколько полей внутри.
+Для вывода картинок или формул их нужно целиком поместить в соответствующий именованный регион.</para>
+    </section>
+    <section id="template_doc">
+      <title>Шаблоны DOCX, DOC и ODT</title>
+      <para>Шаблон ODT создается с помощью <application>OpenOffice / LibreOffice</application>, для создания шаблонов DOC и DOCX  можно использовать как   OpenOffice, так и  <application>Microsoft Office</application>. </para>
+      <para>Шаблон данного типа включает в себя текст документа и опционально одну или несколько таблиц. В тексте документа выводятся данные из первых строк произвольных полос. В таблицу можно выводить произвольное количество строк некоторой полосы.</para>
+      <para>Для вывода поля в тексте документа необходимо использовать строку вида <code>${band_name.field_name}</code>, где <code>band_name</code> - имя полосы, <code>field_name</code> - имя поля.</para>
+      <para>Для вывода данных в таблицу она должна быть привязана к некоторой полосе. Это делается  путем указания в первой ячейке таблицы строки вида <code>##band=band_name</code>, где <code>band_name</code> - имя полосы. Поля в таблице размечаются строками вида <code>${field_name}</code>, где <code>field_name</code> - имя поля связанной с таблицей полосы. Для обращения к полям других полос в таблице можно использовать префикс с именем полосы, как это делается в полях текста документа. В одной ячейке таблицы можно выводить несколько полей.</para>
+      <warning>
+        <para>Таблица должна содержать либо одну, либо две строки. Если строк в таблице две, то поля связанной полосы  должны находиться во второй строке. В первую заносится маркер с именем связанной полосы и, при необходимости, статический  текст и поля других полос. </para>
+      </warning>
+      <para>Например, для вывода отчета, состоящего из двух полос: Book и Authors, первая из которых выводит название и жанр книги, а вторая список авторов этой книги, шаблон может выглядеть следующим образом:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/report_template_doc.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+    </section>
+    <section id="template_html">
+      <title>Шаблон HTML</title>
+      <para>Шаблон HTML задается в  файле c расширением <filename>.html</filename> в кодировке <code>UTF-8</code> (без <code>BOM</code>). Для размещения данных необходимо использовать тэги <application>FreeMarker</application> (документация по FreeMarker находится по адресу <ulink url="http://freemarker.org/docs">http://freemarker.org/docs</ulink>). </para>
+      <para>Модель документа FreeMarker имеет следующую структуру:<programlisting>Band { 
+      bands [ bandName : [ band, .. ], .. ] 
+      fields [ fieldName : fieldValue, .. ] 
+}</programlisting></para>
+      <para>Например, для доступа к полю <code>name</code> в полосе <code>band</code> в нулевой строке выборки нужно использовать следующее выражение:<programlisting>Root.bands.band[0].fields.name</programlisting></para>
+      <para>Для удобства можно использовать переменные:<programlisting language="html">&lt;#assign headerRow = Root.bands.Header[0]&gt;
+&lt;p&gt;Date: ${headerRow.fields.reportDate}&lt;/p&gt;</programlisting></para>
+      <para>Пример шаблона для вывода отчета, состоящего из двух полос: Book и Authors, первая из которых выводит название и жанр книги, а вторая список авторов этой книги:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+&lt;head&gt;&lt;/head&gt;
+&lt;body&gt;
+    &lt;#assign book = Root.bands.Book[0] /&gt;
+    &lt;#assign authors = Root.bands.Authors /&gt;
+
+    &lt;p&gt;Name: ${book.fields.name}&lt;/p&gt;
+    &lt;p&gt;Genre: ${book.fields.literatureType.name}&lt;/p&gt;
+    &lt;table border=&quot;1&quot; cellpadding=&quot;5&quot; cellspacing=&quot;0&quot; width=&quot;200&quot;&gt;
+        &lt;thead&gt;
+            &lt;tr&gt;
+                &lt;td&gt;First name&lt;/td&gt;
+                &lt;td&gt;Last name&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody&gt;
+        &lt;#list authors as author&gt;
+            &lt;tr&gt;
+                &lt;td&gt;${author.fields.firstName}&lt;/td&gt;
+                &lt;td&gt;${author.fields.lastName}&lt;/td&gt;
+            &lt;/tr&gt;
+        &lt;/#list&gt;
+        &lt;/tbody&gt;
+    &lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+      <para>Более сложный пример. Имеем структуру полос следующего вида:<programlisting>Root {
+    HeaderBand {
+        query = return [[ &quot;name&quot; : &quot;Column1&quot; ],[ &quot;name&quot; : &quot;Column2&quot; ]]
+    }
+    Band1 { 
+        query = return [
+            [&quot;field1&quot; : &quot;Value 11&quot;, &quot;field2&quot; : &quot;Value 12&quot;], 
+            [&quot;field1&quot; : &quot;Value 21&quot; , &quot;field2&quot; : &quot;Value 22&quot;]
+        ]
+    }
+    Band2 {
+        query = return [[ &quot;header&quot; : &quot;Header1&quot; ], [ &quot;header&quot; : &quot;Header2&quot; ]]
+        SubBand1 {
+            query = return [[&quot;header&quot; : &apos;SubHeader1&apos;] , [ &quot;header&quot; : &apos;SubHeader2&apos; ]]
+        }
+    }
+}</programlisting></para>
+      <itemizedlist>
+        <listitem>
+          <para>Обращение к полю:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; Simple template &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Tree1 = Root.bands.Band2&gt;
+        &lt;h1&gt; Header &lt;/h1&gt;
+        &lt;p&gt;
+            ${Tree1[1].bands.SubBand1[0].fields.header}
+        &lt;/p&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Список:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; List &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Table1Header = Root.bands.HeaderBand&gt;
+        
+        &lt;#if Table1Header?has_content&gt;
+        &lt;ol&gt; 
+            &lt;#list Table1Header as header&gt;
+            &lt;li&gt; ${header.fields.name} &lt;/li&gt;
+            &lt;/#list&gt;  
+        &lt;/ol&gt;
+        &lt;/#if&gt; 
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Таблица:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; Table &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Table1Header = Root.bands.HeaderBand&gt;
+        &lt;#assign Table1 = Root.bands.Band1&gt;       
+        &lt;table border=&quot;1&quot; cellpadding=&quot;5&quot; cellspacing=&quot;0&quot; width=&quot;200&quot;&gt;
+            &lt;thead&gt;
+                &lt;tr&gt;
+                &lt;#list Table1Header as header&gt;
+                    &lt;td&gt; ${header.fields.name} &lt;/td&gt;
+                &lt;/#list&gt;
+                &lt;/tr&gt;
+            &lt;/thead&gt;
+            &lt;tbody&gt;
+            &lt;#list Table1 as row&gt;
+                &lt;tr&gt;
+                    &lt;td&gt;
+                        ${row.fields.field1}
+                    &lt;/td&gt;
+                    &lt;td&gt;
+                        ${row.fields.field2}
+                    &lt;/td&gt;
+                &lt;/tr&gt;
+            &lt;/#list&gt;
+            &lt;/tbody&gt;
+        &lt;/table&gt;  
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+        <listitem>
+          <para>Многоуровневый список:<programlisting language="html">&lt;!doctype html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;title&gt; Multi-level list &lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;#assign Tree1 = Root.bands.Band2&gt;        
+        &lt;ul&gt;
+            &lt;#list Tree1 as item&gt;
+            &lt;li&gt;
+                &lt;h2&gt; ${item.fields.header} &lt;/h2&gt;
+                &lt;#if item.bands.SubBand1?has_content&gt;
+                &lt;ul&gt;
+                    &lt;#list item.bands.SubBand1 as subitem&gt;
+                    &lt;li&gt;
+                        &lt;h3&gt; ${subitem.fields.header} &lt;/h3&gt;
+                    &lt;/li&gt;
+                    &lt;/#list&gt;
+                &lt;/ul&gt;
+                &lt;/#if&gt;
+            &lt;/li&gt;
+            &lt;/#list&gt;
+        &lt;/ul&gt;  
+    &lt;/body&gt;
+&lt;/html&gt;</programlisting></para>
+        </listitem>
+      </itemizedlist>
+      <section id="html_to_pdf">
+        <title>Преобразование HTML в PDF</title>
+        <para>Отчеты, имеющие формат шаблона HTML и формат вывода PDF, не всегда корректно отображают шрифты. Для решения этой проблемы добавьте в конфигурационный каталог блока Middleware  (в стандартном варианте развертывания <filename>tomcat/conf/app-core</filename>) подкаталог <filename>cuba/fonts</filename> с необходимыми <filename>.ttf</filename>-шрифтами. Кроме того, можно использовать имеющиеся в операционной системе шрифты путем указания пути к ним в свойстве приложения <link linkend="cuba.reporting.fontsDir">cuba.reporting.fontsDir</link>.</para>
+        <para>Для решения проблемы со шрифтами на сервере Ubuntu необходимо выполнить следующее:<itemizedlist>
+            <listitem>
+              <para>Установить пакет <filename>ttf-mscorefonts-installer</filename>:</para>
+              <para><prompt>$ sudo apt-get install ttf-mscorefonts-installer</prompt></para>
+            </listitem>
+            <listitem>
+              <para>Установить свойство приложения <link linkend="cuba.reporting.fontsDir">cuba.reporting.fontsDir</link>:<programlisting>cuba.reporting.fontsDir = /usr/share/fonts/truetype/msttcorefonts</programlisting></para>
+            </listitem>
+            <listitem>
+              <para>В HTML-шаблонах использовать явное указание шрифтов, например так:<programlisting language="html">&lt;html&gt;
+&lt;head&gt;
+    &lt;style type=&quot;text/css&quot;&gt;
+        * {
+            font-family: Times New Roman;
+        }
+    &lt;/style&gt;</programlisting></para>
+            </listitem>
+          </itemizedlist></para>
+      </section>
+    </section>
+    <section id="template_custom">
+      <title>Шаблон, определяемый классом</title>
+      <para>Шаблоны, определяемые классом используются в тех случаях, когда выбирать данные с помощью  SQL, JPQL  или Groovy слишком сложно  или невозможно. Например, в случаях, когда отчет представляет собой результат объединения нескольких других отчетов. </para>
+      <para>Класс, определяющий шаблон должен реализовывать интерфейс <code>com.haulmont.yarg.formatters.CustomReport</code>. В классе необходимо определить метод <code>createReport()</code>, возвращающий массив байтов и принимающий на вход параметры:<itemizedlist>
+          <listitem>
+            <para><code>report</code> - описатель отчета типа <code>com.haulmont.yarg.structure.Report</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>rootBand</code> - данные корневой полосы типа <code>com.haulmont.yarg.structure.BandData</code>.</para>
+          </listitem>
+          <listitem>
+            <para><code>params</code> - мэп внешних параметров отчета.</para>
+          </listitem>
+        </itemizedlist></para>
+      <para>Ниже приведен пример простого шаблона, определяемого классом. Он формирует HTML-документ с названием выбранной в параметре отчета книги: <programlisting language="java">package com.sample.library.report;
+
+import com.haulmont.yarg.formatters.CustomReport;
+import com.haulmont.yarg.structure.BandData;
+import com.haulmont.yarg.structure.Report;
+import com.sample.library.entity.Book;
+import java.util.Map;
+
+public class BookReport implements CustomReport {
+    @Override
+    public byte[] createReport(Report report, BandData rootBand, Map&lt;String, Object&gt; params) {
+        Book book = (Book) params.get(&quot;book&quot;);
+        String html = &quot;&lt;html&gt;&lt;body&gt;&quot;;
+        html += &quot;&lt;p&gt;Name: &quot; + book.getName() + &quot;&lt;/p&gt;&quot;;
+        html += &quot;&lt;/body&gt;&lt;/html&gt;&quot;;
+        return html.getBytes();
+    }
+}</programlisting></para>
+    </section>
+    <section id="template_to_output">
+      <title>Соответствие типа шаблона типу вывода</title>
+      <para><informaltable frame="all">
+          <tgroup cols="8">
+            <colspec colname="c1"/>
+            <colspec colname="c2"/>
+            <colspec colname="c3"/>
+            <colspec colname="c4"/>
+            <colspec colname="c5"/>
+            <colspec colname="cgen1"/>
+            <colspec colname="c6"/>
+            <colspec colname="c7"/>
+            <thead>
+              <row>
+                <entry>Шаблон / Вывод</entry>
+                <entry align="center">XLSX</entry>
+                <entry align="center">XLS</entry>
+                <entry align="center">DOCX</entry>
+                <entry align="center">DOC</entry>
+                <entry align="center">ODT</entry>
+                <entry align="center">PDF</entry>
+                <entry align="center">HTML</entry>
+              </row>
+            </thead>
+            <tbody>
+              <row>
+                <entry role="">XLSX</entry>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>XLS</entry>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>DOCX</entry>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry/>
+                <entry align="center">+ <superscript>2</superscript></entry>
+                <entry align="center">+</entry>
+              </row>
+              <row>
+                <entry>DOC</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry/>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>ODT</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry align="center">+ <superscript>1</superscript></entry>
+                <entry/>
+              </row>
+              <row>
+                <entry>HTML</entry>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry/>
+                <entry align="center">+</entry>
+                <entry align="center">+</entry>
+              </row>
+            </tbody>
+          </tgroup>
+        </informaltable></para>
+      <para><superscript>1</superscript> - для вывода требуется <link linkend="open_office">установка</link> OpenOffice.</para>
+      <para><superscript>2</superscript> - в зависимости от значения свойства приложения <link linkend="cuba.reporting.openoffice.docx.useOfficeForPdfConversion">cuba.reporting.openoffice.docx.useOfficeForPdfConversion</link> вывод может осуществляться либо через OpenOffice, либо без него. В последнем случае необходимо обеспечить наличие нужных шрифтов, как описано в <xref linkend="html_to_pdf"/>.</para>
+    </section>
+  </section>
+  <section id="parameters">
+    <title>Внешние параметры отчета</title>
+    <para>Внешние параметры передаются извне при запуске отчета и могут использоваться в наборах данных в качестве условий. Все внешние параметры становятся полями каждой полосы отчета, поэтому их можно непосредственно использовать в шаблоне как поля наборов данных. Если какой-либо набор данных выводит одноименное поле, оно маскирует внешний параметр в данной полосе и в отчете используется значение поля набора данных.</para>
+    <para>Для описания внешних параметров служит вкладка <guilabel>Parameters and Formats</guilabel> редактора отчета. Рассмотрим форму добавления параметра:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_parameter.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <para>Вкладка <guilabel>Properties</guilabel>:</para>
+    <itemizedlist>
+      <listitem>
+        <para><guilabel>Parameter name</guilabel> - имя параметра, как оно будет отображено в форме ввода параметров при старте отчета.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Parameter alias</guilabel> - алиас параметра, который нужно использовать для обращения к нему в наборах данных.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Parameter type</guilabel> - тип параметра.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Required parameter</guilabel> - признак того, что параметр должен быть обязательно передан в отчет.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Entity</guilabel> - если указан тип параметра <guilabel>Entity</guilabel> или <guilabel>List of entities</guilabel>, то в данном поле необходимо выбрать тип сущности.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Enumeration</guilabel> - если указан тип параметра <guilabel>Enumeration</guilabel>, то в данном поле необходимо выбрать тип перечисления.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Entity selection screen</guilabel> - необязательный идентификатор экрана, который будет использоваться для выбора экземпляров сущности. Если экран не указан, выбор будет осуществляться через специальный общий для всех сущностей экран.</para>
+      </listitem>
+    </itemizedlist>
+    <para>На вкладке <guilabel>Localization</guilabel> можно определить названия параметра для различных локалей. Для этого в отдельных строках текстового поля следует ввести пары <code>имя_локали = имя_параметра</code>, например:<programlisting>ru = Книга</programlisting></para>
+  </section>
+  <section id="formatters">
+    <title>Форматы значений полей</title>
+    <para>Для любого поля, выводимого отчетом, можно задать форматирование на вкладке <guilabel>Parameters and Formats</guilabel> редактора отчета. Рассмотрим форму добавления формата:<mediaobject>
+        <imageobject>
+          <imagedata fileref="img/report_formatter.png" align="center"/>
+        </imageobject>
+      </mediaobject></para>
+    <itemizedlist>
+      <listitem>
+        <para><guilabel>Value name</guilabel> - имя поля отчета с префиксом полосы, например <code>Book.name</code>.</para>
+      </listitem>
+      <listitem>
+        <para><guilabel>Format string</guilabel> - формат поля. Для числовых значений формат должен быть задан по правилам <code>java.text.DecimalFormat</code>, для дат - <code>java.text.SimpleDateFormat</code>.</para>
+      </listitem>
+    </itemizedlist>
+    <para>Форматы позволяют вставлять в документ изображения и HTML-блоки.</para>
+    <itemizedlist>
+      <listitem>
+        <para>Для вставки изображения значение поля должно быть строкой URL для доступа к нему, а в формате значения строка форматирования должна иметь вид: <code>${image:&lt;Width&gt;x&lt;Height&gt;}</code>, например <code>${image:200x300}</code>.</para>
+      </listitem>
+      <listitem>
+        <para>Для вставки HTML-блока необходимо в поле возвращать HTML-разметку, а в формате значения выбрать <code>${html}</code> в качестве строки форматирования. В выходном значении тэги верхнего уровня до <code>&lt;body&gt;</code> включительно могут быть опущены. При необходимости произойдет автоматическое дополнение недостающих тегов верхнего уровня. Кодировка всех блоков <code>UTF-8</code>. CSS и атрибут <literal>style</literal> не поддерживаются.</para>
+      </listitem>
+    </itemizedlist>
+  </section>
+  <section id="permissions">
+    <title>Разграничение прав доступа к отчетам</title>
+    <para>На вкладке <guilabel>Roles and Screens</guilabel> редактора отчетов можно определить права пользователей на доступ к отчету, а также принадлежность отчета экранам системы.</para>
+    <para>Если в списке ролей для отчета указана хотя бы одна роль, то данный отчет будет доступен только пользователям с этой ролью. Если ни одна роль не указана, отчет доступен всем.</para>
+    <para>Список экранов позволяет определить, в каких экранах данный отчет доступен при использовании действий RunReportAction, TablePrintFormAction или EditorPrintFormAction. Если ни один экран не указан, отчет доступен из любых экранов.</para>
+  </section>
+  <section id="localization">
+    <title>Локализация названия отчета</title>
+    <para>Название отчета можно локализовать, то есть в списке отчетов для  запуска отображать название на языке, с которым пользователь вошел в систему. Для этого в редакторе отчета необходимо перейти на вкладку <guilabel>Localization</guilabel> и в отдельных строках текстового поля ввести пары <code>имя_локали = название_отчета</code>, например:</para>
+    <programlisting>en = Books by author
+ru = Книги по автору</programlisting>
+  </section>
+  <section>
+    <title>Мастер создания отчета</title>
+    <para>Мастер позволяет быстро создать структуру данных и шаблон для отчета по экземпляру или списку экземпляров сущности.</para>
+    <para>Для вызова мастера в экране <guimenu>Reports</guimenu> нажмите <guibutton>Create</guibutton> -&gt; <guibutton>Using wizard</guibutton>. Далее следуйте инструкциям мастера. Созданный отчет можно доработать обычным способом в редакторе, и запустить либо через <link linkend="run_common">общий список</link> отчетов, либо с помощью <link linkend="run_actions">действий</link> <code>TablePrintFormAction</code> и <code>EditorPrintFormAction</code>.</para>
+  </section>
+</chapter>

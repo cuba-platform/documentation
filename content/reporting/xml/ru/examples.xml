@@ -1,0 +1,66 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- This document was created with Syntext Serna Free. --><chapter lang="ru" id="examples">
+  <title>Пример отчета</title>
+  <para>Рассмотрим устройство одного отчета в приложении-примере <application>Библиотека</application>, исходные тексты которого доступны по адресу <ulink url="https://www.cuba-platform.com/download">https://www.cuba-platform.com/download</ulink>.</para>
+  <para>Для импорта отчета откройте экран <guimenu>Reports</guimenu> -&gt; <guimenu>Reports</guimenu> и нажмите кнопку <guibutton>Import</guibutton>. Выберите файл <filename>Reports.zip</filename> в корневом каталоге проекта. В таблице  появятся два отчета, один из которых - <userinput>Books by author</userinput>. Данный отчет выводит список публикаций книг по автору, группируя их по названию книги и издателю. Формат вывода - XLS.</para>
+  <orderedlist>
+    <listitem>
+      <para><link linkend="structure">Структура данных</link> отчета.<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/sample1_structure.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Рассмотрим полосы отчета.<itemizedlist>
+          <listitem>
+            <para>Полоса <userinput>header</userinput> - заголовок отчета. Содержит набор данных с Groovy-скриптом, выводящим значения <link linkend="parameters">внешних параметров</link> отчета:<programlisting>[[&apos;authorName&apos; : (params[&apos;author&apos;].firstName + &apos; &apos; + params[&apos;author&apos;].lastName)]]</programlisting></para>
+          </listitem>
+          <listitem>
+            <para>Полоса <userinput>book</userinput> выводит книги путем выполнения следующего SQL-запроса:<programlisting language="sql">select b.name as book_name, b.id as book_id
+from library_book b 
+    join library_book_author_link ba on ba.book_id = b.id
+    join library_author a on a.id = ba.author_id
+where a.id = ${author}</programlisting></para>
+            <para>В данном запросе используется внешний параметр отчета - <userinput>author</userinput>. Параметр имеет тип <guilabel>Entity</guilabel>, однако в SQL-запросах его можно напрямую сравнивать с полями-идентификаторами сущностей, преобразование будет выполнено автоматически.</para>
+          </listitem>
+          <listitem>
+            <para>Вложенная в <userinput>book</userinput> полоса <userinput>publisher</userinput> выводит издателей книги путем выполнения следующего SQL-запроса:<programlisting language="sql">select p.name as publisher, bp.year, p.id as publisher_id
+from library_book_publication bp
+    join library_publisher p on p.id = bp.publisher_id
+where bp.book_id = ${book.book_id}</programlisting></para>
+            <para>В данном запросе в качестве параметра используется поле родительской полосы - <code>book_id</code>. Таким образом осуществляется связь между родительской и дочерней полосами.</para>
+          </listitem>
+          <listitem>
+            <para>Вложенная в <userinput>publisher</userinput> полоса <userinput>publication</userinput> выводит издания книги путем выполнения следующего SQL-запроса:<programlisting language="sql">select ld.name as department, count(bi.id) as amount
+from library_book_instance bi
+    join library_book_publication bp on bp.id = bi.book_publication_id
+    join library_library_department ld on ld.id = bi.library_department_id
+where bp.publisher_id = ${publisher.publisher_id} and bp.book_id = ${book.book_id}
+group by ld.name</programlisting></para>
+            <para>В данном запросе в качестве параметров используются поля обоих родительских полос - <code>book_id</code> и <code>publisher_id</code>. </para>
+          </listitem>
+        </itemizedlist></para>
+    </listitem>
+    <listitem>
+      <para><link linkend="parameters">Параметры</link> отчета. </para>
+      <para>На вкладке <guilabel>Parameters and Formats</guilabel> объявлен один внешний параметр отчета - <userinput>Author</userinput>:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/sample1_param.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+      <para>Этот параметр будет запрошен у пользователя при запуске отчета. Выбор автора будет производиться через экран <code>library$Author.lookup</code>, имеющийся в приложении.</para>
+    </listitem>
+    <listitem>
+      <para><link linkend="template">Шаблоны</link> отчета.</para>
+      <para>На вкладке <guilabel>Templates</guilabel> определен один шаблон формата XLS, загруженный из файла <filename>BooksByAuthor.xls</filename>:<mediaobject>
+          <imageobject>
+            <imagedata fileref="img/sample1_template.png" align="center"/>
+          </imageobject>
+        </mediaobject></para>
+    </listitem>
+    <listitem>
+      <para><link linkend="localization">Локализация</link> названия отчета.</para>
+      <para>На вкладке <guilabel>Localization</guilabel> задано название отчета для русской локали:<programlisting>ru = Книги по автору</programlisting></para>
+    </listitem>
+  </orderedlist>
+  <para>Вызвать отчет на <link linkend="running">исполнение</link> можно из общего списка в экране <guimenu>Reports</guimenu> -&gt; <guimenu>Run Reports</guimenu>.</para>
+</chapter>
