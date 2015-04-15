@@ -46,7 +46,9 @@
       <para>The script directory structure reproduces the one described in  <xref linkend="db_scripts"/>, but it also has an additional top level that separates  <link linkend="base_projects">base projects</link> and the application scripts. The numbering of top level directories is performed by project build <link linkend="build.gradle">tasks</link>.</para>
       <para>The DB scripts directory location is determined by   <link linkend="cuba.dbDir">cuba.dbDir</link> application property. For <link linkend="fast_deployment">fast deployment</link> configuration  in  <application>Tomcat</application>, it is the  <filename>WEB-INF/db</filename> subdirectory of the middleware web application directory: <filename>tomcat/webapps/app-core/WEB-INF/db</filename>.</para>
     </section>
-  </section><section id="deployment_variants" lang="en"><title>Deployment Options</title>This section describes different ways to deploy CUBA applications.<section id="fast_deployment"><title>Fast Deployment in Tomcat</title>Fast deployment is used by default when developing an application, as it provides minimum time for building, installation and starting the application. This option is also convenient when using the application in production.<para>Fast deployment is performed using the   <link linkend="build.gradle_deploy">deploy</link> task that is declared for <structname>core</structname> and <structname>web</structname> modules in the  <filename>build.gradle</filename> file. Before the first execution of  <code>deploy</code>, a local Tomcat server should be set up and initialized using the  <link linkend="build.gradle_setupTomcat">setupTomcat</link> task. </para><para>As result of fast deployment,  the following structure is created in the directory that is specified by the <code>ext.tomcatDir</code> property of the   <filename>build.gradle</filename> script (only important directories and files are listed below):<programlisting>bin/
+  </section>
+  <section id="deployment_variants" lang="en"><title>Deployment Options</title>This section describes different ways to deploy CUBA applications.
+  <section id="fast_deployment"><title>Fast Deployment in Tomcat</title>Fast deployment is used by default when developing an application, as it provides minimum time for building, installation and starting the application. This option is also convenient when using the application in production.<para>Fast deployment is performed using the   <link linkend="build.gradle_deploy">deploy</link> task that is declared for <structname>core</structname> and <structname>web</structname> modules in the  <filename>build.gradle</filename> file. Before the first execution of  <code>deploy</code>, a local Tomcat server should be set up and initialized using the  <link linkend="build.gradle_setupTomcat">setupTomcat</link> task. </para><para>As result of fast deployment,  the following structure is created in the directory that is specified by the <code>ext.tomcatDir</code> property of the   <filename>build.gradle</filename> script (only important directories and files are listed below):<programlisting>bin/
     setenv.bat, setenv.sh
     startup.bat, startup.sh
     debug.bat, debug.sh
@@ -149,7 +151,101 @@ work/
         <listitem>
           <para><filename>work/app</filename>, <filename>work/app-core</filename> – web client and the middleware applications  <link linkend="work_dir">work directories</link>.</para>
         </listitem>
-      </itemizedlist></section><section id="war_deployment">
+      </itemizedlist>
+    <section id="tomcat_in_prod">
+      <title>Using Tomcat in Production</title>
+      <para>The fast deployment procedure creates
+        <code>app</code> and <code>app-core</code> web applications running on port 8080 of a local Tomcat instance.
+        It means that the web client is available at <code>http://localhost:8080/app</code>. You can use this server
+        instance in production, but you need to change some application properties to conform to the production
+        environment.</para>
+      <para>First set up a server host name.</para>
+      <para>If you are not going to change the port (8080) or the web context name (<code>app</code>), set the following
+        properties in both <code>tomcat/conf/app/local.app.properties</code> and
+        <code>tomcat/conf/app-core/local.app.properties</code> files:
+        <programlisting><![CDATA[
+cuba.webHostName = myserver
+cuba.webAppUrl = http://myserver:8080/app]]></programlisting>
+      </para>
+      <para>If the port differs from 8080, specify also the <code>cuba.webPort</code> property:
+      <programlisting><![CDATA[
+cuba.webPort = 7070
+cuba.webHostName = myserver
+cuba.webAppUrl = http://myserver:7070/app]]></programlisting>
+      </para>
+      <para>If you want to change the web context (e.g. to <code>sales</code>), do the following:
+        <itemizedlist>
+          <listitem><para>Rename the web applications and <code>conf</code> subdirectories:
+            <programlisting><![CDATA[
+tomcat/
+    conf/
+        sales/
+            local.app.properties
+        sales-core/
+            local.app.properties
+    webapps/
+        sales/
+        sales-core/]]></programlisting>
+          </para></listitem>
+          <listitem>
+            <para>Open <code>tomcat/webapps/sales-core/WEB-INF/web.xml</code>
+              and change the last line in the <code>appPropertiesConfig</code>
+              context parameter value to the following:
+              <programlisting><![CDATA[file:${catalina.home}/conf/sales-core/local.app.properties]]></programlisting>
+            </para>
+          </listitem>
+          <listitem>
+            <para>Open <code>tomcat/webapps/sales/WEB-INF/web.xml</code>
+              and change the last line in the <code>appPropertiesConfig</code>
+              context parameter value to the following:
+              <programlisting><![CDATA[file:${catalina.home}/conf/sales/local.app.properties]]></programlisting>
+            </para>
+          </listitem>
+          <listitem>
+            <para>Add the following to <code>tomcat/conf/sales-core/local.app.properties</code>:
+              <programlisting><![CDATA[
+cuba.webContextName = sales-core
+cuba.webPort = 7070
+cuba.webHostName = myserver
+cuba.webAppUrl = http://myserver:7070/sales]]></programlisting>
+            </para>
+          </listitem>
+          <listitem>
+            <para>Add the following to <code>tomcat/conf/sales/local.app.properties</code>:
+              <programlisting><![CDATA[
+cuba.connectionUrlList = http://localhost:7070/sales-core
+cuba.webContextName = sales
+cuba.webPort = 7070
+cuba.webHostName = myserver
+cuba.webAppUrl = http://myserver:7070/sales]]></programlisting>
+            </para>
+            <para>The <link linkend="cuba.connectionUrlList">cuba.connectionUrlList</link>
+              property is used when transferring uploaded files between web client and middleware even in case of
+              <link linkend="cuba.useLocalServiceInvocation">local service invocations</link>, so it should always
+              point to a real URL of the middleware application.
+            </para>
+          </listitem>
+        </itemizedlist>
+      </para>
+      <para>If you want to use the root context for the web client (<code>http://myserver:8080</code>), rename
+        <code>sales</code> directories to <code>ROOT</code>
+        <programlisting><![CDATA[
+tomcat/
+    conf/
+        ROOT/
+            local.app.properties
+        sales-core/
+            local.app.properties
+    webapps/
+        ROOT/
+        sales-core/]]></programlisting>
+        and use <code>/</code> as the web context name in <code>tomcat/conf/ROOT/local.app.properties</code>:
+        <programlisting><![CDATA[
+cuba.webContextName = /]]></programlisting>
+      </para>
+    </section>
+  </section>
+  <section id="war_deployment">
       <title>Deployment in WAR</title>
       <para>JavaEE standard  application deployment into WAR files is performed using the  <link linkend="build.gradle_buildWar">buildWar</link> and  <link linkend="build.gradle_createWarDistr">createWarDistr</link> build tasks. An example of building WAR files and their deployment on the <application>Glassfish 4</application> server is provided below.</para>
       <orderedlist>

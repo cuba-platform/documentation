@@ -199,6 +199,95 @@ work/
           <para><filename>work/app</filename>, <filename>work/app-core</filename> - <link linkend="work_dir">рабочие каталоги</link> приложений веб-клиента и среднего слоя.</para>
         </listitem>
       </itemizedlist>
+      <section id="tomcat_in_prod">
+        <title>Использование Tomcat при эксплуатации приложения</title>
+        <para>Процедура быстрого развертывания создает веб приложения
+          <code>app</code> и <code>app-core</code>, работающие на локальном инстансе Tomcat на порту 8080.
+          Это означает, что веб клиент доступен по адресу <code>http://localhost:8080/app</code>. Вы можете использовать 
+          этот сервер для эксплуатации приложения, однако необходимо настроить некоторые его свойства.</para>
+        <para>Сначала установите имя хоста сервера.</para>
+        <para>Если изменения порта (8080) и веб контекста (<code>app</code>) не требуется, установите следующие 
+          свойства приложения в файлах <code>tomcat/conf/app/local.app.properties</code> и
+          <code>tomcat/conf/app-core/local.app.properties</code>:
+          <programlisting><![CDATA[
+  cuba.webHostName = myserver
+  cuba.webAppUrl = http://myserver:8080/app]]></programlisting>
+        </para>
+        <para>Если порт сервера отличается от 8080, установите также свойство <code>cuba.webPort</code>:
+        <programlisting><![CDATA[
+  cuba.webPort = 7070
+  cuba.webHostName = myserver
+  cuba.webAppUrl = http://myserver:7070/app]]></programlisting>
+        </para>
+        <para>Если вы хотите изменить веб контекст (например на <code>sales</code>), выполните следующее:
+          <itemizedlist>
+            <listitem><para>Переименуйте каталоги веб приложений и подкаталоги <code>conf</code>:
+              <programlisting><![CDATA[
+  tomcat/
+      conf/
+          sales/
+              local.app.properties
+          sales-core/
+              local.app.properties
+      webapps/
+          sales/
+          sales-core/]]></programlisting>
+            </para></listitem>
+            <listitem>
+              <para>Откройте файл <code>tomcat/webapps/sales-core/WEB-INF/web.xml</code>
+                и измените последнюю строку в значении параметра <code>appPropertiesConfig</code>:
+                <programlisting><![CDATA[file:${catalina.home}/conf/sales-core/local.app.properties]]></programlisting>
+              </para>
+            </listitem>
+            <listitem>
+              <para>Откройте файл <code>tomcat/webapps/sales/WEB-INF/web.xml</code>
+                и измените последнюю строку в значении параметра <code>appPropertiesConfig</code>:
+                <programlisting><![CDATA[file:${catalina.home}/conf/sales/local.app.properties]]></programlisting>
+              </para>
+            </listitem>
+            <listitem>
+              <para>Добавьте в <code>tomcat/conf/sales-core/local.app.properties</code>:
+                <programlisting><![CDATA[
+  cuba.webContextName = sales-core
+  cuba.webPort = 7070
+  cuba.webHostName = myserver
+  cuba.webAppUrl = http://myserver:7070/sales]]></programlisting>
+              </para>
+            </listitem>
+            <listitem>
+              <para>Добавьте в <code>tomcat/conf/sales/local.app.properties</code>:
+                <programlisting><![CDATA[
+  cuba.connectionUrlList = http://localhost:7070/sales-core
+  cuba.webContextName = sales
+  cuba.webPort = 7070
+  cuba.webHostName = myserver
+  cuba.webAppUrl = http://myserver:7070/sales]]></programlisting>
+              </para>
+              <para>Свойство приложения <link linkend="cuba.connectionUrlList">cuba.connectionUrlList</link>
+                используется для перекачки файлов между веб клиентом и Middleware даже в случае
+                <link linkend="cuba.useLocalServiceInvocation">local service invocations</link>, поэтому оно всегда
+                должно указывать на реальный URL веб приложения Middleware.
+              </para>
+            </listitem>
+          </itemizedlist>
+        </para>
+        <para>Если для веб клиента вы хотите использовать корневой контекст (<code>http://myserver:8080</code>),
+          переименуйте каталоги <code>sales</code> в <code>ROOT</code>
+          <programlisting><![CDATA[
+  tomcat/
+      conf/
+          ROOT/
+              local.app.properties
+          sales-core/
+              local.app.properties
+      webapps/
+          ROOT/
+          sales-core/]]></programlisting>
+          и используйте <code>/</code> в качестве веб контекста в файле <code>tomcat/conf/ROOT/local.app.properties</code>:
+          <programlisting><![CDATA[
+  cuba.webContextName = /]]></programlisting>
+        </para>
+      </section>
     </section>
     <section id="war_deployment">
       <title>Развертывание в WAR</title>
