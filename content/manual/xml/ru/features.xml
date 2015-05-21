@@ -329,8 +329,9 @@
   </section>
   <section id="runtime_properties">
     <title>Динамические атрибуты</title>
-    <para>Механизм динамических атрибутов предназначен для описания новых свойств сущностей на этапе настройки и эксплуатации системы. При этом для одного типа сущности может быть задано несколько наборов динамических атрибутов.</para>
-    <figure>
+    <para><firstterm>Динамические атрибуты</firstterm> - это дополнительные поля сущности, которые можно добавлять без изменения модели данных в СУБД и перезагрузки приложения. Механизм динамических атрибутов предназначен для описания новых свойств сущностей на этапе настройки и эксплуатации системы.</para>
+     <para>Динамические атрибуты являются реализацией концепции <ulink url="http://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model">Entity-Attribute-Value</ulink> в платформе CUBA.</para>
+      <figure>
       <title>Диаграмма классов механизма динамических атрибутов</title>
       <mediaobject>
         <imageobject>
@@ -341,62 +342,143 @@
     <para>Рассмотрим приведенные на диаграмме классы.</para>
     <itemizedlist>
       <listitem>
-        <para><code>CategorizedEntity</code> - базовый класс сущностей, которые могут иметь динамические атрибуты. Содержит ссылку на объект <code>Category</code>, т.е. каждый экземпляр сущности <code>SomeEntity</code> может быть отнесен к одной из определенных заранее категорий.</para>
-      </listitem>
-      <listitem>
-        <para><code>Category</code> - определяет категорию объектов и соответствующий набор динамических атрибутов. Категория должна быть отнесена к некоторому типу сущности.</para>
+        <para><code>Category</code> - определяет <firstterm>категорию</firstterm> объектов, которая содержит описание структуры динамических атрибутов. Каждая категория относится к некоторому типу сущности, для чего хранит название его мета-класса в свойстве <code>entityType</code>.</para>
         <para>Например, имеется сущность типа <userinput>Автомобиль</userinput>. Для нее можно определить две категории: <userinput>Грузовой</userinput> и <userinput>Пассажирский</userinput>. При этом категория <userinput>Грузовой</userinput>  будет содержать атрибуты <userinput>Грузоподъемность</userinput> и <userinput>Вид кузова</userinput>, а категория <userinput>Пассажирский</userinput> - атрибуты <userinput>Количество мест</userinput> и <userinput>Наличие детского сидения</userinput>.</para>
-        <para>Атрибут <code>isDefault</code> указывает, что при создании нового экземпляра сущности для него автоматически выбирается данная категория.</para>
-        <para>Атрибут <code>special</code> указывает, что данная категория обрабатывается в приложении специальным образом, и не отображается в универсальном UI редактирования категорий.</para>
+        <para>Сущность может иметь атрибуты одновременно из нескольких категорий, связанных с этим типом сущности. При необходимости отдельный тип сущности можно связать с одной конкретной категорией (см. раздел <link linkend="categorized_entity">Сущности с одной категорией</link>).</para>
       </listitem>
       <listitem>
-        <para><code>CategoryAttribute</code> - определяет динамический атрибут, относящийся к некоторой категории. Содержит значение по умолчанию для различных типов данных. Значение перечислений задается в виде списка строк через запятую.</para>
+        <para><code>CategoryAttribute</code> - определяет динамический атрибут, относящийся к некоторой категории. Каждый атрибут описывает одно поле определенного типа. У каждого атрибута имеется обязательное поле <code>Код</code> (<code>code</code>), которое используется в качестве его системного имени. <code>Имя</code> атрибута (<code>name</code>) используется для отображения пользователю.</para>
       </listitem>
       <listitem>
-        <para><code>CategoryAttributeValue</code> - значение динамического атрибута для конкретного экземпляра сущности.</para>
+        <para><code>CategoryAttributeValue</code> - значение динамического атрибута для конкретного экземпляра сущности. Физически значения  динамических атрибутов хранятся в специальной таблице <code>SYS_ATTR_VALUE</code>. У каждой записи этой таблицы есть ссылка на определенную сущность (колонка <code>ENTITY_ID</code>).</para>
       </listitem>
     </itemizedlist>
-    <para>Управление категориями и описаниями атрибутов осуществляется с помощью специальных экранов, доступных через меню <guimenu>Администрирование</guimenu> -&gt; <guimenuitem>Категории</guimenuitem>.</para>
     <section>
       <title>Применение</title>
-      <para>Для того чтобы некоторая сущность могла иметь динамические атрибуты, ее класс необходимо унаследовать от <code>CategorizedEntity</code>, и, соответственно, обеспечить в таблице наличие поля <database>CATEGORY_ID</database> типа <code>UUID</code>.</para>
-      <para>Для включения  динамических атрибутов в экран редактирования сущности необходимо выполнить следующее:<itemizedlist>
+        <para>Управление категориями и описаниями атрибутов осуществляется с помощью специальных экранов, доступных через меню <guimenu>Администрирование</guimenu> -&gt; <guimenuitem>Категории</guimenuitem>.</para>
+        <figure>
+            <title>Экран управления категориями</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata align="center" fileref="img/categoryBrowser.png"/>
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>Редактор категорий позволяет создать категорию для выбранного типа сущности и добавить в нее набор динамических атрибутов. Для категории обязательно указывается имя и соотнесенный с ней тип сущности.</para>
+        <figure>
+            <title>Редактор категорий</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata align="center" fileref="img/categoryEditor.png"/>
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>Редактор динамического атрибута позволяет задать имя, системный код, тип значения и значение атрибута по умолчанию.</para>
+        <figure>
+            <title>Редактор динамического атрибута</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata align="center" fileref="img/runtimePropertyEditor.png"/>
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>Динамический атрибут также имеет настройки видимости, описывающие, на каких экранах его нужно отображать. По умолчанию атрибут не виден ни на одном экране.</para>
+        <figure>
+            <title>Настройки видимости динамического атрибута</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata align="center" fileref="img/runtimePropertyVisibility.png"/>
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>Кроме экрана можно также указать компонент, в котором атрибут должен появляться (например, для экранов, где несколько групп полей показывают поля одной и той же сущности).</para>
+        <para>Если атрибут отмечен как видимый на каком-либо экране, он автоматически отобразится во всех группах полей и таблицах, отображающих объекты данного типа.</para>
+        <para>Доступ к динамическим атрибутам также может быть ограничен через настройки в ролях пользователей. Настройки осуществляются так же, как <link linkend="roles">для обычных атрибутов</link>.</para>
+        <para>Для того чтобы изменения в атрибутах и настройках видимости вступили в силу, необходимо нажать кнопку <guibutton>Применить изменения</guibutton> на экране со списком категорий. Изменения также можно применить из кода, вызвав метод <code>com.haulmont.cuba.core.jmx.CachingFacade#clearDynamicAttributesCache()</code>.</para>
+        <figure>
+            <title>Автоматическое добавление динамического атрибута в экран</title>
+            <mediaobject>
+                <imageobject>
+                    <imagedata align="center" fileref="img/runtimePropsApplyChanges.png"/>
+                </imageobject>
+            </mediaobject>
+        </figure>
+        <para>Динамические атрибуты в экран можно добавить вручную. Для этого необходимо выполнить следующее:</para>
+        <itemizedlist>
+            <listitem>
+                    <para>В секции <code>dsContext</code> XML-дескриптора экрана включить для источника данных с загружаемой сущностью (сущностями) признак <code>loadDynamicAttributes=true</code>, например:</para>
+                    <programlisting language="xml">
+<![CDATA[
+<dsContext>
+    <datasource id="carDs" class="com.haulmont.cuba.security.entity.Car" view="_local" loadDynamicAttributes="true"/>
+</dsContext>]]>
+                    </programlisting>
+            </listitem>
+            <listitem>
+                <para>В описании компонента в качестве <code>property</code> нужно использовать код атрибута с символом <code>+</code> в начале (например, <code>+numberOfSeats</code>):</para>
+                <programlisting language="xml">
+<![CDATA[<textField id="numberOfSeats" datasource="carDs" property="+numberOfSeats"/>]]>
+                </programlisting>
+            </listitem>
+        </itemizedlist>
+      <simplesect id="categorized_entity">
+          <title>Сущности с одной категорией</title>
+      <para>Случается так, что необходимо, чтобы сущность ссылалась на конкретную категорию. В этом случае в классе, описывающем тип сущности, нужно реализовать интерфейс <code>com.haulmont.cuba.core.entity.Categorized.</code></para>
+      <para>Если тип сущности реализует этот интерфейс, то для отображения динамических атрибутов этой сущности можно использовать компонент <code>com.haulmont.cuba.gui.components.RuntimePropertiesFrame.</code></para>
+      <para>Для включения динамических атрибутов в экран при помощи RuntimePropertiesFrame необходимо выполнить следующее:<itemizedlist>
           <listitem>
             <para>В секции <sgmltag>dsContext</sgmltag> необходимо объявить два источника данных:<itemizedlist>
                 <listitem>
                   <para><sgmltag>runtimePropsDatasource</sgmltag> - специфический источник, в который будут загружены экземпляры <code>CategoryAttributeValue</code>. Атрибут <sgmltag>mainDs</sgmltag> должен ссылаться на главный источник данных, содержащий редактируемую сущность.</para>
                 </listitem>
                 <listitem>
-                  <para>обычный <sgmltag>collectionDatasource</sgmltag> для загрузки списка категорий данного типа сущности</para>
+                  <para>обычный <sgmltag>collectionDatasource</sgmltag> для загрузки списка категорий данного типа сущности.</para>
                 </listitem>
               </itemizedlist></para>
-            <para>Например:<programlisting language="xml">&lt;dsContext&gt;
-  &lt;datasource id=&quot;carDs&quot;
-              class=&quot;com.sample.app.entity.Car&quot;
-              view=&quot;carEdit&quot;/&gt;
+            <para>Например:<programlisting language="xml">
+<![CDATA[
+<dsContext>
+    <datasource id="carDs"
+        class="com.sample.app.entity.Car"
+        view="carEdit"/>
 
-  &lt;runtimePropsDatasource id=&quot;runtimePropsDs&quot;
-                          mainDs=&quot;carDs&quot;/&gt;
+    <runtimePropsDatasource id="runtimePropsDs"
+        mainDs="carDs"/>
 
-  &lt;collectionDatasource id=&quot;categories&quot;
-                        class=&quot;com.haulmont.cuba.core.entity.Category&quot;
-                        view=&quot;_local&quot;&gt;
-      &lt;query&gt;
-          select c from sys$Category c where c.entityType=&apos;app$Car&apos;
-      &lt;/query&gt;
-  &lt;/collectionDatasource&gt;
-&lt;/dsContext&gt;</programlisting></para>
+    <collectionDatasource id="categories"
+        class="com.haulmont.cuba.core.entity.Category"
+        view="_local">
+    <query>
+         select c from sys$Category c where c.entityType='app$Car'
+    </query>
+    </collectionDatasource>
+    </dsContext>]]></programlisting></para>
           </listitem>
           <listitem>
-            <para>Для отображения списка категорий и собственно динамических атрибутов используется визуальный компонент <sgmltag>runtimeProperties</sgmltag>:<programlisting language="xml">&lt;runtimeProperties id=&quot;runtimePropsFrame&quot;
-                 runtimeDs=&quot;runtimePropsDs&quot;
-                 categoriesDs=&quot;categories&quot;
-                 width=&quot;100%&quot;/&gt;</programlisting></para>
+            <para>После этого можно включить в XML-дескриптор экрана визуальный компонент <sgmltag>runtimeProperties</sgmltag>:
+                <programlisting language="xml">
+<![CDATA[
+<runtimeProperties id="runtimePropsFrame"
+    runtimeDs="runtimePropsDs"
+    categoriesDs="categories"
+    width="100%"/>]]></programlisting></para>
           </listitem>
         </itemizedlist></para>
+    </simplesect>
+    <simplesect>
+        <title>REST API</title>
+        <para><link linkend="rest_api">REST API</link> поддерживает выгрузку динамических атрибутов. Для этого достаточно добавить в URL параметр <code>dynamicAttributes=true</code>:</para>
+        <programlisting>
+<![CDATA[
+    app-portal/api/find.xml?e=ref$Car-9f789ba9-ca15-4758-a8b8-77e434f1d438&s=9f789ba9-ca15-4758-a8b8-77e434f1d438&dynamicAttributes=true
+]]>
+        </programlisting>
+        <para>Динамические атрибуты будут выглядеть так же, как и обычные, с той разницей, что  код динамического атрибута начинается с <code>+</code>.</para>
+        <para>REST API поддерживает изменение динамических атрибутов. Коды динамических атрибутов в теле запроса должны начинаться с <code>+</code>.</para>
+    </simplesect>
     </section>
   </section>
-  <section>
+  <section id="pessimistic_locking">
     <title>Пессимистичная блокировка</title>
     <para>В данном разделе описано применение пессимистичной блокировки  в CUBA-приложениях.</para>
     <section>
