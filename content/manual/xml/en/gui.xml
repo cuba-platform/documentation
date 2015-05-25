@@ -8118,7 +8118,7 @@ com/sample/sales/desktop/res</programlisting></para>
   </section>
   <section id="gui_web">
     <title>Web Client Specifics</title>
-    <para>Implementation of the generic user interface of the   <structname>Web Client</structname> <link linkend="app_tiers">block</link> is based on the  <application>Vaadin</application> framework. The main classes available in the web client infrastructure are described below.<figure>
+    <para>Implementation of the generic user interface of the  <structname>Web Client</structname> <link linkend="app_tiers">block</link> is based on the  <application>Vaadin</application> framework. The main classes available in the web client infrastructure are described below.<figure>
         <title>Classes of the Web Client Infrastructure</title>
         <mediaobject>
           <imageobject>
@@ -8183,6 +8183,92 @@ com/sample/sales/desktop/res</programlisting></para>
         </itemizedlist></para>
       <para>Please note that if a screen is located in the project’s <structname>gui</structname> module, you can only work with generalized interfaces of CUBA components. In order to use  <code>WebComponentsHelper.unwrap()</code> you should either put the entire screen into the  <structname>web</structname> module, or use the mechanism of <link linkend="companions">controller companions</link>.</para>
     </section>
+    <section>
+          <title>Main Screen Layout</title>
+          <para>The below facility provides means of designing application main screen layout with CUBA technologies, including XML-descriptors, Java controllers, UI components and data sources.</para>
+          <para>Main screen is a specific system screen with <code>mainWindow</code> identifier. Main screen controller should be derived from <code>AbstractMainWindow</code>.</para>
+          <emphasis role="bold">Initializing the main screen</emphasis>
+          <orderedlist>
+              <listitem>
+                  <para>Load and initialize the screen and its components.</para>
+              </listitem>
+              <listitem>
+                  <para>Find the system components (<code>AppWorkArea</code>, <code>UserIndicator</code>, <code>FoldersPane</code>) and mark them for further re-use.</para>
+              </listitem>
+              <listitem>
+                  <para>Link the screen layout to Vaadin UI components tree.</para>
+              </listitem>
+              <listitem>
+                  <para>Resume the datasources (<code>resumeSuspended()</code>) and invoke the <code>ready()</code> controller method.</para>
+              </listitem>
+          </orderedlist>
+          <emphasis role="bold">System components of the main screen</emphasis>
+          <para>In addition to UI components, additional system components may be used in the main screen:</para>
+          <itemizedlist>
+              <listitem>
+                  <para><code>AppMenu</code> - main application menu.</para>
+              </listitem>
+              <listitem>
+                  <para><code>FoldersPane</code> - application and search folders panel.</para>
+              </listitem>
+              <listitem>
+                  <para><code>AppWorkArea</code> - application work area, the required component for working with screens in <code>THIS_TAB</code>, <code>NEW_WINDOW</code>, <code>NEW_TAB</code> modes.</para>
+              </listitem>
+              <listitem>
+                  <para><code>UserIndicator</code> - the field, which displays the name of the current user, as well as enables selecting substituted users, if any.</para>
+              </listitem>
+              <listitem>
+                  <para><code>NewWindowButton</code> - the button, which opens a new window.</para>
+              </listitem>
+              <listitem>
+                  <para><code>LogoutButton</code> - the application logout button.</para>
+              </listitem>
+              <listitem>
+                  <para><code>TimeZoneIndicator</code> - the label displaying the current user's time zone.</para>
+              </listitem>
+              <listitem>
+                  <para><code>FtsField</code> - the full text search field.</para>
+              </listitem>
+          </itemizedlist>
+              <para>In order to handle system components, add the <emphasis role="bold">xmlns:main</emphasis> element to the application screen:</para>
+          <programlisting language="xml">
+<![CDATA[
+<window xmlns="http://schemas.haulmont.com/cuba/5.5/window.xsd"
+    xmlns:main="http://schemas.haulmont.com/cuba/5.5/mainwindow.xsd"
+        class="com.haulmont.cuba.web.app.mainwindow.AppMainWindow">
+         <layout>
+         </layout>
+</window>]]>
+          </programlisting>
+          <para>The dedicated <code>AppWorkArea</code> component encapsulates work area handling. It will be replaced by a <code>TabSheet</code> with application windows, or the application main windows (if single-view mode is on). It enables setting the work area display view for cases when none of the application windows are opened. This view can be set in the <code>initialLayout</code> element within the <code>workArea</code> component declaration:</para>
+          <programlisting language="xml">
+<![CDATA[
+<main:workArea id="workArea" width="100%" height="100%">
+    <main:initialLayout spacing="true" margin="true">
+    </main:initialLayout>
+    </main:workArea>]]>
+          </programlisting>
+          <para>The initial screen layout (<code>initialLayout</code>) is removed from <code>AppWorkArea</code> when the windows are opened, and is added back when all the windows are closed. Changing the work area to main screen and application windows display may be handled by <code>WorkAreaStateChangeListener</code> in <code>AbstractMainWindow</code> API. For example, the code for main window data refresh may be placed within such a listener.</para>
+          <para>Opening the screens from the main screen in <code>NEW_WINDOW</code> or <code>THIS_WINDOW</code> modes results in changing the main screen to application window display.</para>
+          <emphasis role="bold">Generic main screen implementation</emphasis>
+          <para>The platform includes the generic main screen implementation. <filename>/com/haulmont/cuba/web/app/mainwindow/mainwindow.xml</filename> is the XML descriptor for it.</para>
+          <para>Generic implementation uses the <code>AppMainWindow</code> controller class. The <code>mainWindow</code> screen may be extended in the project, like any standard system screen. In addition to that, the generic main screen implementation may be fully replaced with custom code.</para>
+          <para>Example of an extended screen:</para>
+          <programlisting language="xml"><![CDATA[
+<window xmlns="http://schemas.haulmont.com/cuba/5.5/window.xsd"
+        xmlns:ext="http://schemas.haulmont.com/cuba/5.5/window-ext.xsd"
+        extends="com/haulmont/cuba/web/app/mainwindow/mainwindow.xml"
+        class="com.haulmont.cuba.web.app.mainwindow.AppMainWindow">
+        <layout>
+            <vbox ext:index="0">
+                 <label value="This is Refapp!" stylename="h2"/>
+             </vbox>
+         </layout>
+</window>]]>
+          </programlisting>
+          <emphasis role="bold">Navigating the main screen (BreadCrumbs)</emphasis>
+          <para>Developers may also disable navigation for the main screen (BreadCrumbs) by setting <link linkend="cuba.web.showBreadCrumbs">cuba.web.showBreadCrumbs</link> application property value to <code>false</code>.</para>
+      </section>
   </section>
   <section id="gui_desktop">
     <title>Desktop Client Specifics</title>

@@ -8534,7 +8534,7 @@ com/sample/sales/desktop/res</programlisting></para>
       </listitem>
     </itemizedlist>
     <section id="webComponentsHelper">
-      <title>Работа с компонентами Vaadin </title>
+      <title>Работа с компонентами Vaadin</title>
       <para>Для работы непосредственно с компонентами Vaadin, реализующими интерфейсы <link linkend="gui_vcl">библиотеки визуальных компонентов</link> в <link linkend="app_tiers">блоке</link> <structname>Web Client</structname>, необходимо воспользоваться классом <code>WebComponentsHelper</code>. Он имеет два статических метода для получения ссылок на компоненты Vaadin:<itemizedlist>
           <listitem>
             <para><code>unwrap</code> - получить Vaadin-компонент для данного CUBA-компонента.</para>
@@ -8545,8 +8545,92 @@ com/sample/sales/desktop/res</programlisting></para>
         </itemizedlist></para>
       <para>Следует иметь в виду, что если экран расположен в модуле <structname>gui</structname> проекта, то в его контроллере можно работать только с обобщенными интерфейсами CUBA-компонентов. Чтобы использовать <code>WebComponentsHelper.unwrap()</code> нужно либо расположить весь экран в модуле <structname>web</structname>, либо воспользоваться механизмом <link linkend="companions">компаньонов контроллеров</link>.</para>
     </section>
+ <section>
+     <title>Компоновка главного окна приложения</title>
+     <para>Механизм предоставляет возможность задавать компоновку главного экрана веб-приложения с использованием технологий CUBA - XML-дескриптора и Java-контроллера с применением компонентов GUI и источников данных.</para>
+     <para>Главное окно - особый экран системы, имеющий идентификатор <code>mainWindow</code>. Контроллер главного экрана должен быть наследником класса <code>AbstractMainWindow</code>.</para>
+     <emphasis role="bold">Инициализация главного экрана</emphasis>
+     <orderedlist>
+         <listitem>
+             <para>Загрузить и инициализировать экран и компоненты.</para>
+         </listitem>
+         <listitem>
+             <para>Найти системные компоненты (<code>AppWorkArea</code>, <code>UserIndicator</code>, <code>FoldersPane</code>) и запомнить их для дальнейшего использования.</para>
+         </listitem>
+         <listitem>
+             <para>Прикрепить компоновку экрана к дереву компонентов Vaadin UI.</para>
+         </listitem>
+         <listitem>
+             <para>Пробудить источники данных (<code>resumeSuspended()</code>), выполнить метод контроллера <code>ready()</code>.</para>
+         </listitem>
+     </orderedlist>
+     <emphasis role="bold">Системные компоненты главного экрана</emphasis>
+     <para>Помимо компонентов GUI в главном экране приложения можно использовать дополнительные системные компоненты:</para>
+        <itemizedlist>
+            <listitem>
+                <para><code>AppMenu</code> - главное меню.</para>
+            </listitem>
+            <listitem>
+                <para><code>FoldersPane</code> - панель папок поиска и папок приложения.</para>
+            </listitem>
+            <listitem>
+                <para><code>AppWorkArea</code> - рабочая область, обязательный компонент для работы с окнами в режимах <code>THIS_TAB</code>, <code>NEW_WINDOW</code>, <code>NEW_TAB</code>.</para>
+            </listitem>
+            <listitem>
+                <para><code>UserIndicator</code> - поле отображает имя текущего пользователя, а при наличии замещаемых пользователей - позволяет переключаться между ними.</para>
+            </listitem>
+            <listitem>
+                <para><code>NewWindowButton</code> - кнопка открытия нового окна приложения.</para>
+            </listitem>
+             <listitem>
+                <para><code>LogoutButton</code> - кнопка выхода из приложения.</para>
+             </listitem>
+             <listitem>
+                <para><code>TimeZoneIndicator</code> - надпись, которая отображает временную зону пользователя.</para>
+             </listitem>
+             <listitem>
+                <para><code>FtsField</code> - поле полнотекстового поиска.</para>
+             </listitem>
+        </itemizedlist>
+     <para>Для работы с системными компонентами в XML-дескриптор экрана нужно добавить элемент <emphasis role="bold">xmlns:main</emphasis>:</para>
+     <programlisting language="xml"><![CDATA[
+<window xmlns="http://schemas.haulmont.com/cuba/5.5/window.xsd"
+    xmlns:main="http://schemas.haulmont.com/cuba/5.5/mainwindow.xsd"
+        class="com.haulmont.cuba.web.app.mainwindow.AppMainWindow">
+         <layout>
+         </layout>
+</window>]]>
+    </programlisting>
+<para>Специальный компонент <code>AppWorkArea</code> инкапсулирует работу с рабочей областью. На его месте будет расположен компонент <code>TabSheet</code> с окнами приложения, либо окно приложения (если используется режим без вкладок). Он позволяет задавать представление рабочей области для случая, когда не открыто ни одно окно приложения. В XML такое представление можно задать в элементе <code>initialLayout</code> внутри объявления <code>workArea</code>:</para>
+<programlisting language="xml"><![CDATA[
+<main:workArea id="workArea" width="100%" height="100%">
+    <main:initialLayout spacing="true" margin="true">
+    </main:initialLayout>
+    </main:workArea>]]>
+</programlisting>
+    <para>При открытии окон компоновка начального экрана (<code>initialLayout</code>) удаляется из <code>AppWorkArea</code>, при закрытии всех окон приложения - добавляется обратно. Для событий смены рабочей области на стартовый экран и на отображение окон приложения в API <code>AbstractMainWindow</code> можно добавить обработчик <code>WorkAreaStateChangeListener</code>. Например, в таком слушателе можно разместить код обновления данных стартового экрана.</para>
+    <para>Открытие окон из стартового экрана в режимах <code>NEW_WINDOW</code> или <code>THIS_WINDOW</code> приводят к переключению главного экрана на отображение окон приложения.</para>
+     <emphasis role="bold">Базовая реализация главного экрана</emphasis>
+     <para>В платформе есть базовая реализация главного экрана. Ее XML-дескриптор - <filename>/com/haulmont/cuba/web/app/mainwindow/mainwindow.xml</filename>.</para>
+     <para>Базовая реализация использует класс контроллера <code>AppMainWindow</code>. Экран <code>mainWindow</code> может быть расширен в проекте, так же как обычный экран системы. Кроме того, в проекте можно полностью заменить базовую реализацию экрана на свою.</para>
+     <para>Пример расширенного экрана:</para>
+     <programlisting language="xml"><![CDATA[
+<window xmlns="http://schemas.haulmont.com/cuba/5.5/window.xsd"
+        xmlns:ext="http://schemas.haulmont.com/cuba/5.5/window-ext.xsd"
+        extends="com/haulmont/cuba/web/app/mainwindow/mainwindow.xml"
+        class="com.haulmont.cuba.web.app.mainwindow.AppMainWindow">
+        <layout>
+            <vbox ext:index="0">
+                 <label value="This is Refapp!" stylename="h2"/>
+             </vbox>
+         </layout>
+</window>]]>
+     </programlisting>
+     <emphasis role="bold">Навигация в окнах приложения (BreadCrumbs)</emphasis>
+     <para>Дополнительно разработчики могут отключить отображение навигации в окнах (BreadCrumbs) при помощи свойства приложения <link linkend="cuba.web.showBreadCrumbs">cuba.web.showBreadCrumbs</link>, выставив ему значение <code>false</code>.</para>
+ </section>
   </section>
-  <section id="gui_desktop">
+<section id="gui_desktop">
     <title>Специфика Desktop Client</title>
     <para>Реализация универсального пользовательского интерфейса в <link linkend="app_tiers">блоке</link> <structname>Desktop Client</structname> основана на  <application>Java Swing</application>. Рассмотрим основные классы, входящие в состав инфраструктуры десктоп клиента.<figure>
         <title>Классы инфраструктуры Desktop Client</title>
