@@ -311,156 +311,220 @@
       <para>You can view the current parameter values  and send a test message using the  <code>app-core.cuba:type=Emailer</code> JMX bean.</para>
     </section>
   </section>
-    <section id="runtime_properties">
-        <title>Dynamic attributes</title>
-        <para><firstterm>Dynamic attributes</firstterm> are additional entity fields, which can be added without changing the data model in the DBMS and restarting the application. Dynamic attributes are used to define new attributes of entities at the stage of system operation or configuration.</para>
-        <para>Dynamic attributes implement the <ulink url="http://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model">Entity-Attribute-Value</ulink> model in CUBA platform.</para>
+    <section id="dynamic_attributes">
+        <title>Dynamic Attributes</title>
+      <para>
+        <firstterm>Dynamic attributes</firstterm>
+        are additional entity attributes, that can be added without changing the database schema and restarting the
+        application. Dynamic attributes are usually used to define new entity properties at deployment or
+        production stage.
+      </para>
+      <para>CUBA dynamic attributes implement the
+        <ulink url="http://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model">Entity-Attribute-Value</ulink>
+        model.</para>
+      <figure>
+        <title>Dynamic Attributes Classes Diagram</title>
+        <mediaobject>
+          <imageobject>
+            <imagedata align="center" fileref="img/dynamic_attributes.png"/>
+          </imageobject>
+        </mediaobject>
+      </figure>
+      <itemizedlist>
+        <listitem>
+          <para>
+            <code>Category</code> - defines a <firstterm>category</firstterm>
+            of objects and the corresponding set of dynamic attributes. The category must be assigned to some entity
+            type.
+          </para>
+          <para>For example, there is an entity of the
+            <emphasis>Car</emphasis> type. We can define two categories for it:
+            <emphasis>Truck</emphasis> and
+            <emphasis>Passenger</emphasis>. The
+            <emphasis>Truck</emphasis> category will contain
+            <emphasis>Load Capacity</emphasis> and <emphasis>Body Type</emphasis> attributes, and the
+            <emphasis>Passenger</emphasis> category –
+            <emphasis>Number of Seats</emphasis> and <emphasis>Child Seat</emphasis>.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <code>CategoryAttribute</code> - defines a dynamic attribute related to some category. Each attribute
+            describes a single field of a definite type. The required
+            <code>Code</code> field contains the system name of the attribute. The
+            <code>Name</code> field contains the human-readable attribute name.
+          </para>
+        </listitem>
+        <listitem>
+          <para>
+            <code>CategoryAttributeValue</code> - dynamic attribute value for a particular entity instance. Dynamic
+            attribute values are physically stored in the dedicated
+            <code>SYS_ATTR_VALUE</code> table. Each table record has a reference to some entity (<code>ENTITY_ID</code> column).
+          </para>
+        </listitem>
+      </itemizedlist>
+      <para>An entity instance can have dynamic attributes of all categories related to the entity type. So if you create
+        two categories of the Car entity mentioned above, you will be able to specify any dynamic attribute from both
+        categories for a Car instance. If you want to be able to classify an entity instance as belonging to a single
+        category (a car can be either truck or passenger), the entity must implement
+        <link linkend="categorized_entity">Categorized</link> interface. In this case an entity instance will have the
+        reference to a category, and dynamic attributes from this category only.</para>
+      <section id="dynamic_attributes_usage">
+        <title>Using Dynamic Attributes</title>
+        <para>Managing attributes categories and descriptions is done via special screens available in
+          <guimenu>Administration &gt; Categories</guimenu> menu.
+        </para>
+        <para>The category browser shows the list of all registered categories.</para>
         <figure>
-            <title>Classes Diagram of the Dynamic Attributes Facility</title>
-            <mediaobject>
-                <imageobject>
-                    <imagedata align="center" fileref="img/RuntimeProperties.png"/>
-                </imageobject>
-            </mediaobject>
+          <title>Categories Browser</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata align="center" fileref="img/categoryBrowser.png"/>
+            </imageobject>
+          </mediaobject>
         </figure>
-        <para> Let us have a look at classes shown in the diagram.</para>
+        <para>The category editor allows you to create a new category for an entity and define a set of dynamic
+          attributes. The category name and the related entity type fields are mandatory. The
+          <guilabel>Default</guilabel> checkbox indicates that this category will be automatically selected for a new
+          instance of an entity implementing <code>Categorized</code> interface.
+        </para>
+        <figure>
+          <title>Category Editor</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata align="center" fileref="img/categoryEditor.png"/>
+            </imageobject>
+          </mediaobject>
+        </figure>
+        <para>Dynamic attribute editor enables setting the name, system code, value type and the default value of the attribute.</para>
+        <figure>
+          <title>Dynamic Attribute Editor</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata align="center" fileref="img/runtimePropertyEditor.png"/>
+            </imageobject>
+          </mediaobject>
+        </figure>
+        <para>A dynamic attribute also has visibility settings, which define the screens where it should be displayed.
+          By default, the attribute is invisible on any screen.
+        </para>
+        <figure>
+          <title>Dynamic Attribute Visibility Settings</title>
+          <mediaobject>
+            <imageobject>
+              <imagedata align="center" fileref="img/runtimePropertyVisibility.png"/>
+            </imageobject>
+          </mediaobject>
+        </figure>
+        <para>In addition to the screen, you can also specify a component in which the attribute is to appear (for
+          example, for screens, where several <link linkend="gui_FieldGroup">FieldGroup</link> components show the
+          fields of the same entity).
+        </para>
+        <para>If the attribute is marked as visible on a screen, it will automatically appear in all field groups and
+          tables displaying entities of the corresponding type on the screen.
+        </para>
+        <para>Access to dynamic attributes can also be restricted by <link linkend="roles">user role</link> settings.
+          Security settings for dynamic attributes are similar to those for regular attributes.
+        </para>
+        <para>In order for changes in attribute and visibility settings to take effect, click
+          <guibutton>Apply settings</guibutton> in the categories browser. Changes can also be applied
+          via <guimenu>Administration &gt; JMX Console</guimenu> by calling the
+          <code>clearDynamicAttributesCache()</code> method of the <code>app-core.cuba:type=CachingFacade</code> JMX bean.
+        </para>
+        <para>The dynamic attribute added to the screen automatically by specifying visibility settings is shown below:
+          <mediaobject>
+            <imageobject>
+              <imagedata align="center" fileref="img/runtimePropsApplyChanges.png"/>
+            </imageobject>
+          </mediaobject>
+        </para>
+        <para>Dynamic attributes can be added to a screen manually. To do this, follow these steps:</para>
         <itemizedlist>
-            <listitem>
-                <para><code>Category</code> - defines a <firstterm>category</firstterm> of objects, which contains description of the dynamic attributes structure. Each category is assigned to some entity type, for which purpose stores the name of its meta-class in <code>entityType</code> field.</para>
-                <para>For example, there is an entity of the <userinput>Car</userinput> type. We can define two categories for it: <userinput>Freight</userinput> and <userinput>Passenger</userinput>. The <userinput>Freight</userinput> category will contain <userinput>Load capacity</userinput> and <userinput>Body type</userinput> attributes, and the <userinput>Passenger</userinput> category – <userinput>Number of seats</userinput> and <userinput>Child Safety Seat</userinput>.</para>
-                <para>Multiple sets of dynamic attributes from several related categories can be used for one entity type. A specific entity type can be bound to a single category in case of a need (see <link linkend="categorized_entity">Single-category entities</link>).</para>
-            </listitem>
-            <listitem>
-                <para><code>CategoryAttribute</code> - defines a dynamic attribute related to some category. Each attribute describes a single field of a definite type. The required <code>Code</code> field contains the system name of the attribute. The <code>Name</code> field contains the human-readable attribute name.</para>
-            </listitem>
-            <listitem>
-                <para><code>CategoryAttributeValue</code> - dynamic attribute value for a particular entity instance. Dynamic attribute values are physically stored in the dedicated <code>SYS_ATTR_VALUE</code> table. Each table record has a reference to some entity (<code>ENTITY_ID</code> column).</para>
-            </listitem>
+          <listitem>
+            <para>In the <code>dsContext</code> section of the screen XML-descriptor, set the
+              <code>loadDynamicAttributes</code> property to <code>true</code> for a datasource that loads the entity (entities),
+              for example:</para>
+            <programlisting language="xml"><![CDATA[
+<dsContext>
+    <datasource id="carDs" class="com.company.sample.entity.Car" view="_local" loadDynamicAttributes="true"/>
+</dsContext>]]></programlisting>
+          </listitem>
+          <listitem>
+            <para>Specify the dynamic attribute code with the <code>+</code> prefix in the <code>property</code> XML
+              attribute of a component definition:</para>
+            <programlisting language="xml"><![CDATA[
+<textField id="numberOfSeats" datasource="carDs" property="+numberOfSeats"/>]]></programlisting>
+          </listitem>
         </itemizedlist>
-        <section>
-            <title>Using Dynamic Attributes</title>
-            <para>Managing attributes categories and descriptions is done via special screens available in <guimenu>Administration</guimenu> -&gt; <guimenuitem>Categories</guimenuitem> menu.</para>
-            <figure>
-                <title>Categories Browser</title>
-                <mediaobject>
-                    <imageobject>
-                        <imagedata align="center" fileref="img/categoryBrowser.png"/>
-                    </imageobject>
-                </mediaobject>
-            </figure>
-            <para>The category editor enables creating new categories for selected entity type and add a set of dynamic attributes to it. The category name and the related entity type fields are mandatory.</para>
-            <figure>
-                <title>Category Editor</title>
-                <mediaobject>
-                    <imageobject>
-                        <imagedata align="center" fileref="img/categoryEditor.png"/>
-                    </imageobject>
-                </mediaobject>
-            </figure>
-            <para>Dynamic attribute editor enables setting the name, system code, value type and the default value of the attribute.</para>
-            <figure>
-                <title>Dynamic Attribute Editor</title>
-                <mediaobject>
-                    <imageobject>
-                        <imagedata align="center" fileref="img/runtimePropertyEditor.png"/>
-                    </imageobject>
-                </mediaobject>
-            </figure>
-            <para>A dynamic attribute also has visibility settings, which define the screens where it should be displayed. By default, the attribute is invisible on any screen.</para>
-            <figure>
-                <title>Dynamic Attribute Visibility Settings</title>
-                <mediaobject>
-                    <imageobject>
-                        <imagedata align="center" fileref="img/runtimePropertyVisibility.png"/>
-                    </imageobject>
-                </mediaobject>
-            </figure>
-            <para>In addition to the screen, you can also specify the component in which the attribute is to appear (for example, for screens, where several field groups show the fields of the same entity).</para>
-            <para>If the attribute is marked as visible on any screen, it will automatically appear in all field groups and table columns displaying objects of this type.</para>
-            <para>Access to dynamic attributes can also be restricted by user role settings. The settings are similar to those <link linkend = "roles">for common attributes</link>.</para>
-            <para>In order for changes in attribute and visibility settings to take effect, click <guibutton> Apply settings</guibutton> in the categories browser. Changes can also be applied from the code by calling <code>com.haulmont.cuba.core.jmx.CachingFacade#clearDynamicAttributesCache()</code>.</para>
-            <figure>
-                <title>Automatically added dynamic attribute</title>
-                <mediaobject>
-                    <imageobject>
-                        <imagedata align="center" fileref="img/runtimePropsApplyChanges.png"/>
-                    </imageobject>
-                </mediaobject>
-            </figure>
-            <para>Dynamic attributes can be added to the screen manually. To do this, follow these steps:</para>
-            <itemizedlist>
+      </section>
+      <section id="categorized_entity">
+        <title>Categorized Entities</title>
+        <para>If an entity implements <code>com.haulmont.cuba.core.entity.Categorized</code> interface, you can use
+          <code>com.haulmont.cuba.gui.components.RuntimePropertiesFrame</code> component for displaying dynamic
+          attributes of this entity. This component allows a user to select a category for the particular entity
+          instance and specify values of dynamic attributes of this category.</para>
+        <para>In order to use the <code>RuntimePropertiesFrame</code> component in an edit screen, do the following:
+          <itemizedlist>
+          <listitem>
+            <para>Two <link linkend="datasources">datasources</link> should be declared in the <code>dsContext</code>
+              section:
+              <itemizedlist>
                 <listitem>
-                    <para>In the <code>dsContext</code> section of the screen XML-descriptor, set the <code>loadDynamicAttributes=true</code> property for datasource that loads the entity (entities), for example:</para>
-                    <programlisting language="xml">
-                        <![CDATA[
-<dsContext>
-    <datasource id="carDs" class="com.haulmont.cuba.security.entity.Car" view="_local" loadDynamicAttributes="true"/>
-</dsContext>]]>
-                    </programlisting>
+                  <para>
+                    <code>runtimePropsDatasource</code> - a specific datasource to load the
+                    <code>CategoryAttributeValue</code> instances. The <code>mainDs</code>
+                    attribute must refer to the main datasource, which contains the edited entity.
+                  </para>
                 </listitem>
                 <listitem>
-                    <para>Add the attribute code, preceded by <code>+</code>, as <code>property</code> to the component description (for example, <code>+numberOfSeats</code>):</para>
-                    <programlisting language="xml">
-<![CDATA[<textField id="numberOfSeats" datasource="carDs" property="+numberOfSeats"/>]]>
-                    </programlisting>
+                  <para>A regular <code>collectionDatasource</code> to load the list of categories of this entity type.</para>
                 </listitem>
-            </itemizedlist>
-            <simplesect id="categorized_entity">
-                <title>Single-Category Entities</title>
-                <para>Sometimes it is necessary to bind a a specific entity to a single category. In this case, the entity type class must implement <code> com.haulmont.cuba.core.entity.Categorized</code> interface.</para>
-                <para>If the entity type implements this interface, <code>com.haulmont.cuba.gui.components.RuntimePropertiesFrame</code> component may be used for displaying dynamic attributes of this entity.</para>
-                <para>In order to include dynamic attributes into the screen using RuntimePropertiesFrame, do the following:<itemizedlist>
-                    <listitem>
-                        <para>Two datasources should be declared in the <code>dsContext</code> section:<itemizedlist>
-                            <listitem>
-                                <para><sgmltag>runtimePropsDatasource</sgmltag> - a specific datasource to load the <code>CategoryAttributeValue</code> instances. The <sgmltag>mainDs</sgmltag> attribute must refer to the main datasource, which contains the edited entity.</para>
-                            </listitem>
-                            <listitem>
-                                <para>A regular <sgmltag>collectionDatasource</sgmltag> to load the list of categories of this entity type.</para>
-                            </listitem>
-                        </itemizedlist></para>
-                        <para>Example:<programlisting language="xml">
-<![CDATA[
+              </itemizedlist>
+            </para>
+            <para>Example:
+              <programlisting language="xml"><![CDATA[
 <dsContext>
-    <datasource id="carDs"
-        class="com.sample.app.entity.Car"
-        view="carEdit"/>
+  <datasource id="carDs"
+      class="com.company.sample.entity.Car"
+      view="carEdit"/>
 
-    <runtimePropsDatasource id="runtimePropsDs"
-        mainDs="carDs"/>
+  <runtimePropsDatasource id="runtimePropsDs"
+      mainDs="carDs"/>
 
-    <collectionDatasource id="categories"
-        class="com.haulmont.cuba.core.entity.Category"
-        view="_local">
+  <collectionDatasource id="categories"
+      class="com.haulmont.cuba.core.entity.Category"
+      view="_local">
     <query>
-         select c from sys$Category c where c.entityType='app$Car'
+         select c from sys$Category c where c.entityType='sample$Car'
     </query>
-    </collectionDatasource>
-    </dsContext>]]></programlisting></para>
-                    </listitem>
-                    <listitem>
-                        <para>Now, the <sgmltag>runtimeProperties</sgmltag> visual component may be included in the XML-descriptor of the screen:
-                            <programlisting language="xml">
-<![CDATA[
+  </collectionDatasource>
+</dsContext>]]></programlisting>
+            </para>
+          </listitem>
+          <listitem>
+            <para>Now, the <sgmltag>runtimeProperties</sgmltag> visual component may be included in the XML-descriptor of the screen:
+              <programlisting language="xml"><![CDATA[
 <runtimeProperties id="runtimePropsFrame"
-    runtimeDs="runtimePropsDs"
-    categoriesDs="categories"
-    width="100%"/>]]></programlisting></para>
-                    </listitem>
-                </itemizedlist></para>
-            </simplesect>
-            <simplesect>
-                <title>REST API</title>
-                <para><link linkend="rest_api">REST API</link> supports loading dynamic attributes. In order to enable it, add the <code>dynamicAttributes=true</code> parameter to the URL:</para>
-                <programlisting>
-                    <![CDATA[
-    app-portal/api/find.xml?e=ref$Car-9f789ba9-ca15-4758-a8b8-77e434f1d438&s=9f789ba9-ca15-4758-a8b8-77e434f1d438&dynamicAttributes=true
-]]>
-                </programlisting>
-                <para>Dynamic attributes look similar to regular attributes, except for the preceding <code>+</code> symbol.</para>
-                <para>REST API also supports changing dynamic attribute values. Attribute codes in the request body must be preceded with <code>+</code>.</para>
-            </simplesect>
-          </section>
+  runtimeDs="runtimePropsDs"
+  categoriesDs="categories"/>]]></programlisting>
+            </para>
+          </listitem>
+        </itemizedlist>
+        </para>
+      </section>
+      <section id="dynamic_attributes_in_rest_api">
+        <title>Dynamic Attributes in REST API</title>
+        <para><link linkend="rest_api">REST API</link> supports loading and saving dynamic attributes.
+          In order to load dynamic attributes of an entity instance, add the <code>dynamicAttributes=true</code> parameter
+          to the <code>find</code> or <code>query</code> request:</para>
+        <programlisting><![CDATA[
+app-portal/api/find.xml?e=sample$Car-9f789ba9-ca15-4758-a8b8-77e434f1d438&s=9f789ba9-ca15-4758-a8b8-77e434f1d438&dynamicAttributes=true]]>
+        </programlisting>
+        <para>Dynamic attributes are represented in JSON and XML documents in the same way as regular attributes, except
+          for the preceding <code>+</code> symbol.</para>
+        <para>REST API also saves dynamic attributes passed to <code>commit</code>.
+        </para>
+      </section>
     </section>
   <section id="pessimistic_locking">
     <title>Pessimistic Locking</title>
