@@ -2678,53 +2678,34 @@ public class FinancialTransactionException extends Exception {
     </section>
     <section id="exceptionHandlers">
       <title>Client-Level Exception Handlers </title>
-      <para>Unhandled exceptions in Web Client and Desktop Client  <link linkend="app_tiers">blocks</link> thrown in Client tier or passed from Middleware, are passed to the special handlers mechanism. This mechanism is similar for both blocks; however, it uses different (although mainly homonymous) implementation classes.    </para>
-      <para>Let us consider the example of the mechanism in Web Client block. </para>
-      <para>The bean of <code>ExceptionHandlersConfiguration</code> class is declared in  <link linkend="spring.xml">spring.xml</link> file of the block. The handler class names list is specified in  <code>handlerClasses</code> property. For example:  <programlisting language="xml">&lt;bean id=&quot;sales_exceptionHandlersConf&quot; class=&quot;com.haulmont.cuba.web.exception.ExceptionHandlersConfiguration&quot;&gt;
-  &lt;property name=&quot;handlerClasses&quot;&gt;
-      &lt;list&gt;
-          &lt;value&gt;com.sample.sales.web.exception.ZeroBalanceExceptionHandler&lt;/value&gt;
-          &lt;value&gt;com.sample.sales.web.exception.InvalidCustomerStateExceptionHandler&lt;/value&gt;
-      &lt;/list&gt;
-  &lt;/property&gt;
-&lt;/bean&gt;</programlisting></para>
-      <para>The bean identifier should be unique and should not coincide with any of the beans in <link linkend="base_projects">base projects</link>, as the base projects, in turn, may contain similar configuration beans with their own identifiers. </para>
-      <para>The handler should implement  <code>ExceptionHandler</code> interface, handle processing in its  <code>handle()</code> method and return  <code>true</code>, or immediately return  <code>false</code>, if this handler is not able to handle the designated exception. This behaviour enables creating “chain of responsibility” for handlers.  </para>
-      <para>It is recommended to inherit your own handler from  <code>AbstractExceptionHandler</code> base class, which is able to disassemble the exceptions chain (including ones packed inside <code>RemoteException</code>) and handle specific exception types. Exceptions types supported by this handler are defined by passing strings array to the base constructor from the handler constructor. Each string of the array should contain one full class name of the handled exception, for example: <programlisting language="java">public class ReportExceptionHandler extends AbstractExceptionHandler {
-
-  public ReportExceptionHandler() {
-      super(ReportingException.class.getName(),
-            FailedToConnectToOpenOfficeException.class.getName(),
-            UnsupportedFormatException.class.getName());
-  }
-...</programlisting></para>
-      <para>If the exception class is not accessible on Client side, specify its name with string literal: <programlisting language="java">public class OptimisticExceptionHandler extends AbstractExceptionHandler {
-
-  public OptimisticExceptionHandler() {
-      super(&quot;org.springframework.orm.jpa.JpaOptimisticLockingFailureException&quot;);
-  }
-...</programlisting></para>
-      <para>In the case of using  <code>AbstractExceptionHandler</code> as base class, the processing logic is located
-        in  <code>doHandle()</code> method and  looks as  follows for Web Client:
-        <programlisting language="java">
-<![CDATA[
-@Override
-protected void doHandle(App app, String className, String message, @Nullable Throwable throwable) {
-    String msg = messages.getMainMessage("zeroBalance.message");
-    Notification.show(msg, Notification.Type.ERROR_MESSAGE);
-}
-]]></programlisting></para>
-      <para>If the name of the exception class is insufficient to make a decision  whether this handler can be applied to the exception,  <code>canHandle()</code> method should be defined. Above all, this method accepts the text of the exception. If the handler is applicable for this exception, the method must return  <code>true</code>. For example:<programlisting language="java">public class NumericOverflowExceptionHandler extends AbstractExceptionHandler {
-
-  public NumericOverflowExceptionHandler() {
-      super(ReportingSQLException.class.getName());
-  }
-
-  @Override
-  protected boolean canHandle(String className, String message, @Nullable Throwable throwable) {
-      return StringUtils.containsIgnoreCase(message, &quot;Numeric field overflow&quot;);
-  }
-...</programlisting></para>
+      <para>Unhandled exceptions in Web Client and Desktop Client <link linkend="app_tiers">blocks</link>
+        thrown on the client tier or passed from Middleware, are passed to the special handlers mechanism. This mechanism is
+        implemented in GUI <link linkend="app_modules">module</link> and available for both blocks.
+      </para>
+      <para>The handler should be a <link linkend="managed_beans">managed bean</link> implementing the <code>GenericExceptionHandler</code> interface,
+        handle processing in its  <code>handle()</code> method and return  <code>true</code>, or immediately return
+        <code>false</code>, if this handler is not able to handle the passed exception. This behaviour enables creating
+        a “chain of responsibility” for handlers.</para>
+      <para>It is recommended to inherit your handlers from the <code>AbstractGenericExceptionHandler</code> base class,
+        which is able to disassemble the exceptions chain (including ones packed inside <code>RemoteException</code>)
+        and handle specific exception types. Exceptions types supported by this handler are defined by passing strings
+        array to the base constructor from the handler constructor. Each string of the array should contain one full
+        class name of the handled exception, for example:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_1.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>If the exception class is not accessible on the client side, specify its name with the string literal:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_2.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>In the case of using  <code>AbstractGenericExceptionHandler</code> as a base class, the processing logic is located
+        in  <code>doHandle()</code> method and  looks as follows:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_3.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>If the name of the exception class is insufficient to make a decision  whether this handler can be applied
+        to the exception,  <code>canHandle()</code> method should be defined. Above all, this method accepts the text
+        of the exception. If the handler is applicable for this exception, the method must return  <code>true</code>.
+        For example:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_4.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
     </section>
   </section>
 </section>

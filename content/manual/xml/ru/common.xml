@@ -2789,56 +2789,37 @@ public class FinancialTransactionException extends Exception {
     </section>
     <section id="exceptionHandlers">
       <title>Обработчики исключений клиентского уровня</title>
-      <para>Необработанные исключения в <link linkend="app_tiers">блоках</link> <structname>Web Client</structname> и <structname>Desktop Client</structname>, возникшие на клиентском уровне или переданные с <structname>Middleware</structname>, попадают в специальный механизм обработчиков. Этот механизм схож для обоих блоков, однако использует разные (хотя и в основном одноименные) классы реализации. </para>
-      <para>Рассмотрим механизм на примере блока <structname>Web Client</structname>. </para>
-      <para>В файле <filename>
-          <link linkend="spring.xml">spring.xml</link>
-        </filename> блока объявляется бин класса <code>ExceptionHandlersConfiguration</code>, в свойстве <code>handlerClasses</code> которого задается список имен классов обработчиков. Например: <programlisting language="xml">&lt;bean id=&quot;sales_exceptionHandlersConf&quot; class=&quot;com.haulmont.cuba.web.exception.ExceptionHandlersConfiguration&quot;&gt;
-  &lt;property name=&quot;handlerClasses&quot;&gt;
-      &lt;list&gt;
-          &lt;value&gt;com.sample.sales.web.exception.ZeroBalanceExceptionHandler&lt;/value&gt;
-          &lt;value&gt;com.sample.sales.web.exception.InvalidCustomerStateExceptionHandler&lt;/value&gt;
-      &lt;/list&gt;
-  &lt;/property&gt;
-&lt;/bean&gt;</programlisting></para>
-      <para>Идентификатор бина должен быть уникальным и не совпадать ни с одним из бинов <link linkend="base_projects">базовых проектов</link>, так как базовые проекты в свою очередь могут содержать аналогичные конфигурационные бины с собственными идентификаторами. </para>
-      <para>Обработчик должен реализовывать интерфейс <code>ExceptionHandler</code>, в методе <code>handle()</code> которого производить обработку и возвращать <code>true</code>, либо сразу возвращать <code>false</code>, если данный обработчик не может обработать переданное ему исключение. Такое поведение позволяет организовать &quot;цепочку ответственности&quot; обработчиков. </para>
-      <para>Рекомендуется наследовать класс своего обработчика от базового класса <code>AbstractExceptionHandler</code>, который умеет разбирать цепочку исключений (с учетом упакованных внутри <code>RemoteException</code>) и реагировать на конкретные типы исключений. Типы исключений, для которых предназначен данный обработчик, указываются в массиве строк, передаваемом в конструкторе обработчика базовому конструктору. Каждая строка массива должна содержать одно полное имя класса обрабатываемого исключения, например:<programlisting language="java">public class ReportExceptionHandler extends AbstractExceptionHandler {
-
-  public ReportExceptionHandler() {
-      super(ReportingException.class.getName(),
-            FailedToConnectToOpenOfficeException.class.getName(),
-            UnsupportedFormatException.class.getName());
-  }
-...</programlisting></para>
-      <para>Если класс исключения недоступен на клиенте, следует указывать его имя строковым литералом:<programlisting language="java">public class OptimisticExceptionHandler extends AbstractExceptionHandler {
-
-  public OptimisticExceptionHandler() {
-      super(&quot;org.springframework.orm.jpa.JpaOptimisticLockingFailureException&quot;);
-  }
-...</programlisting></para>
-      <para>В случае использования в качестве базового класса <code>AbstractExceptionHandler</code> логика обработки
-        располагается в методе <code>doHandle()</code>, и для блока <structname>Web Client</structname> может выглядеть
-        следующим образом:
-        <programlisting language="java">
-<![CDATA[
-@Override
-protected void doHandle(App app, String className, String message, @Nullable Throwable throwable) {
-    String msg = messages.getMainMessage("zeroBalance.message");
-    Notification.show(msg, Notification.Type.ERROR_MESSAGE);
-}
-]]></programlisting></para>
-      <para>Если имени класса исключения недостаточно для того, чтобы принять решение о применимости данного обработчика к исключению, следует определить метод canHandle(), получающий кроме прочего текст исключения. Метод должен вернуть true, если данный обработчик применим для исключения. Например:<programlisting language="java">public class NumericOverflowExceptionHandler extends AbstractExceptionHandler {
-
-  public NumericOverflowExceptionHandler() {
-      super(ReportingSQLException.class.getName());
-  }
-
-  @Override
-  protected boolean canHandle(String className, String message, @Nullable Throwable throwable) {
-      return StringUtils.containsIgnoreCase(message, &quot;Numeric field overflow&quot;);
-  }
-...</programlisting></para>
+      <para>Необработанные исключения в
+        <link linkend="app_tiers">блоках</link>
+        <structname>Web Client</structname> и <structname>Desktop Client</structname>, возникшие на клиентском уровне или
+        переданные с <structname>Middleware</structname>, попадают в специальный механизм обработчиков. Этот механизм
+        реализован в <link linkend="app_modules">модуле</link> GUI и доступен обоим клиентам.
+      </para>
+      <para>Обработчик должен быть <link linkend="managed_beans">управляемым бином</link>, реализовывать интерфейс
+        <code>GenericExceptionHandler</code>, в методе <code>handle()</code>
+        которого производить обработку и возвращать <code>true</code>, либо сразу возвращать <code>false</code>, если
+        данный обработчик не может обработать переданное ему исключение. Такое поведение позволяет организовать &quot;цепочку
+        ответственности&quot; обработчиков.
+      </para>
+      <para>Рекомендуется наследовать классы своих обработчиков от базового класса <code>AbstractGenericExceptionHandler</code>,
+        который умеет разбирать цепочку исключений (с учетом упакованных внутри <code>RemoteException</code>) и
+        реагировать на конкретные типы исключений. Типы исключений, для которых предназначен данный обработчик,
+        указываются в массиве строк, передаваемом в конструкторе обработчика базовому конструктору. Каждая строка массива
+        должна содержать одно полное имя класса обрабатываемого исключения, например:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_1.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>Если класс исключения недоступен на клиенте, следует указывать его имя строковым литералом:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_2.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>В случае использования в качестве базового класса <code>AbstractGenericExceptionHandler</code> логика обработки
+        располагается в методе <code>doHandle()</code>, и может выглядеть следующим образом:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_3.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>Если имени класса исключения недостаточно для того, чтобы принять решение о применимости данного обработчика
+        к исключению, следует определить метод <code>canHandle()</code>, получающий кроме прочего текст исключения. Метод должен
+        вернуть <code>true</code>, если данный обработчик применим для исключения. Например:
+        <programlisting language="java"><xi:include href="../../source/common/exceptionHandlers_4.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
     </section>
   </section>
 </section>
