@@ -5717,40 +5717,80 @@ helloTimer.start();
 
 addTimer(helloTimer);
 }</programlisting></section>
-    <section id="gui_validator"><title>Validator</title><para>Validator is intended to check values entered into visual components.</para><warning>
-        <para>Validation and input type checking should be differentiated. If given component data type, for example <link linkend="gui_TextField">TextField</link> is set to anything different than string (this can happen when linking to an entity attribute or setting  <code>datatype</code>), then the component will not allow the user to enter a value that does not comply with this data type – when the component loses focus or when the user presses  <keycap>Enter</keycap>, the component will show the previous value.</para>
-        <para>On the other hand, validation does not act immediately on data entry or on focus loss, but rather when  the component&apos;s  <code>validate()</code> method is invoked. It means that the component (and the entity attribute that it’s linked to) may temporarily contain a value, which does not comply with the conditions of validation. This should not be a problem, because the validated fields are typically found in  <link linkend="screen_edit">edit screens</link>, which automatically invoke validation for all their fields before commit. If the component is located not in an editing screen, its  <code>validate()</code> method should be invoked explicitly in the controller.</para>
-      </warning><para>In a screen XML-descriptor, a component validator  can be defined in a nested  <sgmltag>validator</sgmltag> elements. The  <sgmltag>validator</sgmltag> element attributes:</para><itemizedlist>
+    <section id="gui_validator">
+      <title>Validator</title><para>Validator is intended to check values entered into visual components.</para>
+      <warning>
+        <para>Validation and input type checking should be differentiated. If given component data type, for example
+          <link linkend="gui_TextField">TextField</link>
+          is set to anything different than string (this can happen when linking to an entity attribute or setting
+          <code>datatype</code>), then the component will not allow the user to enter a value that does not comply with this
+          data type – when the component loses focus or when the user presses <keycap>Enter</keycap>, the component will
+          show the previous value.
+        </para>
+        <para>On the other hand, validation does not act immediately on data entry or on focus loss, but rather when the
+          component&apos;s <code>validate()</code>
+          method is invoked. It means that the component (and the entity attribute that it’s linked to) may temporarily
+          contain a value, which does not comply with the conditions of validation. This should not be a problem, because
+          the validated fields are typically found in <link linkend="screen_edit">edit screens</link>, which automatically
+          invoke validation for all their fields before commit. If the component is located not in an editing screen, its
+          <code>validate()</code> method should be invoked explicitly in the controller.
+        </para>
+      </warning>
+      <para>In a screen XML-descriptor, a component validator can be defined in a nested  <code>validator</code> elements.
+        The <code>validator</code> element can have the following attributes:</para>
+      <itemizedlist>
         <listitem>
           <para><sgmltag>script</sgmltag> − path to the Groovy script performing validation.</para>
         </listitem>
         <listitem>
-          <para><sgmltag>class</sgmltag> −  name of the Java class implementing a  <code>Field.Validator</code> interface.</para>
+          <para><sgmltag>class</sgmltag> −  name of the Java class implementing a <code>Field.Validator</code> interface.</para>
         </listitem>
         <listitem>
-          <para>Groovy validator and standard classes of Java validators, located in the  <code>com.haulmont.cuba.gui.components.validators</code> package support   <sgmltag>message</sgmltag> attribute − a message displayed to a user when validation fails. The attribute should contain a message key from the package, for example,  <literal>message=&quot;msg://infoTextField.validationMsg&quot;</literal></para>
+          <para>Groovy validator and standard classes of Java validators, located in the
+            <code>com.haulmont.cuba.gui.components.validators</code> package support <sgmltag>message</sgmltag>
+            attribute − a message displayed to a user when validation fails. The attribute value should contain either
+            a message or a message key from the <link linkend="message_packs">messages pack</link> of the current screen.
+            For example:
+            <programlisting language="xml"><xi:include href="../../source/gui_vcl/validator_1.xml" encoding="UTF-8" parse="text"/></programlisting>
+            <programlisting><xi:include href="../../source/gui_vcl/validator_1.properties" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
       </itemizedlist>The validation mechanism is chosen according to the following logic:<itemizedlist>
         <listitem>
-          <para>If the value of the  <sgmltag>script</sgmltag> attribute is not set and the  <sgmltag>validator</sgmltag> element itself does not contain text with a Groovy expression, then the system will use a class defined in the  <sgmltag>class</sgmltag> attribute as a validator..</para>
+          <para>If the value of the  <sgmltag>script</sgmltag> attribute is not set and the  <sgmltag>validator</sgmltag>
+            element itself does not contain text with a Groovy expression, then the system will use a class defined in the
+            <sgmltag>class</sgmltag> attribute as a validator.</para>
         </listitem>
         <listitem>
-          <para>If the  <sgmltag>validator</sgmltag> element contains text, it will be used as a Groovy exception and will be executed using <link linkend="scripting">Scripting</link>.</para>
+          <para>If the  <sgmltag>validator</sgmltag> element contains text, it will be used as a Groovy expression and
+            will be executed using <link linkend="scripting">Scripting</link>.</para>
         </listitem>
         <listitem>
-          <para>Otherwise, the system will use  <link linkend="scripting">Scripting</link> to run a Groovy script defined in the  <sgmltag>script</sgmltag>.</para>
+          <para>Otherwise, the system will use  <link linkend="scripting">Scripting</link> to run a Groovy script defined
+            in the  <sgmltag>script</sgmltag> attribute.</para>
         </listitem>
-      </itemizedlist><para><code>value</code> variable will be passed to an expression or a Groovy script. It contains the value entered into a visual component. An expression or a script should return a <literal>boolean</literal> value: <literal>true</literal> − valid, <literal>false</literal> − not valid.</para><para>If a Java class is being used as a validator, it should have a default constructor without parameters or a constructor with the following set of parameters:<itemizedlist>
+      </itemizedlist>
+      <para><code>value</code> variable will be passed to a Groovy expression or script. It contains the value entered
+        into a visual component. An expression or a script should return a <literal>boolean</literal> value:
+        <literal>true</literal> − valid, <literal>false</literal> − not valid.</para><para>If a Java class is being
+      used as a validator, it should have a default constructor without parameters or a constructor with the following
+      set of parameters:
+      <itemizedlist>
           <listitem>
-            <para><code>org.dom4j.Element</code>, <code>String</code> – this constructor will receive the validator XML-element  and a screen message package name.</para>
+            <para><code>org.dom4j.Element</code>, <code>String</code> – this constructor will receive the validator
+              XML-element and a message pack name of the screen.</para>
           </listitem>
           <listitem>
             <para><code>org.dom4j.Element</code> – this constructor will receive a validator XML-element.</para>
           </listitem>
         </itemizedlist></para><tip>
-        <para>If a validator is implemented as an internal class, it should be declared with a  <code>static</code>modifier and its name should be separated by &quot;$&quot; for loading, for example:</para>
+        <para>If the validator is implemented as an internal class, it should be declared with a <code>static</code>
+          modifier and its name should be separated by &quot;$&quot;, for example:</para>
         <para><code>&lt;validator class=&quot;com.sample.sales.gui.AddressEdit$ZipValidator&quot;/&gt;</code></para>
-      </tip><para>The platform contains a set of implementations for the most frequently used validators (see <code>com.haulmont.cuba.gui.components.validators</code> package), which  can be use in other projects:</para><itemizedlist>
+      </tip>
+      <para>The platform contains a set of implementations for the most frequently used validators
+      (see <code>com.haulmont.cuba.gui.components.validators</code> package), which can be used in your project:</para>
+      <itemizedlist>
         <listitem>
           <para><code>DateValidator</code></para>
         </listitem>
@@ -5772,31 +5812,20 @@ addTimer(helloTimer);
         <listitem>
           <para><code>ScriptValidator</code></para>
         </listitem>
-      </itemizedlist><para>A validator-class can be assigned to a component not only using a screen XML-descriptor, but also programmatically – by submitting a validator instance into the component&apos;s  <code>addValidator()</code>method.</para><para>Example of creating a validator class for ZIP codes:<programlisting language="java">public class ZipValidator implements Field.Validator {
-@Override
-public void validate(Object value) throws ValidationException {
-    if (value != null &amp;&amp; ((String) value).length() != 6)
-        throw new ValidationException(&quot;Zip must be of 6 characters length&quot;);
-}
-}</programlisting></para><para>Example of using a zip code validator and a standard pattern validator for fields within a  <link linkend="gui_FieldGroup">FieldGroup</link> component:<programlisting language="xml">&lt;fieldGroup ...&gt;
-&lt;field id=&quot;zip&quot; required=&quot;true&quot;&gt;
-     &lt;validator class=&quot;com.sample.sales.gui.ZipValidator&quot;/&gt;
-&lt;/field&gt;
-&lt;field id=&quot;imei&quot;&gt;
-    &lt;validator class=&quot;com.haulmont.cuba.gui.components.validators.PatternValidator&quot;
-           pattern=&quot;\d{15}&quot;
-           message=&quot;msg://general.imeiValidationFailed&quot;/&gt;
-&lt;/field&gt;
-&lt;/fieldGroup&gt;</programlisting></para><para>Example of setting a validator programmatically:<programlisting language="java">if (Boolean.TRUE.equals(parameter.getRequired())) {
-tokenList.addValidator(new Field.Validator() {
-    @Override
-    public void validate(Object value) throws ValidationException {
-        if (value instanceof Collection &amp;&amp; CollectionUtils.isEmpty((Collection) value)) {
-            throw new ValidationException(getMessage(&quot;error.paramIsRequiredButEmpty&quot;));
-        }
-    }
-});
-}</programlisting></para></section>
+      </itemizedlist>
+      <para>A validator class can be assigned to a component not only using a screen XML-descriptor, but also
+        programmatically – by submitting a validator instance into the component&apos;s  <code>addValidator()</code> method.</para>
+      <para>Example of creating a validator class for ZIP codes:
+        <programlisting language="java"><xi:include href="../../source/gui_vcl/validator_2.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>Example of using a zip code validator and a standard pattern validator for fields within a
+        <link linkend="gui_FieldGroup">FieldGroup</link> component:
+        <programlisting language="xml"><xi:include href="../../source/gui_vcl/validator_3.xml" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>Example of setting a validator programmatically in a screen controller:
+        <programlisting language="java"><xi:include href="../../source/gui_vcl/validator_4.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+    </section>
   </section>
   <section id="gui_attributes">
     <title>XML-Attributes of Components </title>
