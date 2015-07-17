@@ -1,0 +1,1 @@
+embedded.setSource("my-logo.png")

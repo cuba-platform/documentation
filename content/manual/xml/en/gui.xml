@@ -238,19 +238,10 @@ contains a large set of ready-to-use components.</para>
         <itemizedlist>
           <listitem>
             <para><code>init()</code> is called by the framework after creating components tree described by an XML-descriptor, but before a screen is displayed.</para>
-            <para> <methodname>init()</methodname> method accepts a map of parameters that can be used in controller. These parameters can be passed both from the controller of the calling screen (using  <code>openWindow()</code>, <code>openLookup() </code>or  <code>openEditor()</code> methods) or defined in the screen registration file  <link linkend="screens.xml">screens.xml</link>.</para>
-            <para>  <code>init()</code> method should be implemented if it is necessary to initialize screen components, for example:<programlisting language="java">@Inject
-private Table someTable;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  someTable.addGeneratedColumn(&quot;someColumn&quot;, new Table.ColumnGenerator&lt;Colour&gt;() {
-      @Override
-      public Component generateCell(Colour entity) {
-          ...
-      }
-  });
-}</programlisting></para>
+            <para><methodname>init()</methodname> method accepts a map of parameters that can be used in controller. These parameters can be passed both from the controller of the calling screen (using  <code>openWindow()</code>, <code>openLookup() </code>or  <code>openEditor()</code> methods) or defined in the screen registration file  <link linkend="screens.xml">screens.xml</link>.</para>
+            <para><code>init()</code> method should be implemented if it is necessary to initialize screen components, for example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstractframe_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>getMessage()</code>, <code>formatMessage()</code> – methods for retrieving localized messages from a <link linkend="message_packs">pack</link>, defined for a screen in the XML-descriptor. They work as shortcuts for calling the corresponding methods of the <link linkend="messages">Messages</link> interface.</para>
@@ -258,59 +249,32 @@ public void init(Map&lt;String, Object&gt; params) {
           <listitem>
             <para><code>getDialogParams()</code> – returns a <code>DialogParams</code> object to set up dialog window display properties (height, width, etc.). The values defined in this object affect the next screen opened as a modal dialog (<code>WindowManager.OpenType.DIALOG</code>). The settings are reset to defaults after the dialog has been displayed.</para>
             <para>Thus, the properties of <code>DialogParams</code> object should be set immediately before opening another modal screen using <code>openWindow()</code>, <code>openLookup()</code>, <code>openEditor()</code>. For example:
-                <programlisting language="java"><![CDATA[
-getDialogParams().setWidth(400);
-openEditor("sales$Customer.edit", customer, WindowManager.OpenType.DIALOG);]]></programlisting>
+                <programlisting language="java"><xi:include href="../../source/gui/abstractframe_2.java" encoding="UTF-8" parse="text"/></programlisting>
             </para>
             <para>If the current screen itself is modal it is possible to adjust its display properties by changing <code>DialogParams</code> object in its  <code>init()</code> method. Please note that the properties defined in  <code>init()</code> method have priority over the ones defined in the calling code.</para>
           </listitem>
           <listitem>
-            <para><code>openFrame()</code> – loads a frame according to an identifier registered in <link linkend="screens.xml">screens.xml</link> file. If the method receives a container component from the invoking code, the frame is shown within the container. The method returns  frame controller. For example:<programlisting language="java">@Inject
-private BoxLayout container;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  SomeFrame frame = openFrame(container, &quot;someFrame&quot;);
-  frame.setHeight(&quot;100%&quot;);
-  frame.someInitMethod();
-}</programlisting></para>
-            <para>It is not required to pass the container immediately via  <code>openFrame()</code> method, instead it is possible to load the frame first and then add it to the necessary container:<programlisting language="java">@Inject
-private BoxLayout container;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  SomeFrame frame = openFrame(null, &quot;someFrame&quot;);
-  frame.setHeight(&quot;100%&quot;);
-  frame.someInitMethod();
-  container.add(frame);
-}</programlisting></para>
+            <para><code>openFrame()</code> – loads a frame according to an identifier registered in <link linkend="screens.xml">screens.xml</link> file. If the method receives a container component from the invoking code, the frame is shown within the container. The method returns  frame controller. For example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstractframe_3.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
+            <para>It is not required to pass the container immediately via  <code>openFrame()</code> method, instead it is possible to load the frame first and then add it to the necessary container:
+                <programlisting language="java"><xi:include href="../../source/gui/abstractframe_4.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>openWindow()</code>, <code>openLookup()</code>, <code>openEditor()</code> – open a simple screen, a lookup screen, or an edit screen respectively. Methods return a controller of the created screen.</para>
-            <para><code>CloseListener</code> can be added in order to perform actions after the invoked screen closes, for example:<programlisting language="java">CustomerEdit editor = openEditor(&quot;sales$Customer.edit&quot;, customer, WindowManager.OpenType.THIS_TAB);
-editor.addListener(new CloseListener() {
-  @Override
-  public void windowClosed(String actionId) {
-      // do something
-  }
-});</programlisting></para>
+            <para><code>CloseListener</code> can be added in order to perform actions after the invoked screen closes, for example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstractframe_5.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>showMessageDialog()</code> – shows a dialog box with a message.</para>
           </listitem>
           <listitem>
             <para><code>showOptionDialog()</code> – shows a dialog box with a message and an option for user to invoke certain actions. Actions are defined by an array of  <link linkend="gui_Action">Action</link> type items displayed as buttons in the dialog.</para>
-            <para><code>DialogAction</code> objects a recommended to be used for display of standard buttons such as <guibutton>OK</guibutton>, <guibutton>Cancel</guibutton> and other, for example:<programlisting language="java">showOptionDialog(&quot;PLease confirm&quot;, &quot;Are you sure?&quot;,
-      MessageType.CONFIRMATION,
-      new Action[] {
-              new DialogAction(DialogAction.Type.YES) {
-                  @Override
-                  public void actionPerform(Component component) {
-                      // do something
-                  }
-              },
-              new DialogAction(DialogAction.Type.NO);
-      });</programlisting></para>
+            <para><code>DialogAction</code> objects a recommended to be used for display of standard buttons such as <guibutton>OK</guibutton>, <guibutton>Cancel</guibutton> and other, for example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstractframe_6.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>showNotification()</code> – shows a pop up notification.</para>
@@ -329,16 +293,9 @@ editor.addListener(new CloseListener() {
             <para>This method should be overridden only if it is required to override screen validation procedure completely. It is sufficient to implement a special template method –  <code>postValidate()</code>, if validation should be just supplemented.</para>
           </listitem>
           <listitem>
-            <para><code>postValidate()</code> –  a template method that can be implemented in controller for additional screen validation. The method stores validation errors information in <code>ValidationErrors</code> object which is passed to  it. Afterwards this information is displayed together with the errors of standard validation. For example:<programlisting language="java">private Pattern pattern = Pattern.compile(&quot;\\d&quot;);
-
-@Override
-protected void postValidate(ValidationErrors errors) {
-  if (getItem().getAddress().getCity() != null) {
-      if (pattern.matcher(getItem().getAddress().getCity()).find()) {
-          errors.add(&quot;City name can&apos;t contain digits&quot;);
-      }
-  }
-}</programlisting></para>
+            <para><code>postValidate()</code> –  a template method that can be implemented in controller for additional screen validation. The method stores validation errors information in <code>ValidationErrors</code> object which is passed to  it. Afterwards this information is displayed together with the errors of standard validation. For example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstractwindow_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>close()</code> – closes this screen. </para>
@@ -370,12 +327,9 @@ protected void postValidate(ValidationErrors errors) {
       <section id="abstractEditor">
         <title>AbstractEditor</title>
         <para><code>AbstractEditor</code> is the base class for <link linkend="screen_edit">edit screen</link> controller. It is a subclass of <link linkend="abstractWindow">AbstractWindow</link>.</para>
-        <para>When creating a controller class, it is recommended to parameterize <code>AbstractEditor</code> with the edited entity class. This enables  <code>getItem()</code> and <code>initItem()</code> methods work with the specified entity type and application code does not need to do additional type conversion. For example:</para>
-        <programlisting language="java">public class CustomerEdit extends AbstractEditor&lt;Customer&gt; {
-
-  @Override
-  protected void initItem(Customer item) {
-  ...</programlisting>
+        <para>When creating a controller class, it is recommended to parameterize <code>AbstractEditor</code> with the edited entity class. This enables  <code>getItem()</code> and <code>initItem()</code> methods work with the specified entity type and application code does not need to do additional type conversion. For example:
+          <programlisting language="java"><xi:include href="../../source/gui/abstracteditor_1.java" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
         <para><code>AbstractEditor</code> defines the following own methods:</para>
         <itemizedlist>
           <listitem>
@@ -384,11 +338,9 @@ protected void postValidate(ValidationErrors errors) {
             <para>Changes made to the instance returned by  <code>getItem()</code>, are reflected in the state of the data source and will be sent to the Middleware at commit.</para>
             <warning>
               <para>It should be considered that  <code>getItem()</code> returns a value only after screen is initialized with  <code>setItem()</code> method. Until this moment,  this method returns <code>null</code>, for instance when calling from inside <code>init()</code> or  <code>initItem()</code>. </para>
-              <para>However, in the <code>init()</code> method, an instance of an entity passed to  <code>openEditor()</code> can be retrieved from  parameters using the following approach:<programlisting language="java">@Override
-public void init(Map&lt;String, Object&gt; params) {
-  Customer item = WindowParams.ITEM.getEntity(params);
-  // do something
-}</programlisting></para>
+              <para>However, in the <code>init()</code> method, an instance of an entity passed to  <code>openEditor()</code> can be retrieved from  parameters using the following approach:
+                  <programlisting language="java"><xi:include href="../../source/gui/abstracteditor_2.java" encoding="UTF-8" parse="text"/></programlisting>
+              </para>
               <para><code>initItem()</code> method requires an instance to be passed explicitly and of an appropriate type.</para>
               <para>In both cases the obtained entity instance will be reloaded afterwards unless it is a new one. Therefore you should not change it or save it in a field for future use.</para>
             </warning>
@@ -399,27 +351,16 @@ public void init(Map&lt;String, Object&gt; params) {
           </listitem>
           <listitem id="initNewItem">
             <para><code>initNewItem()</code> – a template method invoked by the framework before setting the edited entity instance  into the main data source. </para>
-            <para>The <code>initNewItem()</code> method is called for newly created entity instances only. The method is not called for <link linkend="entity_states">detached</link> instances. This method can be implemented in the controller, if new entity instances must be initialized before setting them in the data source. For example:<programlisting language="java">@Inject
-private UserSession userSession;
-
-@Override
-protected void initNewItem(Complaint item) {
-  item.setOpenedBy(userSession.getUser());
-  item.setStatus(ComplaintStatus.OPENED);
-}</programlisting></para>
+            <para>The <code>initNewItem()</code> method is called for newly created entity instances only. The method is not called for <link linkend="entity_states">detached</link> instances. This method can be implemented in the controller, if new entity instances must be initialized before setting them in the data source. For example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstracteditor_3.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
             <para>A more complex example of using the <code>initNewItem()</code> method can be found in <link linkend="dev_recipes">development recipes</link> section. </para>
           </listitem>
           <listitem>
             <para><code>postInit()</code> – a template method invoked by the framework immediately after the edited entity instance is set to the main data source. In this method,  <code>getItem()</code> can be called to return a new entity instance or an instance re-loaded during screen initialization.</para>
-            <para>This method can be implemented in controller for final screen initialization, for example:<programlisting language="java">@Inject
-protected EntityDiffViewer diffFrame;
-
-@Override
-protected void postInit() {
-  if (!PersistenceHelper.isNew(getItem())) {
-      diffFrame.loadVersions(getItem());
-  }
-}</programlisting></para>
+            <para>This method can be implemented in controller for final screen initialization, for example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstracteditor_4.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>commit()</code> – validates the  screen and submits changes to the Middleware via <link linkend="dataSupplier">DataSupplier</link>.</para>
@@ -432,14 +373,9 @@ protected void postInit() {
           </listitem>
           <listitem>
             <para><code>preCommit()</code> – a template method invoked by the framework during the commit process, after a successful validation, but before the data is submitted to the Middleware.</para>
-            <para>This method can be implemented in controller. If the method returns <code>false</code>, commit process gets interrupted, as well as window closing process (if  <code>commitAndClose()</code> was invoked). For example:<programlisting language="java">@Override
-protected boolean preCommit() {
-  if (somethingWentWrong) {
-      showNotification(&quot;Something went wrong&quot;, NotificationType.WARNING);
-      return false;
-  }
-  return true;
-}</programlisting></para>
+            <para>This method can be implemented in controller. If the method returns <code>false</code>, commit process gets interrupted, as well as window closing process (if  <code>commitAndClose()</code> was invoked). For example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstracteditor_5.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>postCommit()</code> – a template method invoked by the framework at the final stage of committing changes. Method parameters are:<itemizedlist>
@@ -451,18 +387,9 @@ protected boolean preCommit() {
                 </listitem>
               </itemizedlist></para>
             <para>If the screen does not close the default implementation of this method displays a message about successful commit and invokes  <code>postInit()</code>.</para>
-            <para>This method can be overridden in controller in order to perform additional actions after successful commit, for example:<programlisting language="java">@Inject
-private Datasource&lt;Driver&gt; driverDs;
-@Inject
-private EntitySnapshotService entitySnapshotService;
-
-@Override
-protected boolean postCommit(boolean committed, boolean close) {
-  if (committed) {
-      entitySnapshotService.createSnapshot(driverDs.getItem(), driverDs.getView());
-  }
-  return super.postCommit(committed, close);
-}</programlisting></para>
+            <para>This method can be overridden in controller in order to perform additional actions after successful commit, for example:
+                <programlisting language="java"><xi:include href="../../source/gui/abstracteditor_6.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
         </itemizedlist>
         <para>The diagrams below show initialization sequence and different ways to commit changes for an edit screen.</para>
@@ -554,9 +481,8 @@ protected boolean postCommit(boolean committed, boolean close) {
               <para>If nothing of the mentioned above is appropriate and the controller has  <link linkend="companions">companions</link>, a companion for the current client type will be injected, if the types match. </para>
               <para>It is possible to inject the parameters passed in the map to the <code>init()</code> method into the controller using special annotation <code>@WindowParam</code>. The annotation has a <code>name</code> attribute which contains the parameter name (a key in the map) and an optional required attribute.  If <code>required = true</code> and the map does not contain the corresponding parameter a <code>WARNING</code> message is added to the log.
 An example of an injection of a Job-type object passed to the controller’s <code>init()</code> method:
-</para>
-              <programlisting language="java">@WindowParam(name = &quot;job&quot;, required = true)
-protected Job job;</programlisting>
+                <programlisting language="java"><xi:include href="../../source/gui/cdi_1.java" encoding="UTF-8" parse="text"/></programlisting>
+              </para>
             </listitem>
           </itemizedlist></para>
       </section>
