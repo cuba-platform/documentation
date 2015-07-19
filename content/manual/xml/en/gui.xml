@@ -510,18 +510,9 @@ An example of an injection of a Job-type object passed to the controller’s <co
         <para>User input can be monitored both by the <link linkend="datasource_listeners">datasource listener</link> and the value listener of the component – they are fired sequentially. </para>
       </listitem>
       <listitem>
-        <para>To read or write the value of an attribute in the application code, it is recommended to use the data source, rather than the component. Below is an example of reading the attribute:<programlisting language="java">@Inject
-private FieldGroup fieldGroup;
-@Inject
-private Datasource&lt;Order&gt; orderDs;
-
-public void init(Map&lt;String, Object&gt; params) {
-  Customer customer;
-  // Get customer from component
-  customer = (Customer) fieldGroup.getFieldValue(&quot;customer&quot;);
-  // Get customer from datasource
-  customer = orderDs.getItem().getCustomer();
-}</programlisting></para>
+        <para>To read or write the value of an attribute in the application code, it is recommended to use the data source, rather than the component. Below is an example of reading the attribute:
+            <programlisting language="java"><xi:include href="../../source/gui/datasources_1.java" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
         <para>As can be seen, working entity attribute values through the component requires type casting and, in case of the  <link linkend="gui_FieldGroup">FieldGroup</link>, specifying the attribute name as a string. At the same time, if the instance is obtained from the datasource via the  <code>getItem()</code> method, the values of attributes can be read and modified directly. </para>
       </listitem>
     </itemizedlist><warning>
@@ -584,18 +575,9 @@ public void init(Map&lt;String, Object&gt; params) {
               <para>if an element is located inside an element of another source, <code>NestedDatasource</code> is created and the external source becomes its parent.</para>
             </listitem>
           </itemizedlist></para>
-        <para>Below is an example of declaring a data source:<programlisting language="xml">&lt;dsContext&gt;
-  &lt;datasource id=&quot;carDs&quot; class=&quot;com.haulmont.sample.entity.Car&quot; view=&quot;carEdit&quot;&gt;
-      &lt;collectionDatasource id=&quot;allocationsDs&quot; property=&quot;driverAllocations&quot;/&gt;
-      &lt;collectionDatasource id=&quot;repairsDs&quot; property=&quot;repairs&quot;/&gt;
-  &lt;/datasource&gt;
-
-  &lt;collectionDatasource id=&quot;colorsDs&quot; class=&quot;com.haulmont.sample.entity.Color&quot; view=&quot;_local&quot;&gt;
-      &lt;query&gt;
-          select c from sample$Color c order by c.name
-      &lt;/query&gt;
-  &lt;/collectionDatasource&gt;
-&lt;/dsContext&gt;</programlisting></para>
+        <para>Below is an example of declaring a data source:
+            <programlisting language="xml"><xi:include href="../../source/gui/datasources_2.xml" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
         <para>In the example above, <code>carDs</code> contains one entity instance, <code>Car</code>, and nested <code>allocationsDs</code> and <code>repairsDs</code> contain collections of related entities from the <code>Car.driverAllocations</code> and <code>Car.repairs</code> attributes, respectively. The <code>Car</code> instance together with related entities is set into the data source from the outside. If this screen is an <link linkend="screen_edit">edit screen</link>, it happens automatically when opening the screen. The <code>colorsDs</code> data source contains a collection of instances of the <code>Color</code> entity, which is loaded by the source itself using the specified JPQL <link linkend="datasource_query">query</link> with the _local <link linkend="views">view</link>.</para>
         <para>Below is the XML scheme. </para>
         <para><sgmltag>dsContext</sgmltag> – root element.</para>
@@ -624,14 +606,9 @@ public void init(Map&lt;String, Object&gt; params) {
               <para><code>collectionDatasource</code> – defines a data source that contains a collection of instances.</para>
               <para><code>collectionDatasource</code> attributes:<itemizedlist>
                   <listitem>
-                    <para><code>refreshMode</code> – a source update mode, default is <code>ALWAYS</code>. In the <code>NEVER</code> mode, when <code>refresh()</code> method is invoked, the source does not load data and only changes its state to <code>Datasource.State.VALID</code>, notifies listeners and sorts available instances. The <code>NEVER</code> mode is useful if you need to programmatically fill <code>CollectionDatasource</code> with preloaded or created entities. For example:<programlisting language="java">@Override
-public void init(Map&lt;String, Object&gt; params) {
-  Set&lt;Customer&gt; entities = (Set&lt;Customer&gt;) params.get(&quot;customers&quot;);
-  for (Customer entity : entities) {
-      customersDs.includeItem(entity);
-  }
-  customersDs.refresh();
-}</programlisting></para>
+                    <para><code>refreshMode</code> – a source update mode, default is <code>ALWAYS</code>. In the <code>NEVER</code> mode, when <code>refresh()</code> method is invoked, the source does not load data and only changes its state to <code>Datasource.State.VALID</code>, notifies listeners and sorts available instances. The <code>NEVER</code> mode is useful if you need to programmatically fill <code>CollectionDatasource</code> with preloaded or created entities. For example:
+                        <programlisting language="java"><xi:include href="../../source/gui/datasources_3.java" encoding="UTF-8" parse="text"/></programlisting>
+                    </para>
                   </listitem>
                   <listitem>
                     <para><code>softDeletion</code> – the false value disables the <link linkend="soft_deletion">soft deletion</link> mode when loading entities, i.e., deleted instances will also be loaded. Default value is <code>true</code>.</para>
@@ -657,30 +634,16 @@ public void init(Map&lt;String, Object&gt; params) {
         <title>Programmatic Creation</title>
         <para>If you need to create a data source in the Java code, it is recommended to use a special class, <code>DsBuilder</code>.</para>
         <para>The <code>DsBuilder</code> instance is parameterized by an invocation chain of its methods in the fluent interface style. If the <code>master</code> and <code>property</code> parameters are set, then <code>NestedDatasource</code> will be created, otherwise – <code>Datasource</code> or <code>CollectionDatasource</code>.</para>
-        <para>Example:<programlisting language="java">CollectionDatasource ds = new DsBuilder(getDsContext())
-      .setJavaClass(Order.class)
-      .setViewName(View.LOCAL)
-      .setId(&quot;ordersDs&quot;)
-      .buildCollectionDatasource();</programlisting></para>
+        <para>Example:
+            <programlisting language="java"><xi:include href="../../source/gui/datasources_4.java" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
       </section>
       <section>
         <title>Proper Implementation Classes</title>
         <para>Typically, custom implementation of a data source is required to change the loading process of a collection of entities. When creating a class of this source it should be inherited from <code>CollectionDatasourceImpl</code>, or from <code>GroupDatasourceImpl</code>, or <code>HierarchicalDatasourceImpl</code>, and the <code>loadData()</code> method should be overridden.</para>
-        <para>Example:<programlisting language="java">public class MyDatasource extends CollectionDatasourceImpl&lt;SomeEntity, UUID&gt; {
-
-  private SomeService someService = AppBeans.get(SomeService.NAME);
-
-  @Override
-  protected void loadData(Map&lt;String, Object&gt; params) {
-      detachListener(data.values());
-      data.clear();
-
-      for (SomeEntity entity : someService.getEntities()) {
-          data.put(entity.getId(), entity);
-          attachListener(entity);
-      }
-  }
-}</programlisting></para>
+        <para>Example:
+            <programlisting language="java"><xi:include href="../../source/gui/datasources_5.java" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
         <para>In the example above, <code>data</code> is a base class field that stores a collection of loaded instances. The base class methods, <code>detachListener()</code> and <code>attachListener()</code>, control the assignment of a listener to loaded entities. The listener notifies the data source on changes in instance fields.</para>
         <para>To create a custom data source declaratively, a class in the <code>datasourceClass</code> attribute of an XML element should be specified. In case of programmatic creation via <code>DsBuilder</code>, a source class is specified by invoking <code>setDsClass()</code>.</para>
       </section>
@@ -702,36 +665,25 @@ select o.customer from sales$Order o /* invalid – the &apos;from&apos; type (O
         <itemizedlist>
           <listitem id="datasource_query_params_ds">
             <para>The <code>ds</code> prefix</para>
-            <para>The parameter value is data from another data source that is registered in the same <code>DsContext</code>. For example:<programlisting language="xml">&lt;collectionDatasource id=&quot;customersDs&quot; class=&quot;com.sample.sales.entity.Customer&quot; view=&quot;_local&quot;&gt;
-  &lt;query&gt;
-      select c from sales$Customer c
-  &lt;/query&gt;
-&lt;/collectionDatasource&gt;
-
-&lt;collectionDatasource id=&quot;ordersDs&quot; class=&quot;com.sample.sales.entity.Order&quot; view=&quot;_local&quot;&gt;
-  &lt;query&gt;
-      select o from sales$Order o where o.customer.id = :ds$customersDs
-  &lt;/query&gt;
-&lt;/collectionDatasource&gt;</programlisting></para>
+            <para>The parameter value is data from another data source that is registered in the same <code>DsContext</code>. For example:
+                <programlisting language="xml"><xi:include href="../../source/gui/datasources_6.xml" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
             <para>In the example above, a query parameter of the <code>ordersDs</code> data source will be a current entity instance located in the <code>customersDs</code> data source.</para>
             <para>If parameters with the <code>ds</code> prefix are used, dependencies between datasources are created automatically. They lead to updating the source if its parameter are changed. In the example above, if the selected Customer is changed, the list of its Orders is changed automatically. </para>
             <para>Please note that in the example of the parameterized query, the left part of the comparison operator is the value of the <code>o.customer.id</code> identifier, and the right part – the <code>Customer</code> instance that is contained in the <code>customersDs</code> source. This comparison is valid since when running a query at <structname>Middleware</structname>, the implementation of the <link linkend="query">Query</link> interface, by assigning values to query parameters, automatically adds entity ID instead of a passed entity instance.</para>
-            <para>A path through the entity graph to an attribute (from which the value should be used) can be specified in the parameter name after the prefix and name of a source, for example: <programlisting language="xml">&lt;query&gt;
-  select o from sales$Order o where o.customer.id = :ds$customersDs.id
-&lt;/query&gt;</programlisting></para>
-            <para>or<programlisting language="xml">&lt;query&gt;
-  select o from sales$Order o where o.tagName = :ds$customersDs.group.tagName
-&lt;/query&gt;</programlisting></para>
+            <para>A path through the entity graph to an attribute (from which the value should be used) can be specified in the parameter name after the prefix and name of a source, for example:
+                <programlisting language="xml"><xi:include href="../../source/gui/datasources_7.xml" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
+            <para>or
+                <programlisting language="xml"><xi:include href="../../source/gui/datasources_8.xml" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para>The <code>custom</code> prefix. </para>
-            <para>A parameter value will be taken from the <code>Map&lt;String, Object&gt;</code> object that is passed into the <code>refresh()</code> method of a data source. For example:<programlisting language="xml">&lt;collectionDatasource id=&quot;ordersDs&quot; class=&quot;com.sample.sales.entity.Order&quot; view=&quot;_local&quot;&gt;
-  &lt;query&gt;
-      select o from sales$Order o where o.number = :custom$number
-  &lt;/query&gt;
-&lt;/collectionDatasource&gt;</programlisting><programlisting language="java">Map&lt;String, Object&gt; params = new HashMap&lt;&gt;();
-params.put(&quot;number&quot;, &quot;1&quot;);
-ordersDs.refresh(params);</programlisting></para>
+            <para>A parameter value will be taken from the <code>Map&lt;String, Object&gt;</code> object that is passed into the <code>refresh()</code> method of a data source. For example:
+                <programlisting language="xml"><xi:include href="../../source/gui/datasources_9.xml" encoding="UTF-8" parse="text"/></programlisting>
+                <programlisting language="java"><xi:include href="../../source/gui/datasources_10.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
             <para>Bringing an instance to its identifier, if necessary, is performed similarly to parameters with the <code>ds</code> prefix. The path through the entity graph in the parameter name is not supported in this case.</para>
           </listitem>
           <listitem>
@@ -741,9 +693,9 @@ ordersDs.refresh(params);</programlisting></para>
           </listitem>
           <listitem>
             <para>The <code>component</code> prefix.</para>
-            <para>A parameter value will be a current value of a visual component, which path is specified in the parameter name. For example:<programlisting language="xml">&lt;query&gt;
-  select o from sales$Order o where o.number = :component$filter.orderNumberField
-&lt;/query&gt;</programlisting></para>
+            <para>A parameter value will be a current value of a visual component, which path is specified in the parameter name. For example:
+                <programlisting language="xml"><xi:include href="../../source/gui/datasources_11.xml" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
             <para>The path to a component should include all nested <link linkend="frame">frames</link>.</para>
             <para>Bringing an instance to its identifier, if necessary, is similar to <code>ds</code> parameters. The path through the entity graph in the parameter name is supported as the continuation of the path to a component in this case. </para>
           </listitem>
@@ -758,9 +710,9 @@ ordersDs.refresh(params);</programlisting></para>
                   <para><code>userLogin</code> – login of the currently registered or substituted user in lowercase.</para>
                 </listitem>
               </itemizedlist></para>
-            <para>Example:<programlisting language="xml">&lt;query&gt;
-  select o from sales$Order o where o.createdBy = :session$userLogin
-&lt;/query&gt;</programlisting></para>
+            <para>Example:
+                <programlisting language="xml"><xi:include href="../../source/gui/datasources_12.xml" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
             <para>Bringing an instance to its identifier, if necessary, is similar to <code>ds</code> parameters. In this case, the path through the entity graph in the parameter name is not supported.</para>
           </listitem>
           <warning>
@@ -786,18 +738,9 @@ ordersDs.refresh(params);</programlisting></para>
             </listitem>
           </itemizedlist></para>
         <para>Conditions and statements are added into the resulting query only if parameters inside contain values, i.e., they are not <code>null</code>.</para>
-        <para>Example:<programlisting language="xml">&lt;query&gt;
-  select distinct d from app$GeneralDoc d
-  &lt;filter&gt;
-      &lt;or&gt;
-          &lt;and&gt;
-              &lt;c join=&quot;, app$DocRole dr&quot;&gt;dr.doc.id = d.id and d.processState = :custom$state&lt;/c&gt;
-              &lt;c&gt;d.barCode like :component$barCodeFilterField&lt;/c&gt;
-          &lt;/and&gt;
-          &lt;c join=&quot;, app$DocRole dr&quot;&gt;dr.doc.id = d.id and dr.user.id = :custom$initiator&lt;/c&gt;
-      &lt;/or&gt;
-  &lt;/filter&gt;
-&lt;/query&gt;</programlisting></para>
+        <para>Example:
+            <programlisting language="xml"><xi:include href="../../source/gui/datasources_13.xml" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
         <para>In this case, if <code>state</code> and <code>initiator</code> parameters are passed into the <code>refresh()</code> method of a data source, and a visual component, <code>barCodeFilterField</code>, has some value specified, then the resulting query will be as follows:<programlisting>select distinct d from app$GeneralDoc d, app$DocRole dr
 where
 (
@@ -836,50 +779,20 @@ where
     </section><section id="datasource_listeners">
       <title>Data Source Listeners</title>
       <para>With <link linkend="datasources">datasource listeners</link> it&apos;s possible to receive notifications about changes in data source states and entity instances located inside them.</para>
-      <para>To register listeners, the <code>Datasource.addListener()</code>, <code>Datasource.removeListener()</code> methods are used. Below is an example of registering a listener in a <link linkend="screen_controller">screen controller</link>:<programlisting language="java">@Inject
-private Datasource&lt;Customer&gt; customerDs;
-...
-public void init(Map&lt;String, Object&gt; params) {
-  ...
-  customerDs.addListener(new DatasourceListener&lt;Customer&gt;() {
-      // listener methods implementation
-  });
-}</programlisting></para>
+      <para>To register listeners, the <code>Datasource.addListener()</code>, <code>Datasource.removeListener()</code> methods are used. Below is an example of registering a listener in a <link linkend="screen_controller">screen controller</link>:
+          <programlisting language="java"><xi:include href="../../source/gui/datasources_14.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
       <para>There are two listener interfaces of datasources: <code>DatasourceListener</code> and <code>CollectionDatasourceListener</code>. The first can be used for registration in any of datasources, the second – only in those implementing <code>CollectionDatasource</code>. Typically, in practice, it&apos;s not necessary to receive all notifications from a listener. That&apos;s why it is convenient to use class-adapters, <code>DsListenerAdapter</code> and <code>CollectionDsListenerAdapter</code>, instead of implementation of listener interfaces, which contain empty implementations of all methods of corresponding interfaces.</para>
       <para><code>DatasourceListener</code> methods are provided below:<itemizedlist>
           <listitem>
             <para><code>valueChanged()</code> – declaration of this method is inherited from the base interface, <code>ValueListener</code>. This listener method is invoked if an attribute value of some entity that is currently located in the source has changed. The modified instance itself, the name of changed attribute, old and new values are passed into the method.</para>
-            <para><code>valueChanged()</code> notification can be used to respond to user changes in an entity from the UI, i.e., editing input fields. In the example below, a hypothetical method, <code>updateSettings()</code>, will be invoked when the value of the <code>active</code> attribute is changed, and a new attribute value will be passed into this method: <programlisting language="java">@Inject
-private Datasource&lt;Customer&gt; customerDs;
-
-public void init(Map&lt;String, Object&gt; params) {
-  ...
-  customerDs.addListener(new DsListenerAdapter&lt;Customer&gt;() {
-      @Override
-      public void valueChanged(Customer source, String property, Object prevValue, Object value) {
-          if (&quot;active&quot;.equals(property)) {
-              boolean active = BooleanUtils.isTrue((Boolean) value); // converting null to false
-              updateSettings(active);
-          }
-      }
-  });
-}</programlisting></para>
+            <para><code>valueChanged()</code> notification can be used to respond to user changes in an entity from the UI, i.e., editing input fields. In the example below, a hypothetical method, <code>updateSettings()</code>, will be invoked when the value of the <code>active</code> attribute is changed, and a new attribute value will be passed into this method:
+                <programlisting language="java"><xi:include href="../../source/gui/datasources_15.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
-          <listitem><para><code>itemChanged()</code> – is invoked when a selected instance returned by the <code>getItem()</code> method is changed.</para><para>For <code>Datasource</code>, it happens when another instance (or <code>null</code>) is set with <code>setItem()</code> method.</para><para>For <code>CollectionDatasource</code>, this notification is invoked when a selected element is changed in a linked visual component. For example, it may be a selected table row, tree element or item in a drop-down list.</para>Below is an example of the <code>itemChanged()</code>notification to control the state of an action of the table:<programlisting language="java">@Inject
-protected CollectionDatasource&lt;Customer, UUID&gt; customersDs;
-
-@Named(&quot;customersTable.remove&quot;)
-protected RemoveAction removeAction;
-
-public void init(Map&lt;String, Object&gt; params) {
-  ...
-  customersDs.addListener(new DsListenerAdapter&lt;Customer&gt;() {
-      @Override
-      public void itemChanged(Datasource&lt;Customer&gt; ds, Customer prevItem, Customer item) {
-          removeAction.setEnabled(canCustomerBeDeleted(item));
-      }
-  });
-}</programlisting></listitem>
+          <listitem><para><code>itemChanged()</code> – is invoked when a selected instance returned by the <code>getItem()</code> method is changed.</para><para>For <code>Datasource</code>, it happens when another instance (or <code>null</code>) is set with <code>setItem()</code> method.</para><para>For <code>CollectionDatasource</code>, this notification is invoked when a selected element is changed in a linked visual component. For example, it may be a selected table row, tree element or item in a drop-down list.</para>Below is an example of the <code>itemChanged()</code>notification to control the state of an action of the table:
+              <programlisting language="java"><xi:include href="../../source/gui/datasources_16.java" encoding="UTF-8" parse="text"/></programlisting>
+          </listitem>
           <listitem>
             <para><code>stateChanged()</code> – is invoked when a state of the data source is changed. The data source can be in one of three states corresponding to the <code>Datasource.State</code> enumeration:<itemizedlist>
                 <listitem>
@@ -892,41 +805,17 @@ public void init(Map&lt;String, Object&gt; params) {
                   <para><code>VALID</code> – data source is in working state: <code>Datasource</code> contains an entity instance or null, <code>CollectionDatasource</code> – collection of instances or an empty collection.</para>
                 </listitem>
               </itemizedlist></para>
-            <para>Receiving a notification about changes in source state may be important for complex <link linkend="screen_edit">editors</link>, which consist of several <link linkend="frame">frames</link> where it is difficult to trace the moment of putting an edited entity into the source. In this case, <code>stateChanged()</code> notification for the delayed initialization of certain screen elements can be used:<programlisting language="java">@Inject
-protected CollectionPropertyDatasourceImpl&lt;CategoryAttribute, UUID&gt; categoryAttrsDs;
-
-categoryAttrsDs.addListener(new DsListenerAdapter&lt;CategoryAttribute&gt;() {
-  @Override
-  public void stateChanged(Datasource ds, Datasource.State prevState, Datasource.State state) {
-      if (state != Datasource.State.VALID) return;
-      initDataTypeColumn();
-      initDefaultValueColumn();
-  }
-});</programlisting></para>
+            <para>Receiving a notification about changes in source state may be important for complex <link linkend="screen_edit">editors</link>, which consist of several <link linkend="frame">frames</link> where it is difficult to trace the moment of putting an edited entity into the source. In this case, <code>stateChanged()</code> notification for the delayed initialization of certain screen elements can be used:
+                <programlisting language="java"><xi:include href="../../source/gui/datasources_17.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
         </itemizedlist></para>
       <para>The <code>CollectionDatasourceListener</code> interface adds one more method: <itemizedlist>
           <listitem>
             <para><code>collectionChanged()</code> – is invoked when a entity collection, which is stored in the data source, is changed. One of the following type of changes is passed into the method: <code>REFRESH</code>, <code>CLEAR</code>, <code>ADD</code>, <code>REMOVE</code>, <code>UPDATE</code>.</para>
-            <para>Below is an example of a listener that invokes the recalculation of a journey cost in case of the address of a stop (the <code>Stop</code> entity) or the number of stops is changed:<programlisting language="java">protected class StopDsListener extends CollectionDsListenerAdapter&lt;Stop&gt; {
-  @Override
-  public void valueChanged(Stop source, String property, Object prevValue, Object value) {
-      // existing stop address changed
-      if (&quot;address&quot;.equals(property)) {
-          fireRouteChanged();
-      }
-  }
-
-  @Override
-  public void collectionChanged(CollectionDatasource ds, Operation operation) {
-      // stop was added or removed
-      fireRouteChanged();
-  }
-
-  private void fireRouteChanged() {
-      // journey route has changed, need to recalculate price, journey time, pickup time delay etc.
-  }
-}</programlisting></para>
+            <para>Below is an example of a listener that invokes the recalculation of a journey cost in case of the address of a stop (the <code>Stop</code> entity) or the number of stops is changed:
+                <programlisting language="java"><xi:include href="../../source/gui/datasources_18.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
         </itemizedlist></para>
     </section><section id="dsContext">
@@ -961,22 +850,9 @@ categoryAttrsDs.addListener(new DsListenerAdapter&lt;CategoryAttribute&gt;() {
                 <code>FileUploadField</code>
               </link>, after uploading a file, creates a new entity instance, <code>FileDescriptor</code>, which can be saved together with other screen entities by adding to <code>CommitContext</code> in the <code>DsContext.CommitListener.beforeCommit()</code> method..</para>
             <para><code>DsContext.CommitListener</code> has the <code>DsContext.CommitListenerAdapter</code> adapter, which is useful when it&apos;s needed to define only one method.</para>
-            <para>In the following example, a new instance, <code>Customer</code> will be sent to <structname>Middleware</structname> and saved to the DB together with other modified screen entities when it is committed:<programlisting language="java">protected Customer customer;
-
-protected void createNewCustomer() {
-  customer = new Customer();
-  customer.setName(&quot;John Doe&quot;);
-}
-
-public void init(Map&lt;String, Object&gt; params) {
-  getDsContext().addListener(new DsContext.CommitListenerAdapter() {
-      @Override
-      public void beforeCommit(CommitContext context) {
-          if (customer != null)
-              context.getCommitInstances().add(customer);
-      }
-  });
-}</programlisting></para>
+            <para>In the following example, a new instance, <code>Customer</code> will be sent to <structname>Middleware</structname> and saved to the DB together with other modified screen entities when it is committed:
+                <programlisting language="java"><xi:include href="../../source/gui/dscontext_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
         </orderedlist></para>
     </section><section id="dataSupplier">
@@ -1064,85 +940,30 @@ public void init(Map&lt;String, Object&gt; params) {
         </itemizedlist></para>
       <para>The examples of declaration are provided below.<itemizedlist>
           <listitem>
-            <para>Declaring actions at the screen level:<programlisting language="xml">&lt;window ...&gt;
-  &lt;dsContext/&gt;
-
-  &lt;actions&gt;
-      &lt;action id=&quot;sayHelloAction&quot; caption=&quot;msg://sayHello&quot; shortcut=&quot;ALT-T&quot; invoke=&quot;sayHello&quot;/&gt;
-  &lt;/actions&gt;
-
-  &lt;layout&gt;
-      &lt;button action=&quot;sayHelloAction&quot;/&gt;
-  &lt;/layout&gt;
-&lt;/window&gt;</programlisting><programlisting language="java">// controller
-
-public void sayHello(Component component) {
-  showNotification(&quot;Hello!&quot;, NotificationType.TRAY);
-}</programlisting>In the example above, an action with  <code>sayHelloAction</code> identifier and a name from  <link linkend="message_packs">message pack</link> is declared. This action is bound with a button, which caption will be set to the action name. The action will invoke the <code>sayHello()</code> controller method when clicking on the button, or when pressing the   <keycap>ALT-T</keycap> shortcut if at that moment the screen has input focus.</para>
+            <para>Declaring actions at the screen level:
+                <programlisting language="xml"><xi:include href="../../source/gui/actions_1.xml" encoding="UTF-8" parse="text"/></programlisting>
+                <programlisting language="java"><xi:include href="../../source/gui/actions_2.java" encoding="UTF-8" parse="text"/></programlisting>In the example above, an action with  <code>sayHelloAction</code> identifier and a name from  <link linkend="message_packs">message pack</link> is declared. This action is bound with a button, which caption will be set to the action name. The action will invoke the <code>sayHello()</code> controller method when clicking on the button, or when pressing the   <keycap>ALT-T</keycap> shortcut if at that moment the screen has input focus.</para>
           </listitem>
           <listitem>
-            <para>Declaring actions for  <link linkend="gui_PopupButton">PopupButton</link>:<programlisting language="xml">&lt;popupButton caption=&quot;Say something&quot;&gt;
- &lt;actions&gt;
-    &lt;action id=&quot;helloAction&quot; caption=&quot;Say hello&quot; invoke=&quot;sayHello&quot;/&gt;
-    &lt;action id=&quot;goodbyeAction&quot; caption=&quot;Say goodbye&quot; invoke=&quot;sayGoodbye&quot;/&gt;
- &lt;/actions&gt;
-&lt;/popupButton&gt;</programlisting></para>
+            <para>Declaring actions for  <link linkend="gui_PopupButton">PopupButton</link>:
+                <programlisting language="xml"><xi:include href="../../source/gui/actions_3.xml" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
-            <para>Declaring actions for  <link linkend="gui_Table">Table</link>:<programlisting language="xml">&lt;table id=&quot;usersTable&quot; width=&quot;100%&quot;&gt;
-  &lt;actions&gt;
-      &lt;action id=&quot;create&quot;/&gt;
-      &lt;action id=&quot;edit&quot;/&gt;
-      &lt;action id=&quot;copy&quot; caption=&quot;msg://copy&quot; icon=&quot;icons/copy.png&quot;
-              invoke=&quot;copy&quot; trackSelection=&quot;true&quot;/&gt;
-      &lt;action id=&quot;changePassw&quot; caption=&quot;msg://changePassw&quot; icon=&quot;icons/change-pass.png&quot;
-              invoke=&quot;changePassword&quot; trackSelection=&quot;true&quot;/&gt;
-  &lt;/actions&gt;
-  &lt;buttonsPanel&gt;
-      &lt;button action=&quot;usersTable.create&quot;/&gt;
-      &lt;button action=&quot;usersTable.edit&quot;/&gt;
-      &lt;button action=&quot;usersTable.copy&quot;/&gt;
-      &lt;button action=&quot;usersTable.changePassw&quot;/&gt;
-  &lt;/buttonsPanel&gt;
-  &lt;rowsCount/&gt;
-  &lt;columns&gt;
-      &lt;column id=&quot;login&quot;/&gt;
-      ...
-  &lt;/columns&gt;
-  &lt;rows datasource=&quot;usersDs&quot;/&gt;
-&lt;/table&gt;</programlisting>In this example <code>copy</code> and <code>changePassw</code> actions are declared in addition to <code>create</code> and <code>edit</code> standard actions of the table. These actions invoke corresponding methods of the controller. In addition, the  <code>trackSelection=&quot;true&quot;</code> attribute is specified for them, which means that the action and corresponding button become disabled if no row is selected in the table. It is useful if the action is intended to be executed over a currently selected table row.</para>
+            <para>Declaring actions for  <link linkend="gui_Table">Table</link>:
+                <programlisting language="xml"><xi:include href="../../source/gui/actions_4.xml" encoding="UTF-8" parse="text"/></programlisting>
+                In this example <code>copy</code> and <code>changePassw</code> actions are declared in addition to <code>create</code> and <code>edit</code> standard actions of the table. These actions invoke corresponding methods of the controller. In addition, the  <code>trackSelection=&quot;true&quot;</code> attribute is specified for them, which means that the action and corresponding button become disabled if no row is selected in the table. It is useful if the action is intended to be executed over a currently selected table row.</para>
             <para>An optional <code>openType</code> attribute can be specified  for create and edit actions to define edit screen opening mode, as described for the <code>setOpenType()</code> method of the  <link linkend="createAction">CreateAction</link> class.</para>
           </listitem>
           <listitem>
-            <para>Declaring  <link linkend="gui_PickerField">PickerField</link> actions:<programlisting language="xml">&lt;pickerField id=&quot;colourField&quot; datasource=&quot;carDs&quot; property=&quot;colour&quot;/&gt;
-  &lt;actions&gt;
-      &lt;action id=&quot;lookup&quot;/&gt;
-      &lt;action id=&quot;show&quot; icon=&quot;icons/show.png&quot;
-              invoke=&quot;showColour&quot; caption=&quot;&quot; description=&quot;Show colour&quot;/&gt;
-  &lt;/actions&gt;
-&lt;/pickerField&gt;</programlisting>In the example above, the standard <code>lookup</code>  action and an additional <code>show</code> action invoking the <code>showColour()</code> method of the controller, are declared for the <code>PickerField</code> component. Since <code>PickerField</code> buttons that display actions use icons instead of captions, the caption attribute is explicitly set to an empty string, otherwise action name and button caption would be set to the action identifier. The <code>description</code> attribute allows you to display a tooltip when hovering over the action button.</para>
+            <para>Declaring  <link linkend="gui_PickerField">PickerField</link> actions:
+                <programlisting language="xml"><xi:include href="../../source/gui/actions_5.xml" encoding="UTF-8" parse="text"/></programlisting>
+                In the example above, the standard <code>lookup</code>  action and an additional <code>show</code> action invoking the <code>showColour()</code> method of the controller, are declared for the <code>PickerField</code> component. Since <code>PickerField</code> buttons that display actions use icons instead of captions, the caption attribute is explicitly set to an empty string, otherwise action name and button caption would be set to the action identifier. The <code>description</code> attribute allows you to display a tooltip when hovering over the action button.</para>
           </listitem>
         </itemizedlist></para>
-      <para>You can obtain references to any declared actions in the screen controller either directly by   <link linkend="screen_controller_injection">injection</link>, or from components that implement the <code>Component.ActionsHolder</code> interface. This can be useful to set action properties programmatically. For example:<programlisting language="java">@Named(&quot;carsTable.create&quot;)
-private CreateAction createAction;
-
-@Named(&quot;carsTable.copy&quot;)
-private Action copyAction;
-
-@Inject
-private PickerField colourField;
-
-@Override
-public void init(Map&lt;String, Object&gt; params) {
-  Map&lt;String, Object&gt; values = new HashMap&lt;&gt;();
-  values.put(&quot;type&quot;, CarType.PASSENGER);
-  createAction.setInitialValues(values);
-
-  copyAction.setEnabled(false);
-
-  Action showAction = colourField.getAction(&quot;show&quot;);
-  showAction.setEnabled(false);
-}</programlisting></para>
+      <para>You can obtain references to any declared actions in the screen controller either directly by   <link linkend="screen_controller_injection">injection</link>, or from components that implement the <code>Component.ActionsHolder</code> interface. This can be useful to set action properties programmatically. For example:
+          <programlisting language="java"><xi:include href="../../source/gui/actions_6.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
     </section>
     <section id="standard_actions">
       <title>Standard Actions</title>
