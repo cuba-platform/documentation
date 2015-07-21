@@ -1,0 +1,1 @@
+long startTime = AppBeans.get(TimeSource.class).currentTimeMillis();

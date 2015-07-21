@@ -1,0 +1,1 @@
+((MyMetadataTools) metadata.getTools()).foo();

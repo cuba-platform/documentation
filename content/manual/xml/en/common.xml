@@ -556,8 +556,8 @@ protected Customer customer;</programlisting></para>
                 </itemizedlist></para>
               <para>Example of the    <code>customers</code> attribute of the  <code>Group</code> class on the owning side of the relationship:<programlisting language="java">@ManyToMany
 @JoinTable(name = &quot;SALES_CUSTOMER_GROUP_LINK&quot;,
-  joinColumns = @JoinColumn(name = &quot;GROUP_ID&quot;),
-  inverseJoinColumns = @JoinColumn(name = &quot;CUSTOMER_ID&quot;))
+           joinColumns = @JoinColumn(name = &quot;GROUP_ID&quot;),
+           inverseJoinColumns = @JoinColumn(name = &quot;CUSTOMER_ID&quot;))
 protected Set&lt;Customer&gt; customers;</programlisting></para>
               <para>Example of the  <code>groups</code> attribute of the  <code>Customer</code>class on non-owning side of the same relationship:<programlisting language="java">@ManyToMany(mappedBy = &quot;customers&quot;)
 protected Set&lt;Group&gt; groups;</programlisting></para>
@@ -743,47 +743,12 @@ protected Proc proc;</programlisting></para>
           </listitem>
         </itemizedlist></para>
       <para>CUBA-style approach to solving these problems is to detach the value stored in the database from  <code>ordinal</code> value of the enumeration. In order to do this, the field of the entity should be declared with the type, stored in the database  (<code>Integer</code> or <code>String</code>), while the access methods (getter / setter) should be created with the actual enumeration type. </para>
-      <para>Example:<programlisting language="java">@Entity(name = &quot;sales$Customer&quot;)
-@Table(name = &quot;SALES_CUSTOMER&quot;)
-public class Customer extends StandardEntity {
-
-  @Column(name = &quot;GRADE&quot;)
-  protected Integer grade;
-
-  public CustomerGrade getGrade() {
-      return grade == null ? null : CustomerGrade.fromId(grade);
-  }
-
-  public void setGrade(CustomerGrade grade) {
-      this.grade = grade == null ? null : grade.getId();
-  }
-...
-}  </programlisting></para>
-      <para>In this case, the enumeration class can look like this:<programlisting language="java">public enum CustomerGrade implements EnumClass&lt;Integer&gt; {
-
-  PREMIUM(10),
-  HIGH(20),
-  MEDIUM(30);
-
-  private Integer id;
-
-  CustomerGrade(Integer id) {
-      this.id = id;
-  }
-
-  @Override
-  public Integer getId() {
-      return id;
-  }
-
-  public static CustomerGrade fromId(Integer id) {
-      for (CustomerGrade grade : CustomerGrade.values()) {
-          if (grade.getId().equals(id))
-              return grade;
-      }
-      return null;
-  }
-}</programlisting></para>
+      <para>Example:
+          <programlisting language="java"><xi:include href="../../source/common/enum_1.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
+      <para>In this case, the enumeration class can look like this:
+          <programlisting language="java"><xi:include href="../../source/common/enum_2.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
       <para>For correct reflection in  <link linkend="metadata_framework">metadata</link> the enumeration class must implement  <code>EnumClass</code>  interface. </para>
       <para>As the examples show,  <code>grade</code> attribute corresponds to the <code>Integer</code> type value stored in the database, which is specified by the <code>id</code> field of  <code>CustomerGrade</code> enumeration, namely  <literal>10</literal>, <literal>20</literal> or <literal>30</literal>. At the same time,  the application code and metadata framework use <code>CustomerGrade</code> enum through access methods, which perform the actual conversion. </para>
       <para>A call to  <code>getGrade()</code> method will simply return  <code>null</code>, if the value in the database does not correspond to any of the enumeration values. In order to add a new value, for example,  <code>HIGHER</code>, between <code>HIGH</code> and <code>PREMIUM</code>, it is sufficient to add new enumeration value with <code>id = 15</code>, which ensures that sorting by <code>Customer.grade</code> field remains correct. </para>
@@ -1185,11 +1150,9 @@ private Double latitude;</programlisting></para>
       <section>
         <title>Example of Data Formatting in UI </title>
         <para>Let us consider the way  <code>Order.date</code>  attribute is displayed in orders browser table. </para>
-        <para><code>order-browse.xml</code><programlisting language="xml">&lt;table id=&quot;ordersTable&quot;&gt;
-  ...
-  &lt;columns&gt;
-      &lt;column id=&quot;date&quot;/&gt;
-      ...</programlisting></para>
+        <para><code>order-browse.xml</code>
+            <programlisting language="xml"><xi:include href="../../source/common/dateformat_1.xml" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
         <para> <code>date</code> attribute in <code>Order</code> class is defined using &quot;date&quot; type: <programlisting language="java">@Column(name = &quot;DATE&quot;, nullable = false)
 @Temporal(TemporalType.DATE)
 private Date date;</programlisting></para>
@@ -1200,76 +1163,28 @@ private Date date;</programlisting></para>
         <title>Examples of Date and Number Formatting in the Application Code </title>
         <itemizedlist>
           <listitem>
-            <para>Date formatting example <programlisting language="java">@Inject
-protected UserSessionSource userSessionSource;
-...
-Date date = ...;
-String dateStr = Datatypes.get(Date.class).format(date, userSessionSource.getLocale());</programlisting></para>
+            <para>Date formatting example
+                <programlisting language="java"><xi:include href="../../source/common/dateformat_2.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para>Example of formatting of numeric values with high accuracy (5 decimal numbers after comma) in <structname>Web Client</structname>:</para>
             <para><filename>/com/sample/sales/web/messages_ru.properties</filename><programlisting>coordinateFormat = #,##0.00000</programlisting></para>
-            <para><filename>SomeClass.java</filename><programlisting language="java">@Inject
-protected Messages messages;
-@Inject
-protected UserSessionSource userSessionSource;
-...
-String coordinateFormat = messages.getMainMessage(&quot;coordinateFormat&quot;);
-FormatStrings formatStrings = Datatypes.getFormatStrings(userSessionSource.getLocale());
-NumberFormat format = new DecimalFormat(coordinateFormat, formatStrings.getFormatSymbols());
-
-String formattedValue = format.format(value);</programlisting></para>
+            <para><filename>SomeClass.java</filename>
+                <programlisting language="java"><xi:include href="../../source/common/dateformat_3.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
         </itemizedlist>
       </section>
       <section>
         <title>Example of a Custom Datatype</title>
         <para>Let us consider the implementation of a custom <code>GeoCoordinateDatatype</code>,  intended for the attributes storing geographical coordinates.</para>
-        <para>First, we need to create a class in the  <structname>global</structname> module:<programlisting language="java">public class GeoCoordinateDatatype extends DoubleDatatype {
-
-  public static final String NAME = &quot;geocoordinate&quot;;
-
-  // the format is the same for all locales but may differ in decimal points
-  public static final String FORMAT = &quot;#0.000000&quot;;
-
-  public GeoCoordinateDatatype(Element element) {
-      super(element);
-  }
-
-  @Override
-  public String getName() {
-      return NAME;
-  }
-
-  @Override
-  public String format(Double value, Locale locale) {
-      if (value == null)
-          return &quot;&quot;;
-      FormatStrings formatStrings = Datatypes.getFormatStrings(locale);
-      if (formatStrings == null)
-          return format(value); // FormatStrings are not defined for locales, so formatting is made according to  datatypes.xml file
-
-      NumberFormat format = new DecimalFormat(FORMAT, formatStrings.getFormatSymbols());
-      return format.format(value);
-  }
-
-  @Override
-  public Double parse(String value, Locale locale) throws ParseException {
-      if (StringUtils.isBlank(value))
-          return null;
-      FormatStrings formatStrings = Datatypes.getFormatStrings(locale);
-      if (formatStrings == null)
-          return parse(value); // FormatStrings are not defined for locales, so parsing is made according to  datatypes.xml file
-
-      NumberFormat format = new DecimalFormat(FORMAT, formatStrings.getFormatSymbols());
-      return parse(value, format).doubleValue();
-  }
-}</programlisting></para>
-        <para>Next, we create  <filename>datatypes.xml</filename> file in the root of the  <structname>global</structname> module <filename>src</filename> directory in the application project and copy contents from  <filename>/com/haulmont/chile/core/datatypes/datatypes.xml</filename> file located in <structname>global</structname> module of  <structname>cuba </structname>base project.  Then add registration of the new type to it: <programlisting language="xml">&lt;datatypes&gt;
-
-  &lt;datatype class=&quot;com.sample.sales.entity.GeoCoordinateDatatype&quot;
-            format=&quot;#0.000000&quot; decimalSeparator=&quot;.&quot; groupingSeparator=&quot;&quot;/&gt;
-...</programlisting></para>
+        <para>First, we need to create a class in the  <structname>global</structname> module:
+            <programlisting language="java"><xi:include href="../../source/common/datatype_1.java" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
+        <para>Next, we create  <filename>datatypes.xml</filename> file in the root of the  <structname>global</structname> module <filename>src</filename> directory in the application project and copy contents from  <filename>/com/haulmont/chile/core/datatypes/datatypes.xml</filename> file located in <structname>global</structname> module of  <structname>cuba </structname>base project.  Then add registration of the new type to it:
+            <programlisting language="xml"><xi:include href="../../source/common/datatype_2.xml" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
         <para>Finally we specify new datatype for the required attributes: <programlisting language="java">@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
 @Column(name = &quot;LATITUDE&quot;)
 private Double latitude;</programlisting></para>
@@ -1292,12 +1207,9 @@ private Double latitude;</programlisting></para>
           </listitem>
           <listitem>
             <para>Optional: entity meta-annotations can also be defined in <link linkend="metadata.xml">metadata.xml</link> files. If a meta-annotation in XML has the same name as the meta-annotation created by Java entity class annotation, then it will override the latter.  </para>
-            <para>The example below shows meta-annotations definition in <filename>metadata.xml</filename>:<programlisting language="xml">&lt;annotations&gt;
-  &lt;entity class=&quot;com.haulmont.cuba.security.entity.User&quot;&gt;
-      &lt;annotation name=&quot;com.haulmont.cuba.core.entity.annotation.TrackEditScreenHistory&quot; value=&quot;false&quot;/&gt;
-      &lt;annotation name=&quot;com.haulmont.cuba.core.entity.annotation.EnableRestore&quot; value=&quot;true&quot;/&gt;
-  &lt;/entity&gt;
-&lt;/annotations&gt;</programlisting></para>
+            <para>The example below shows meta-annotations definition in <filename>metadata.xml</filename>:
+                <programlisting language="xml"><xi:include href="../../source/common/metaannotations_1.xml" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
         </itemizedlist></para>
     </section>
@@ -1380,12 +1292,9 @@ private Double latitude;</programlisting></para>
       <title>Views Creation </title>
       <para>A view can be created in two possible ways: <itemizedlist>
           <listitem>
-            <para><emphasis role="bold">Programmatically</emphasis> – by creating   <code>View</code> instance, for example:<programlisting language="java">View view = new View(Order.class)
-      .addProperty(&quot;date&quot;)
-      .addProperty(&quot;amount&quot;)
-      .addProperty(&quot;customer&quot;, new View(Customer.class)
-          .addProperty(&quot;name&quot;)
-      );</programlisting></para>
+            <para><emphasis role="bold">Programmatically</emphasis> – by creating   <code>View</code> instance, for example:
+                <programlisting language="java"><xi:include href="../../source/common/views_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
             <para>Typically, this way can be appropriate for creating views that are used in a single piece of business-logic.   </para>
           </listitem>
           <listitem>
@@ -1403,12 +1312,9 @@ private Double latitude;</programlisting></para>
           </listitem>
         </itemizedlist></para>
       <para>The detailed structure of XML descriptors is provided in  <xref linkend="views.xml"/>.</para>
-      <para>The example below shows view descriptor for <code>Order</code> entity which provides loading of all local attributes, associated <code>Customer</code> and ordered <code>Items</code> collection: <programlisting language="xml">&lt;view class=&quot;com.sample.sales.entity.Order&quot;
-    name=&quot;orderWithCustomer&quot;
-    extends=&quot;_local&quot;&gt;
-  &lt;property name=&quot;customer&quot; view=&quot;_minimal&quot;/&gt;
-  &lt;property name=&quot;items&quot; view=&quot;itemsInOrder&quot;/&gt;
-&lt;/view&gt;</programlisting></para>
+      <para>The example below shows view descriptor for <code>Order</code> entity which provides loading of all local attributes, associated <code>Customer</code> and ordered <code>Items</code> collection:
+          <programlisting language="xml"><xi:include href="../../source/common/views_2.xml" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
       <para>The recommended way of grouping and deployment of view descriptors is as follows: <itemizedlist>
           <listitem>
             <para>Create <filename>views.xml</filename> file in the   <structname>global</structname> <link linkend="app_modules">module</link> in <filename>src</filename>  root and place all view descriptors which should be globally accessible (i.e. on all application <link linkend="app_tiers">tiers</link> into it. </para>
@@ -1434,71 +1340,24 @@ private Double latitude;</programlisting></para>
     </warning>
     <section id="managed_beans_creation">
       <title>Creating a Bean</title>
-      <para>To create a managed bean, add the   <literal>@javax.annotation.ManagedBean</literal> annotation to the Java class. For example:<programlisting language="java">package com.sample.sales.core;
-
-import com.sample.sales.entity.Order;
-import javax.annotation.ManagedBean;
-
-@ManagedBean(OrderWorker.NAME)
-public class OrderWorker {
-  public static final String NAME = &quot;sales_OrderWorker&quot;;
-
-  public void calculateTotals(Order order) {
-  }
-}</programlisting></para>
+      <para>To create a managed bean, add the   <literal>@javax.annotation.ManagedBean</literal> annotation to the Java class. For example:
+          <programlisting language="java"><xi:include href="../../source/common/managedbean_1.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
       <para>It is recommended to assign a unique name to the bean in form of  <literal>{project_name}_{class_name}</literal> and to define it in the <code>NAME</code> constant. </para>
-      <para>The managed bean class should be placed inside the package tree with the root specified in the <literal>context:component-scan</literal> element of the <link linkend="spring.xml">spring.xml</link> file. In this case, the  <filename>spring.xml</filename> file contains the element:<programlisting language="xml">&lt;context:component-scan base-package=&quot;com.sample.sales&quot;/&gt;</programlisting>which means that the search for annotated beans for this application block will be performed starting with the <code>com.sample.sales</code> package.</para>
-      <para>To provide an ability to substitute the implementation in the future, it is recommended to give the bean a separate interface:</para>
-      <programlisting language="java">// OrderWorker.java – interface
-package com.sample.sales.core;
-
-import com.sample.sales.entity.Order;
-
-public interface OrderWorker {
-  String NAME = &quot;sales_OrderWorker&quot;;
-
-  void calculateTotals(Order order);
-}</programlisting>
-      <programlisting language="java">// OrderWorkerBean.java – implementation
-package com.sample.sales.core;
-
-import com.sample.sales.entity.Order;
-import javax.annotation.ManagedBean;
-
-@ManagedBean(OrderWorker.NAME)
-public class OrderWorkerBean implements OrderWorker {
-  @Override
-  public void calculateTotals(Order order) {
-  }
-}</programlisting>
+      <para>The managed bean class should be placed inside the package tree with the root specified in the <literal>context:component-scan</literal> element of the <link linkend="spring.xml">spring.xml</link> file. In this case, the  <filename>spring.xml</filename> file contains the element:
+          <programlisting language="xml"><xi:include href="../../source/common/managedbean_2.xml" encoding="UTF-8" parse="text"/></programlisting>
+          which means that the search for annotated beans for this application block will be performed starting with the <code>com.sample.sales</code> package.</para>
+      <para>To provide an ability to substitute the implementation in the future, it is recommended to give the bean a separate interface:
+        <programlisting language="java"><xi:include href="../../source/common/managedbean_3.java" encoding="UTF-8" parse="text"/></programlisting>
+        <programlisting language="java"><xi:include href="../../source/common/managedbean_4.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
       <para>Managed beans can be created on any <link linkend="app_tiers">tier</link>, because the  <application>Spring Framework</application> container is used in all standard blocks of the application.</para>
     </section>
     <section id="managed_beans_usage">
       <title>Using the Bean</title>
-      <para>A reference to the bean can be obtained through injection or through the <code>AppBeans</code> class. As an example of using the bean, let us look at the implementation of the <code>OrderService</code> bean that delegates the execution to the  <code>OrderWorker</code> bean:<programlisting language="java">package com.sample.sales.core;
-
-import com.haulmont.cuba.core.Persistence;
-import com.sample.sales.entity.Order;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import javax.inject.Inject;
-
-@Service(OrderService.NAME)
-public class OrderServiceBean implements OrderService {
-
-  @Inject
-  protected Persistence persistence;
-
-  @Inject
-  protected OrderWorker orderWorker;
-
-  @Transactional
-  @Override
-  public BigDecimal calculateTotals(Order order) {
-      Order entity = persistence.getEntityManager().merge(order);
-      orderWorker.calculateTotals(entity);
-  }
-}</programlisting></para>
+      <para>A reference to the bean can be obtained through injection or through the <code>AppBeans</code> class. As an example of using the bean, let us look at the implementation of the <code>OrderService</code> bean that delegates the execution to the  <code>OrderWorker</code> bean:
+          <programlisting language="java"><xi:include href="../../source/common/managedbean_5.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
       <para>In this example, the service starts a  <link linkend="transactions">transaction</link>, places the entity instance obtained from the client level into the <link linkend="entityManager">persistent context</link>, and passes the control to the <code>OrderWorker</code> bean, which contains the main business logic. </para>
     </section>
   </section>
@@ -1516,57 +1375,16 @@ public class OrderServiceBean implements OrderService {
       <para>The following example shows how to create a JMX bean.</para>
       <itemizedlist>
         <listitem>
-          <para>JMX bean interface:<programlisting language="java">package com.sample.sales.core;
-
-import org.springframework.jmx.export.annotation.*;
-
-@ManagedResource(description = &quot;Performs operations on Orders&quot;)
-public interface OrdersMBean {
-
-  @ManagedOperation(description = &quot;Recalculates an order amount&quot;)
-  @ManagedOperationParameters({@ManagedOperationParameter(name = &quot;orderId&quot;, description = &quot;&quot;)})
-  String calculateTotals(String orderId);
-}</programlisting></para>
+          <para>JMX bean interface:
+              <programlisting language="java"><xi:include href="../../source/common/jmxbean_1.java" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
           <para>The interface and its methods may contain annotations to specify the description of the JMX bean and its operations. This description will be displayed in all tools that work with this JMX interface, thereby helping the system administrator.</para>
           <para>Since the JMX tools support a limited set of data types, it is desirable to use  <code>String</code> as the type for the parameters and result of the method and perform the conversion inside the method, if necessary. </para>
         </listitem>
         <listitem>
-          <para>The JMX bean class:<programlisting language="java">package com.sample.sales.core;
-
-import com.haulmont.cuba.core.*;
-import com.haulmont.cuba.core.app.*;
-import com.sample.sales.entity.Order;
-import org.apache.commons.lang.exception.ExceptionUtils;
-import javax.annotation.ManagedBean;
-import javax.inject.Inject;
-import java.util.UUID;
-
-@ManagedBean(&quot;sales_OrdersMBean&quot;)
-public class Orders implements OrdersMBean {
-
-  @Inject
-  protected OrderWorker orderWorker;
-
-  @Inject
-  protected Persistence persistence;
-
-  @Authenticated
-  @Override
-  public String calculateTotals(final String orderId) {
-      try {
-          persistence.createTransaction().execute(new Transaction.Runnable() {
-              @Override
-              public void run(EntityManager em) {
-                  Order entity = em.find(Order.class, UUID.fromString(orderId));
-                  orderWorker.calculateTotals(entity);
-              }
-          });
-          return &quot;Done&quot;;
-      } catch (Throwable e) {
-          return ExceptionUtils.getStackTrace(e);
-      }
-  }
-}</programlisting></para>
+          <para>The JMX bean class:
+              <programlisting language="java"><xi:include href="../../source/common/jmxbean_2.java" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
           <para>The <code>@ManagedBean</code> annotation defines class as a managed bean with the  <literal>sales_OrdersMBean</literal> name. The name is specified directly in the annotation and not in the constant, since access to the JMX bean from Java code is not required.</para>
           <para>Lets overview the implementation of the <code>calculateTotals()</code> method.<itemizedlist>
               <listitem>
@@ -1582,16 +1400,9 @@ public class Orders implements OrdersMBean {
             </itemizedlist></para>
         </listitem>
         <listitem>
-          <para>The registration of the JMX bean in  <filename>spring.xml</filename>:</para>
-          <programlisting language="xml">&lt;bean id=&quot;sales_MBeanExporter&quot; lazy-init=&quot;false&quot;
-    class=&quot;com.haulmont.cuba.core.sys.jmx.MBeanExporter&quot;&gt;
-  &lt;property name=&quot;beans&quot;&gt;
-      &lt;map&gt;
-          &lt;entry key=&quot;${cuba.webContextName}.sales:type=Orders&quot;
-                 value-ref=&quot;sales_OrdersMBean&quot;/&gt;
-      &lt;/map&gt;
-  &lt;/property&gt;
-&lt;/bean&gt;</programlisting>
+          <para>The registration of the JMX bean in  <filename>spring.xml</filename>:
+            <programlisting language="xml"><xi:include href="../../source/common/jmxbean_3.xml" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
       </itemizedlist>
       <para>All JMX beans of a project are declared in one  <code>MBeanExporter</code> instance in the <literal>map/entry</literal> elements of the  <code>beans</code> property. The key is JMX ObjectName, the value – the bean’s name specified in the <code>@ManagedBean</code> annotation. ObjectName begins with the name of the web application, because several web applications, which export the same JMX interfaces, can be deployed in one <application>Tomcat</application> instance (i.e., in one JVM).</para>
@@ -1662,28 +1473,9 @@ public class Orders implements OrdersMBean {
                   </listitem>
                 </itemizedlist></para>
               <para>The result type should be of the String type, for it to be displayed in the JMX interface. Otherwise, the method is similar to the <link linkend="scripting.runGroovyScript">Scripting.runGroovyScript()</link> method. </para>
-              <para>The example script for creating a set of test users is shown below:<programlisting language="java">import com.haulmont.cuba.core.*
-import com.haulmont.cuba.core.global.*
-import com.haulmont.cuba.security.entity.*
-
-PasswordEncryption passwordEncryption = AppBeans.get(PasswordEncryption.class)
-
-Transaction tx = persistence.createTransaction()
-try {
-  EntityManager em = persistence.getEntityManager()
-  Group group = em.getReference(Group.class, UUID.fromString(&apos;0fa2b1a5-1d68-4d69-9fbd-dff348347f93&apos;))
-  for (i in (1..250)) {
-      User user = new User()
-      user.setGroup(group)
-      user.setLogin(&quot;user_${i.toString().padLeft(3, &apos;0&apos;)}&quot;)
-      user.setName(user.login)
-      user.setPassword(passwordEncryption.getPasswordHash(user.id, &apos;1&apos;));
-      em.persist(user)
-  }
-  tx.commit()
-} finally {
-  tx.end()
-}</programlisting></para>
+              <para>The example script for creating a set of test users is shown below:
+                  <programlisting language="java"><xi:include href="../../source/common/scriptingjmx_1.java" encoding="UTF-8" parse="text"/></programlisting>
+              </para>
             </listitem>
           </itemizedlist></para>
       </section>
@@ -1701,21 +1493,11 @@ try {
     <section id="configuration">
       <title> Configuration </title>
       <para>The interface helps to obtain references to   <link linkend="config_interfaces">configuration interfaces</link>.</para>
-      <para>Examples:<programlisting language="java">// field injection
-
-@Inject
-protected Configuration configuration;
-...
-String tempDir = configuration.getConfig(GlobalConfig.class).getTempDir();</programlisting><programlisting language="java">// setter injection
-
-protected GlobalConfig globalConfig;
-
-@Inject
-public void setConfiguration(Configuration configuration) {
-  this.globalConfig = configuration.getConfig(GlobalConfig.class);
-}</programlisting><programlisting language="java">// location
-
-String tempDir = AppBeans.get(Configuration.class).getConfig(GlobalConfig.class).getTempDir();</programlisting></para>
+      <para>Examples:
+          <programlisting language="java"><xi:include href="../../source/common/configuration_1.java" encoding="UTF-8" parse="text"/></programlisting>
+          <programlisting language="java"><xi:include href="../../source/common/configuration_2.java" encoding="UTF-8" parse="text"/></programlisting>
+          <programlisting language="java"><xi:include href="../../source/common/configuration_3.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
     </section>
     <section id="messages">
       <title>Messages</title>
@@ -1724,26 +1506,27 @@ String tempDir = AppBeans.get(Configuration.class).getConfig(GlobalConfig.class)
       <itemizedlist>
         <listitem>
           <para><code>getMessage()</code> – returns the localized message by key, pack name and required locale. There are several modifications of this method with different sets of parameters. If locale is not specified in the method parameter, the current user locale is used. </para>
-          <para>Examples:<programlisting language="java">@Inject
-protected Messages messages;
-...
-String message1 = messages.getMessage(getClass(), &quot;someMessage&quot;);
-String message2 = messages.getMessage(&quot;com.abc.sales.web.customer&quot;, &quot;someMessage&quot;);
-String message3 = messages.getMessage(RoleType.STANDARD);</programlisting></para>
+          <para>Examples:
+              <programlisting language="java"><xi:include href="../../source/common/messages_1.java" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
         <listitem>
           <para><code>formatMessage()</code> – retrieves a localized message by key, pack name and required locale, then uses it to format the input parameters. The format is defined according to  <code>String.format()</code> method rules. There are several modifications of this method with different sets of parameters. If locale is not specified in the method parameter, the current user locale is used. </para>
-          <para>Example:<programlisting language="java">String formattedValue = messages.formatMessage(getClass(), &quot;someFormat&quot;, someValue);</programlisting></para>
+          <para>Example:
+              <programlisting language="java"><xi:include href="../../source/common/messages_2.java" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
         <listitem>
           <para><code>getMainMessage()</code> – returns the localized message from the <link linkend="main_message_pack">main message pack</link> of the application  <link linkend="app_tiers">block</link>.</para>
-          <para>Example:<programlisting language="java">protected Messages messages = AppBeans.get(Messages.class);
-...
-messages.getMainMessage(&quot;actions.Ok&quot;);</programlisting></para>
+          <para>Example:
+              <programlisting language="java"><xi:include href="../../source/common/messages_3.java" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
         <listitem>
           <para><code>getMainMessagePack()</code> – returns the name of the <link linkend="main_message_pack">main message pack</link> of the application block. </para>
-          <para>Example:<programlisting language="java">String formattedValue = messages.formatMessage(messages.getMainMessagePack(), &quot;someFormat&quot;, someValue);</programlisting></para>
+          <para>Example:
+              <programlisting language="java"><xi:include href="../../source/common/messages_4.java" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
         <listitem>
           <para><code>getTools()</code> – returns  <code>MessageTools</code> interface instance (see below).</para>
@@ -1794,8 +1577,10 @@ msg://com.abc.sales.web.customer/someMessage</programlisting></para>
               <para><code>trimLocale()</code> – deletes from the passed locale everything except language, if <code>useLocaleLanguageOnly()</code> method returns <code>true</code>.</para>
             </listitem>
           </itemizedlist></para>
-        <para>You can <link linkend="bean_extension">override</link> <code>MessageTools</code> to extend the set of its methods in a particular application.  Below are the examples of working with the extended interface: <programlisting language="java">MyMessageTools tools = messages.getTools();
-tools.foo();</programlisting><programlisting language="java">((MyMessageTools) messages.getTools()).foo();</programlisting> </para>
+        <para>You can <link linkend="bean_extension">override</link> <code>MessageTools</code> to extend the set of its methods in a particular application.  Below are the examples of working with the extended interface:
+            <programlisting language="java"><xi:include href="../../source/common/messagetools_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            <programlisting language="java"><xi:include href="../../source/common/messagetools_2.java" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
       </section>
     </section>
     <section id="metadata">
@@ -1853,8 +1638,10 @@ tools.foo();</programlisting><programlisting language="java">((MyMessageTools) m
               <para><code>getNamePatternProperties()</code> –  returns collection of meta-properties of attributes included in the instance name, returned by  <code>Instance.getInstanceName()</code> method. See <link linkend="namePattern">@NamePattern</link>.</para>
             </listitem>
           </itemizedlist></para>
-        <para>You can  <link linkend="bean_extension">override</link>  <code>MetadataTools</code> bean in your application to extend the set of its methods.  The examples of working with the extended interface: <programlisting language="java">MyMetadataTools tools = metadata.getTools();
-tools.foo();</programlisting><programlisting language="java">((MyMetadataTools) metadata.getTools()).foo();</programlisting></para>
+        <para>You can  <link linkend="bean_extension">override</link>  <code>MetadataTools</code> bean in your application to extend the set of its methods.  The examples of working with the extended interface:
+            <programlisting language="java"><xi:include href="../../source/common/metadatatools_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            <programlisting language="java"><xi:include href="../../source/common/metadatatools_2.java" encoding="UTF-8" parse="text"/></programlisting>
+        </para>
       </section>
     </section>
     <section id="resources">
@@ -1880,19 +1667,12 @@ tools.foo();</programlisting><programlisting language="java">((MyMetadataTools) 
       <para>In practice, explicit identification of URL or  <code>classpath:</code> prefix is rarely used, so resources are usually downloaded either from the <link linkend="conf_dir">configuration folder</link> or from classpath. The resource in the configuration folder overrides the classpath resource with the same name.</para>
       <para> <code>Resources</code>  methods: <itemizedlist>
           <listitem>
-            <para><code>getResourceAsStream()</code> – returns <code>InputStream</code> for the provided resource, or  <code>null</code>, if the resource is not found. The stream should be closed after it had been used, for example:<programlisting language="java">@Inject
-protected Resources resources;
-...
-InputStream stream = null;
-try {
-  stream = resources.getResourceAsStream(resourceLocation);
-  ...
-} finally {
-  IOUtils.closeQuietly(stream);
-}</programlisting></para>
-            <para>You can also use &quot;try with resources&quot;:<programlisting language="java">try (InputStream stream = resources.getResourceAsStream(resourceLocation)) {
-  ...
-}</programlisting></para>
+            <para><code>getResourceAsStream()</code> – returns <code>InputStream</code> for the provided resource, or  <code>null</code>, if the resource is not found. The stream should be closed after it had been used, for example:
+                <programlisting language="java"><xi:include href="../../source/common/resources_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
+            <para>You can also use &quot;try with resources&quot;:
+                <programlisting language="java"><xi:include href="../../source/common/resources_2.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>getResourceAsString()</code> – returns the indicated resource content as string, or <code>null</code>, if the resource is not found. </para>
@@ -1907,25 +1687,17 @@ try {
             <para><code>evaluateGroovy()</code> – executes the Groovy expression and returns its result. </para>
             <para><link linkend="cuba.groovyEvaluatorImport">cuba.groovyEvaluatorImport</link> application property is used to define the common set of the imported classes inserted into each executed expression. By default, all standard application blocks import <link linkend="persistenceHelper">PersistenceHelper</link> class.</para>
             <para>The compiled expressions are cached, and this considerably speeds up repeated execution. </para>
-            <para>Example:<programlisting language="java">@Inject
-protected Scripting scripting;
-...
-Integer intResult = scripting.evaluateGroovy(&quot;2 + 2&quot;, new Binding());
-
-Binding binding = new Binding();
-binding.setVariable(&quot;instance&quot;, new User());
-Boolean boolResult = scripting.evaluateGroovy(&quot;return PersistenceHelper.isNew(instance)&quot;, binding);</programlisting></para>
+            <para>Example:
+                <programlisting language="java"><xi:include href="../../source/common/scripting_1.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem id="scripting.runGroovyScript">
             <para><code>runGroovyScript()</code> – executes Groovy script and returns its result.</para>
             <para>The script should be located either in application  <link linkend="conf_dir">configuration folder</link> or in classpath (the current  <code>Scripting</code> implementation supports classpath resources within JAR files only). A script in the configuration folder overrides the script in classpath with the same name. </para>
             <para>The path to the script is constructed using separators <literal>/</literal>. The separator is not required in the beginning of the path. </para>
-            <para> Example:<programlisting language="java">@Inject
-protected Scripting scripting;
-...
-Binding binding = new Binding();
-binding.setVariable(&quot;itemId&quot;, itemId);
-BigDecimal amount = scripting.runGroovyScript(&quot;com/abc/sales/CalculatePrice.groovy&quot;, binding);</programlisting></para>
+            <para> Example:
+                <programlisting language="java"><xi:include href="../../source/common/scripting_2.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>loadClass()</code> – loads Java or Groovy class using the following steps: <orderedlist>
@@ -1953,10 +1725,9 @@ BigDecimal amount = scripting.runGroovyScript(&quot;com/abc/sales/CalculatePrice
                   <para>If Groovy source code was once compiled, the deletion of the source code file will not lead to loading of another class from classpath. Instead of this, the class compiled from the removed source code will still be returned. </para>
                 </listitem>
               </itemizedlist></para>
-            <para>Example:<programlisting language="java">@Inject
-protected Scripting scripting;
-...
-Class calculatorClass = scripting.loadClass(&quot;com.abc.sales.PriceCalculator&quot;);</programlisting></para>
+            <para>Example:
+                <programlisting language="java"><xi:include href="../../source/common/scripting_3.java" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
           <listitem>
             <para><code>getClassLoader()</code> –  returns  <code>ClassLoader</code>, which is able to work according to the rules for  <code>loadClass()</code> method described above. </para>
@@ -1982,10 +1753,10 @@ Class calculatorClass = scripting.loadClass(&quot;com.abc.sales.PriceCalculator&
     <section id="timeSource">
       <title>TimeSource</title>
       <para>TimeSource interface provides the current time. Using <code>new Date()</code> and similar methods in the application code is not recommended. </para>
-      <para>Examples:<programlisting language="java">@Inject
-protected TimeSource timeSource;
-...
-Date date = timeSource.currentTimestamp();</programlisting><programlisting language="java">long startTime = AppBeans.get(TimeSource.class).currentTimeMillis();</programlisting></para>
+      <para>Examples:
+          <programlisting language="java"><xi:include href="../../source/common/timesource_1.java" encoding="UTF-8" parse="text"/></programlisting>
+          <programlisting language="java"><xi:include href="../../source/common/timesource_2.java" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
     </section>
     <section id="userSessionSource">
       <title>UserSessionSource</title>
