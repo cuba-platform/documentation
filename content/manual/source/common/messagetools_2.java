@@ -1,0 +1,1 @@
+((MyMessageTools) messages.getTools()).foo();

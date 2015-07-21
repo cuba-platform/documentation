@@ -1,0 +1,1 @@
+String formattedValue = messages.formatMessage(getClass(), "someFormat", someValue);

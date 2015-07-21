@@ -1,0 +1,3 @@
+try (InputStream stream = resources.getResourceAsStream(resourceLocation)) {
+    ...
+}

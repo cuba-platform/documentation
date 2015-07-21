@@ -1,0 +1,3 @@
+protected Messages messages = AppBeans.get(Messages.class);
+...
+messages.getMainMessage("actions.Ok");
