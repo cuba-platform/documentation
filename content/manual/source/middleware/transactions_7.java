@@ -1,0 +1,3 @@
+@Transactional(timeout = 2)
+public void someServiceMethod() {
+...

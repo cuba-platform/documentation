@@ -1,0 +1,1 @@
+alter table SALES_CUSTOMER add ADDRESS varchar(200)

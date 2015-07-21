@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE section PUBLIC "-//OASIS//DTD DocBook XML V4.5//EN" "http://www.oasis-open.org/docbook/xml/4.5/docbookx.dtd">
-<section id="dbms">
+<section id="dbms" xmlns:xi="http://www.w3.org/2001/XInclude">
   <title>Database Components</title>
   <para>This section provides information on all possible types of DBMS supported by CUBA platform. Furthermore, a script-based mechanism, which allows creating a new database and keeping it up-to-date throughout the entire cycle of the development and operation of the application, is described. </para>
   <para>Database components belong to the Middleware <link linkend="app_tiers">block</link>; other blocks of the application do not have direct access to the database. </para>
@@ -185,25 +185,8 @@
           </listitem>
           <listitem>
             <para>To create and update the database by Gradle tasks, you need to specify the additional parameters for these tasks in <code>build.gradle</code>:
-              <programlisting language="java">task createDb(dependsOn: assemble, type: CubaDbCreation) {
-  dbms = &apos;my&apos;                                            // DBMS code
-  driver = &apos;net.my.jdbc.Driver&apos;                          // JDBC driver class
-  dbUrl = &apos;jdbc:my:myserver://192.168.47.45/mydb&apos;        // Database URL
-  masterUrl = &apos;jdbc:my:myserver://192.168.47.45/master&apos;  // URL of a master DB to connect to for creating the application DB
-  dropDbSql = &apos;drop database mydb;&apos;                      // Drop database statement
-  createDbSql = &apos;create database mydb;&apos;                  // Create database statement
-  timeStampType = &apos;datetime&apos;                             // Date and time datatype - needed for SYS_DB_CHANGELOG table creation
-  dbUser = &apos;sa&apos;
-  dbPassword = &apos;saPass1&apos;
-}
-
-task updateDb(dependsOn: assemble, type: CubaDbUpdate) {
-  dbms = &apos;my&apos;                                            // DBMS code
-  driver = &apos;net.my.jdbc.Driver&apos;                          // JDBC driver class
-  dbUrl = &apos;jdbc:my:myserver://192.168.47.45/mydb&apos;        // Database URL
-  dbUser = &apos;sa&apos;
-  dbPassword = &apos;saPass1&apos;
-}</programlisting></para>
+                <programlisting language="java"><xi:include href="../../source/dbms/dbtasks_1.gradle" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
           </listitem>
         </itemizedlist></para>
     </section>
@@ -211,16 +194,20 @@ task updateDb(dependsOn: assemble, type: CubaDbUpdate) {
       <title>DBMS Version</title>
       <para>In addition to  <link linkend="cuba.dbmsType">cuba.dbmsType</link> application property, there is an optional <link linkend="cuba.dbmsVersion">cuba.dbmsVersion</link> property. It affects the choice of interface implementations for <code>DbmsFeatures</code>, <code>SequenceSupport</code>, <code>DbTypeConverter</code>, and the search for database init and update scripts. </para>
       <para>The name of the implementation class of the integration interface is constructed as follows:  <code>TypeVersionName</code>. Here,  <code>Type</code> is the value of the  <code>cuba.dbmsType</code> property (capitalized), <code>Version</code> is the value of  <code>cuba.dbmsVersion</code>, and <code>Name</code> is the interface name. The package of the class must correspond to that of the interface. If a class with the same name is not available, an attempt is made to find a class with the name without version:  <code>TypeName</code>. If such class does not exist either, an exception is thrown. </para>
-      <para>For example, the <code>com.haulmont.cuba.core.sys.persistence.Mssql2012SequenceSupport</code> class is defined in the platform. This class will take effect if the following properties are specified in the project: <programlisting>cuba.dbmsType = mssql
-cuba.dbmsVersion = 2012</programlisting></para>
+      <para>For example, the <code>com.haulmont.cuba.core.sys.persistence.Mssql2012SequenceSupport</code> class is defined in the platform. This class will take effect if the following properties are specified in the project:
+          <programlisting>cuba.dbmsType = mssql
+cuba.dbmsVersion = 2012</programlisting>
+      </para>
       <para>The search for  <link linkend="db_scripts">database init and update scripts</link> prioritizes the  <code>type-version</code> directory over the <code>type</code> directory. This means that the scripts in the  <code>type-version</code> directory replace the scripts with the same name in the  <code>type</code> directory. The  <code>type-version</code> directory can also contain some scripts with unique names; they will be added to the common set of scripts for execution, too. Script sorting is performed by path, starting with the first subdirectory of the  <code>type</code> or  <code>type-version</code> directory, i.e. regardless of the directory where the script is located  (versioned or not).</para>
-      <para>For example, the init script for Microsoft SQL Server versions below and above 2012 should look as follows:<programlisting>modules/core/db/init/
+      <para>For example, the init script for Microsoft SQL Server versions below and above 2012 should look as follows:
+          <programlisting>modules/core/db/init/
    mssql/
        10.create-db.sql
        20.create-db.sql
        30.create-db.sql
    mssql-2012/
-       10.create-db.sql </programlisting></para>
+       10.create-db.sql </programlisting>
+      </para>
     </section>
   </section>
   <section id="db_scripts">
@@ -235,19 +222,14 @@ cuba.dbmsVersion = 2012</programlisting></para>
       </itemizedlist></para>
     <para>When changing the data model, it is necessary to reproduce the corresponding change of the database schema in create and update scripts. For example, when adding the  <code>address</code> attribute to the  <code>Customer</code> entity, it is necessary to:<orderedlist>
         <listitem>
-          <para>Change the table creation script:<programlisting>create table SALES_CUSTOMER (
-  ID varchar(36) not null ,
-  CREATE_TS timestamp,
-  CREATED_BY varchar(50),
-  --
-  NAME varchar(100),
-  ADDRESS varchar(200), -- added column
-  --
-  primary key (ID)
-)</programlisting></para>
+          <para>Change the table creation script:
+              <programlisting language="sql"><xi:include href="../../source/dbms/dbscripts_1.sql" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
         <listitem>
-          <para>Add an update script, which modifies the same table:<programlisting>alter table SALES_CUSTOMER add ADDRESS varchar(200)</programlisting></para>
+          <para>Add an update script, which modifies the same table:
+              <programlisting language="sql"><xi:include href="../../source/dbms/dbscripts_2.sql" encoding="UTF-8" parse="text"/></programlisting>
+          </para>
         </listitem>
       </orderedlist></para>
     <para>The create scripts are located in the <filename>/db/init</filename> directory of the <structname>core</structname> module. For each type of DBMS supported by the application, a separate set of scripts is created and located in the subdirectory specified in <link linkend="cuba.dbmsType">cuba.dbmsType</link> application property, for example  <filename>/db/init/postgres</filename>. Create scripts names should have the following format <filename>{optional_prefix}create-db.sql</filename>.</para>
@@ -259,19 +241,9 @@ cuba.dbmsVersion = 2012</programlisting></para>
     <section id="db_scripts_sql">
       <title>The Structure of SQL Scripts</title>
       <para>Create and update SQL scripts are text files with a set of DDL and DML commands separated by the &quot;^&quot; character. The &quot;^&quot; character is used, so that the &quot;;&quot; separator can be applied as part of complex commands; for example, when creating functions or triggers. The script execution mechanism splits the input file into separate commands using the &quot;^&quot; separator and executes each command in a separate transaction. This means that, if necessary, it is possible to group several single statements (e.g.,  <literal>insert</literal>), separated by semicolons and ensure that they execute in a single transaction.</para>
-      <para>An example of the update SQL script:<programlisting>create table LIBRARY_COUNTRY (
-  ID varchar(36) not null,
-  CREATE_TS time,
-  CREATED_BY varchar(50),
-  --
-  NAME varchar(100) not null,
-  --
-  primary key (ID)
-)^
-
-alter table LIBRARY_TOWN add column COUNTRY_ID varchar(36) ^
-alter table LIBRARY_TOWN add constraint FK_LIBRARY_TOWN_COUNTRY_ID foreign key (COUNTRY_ID) references LIBRARY_COUNTRY(ID)^
-create index IDX_LIBRARY_TOWN_COUNTRY on LIBRARY_TOWN (COUNTRY_ID)^</programlisting></para>
+      <para>An example of the update SQL script:
+          <programlisting language="sql"><xi:include href="../../source/dbms/dbscripts_3.sql" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
     </section>
     <section id="db_scripts_groovy">
       <title>The Structure of Groovy scripts</title>
@@ -299,37 +271,9 @@ create index IDX_LIBRARY_TOWN_COUNTRY on LIBRARY_TOWN (COUNTRY_ID)^</programlist
       <warning>
         <para>Groovy scripts are executed only by <link linkend="db_update_server">the server mechanism to launch database scripts</link>.</para>
       </warning>
-      <para>An example of the Groovy update script:<programlisting language="java">import com.haulmont.cuba.core.Persistence
-import com.haulmont.cuba.core.global.AppBeans
-import com.haulmont.refapp.core.entity.Colour
-import groovy.sql.Sql
-
-log.info(&apos;Executing actions in update phase&apos;)
-
-Sql sql = new Sql(ds)
-sql.execute &quot;&quot;&quot;
-alter table MY_COLOR add DESCRIPTION varchar(100);
-&quot;&quot;&quot;
-
-// Add post update action
-postUpdate.add({
-  log.info(&apos;Executing post update action using fully functioning server&apos;)
-
-  def p = AppBeans.get(Persistence.class)
-  def tr = p.createTransaction()
-  try {
-      def em = p.getEntityManager()
-
-      Colour c = new Color()
-      c.name = &apos;yellow&apos;
-      c.description = &apos;a description&apos;
-
-      em.persist(c)
-      tr.commit()
-  } finally {
-      tr.end()
-  }
-})</programlisting></para>
+      <para>An example of the Groovy update script:
+          <programlisting language="java"><xi:include href="../../source/dbms/groovyupdate_1.groovy" encoding="UTF-8" parse="text"/></programlisting>
+      </para>
     </section>
   </section>
   <section id="db_update_gradle">

@@ -1,0 +1,1 @@
+((MyPersistenceTools) persistence.getTools()).foo();
