@@ -1,0 +1,3 @@
+@SupportedByClient
+public class WorkflowException extends RuntimeException {
+...
