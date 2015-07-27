@@ -42,6 +42,87 @@ class DocPlugin implements Plugin<Project> {
     }
 }
 
+//class AsciidocToHtmlTask extends Exec {
+//
+//    String docName
+//    String docLang
+//
+//    String workingDir = './content/bpm/adoc/ru'
+//
+//
+//    String htmlBuildDir = "$docName/$docLang/html-single/${docName}.html"
+//
+//    {
+//        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+//            commandLine = ['cmd', '/c']
+//        } else {
+//            commandLine = 'sh'
+//        }
+//        args = ['asciidoctor', 'docName.adoc', '-D', "$docName/$docLang/html-single/${docName}.html"]
+//
+//    }
+//}
+
+class Asciidoc2Html extends DefaultTask {
+    String docName
+    String docLang
+
+    @InputDirectory
+    File getSrcDir() {
+        return project.file("content/$docName/adoc/$docLang")
+    }
+
+    @OutputDirectory
+    File getDstDir() {
+        return project.file("$project.buildDir/$docName/$docLang/html-single")
+    }
+
+    @TaskAction
+    def transform() {
+        project.exec {
+            workingDir "content/$docName/adoc/$docLang"
+            if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+                commandLine 'cmd', '/c'
+            } else {
+                commandLine 'sh'
+            }
+            args 'asciidoctor', "${docName}.adoc", '-D', "$project.buildDir/$docName/$docLang/html-single"
+        }
+
+        project.copy {
+            from "content/$docName/img"
+            into "$project.buildDir/$docName/$docLang/html-single/img"
+        }
+    }
+}
+
+class Asciidoc2Docbook extends DefaultTask {
+    String docName
+    String docLang
+
+    @InputDirectory
+    File getSrcDir() {
+        return project.file("content/$docName/adoc/$docLang")
+    }
+
+    @OutputDirectory
+    File getDstDir() {
+        return project.file("$project.buildDir/$docName/$docLang/docbook")
+    }
+
+    @TaskAction
+    def transform() {
+        project.exec {
+            workingDir "content/$docName/adoc/$docLang"
+            if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+                commandLine 'cmd', '/c'
+            } else {
+                commandLine 'sh'
+            }
+            args 'asciidoctor', "${docName}.adoc", '-b', 'docbook45', '-D', "$project.buildDir/$docName/$docLang/docbook"
+        }
+    }
+}
 
 class DocTask extends DefaultTask {
 

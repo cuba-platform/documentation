@@ -1,0 +1,640 @@
+[[quick-start]]
+== Быстрый старт
+
+В данной главе рассмотрим создание небольшого проекта, демонстрирующего работу с бизнес-процессами. Задача - реализовать процесс согласования договора. Процесс согласования выглядит следующим образом:
+
+* Пользователь создает объект Contract, назначает участников процесса и запускает процесс согласования.
+* Участник с ролью Controller получает задачу проверить приложенный договор на корректность заполнения.
+* Если проверка пройдена, то договор попадает к нескольким пользователям с ролью Manager, если нет, то процесс завершается, а договору проставляется статус Not valid.
+* После утверждения или отклонения договора менеджерами договор принимает состояния Approved или Not approved.
+
+[[qs-project-creation]]
+=== Создание проекта
+. Создайте новый проект в Cuba Studio. Project name: bpm-demo, Project namespace: demo
+
+image::StudioNewProject.png[]
+
+[start=2]
+. Откройте окно редактирования свойств проекта (секция *Project properties*, кнопка *Edit*)
+. В группе *Base Projects* подключите базовый проект *bpm*
+
+image::StudioSelectBpmModule.png[]
+
+[start=4]
+. Нажмите кнопку OK в окне редактирования свойств проекта. Система запросит подтверждение перезаписи скриптов сборки. Соглашаемся.
+
+[[qs-data-model-creation]]
+=== Создание модели данных
+
+Перейдите на вкладку *Entities* и нажмите *New entity*. Имя класса: *Contract*.
+
+image::CreateContractEntity.png[]
+
+Создайте следующие атрибуты сущности:
+
+* number (тип String)
+* date (тип Date)
+* state (тип String)
+
+image::ContractEntityAttributes.png[]
+
+Перейдите на вкладку *Instance name*. В поле Name pattern введите значение Contract %s и добавьте атрибут number в Name pattern attributes.
+
+image::ContractEntityNamePattern.png[]
+
+Сохраните сущность, нажав кнопку OK.
+
+[[qs-standard-screen-creation]]
+=== Создание стандартных экранов
+
+В секции Entities панели навигатора выделите сущность Contract и нажмите кнопку Generate standard screens. Значения полей, по умолчанию заполненные в форме создания экрана, нас устраивают, поэтому нажмите Create.
+
+image::CreateContractScreens.png[]
+
+[[qs-beans-creation]]
+=== Создание бинов с бизнес-логикой
+
+==== Бин ApprovalHelper
+
+Метод updateState() бина ApprovalHelper будет вызываться из процесса согласования для установки состояния договора.
+
+.Параметры метода:
+* entityId - идентификатор сущности договора
+* state - состояние договора
+
+Откройте проект в IDE. Просто способ сделать это - воспользоваться кнопкой IDE из какой-либо секции навигатора студии, например, Project properties.
+
+В модуле core создайте пакет com.company.demo.core. В этом пакете создайте класс ApprovalHelper.
+
+.ApprovalHelper.java
+[source,java]
+----
+package com.company.demo.core;
+
+import com.company.demo.entity.Contract;
+import com.haulmont.cuba.core.EntityManager;
+import com.haulmont.cuba.core.Persistence;
+import com.haulmont.cuba.core.Transaction;
+import javax.annotation.ManagedBean;
+import javax.inject.Inject;
+import java.util.UUID;
+
+@ManagedBean("demo_ApprovalHelper")
+public class ApprovalHelper {
+
+    @Inject
+    private Persistence persistence;
+
+    public void updateState(UUID entityId, String state) {
+        Transaction tx = persistence.getTransaction();
+        try {
+            EntityManager em = persistence.getEntityManager();
+            Contract contract = em.find(Contract.class, entityId);
+            if (contract != null) {
+                contract.setState(state);
+            }
+            tx.commit();
+        } finally {
+            tx.end();
+        }
+    }
+}
+----
+
+[[qs-run-app]]
+=== Создание базы данных и запуск приложения
+
+В студии в секции *Entities* навигатора нажмите на *Generate DB scripts*. В открывшемся окне менеджера базы данных нажмите кнопку *Create database*.
+
+image::StudioCreateDatabase.png[]
+
+Запустите сервер, выполнив команду Run -> Start application server.
+
+Откройте приложение в браузере по адресу http://localhost:8080/app или кликните на ссылку в нижней части навигатора студии.
+
+[[qs-process-creation]]
+== Создание процесса
+
+[[qs-process-model-creation]]
+=== Создание модели процесса
+
+Конечная версия модели процесса будет выглядеть следующим образом:
+
+image::ProcessFull.png[]
+
+Рассмотрим последовательность шагов для создания модели.
+
+В веб-интерфейсе запущенного приложения откройте экран BPM -> Process models и нажмите Create. Введите имя модели Contract approval и нажмите OK. Откроется новая закладка браузера Model editor.
+
+В панели свойств модели выберите свойство Process roles - откроется окно редактирования процессных ролей.
+
+image::ProcessRolesProperty.png[]
+
+В процессе должно быть 2 типа участников: контролер и менеджер. Создайте 2 роли:
+
+* Controller
+* Manager
+
+image::ProcessRolesEditor.png[]
+
+Перетащите в рабочую область узел Start event из группы Start events. При старте процесса нам необходимо отображать форму выбора участников процесса. Для этого выделите узел Start event. В панели свойств выберите Start form - откроется окно выбора формы. В Form name выберите Standard form. После этого добавьте 2 параметра формы:
+
+* procActorsVisible со значением true говорит о том, что на форме будет показана таблица для выбора участников процесса
+* attachmentsVisible со значение true говорит о том, что на форме будет показана таблица для добавления вложений к процессу
+
+image::StartForm.png[]
+
+Добавьте в модель узел User task из группы Activities. Назовите его Validation.
+
+image::ModelValidationNode.png[]
+
+Выделите этот узел на панели свойств задайте свойству Process role значение controller. Так мы указали, что задача будет назначена на участника процесса с ролью controller.
+
+image::SelectProcRoleForValidation.png[]
+
+Далее выберите свойство Task outcomes. Откроется окно редактирования выходов из задачи. Выходы определяют возможные действия пользователя при получении задачи. Создайте 2 выхода: Valid и Not valid. Для каждого из них укажите форму Standard form. Для выхода Not valid добавьте параметр формы commentRequired = true. Это нужно, чтобы в случае некорректного договора от пользователь обязательно добавил свой комментарий.
+
+image::OutcomesForValidation.png[]
+
+В зависимости от решения контролера нам необходимо либо отправить договор далее на утверждение группе менеджеров, либо завершить процесс, предварительно установив договору состояние Not valid. Для контроля над маршрутом процесса используется узел Exclusive gateway из группы Gateways. Добавьте его на рабочую область, а затем добавьте еще 2 элемента: Script task с именем Set 'Not valid' state и User task с именем Approval. Переход к Script task назовите Not valid, переход к узлу Approval - Valid.
+
+image::ModelValidationExclGateway.png[]
+
+Выделите переход Not valid. В панели свойств разверните выпадающий список Flow outcome. В нем представлены выходы из предыдущей задачи. Выберите Not valid.
+
+image::NotValidFlowOutcome.png[]
+
+Теперь в случае выбора пользователем решения Not valid будет осуществлен переход именно по этой ветке.
+
+Переход Valid сделаем переходом по умолчанию (если не выполнилось никакое из условий на других переходах узла). Для этого выделите переход Valid и поставьте галочку в его свойстве Default flow.
+
+Далее выделите Exclusive gateway и откройте редактор свойства Flow order. Убедитесь, что переход Not valid стоит первым в списке. Если это не так, измените порядок обработки переходов.
+
+image::ValidationFlowOrder.png[]
+
+Перейдем к узлу Set 'Not valid' state. Нам необходимо установить значение свойства state сущности Contract в Not valid. Выделите узел. В поле свойства Script format введите groovy, т.к. мы будем писать groovy-скрипт. Нажмите на поле свойства Script узла. Откроется окно редактирования скрипта. Скопируйте и вставьте туда следующий текст:
+
+[source,groovy]
+----
+import com.company.demo.entity.Contract
+
+def em = persistence.getEntityManager()
+def contract = em.find(Contract.class, entityId)
+contract.setState('Not valid')
+----
+
+В скрипте можно использовать процессные переменные, а также объекты платформы persistence и metadata (см. Руководство по разработке приложений). Переменная entityId создается при запуске процесса и хранит идентификатор связанной сущности.
+
+После того, как состояние договора изменено, процесс должен быть завершен - добавляем узел End event из группы End Events и соединяем его с Set 'Not valid' state.
+
+Вернемся к задаче Approval. Как и в случае с первой задачей, укажите для нее процессную роль - в данном случае это будет роль manager. Так как предполагается, что эта задача должна быть назначена одновременно нескольким менеджерам, то установим её свойство Multi-instance type в значение Parallel.
+
+image::ApprovalMutlInstanceType.png[]
+
+Создайте для задачи 2 выхода: Approve и Reject (свойство Task outcomes). Задайте для обоих выходов форму Standard form, для перехода Reject установите параметр commentRequired в true.
+
+После того, как согласование завершится, договору должно установиться состояние Approved или Not approved в зависимости от результата согласования. Добавьте узел Exclusive gateway после задачи Approval. После Exclusive gataway добавьте две Service task: Set 'Approved' state и Set 'Not approved' state. Они будут делать то же самое, что и Script task, созданная ранее, но другим способом - вызывая метод Spring бина. Переход к Set 'Approved' state назовите Approved, переход к Set 'Not approved' state назовите Not approved.
+
+image::ModelWithApproval.png[]
+
+Выделите переход Not approved и в списке Flow outcome выберите значение Reject. Теперь если хотя бы один из менеджеров выполнит действие Reject, то будет инициирован этот переход. Выделите переход Approved и установите галку Default flow - если остальные переходы не сработали (не было выбора Reject), то будет инициирован переход Approved.
+
+По аналогии с предыдущим Exclusive gateway установите порядок обработки переходов для текущего. Выделите Exclusive gateway и откройте редактор свойства Flow order. Первым должен обрабатываться переход Not approved.
+
+image::ApprovalFlowOrder.png[]
+
+Вернемся к Service task. Выделите узел Set 'Approved' state и задайте свойству Expression значение:
+
+[source,groovy]
+----
+${demo_ApprovalHelper.updateState(entityId, 'Approved')}
+----
+
+Для Set 'Not approved' state:
+
+[source,groovy]
+----
+${demo_ApprovalHelper.updateState(entityId, 'Not approved')}
+----
+
+Activiti engine интегрирован со Spring framework, поэтому мы можем обращаться к управляемым спрингом объектам по их имени. entityId - процессная переменная, хранящая идентификатор сущности связанного с процессом договора. Ее значение будет записано при старте процесса.
+
+Соедините с End event последние созданные задачи, нажмите кнопку сохранения модели - модель готова. Переходим к её развертыванию.
+
+image::ProcessFull.png[]
+
+=== Развертывание модели процесса
+
+Процесс развертывания модели состоит из следующих этапов:
+
+* Формирование XML процесса в нотации BPMN из модели.
+* Деплой процесса во внутренние таблицы Activiti engine.
+* Создание объекта ProcDefinition, связанного с загруженным в Activiti engine процессом.
+* Создание объектов ProcRole для процессных ролей, объявленных в модели.
+
+Выделите модель в списке на экране Process models. Нажмите кнопку Deploy. Откроется окно развертывания модели. Модель разворачивается первый раз, поэтому выбрана опция Create new process. При последующих изменениях модели можно будет разворачивать модель в уже существующий процесс. Нажмите OK. Процесс создан.
+
+image::DeployModelScreen.png[]
+
+Откройте экран BPM -> Process definitions. Откройте строку с 'Contract approval' для редактирования. Измените значение поля Code на contractApproval. По этому атрибуту мы в дальнейшем будем искать объект с описанием процесса.
+
+image::ProcDefinitionEdit.png[]
+
+[[qs-screens-adaptation]]
+=== Адаптация экранов к процессу
+
+В данном разделе мы добавим в экран редактирования договора возможность работы с процессом согласования.
+
+[[qs-contract-edit-descriptor]]
+==== Компоновка экрана редактирования договора
+
+Найдите в секции screens на панели навигатора студии экран contract-edit.xml и откройте его на редактирование. Перейдите на вкладку XML и полностью замените ее содержимое на следующий код:
+
+.contract-edit.xml
+[source,xml]
+----
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<window xmlns="http://schemas.haulmont.com/cuba/5.5/window.xsd"
+        caption="msg://editCaption"
+        class="com.company.demo.gui.contract.ContractEdit"
+        datasource="contractDs"
+        focusComponent="fieldGroup"
+        messagesPack="com.company.demo.gui.contract">
+    <dsContext>
+        <datasource id="contractDs"
+                    class="com.company.demo.entity.Contract"
+                    view="_local"/>
+        <collectionDatasource id="procAttachmentsDs"
+                              class="com.haulmont.bpm.entity.ProcAttachment"
+                              view="procAttachment-browse">
+            <query><![CDATA[select a from bpm$ProcAttachment a
+            where a.procInstance.entityId = :ds$contractDs order by a.createTs]]></query>
+        </collectionDatasource>
+
+    </dsContext>
+    <layout expand="windowActions" spacing="true">
+        <fieldGroup id="fieldGroup" datasource="contractDs">
+            <column width="250px">
+                <field id="number"/>
+                <field id="date"/>
+                <field id="state" editable="false"/>
+            </column>
+        </fieldGroup>
+        <groupBox id="procActionsBox"
+                  caption="msg://process"
+                  orientation="vertical"
+                  spacing="true"
+                  width="AUTO">
+            <iframe id="procActionsFrame" screen="procActionsFrame"/>
+        </groupBox>
+        <groupBox caption="msg://attachments"
+                  width="700px"
+                  height="300px">
+            <table id="attachmentsTable"
+                   height="100%"
+                   width="100%">
+                <columns>
+                    <column id="file.name"/>
+                    <column id="author"/>
+                    <column id="type"/>
+                    <column id="comment" maxTextLength="50"/>
+                </columns>
+                <rows datasource="procAttachmentsDs"/>
+            </table>
+        </groupBox>
+        <iframe id="windowActions" screen="extendedEditWindowActions"/>
+    </layout>
+</window>
+----
+
+Перейдите на вкладку Layout. Компоновка экрана станет следующей:
+
+image::ContractEditStudioLayout.png[]
+
+Экран содержит группу полей для редактирования самого договора, фрейм для отображения действий по процессу и таблицу с вложениями, созданными во время выполнения процесса.
+
+[[qs-contract-edit-controller]]
+==== Контроллер экрана редактирования договора
+
+Перейдите на вкладку Controller и замените ее содержимое на следующий код:
+
+.ContractEdit.java
+[source,java]
+----
+package com.company.demo.gui.contract;
+
+import com.haulmont.bpm.entity.ProcDefinition;
+import com.haulmont.bpm.entity.ProcInstance;
+import com.haulmont.bpm.gui.action.ProcAction;
+import com.haulmont.bpm.gui.procactions.ProcActionsFrame;
+import com.haulmont.cuba.core.global.*;
+import com.haulmont.cuba.gui.WindowManager;
+import com.haulmont.cuba.gui.app.core.file.FileDownloadHelper;
+import com.haulmont.cuba.gui.components.*;
+import com.company.demo.entity.Contract;
+import com.haulmont.cuba.gui.components.actions.BaseAction;
+import com.haulmont.cuba.gui.data.DsContext;
+import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
+
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+import java.util.Map;
+
+public class ContractEdit extends AbstractEditor<Contract> {
+
+    private static final String PROCESS_CODE = "contractApproval";
+
+    @Inject
+    private DataManager dataManager;
+
+    private ProcDefinition procDefinition;
+
+    private ProcInstance procInstance;
+
+    @Inject
+    private ProcActionsFrame procActionsFrame;
+
+    @Inject
+    private GroupBoxLayout procActionsBox;
+
+    @Inject
+    private ComponentsFactory componentsFactory;
+
+    @Inject
+    private Table attachmentsTable;
+
+    @Inject
+    private Metadata metadata;
+
+    @Override
+    protected void postInit() {
+        super.postInit();
+        procDefinition = findProcDefinition();
+        if (procDefinition != null) {
+            procInstance = findProcInstance();
+            if (procInstance == null) {
+                procInstance = metadata.create(ProcInstance.class);
+                procInstance.setProcDefinition(procDefinition);
+                procInstance.setEntityName("demo$Contract");
+                procInstance.setEntityId(getItem().getId());
+            }
+            initProcActionsFrame();
+        }
+        getDsContext().addListener(new DsContext.CommitListenerAdapter() {
+            @Override
+            public void beforeCommit(CommitContext context) {
+                if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
+                    context.getCommitInstances().add(procInstance);
+                }
+            }
+        });
+        FileDownloadHelper.initGeneratedColumn(attachmentsTable, "file");
+    }
+
+    private void initProcActionsFrame() {
+        procActionsFrame.setBeforeStartProcessPredicate(new ProcAction.BeforeActionPredicate() {
+            @Override
+            public boolean evaluate() {
+                if (PersistenceHelper.isNew(getItem())) {
+                    showNotification(getMessage("saveContract"), NotificationType.WARNING);
+                    return false;
+                }
+                return true;
+            }
+        });
+        procActionsFrame.setAfterStartProcessListener(new ProcAction.AfterActionListener() {
+            @Override
+            public void actionCompleted() {
+                showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
+                close(COMMIT_ACTION_ID);
+            }
+        });
+        procActionsFrame.setBeforeCompleteTaskPredicate(new ProcAction.BeforeActionPredicate() {
+            @Override
+            public boolean evaluate() {
+                return commit();
+            }
+        });
+        procActionsFrame.setAfterCompleteTaskListener(new ProcAction.AfterActionListener() {
+            @Override
+            public void actionCompleted() {
+                showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
+                close(COMMIT_ACTION_ID);
+            }
+        });
+        procActionsFrame.setCancelProcessEnabled(false);
+        procActionsFrame.init(procInstance);
+    }
+
+
+    @Nullable
+    private ProcDefinition findProcDefinition() {
+        LoadContext ctx = new LoadContext(ProcDefinition.class);
+        ctx.setQueryString("select pd from bpm$ProcDefinition pd where pd.code = :code")
+                .setParameter("code", PROCESS_CODE);
+        return dataManager.load(ctx);
+    }
+
+    @Nullable
+    private ProcInstance findProcInstance() {
+        LoadContext ctx = new LoadContext(ProcInstance.class).setView("procInstance-start");
+        ctx.setQueryString("select pi from bpm$ProcInstance pi where pi.procDefinition.id = :procDefinition and pi.entityId = :entityId")
+                .setParameter("procDefinition", procDefinition)
+                .setParameter("entityId", getItem());
+        return dataManager.load(ctx);
+    }
+}
+----
+
+Сохраните изменения, нажав кнопку OK.
+
+Рассмотрим код контроллера более подробно.
+
+Чтобы запустить процесс, мы должны создать экземпляр процесса - объект ProcInsntance, связать его с описанием процесса (ProcDefinition) и выполнить запуск. Экземпляр процесса (ProcInstance) может быть запущен как самостоятельно, так и с привязкой к какой-либо сущности проекта. В нашем случае нужна привязка к договору.
+
+В начале метода postInit() производится поиск экземпляра процесса согласования договора. Метод findProcDefinition() по коду 'contractApproval' ищет описание процесса.
+Далее проверяется нет ли в базе объекта ProcessInstance, связанного с текущим договором (метод findProcInstance()). Если экземпляр процесса для данного договора еще создан, то создаем его, заполняя ссылку на описание процесса, устанавливая имя связанной сущности и ее идентификатор.
+
+[source,java]
+----
+if (procInstance == null) {
+    procInstance = metadata.create(ProcInstance.class);
+    procInstance.setProcDefinition(procDefinition);
+    procInstance.setEntityName("demo$Contract");
+    procInstance.setEntityId(getItem().getId());
+}
+----
+
+CommitListener добавляет в список сущностей, отправляемых на средний слой для коммита, созданный объект ProcInstance.
+[source,java]
+----
+getDsContext().addListener(new DsContext.CommitListenerAdapter() {
+    @Override
+    public void beforeCommit(CommitContext context) {
+        if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
+            context.getCommitInstances().add(procInstance);
+        }
+    }
+});
+----
+
+Далее переходим к методу initProcActionsFrame().
+
+ProcActionsFrame - это стандартный фрейм для отображения кнопок доступных в данный момент процессных действий. ProcActiosnFrame связан с экземпляром ProcInstance. Если процесс не запущен, то фрейм отобразит кнопку запуска процесса, если процесс запущен и для текущего пользователя имеются активные задачи, то он отобразит кнопки завершения текущей задачи в соответствии с определенными в модели процесса выходами из задачи (Task outcomes). Подробнее о ProcActionsFrame см. ProcActionsFrame.
+
+[source, java]
+----
+private void initProcActionsFrame() {
+    procActionsFrame.setBeforeStartProcessPredicate(new ProcAction.BeforeActionPredicate() {
+        @Override
+        public boolean evaluate() {
+            if (PersistenceHelper.isNew(getItem())) {
+                showNotification(getMessage("saveContract"), NotificationType.WARNING);
+                return false;
+            }
+            return true;
+        }
+    });
+    procActionsFrame.setAfterStartProcessListener(new ProcAction.AfterActionListener() {
+        @Override
+        public void actionCompleted() {
+            showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
+            close(COMMIT_ACTION_ID);
+        }
+    });
+    procActionsFrame.setBeforeCompleteTaskPredicate(new ProcAction.BeforeActionPredicate() {
+        @Override
+        public boolean evaluate() {
+            return commit();
+        }
+    });
+    procActionsFrame.setAfterCompleteTaskListener(new ProcAction.AfterActionListener() {
+        @Override
+        public void actionCompleted() {
+            showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
+            close(COMMIT_ACTION_ID);
+        }
+    });
+    procActionsFrame.setCancelProcessEnabled(false);
+    procActionsFrame.init(procInstance);
+}
+----
+
+Метод procActionsFrame.setBeforeStartProcessPredicate() добавляет проверку, выполняемую перед запуском процесса. Если объект с договором еще не сохранен, то процесс не запустится и будет выведено соответствующее предупреждение.
+
+Метод procActionsFrame.setBeforeCompleteTaskPredicate() вызывает коммит редактора и позволяет завершить процессное действие только если коммит редактора прошел успешно.
+
+Методы setAfterProcessStartListener и setAfterCompleteTaskListener будут вызваны после соответствующего события. Они отобразят уведомление и закроют редактор договора.
+
+После того, как необходимые слушатели и предикаты для procActionsFrame заданы, вызывается инициализация фрейма.
+
+[source,java]
+----
+procActionsFrame.init(procInstance);
+----
+
+Во время инициализации и происходит создание необходимых элементов управления внутри фрейма.
+
+[[qs-localization]]
+==== Файл локализованных сообщений
+
+В студии откройте файл messages.properties, расположенный в пакете с экранами для договора. Измените его содержимое на следующее:
+
+[source]
+----
+messages.properties
+browseCaption = Contract browser
+editCaption = Contract editor
+attachments = Attachments
+process = Contract approval
+saveContract = Save the contract before starting a process
+processStarted = Process started
+taskCompleted = Task completed
+----
+
+[[qs-work-with-app]]
+=== Работа с приложением
+
+По умолчанию в Cuba Studio включен механизм Hot Deploy, и изменения в экране редактирования договора уже должны быть отправлены на сервер. Если Hot Deploy у вас был отключен, то перезапустите сервер, выполнив в Студии команду Run -> Restart application server.
+
+[[qs-users-creation]]
+==== Создание пользователей
+
+Для демонстрации работы процесса необходимо создать несколько тестовых пользователей. Откройте экран Adminitstration -> Users и создайте трех пользователей:
+
+* login: norman, First name: Tommy, Last name: Norman, Full name: Tommy Norman
+* login: roberts, First name: Casey, Last name: Roberts, Full name: Casey Roberts
+* login: pierce, First name: Walter, Last name: Pierce, Full name: Walter Pierce
+
+[[qs-start-process]]
+==== Создание договора и запуск процесса
+
+. Откройте список договоров Application -> Contracts и создайте новый договор. Заполните поля Number и Date и нажмите кнопку Save.
+. Нажмите на кнопку Start process - перед вами появится форма запуска процесса. При создании модели для узла Start event мы указали форму Standard form с атрибутами procActorsVisible=true и attachmentsVisible=true, поэтому сейчас перед нами форма с компонентами для указания участников процесса и добавления вложений.
+. Введите комментарий для процесса, добавьте участников: контролер norman и 2 менеджера pierce и roberts.
+. Загрузите вложение к договору, нажав на кнопку Upload таблицы Attachments.
+
+image::StartProcessForm.png[]
+
+[start=5]
+. Нажмите ОК - процесс запущен.
+
+[[qs-validation]]
+==== Этап проверки контролером
+
+Зайдите в систему под пользователем norman.
+
+При достижении процессом узла User task создается объект ProcTask, связанный с определенным участником процесса. В модуле BPM есть экран для отображения списка невыполненных задач для текущего пользователя. Откройте его: BPM -> Process tasks.
+
+image::ProcTaskBrowse.png[]
+
+Видим, что для пользователя norman есть одна задача Validation по процессу Contract approval. Выделите ее и нажмите кнопку Open process instance - откроется системный экран для работы с экземпляром ProcInstance.
+
+image::ProcInstanceEdit.png[]
+
+В нем отображается информация о времени запуска процесса, инициаторе процесса, список вложений, участников, текущих и выполненных задач в рамках данного процесса. Также экран позволяет перейти к связанной сущности (Contract 001) и выполнить процессное действие. Мы завершим действие другим способом - воспользовавшись procActionsFrame, который мы добавили ранее в редактор договора.
+
+Закройте Proc instance edit и откройте на редактирование созданный договор.
+
+image::ContractEditValidation.png[]
+
+Т.к. для текущего пользователя (norman) имеется незавершенная задача (ProcTask), то procActionsFrame отображает доступные действия. Когда мы описывали узел UserT task с именем 'Validation', то мы указали для него 2 возможных выхода 'Valid' и 'Not valid'. На основании этой информации в фрейм и добавлено 2 кнопки.
+
+Нажмите на Valid. В открывшемся окне введите комментарий:
+
+image::ValidationCompleteForm.png[]
+
+Нажмите OK.
+
+После успешной валидации договор должен уйти к менеджерам на параллельное согласование.
+
+[[qs-approval]]
+==== Этап утверждения менеджерами
+
+Войдите в систему под пользователем pierce.
+
+Откройте список текущих задач BPM -> Process tasks. Имеется одна задача Approval.
+
+image::TaskListApproval.png[]
+
+Откройте process instance editor.
+
+image::ProcInstanceEditApproval.png[]
+
+Обратите внимание на таблицу tasks. Предыдущая задача Validation завершена с результатом Valid, и после успешной валидации контролером создались 2 новые задачи Approval на менеджеров pierce и roberts.
+
+Утвердите договор, воспользовавшись кнопкой Approve.
+
+Далее войдите в систему под пользователем roberts. Откройте договор из списка Application -> Contracts.
+
+Пользователь roberts имеет незавершенную задачу по договору, следовательно фрейм procActionsFrame отображает для него действия Approve и Reject. Нажмите кнопку Reject.
+
+image::CompleteApprovalForm.png[]
+
+Т.к. при описании выхода Reject в дизайнере мы указали параметр формы commentRequired=true, то комментарий в форме завершения данного действия обязателен. Введите комментарий и нажмите ОК.
+
+Один из менеджеров отклонил договор, поэтому ему должно установиться состояние 'Not approved'. Проверим это, открыв договор.
+
+image::ContractEditNotApproved.png[]
+
+Согласование завершено. Объекту procInstance, связанному с текущим договором проставляется значение в поле endDate.
