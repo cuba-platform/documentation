@@ -1,0 +1,212 @@
+[[functionality]]
+== BPM module functionality
+
+BPM module uses an Activiti Engine for business processes execution. A modified editor from Activiti Explorer is used for modeling processes in BPMN 2.0 notation. In addition to Activiti framework abilities, a BPM module provides an additional functionality described in this section. A description of Activiti framework is out of this manual scope. You can familiarize with them on Activiti website: http://www.activiti.org/userguide.
+
+[[bpm-activiti-listener]]
+=== Event listener BpmActivitiListener
+
+A BpmActivitiListener is automatically added to the process on a model creating. BpmActivitiListener implements an ActivitiEventListener interface (see http://www.activiti.org/userguide/#eventDispatcher). The listener is responsible for creating and modifying BPM entities when some process events occur, e.g. entering to a user task, process cancelation, task completion, etc.). This is the listener that creates ProcTasks objects and sets endDate values for a ProcInstance.
+
+[[process-roles]]
+=== Process roles
+
+Process roles define process actors types, i.e. operator or manager. To open a process roles edit window, select a 'Process roles' property in a process properties panel. An information about the roles will be written to the process XML (extensionElements section of a process element) during a model deployment and then ProcRoles objects will be created.
+
+.Process roles definition in a process XML
+[source.xml]
+----
+<process id="testProcess" name="Test process">
+    <extensionElements>
+         <cuba:procRoles>
+            <cuba:procRole name="Manager" code="manager"/>
+            <cuba:procRole name="Operator" code="operator"/>
+        </cuba:procRoles>
+    </extensionElements>
+</process>
+----
+
+[[start-process-form]]
+=== Start process form
+
+To define a form that will be displayed on a process start, use a Start form property of a Start event node. Read mode about forms in a  <<ui.adoc#process-forms>> section.
+
+.Process start from definition in a process XML
+[source, xml]
+----
+<startEvent id="startEvent">
+  <extensionElements>
+    <cuba:form name="standardProcForm">
+      <cuba:param name="procActorsVisible" value="true"></cuba:param>
+    </cuba:form>
+  </extensionElements>
+</startEvent>
+----
+
+[[user-task]]
+=== A user task
+
+To define a task assignee, select one of process roles in a Process role property of a User task node. When a process reaches the User task, process actors with the given role will be found among all process actors, and the task will be assigned to them.
+
+.Process role form a task in a process XML
+[source, xml]
+----
+<userTask id="managerApproval" name="Manager approval">
+    <extensionElements>
+        <cuba:procRole>manager</cuba:procRole> 
+    </extensionElements>
+</process>
+----
+
+If you want the task to be assigned to multiple users, then set a value Parallel or Sequential to the Multi-instance type property of the User task node.
+
+There is also an option when the task shouldn't be immediately assigned to the user, but to appear in a list of available tasks. Then one of the candidates should claim the task. Set a property Claim allowed to define such task. Then the task will appear in a list of available tasks for all users with a role from a Process role property.
+
+.A task without an explicit executor in a process XML
+[source,xml]
+----
+<userTask id="managerApproval" name="Manager approval">
+    <extensionElements>
+        <cuba:claimAllowed>true</cuba:claimAllowed>
+    </extensionElements>
+</process>
+----
+
+[[task-outcomes]]
+=== Выходы задачи
+
+Обычно задача требует от пользователя принятия решения (например, согласовать или отклонить). Дальнейший маршрут по процессу зависит от принятого решения. Для задания списка выходов из задачи используется свойство Task outcomes узла User Task. Для каждого выхода задается имя и выбирается форма, которая должна отображаться при выборе этого выхода, а также список параметров формы (подробнее о формах см. Процессные формы). 
+
+.Описание выходов из задачи в XML
+[source, xml]
+----
+<userTask id="managerApproval" name="Manager approval">
+    <extensionElements>
+        <cuba:outcomes>
+            <cuba:outcome name="approve">
+                <cuba:form name="standardProcessForm">
+                    <cuba:param name="commentRequired">true</cuba:param>
+                    <cuba:param name="attachmentsVisible">true</cuba:param>
+                </cuba:form>
+            </cuba:outcome>
+            <cuba:outcome name="reject">
+                <cuba:form name="someOtherProcessForm">
+                </cuba:form>
+            </cuba:outcome>
+        </cuba:outcomes>
+    </extensionElements>
+</process>
+----
+
+[[transitions]]
+=== Переходы в зависимости от выхода (outcome) задачи
+
+В отличие от jBPM в нотации BPMN отсутствует возможность указать несколько выходов из одной задачи. Чтобы направить процесс по нужной ветке в зависимости от результата используется Exclusive Gateway, переходы из которого имеют условия, оперирующие результатом выполнения задачи, расположенной перед этим Gateway. При завершении пользователем задачи, результат его действия записывается в процессную переменную с именем [taskId]_result. Тип этой переменной - ProcTaskResult.
+
+Методы класса ProcTaskResult:
+
+* int count(String outcomeName) - возвращает количество пользователей, завершивших задачу с данным выходом
+* boolean exists(String outcomeName) - возвращает true, если есть хотя бы один пользователь, завершивший задачу с указанным выходом.
+
+Далее объект с результатом используется в выражении Flow condition для переходов, выходящих из Gateway.
+
+Пример:
+
+image::TaskOutcomesExample.png[]
+
+Предположим, что задача approval была параллельно назначена нескольким пользователям. Для задачи были определены 2 возможных выхода: approve и reject. После того, как все пользователи завершат задачу процесс перейдет к exclusive gateway. Нам нужно следующее поведение: если хоть кто-либо выбрал вариант reject, то переходим по переходу Rejected, если все согласились (approve), то по Approved.
+
+==== Задание условия в поле Flow outcome
+
+Самым удобным вариантом задания условия, который подойдет для большинства случаев, является выбор имени outcome предыдущей задачи в свойстве Flow outcome стрелки перехода. Данный переход сработает, если было хотя бы одно завершение задачи с указанным outcome.
+
+==== Задание сложных условий для перехода
+Если необходимо иметь более сложные условия для перехода, то их можно задать в поле Flow condition. Например условие "Более 5 пользователь выбрали вариант Reject" будет выглядеть следующим образом:
+
+[source,groovy]
+----
+${approval_result.count('reject') > 5}
+----
+
+==== Порядок обработки переходов
+
+Обратите внимание, что необходимо задать порядок обработки переходов. Иначе Activiti может, например, обработать переход по умолчанию до переходов с явно заданными условиями. Для задания порядка вычисления условий установите свойство Flow order у узла Exclusive gateway.
+
+[[script-execution]]
+=== Вызов скрипта
+
+Для выполнения скрипта используется элемент Scirpt task. При достижении элемента, система анализирует содержимое поля script. Если содержимое является путем к файлу и данный файл существует, то система исполнит указанный файл. Если файла по указанному пути нет, то содержимое поля скрипт будет исполнено.
+
+Внутри скрипта можно использовать объекты persistence и metadata.
+
+[[service-invocation]]
+=== Вызов методов сервиса
+
+Для вызова метода сервиса используется элемент Service task. Activiti engine интегрирован со Spring framework, т.е. возможно обращение к бинам среднего слоя по имени. Для вызова метода управляемого бина в поле expression пишется выражение вида:
+
+[source,groovy]
+----
+${beanName.methodName(processVarName, 'someStringParam')}
+----
+
+[[timer]]
+=== Завершение задачи по таймеру
+
+Для того, чтобы завершить задачу после истечения периода времени необходимо:
+
+* Добавить к элементу задачи элемент Boundary timer event.
+* От элемента таймера нарисовать переход к нужному этапу процесса.
+* В свойстве таймера Time duration написать выражение для периода времени. Например, PT15M (15 минут).
+* Установить галку Cancel activiti, чтобы по срабатыванию таймера текущая задача завершилась.
+* В свойстве Timer outcome указать имя выхода задачи, которое должно быть использовано при завершении по таймеру.
+
+image::TimerEdit.png[]
+
+.Задание выхода для таймера
+[source, xml]
+----
+<boundaryEvent id="managerApprovalTimer" cancelActivity="true" attachedToRef="managerApproval">
+    <extensionElements>
+        <cuba:outcome>approve</cuba:outcome>
+    </extensionElements>
+</boundaryEvent>
+----
+
+NOTE: По умолчанию Job executor для обработки заданий таймеров отключен. Для его включения установите свойство приложения bpm.activiti.asyncExecutorEnabled = true
+
+[[localization]]
+=== Локализация
+
+Процесс может содержать локализованные сообщения, которые будут использованы при отображении в пользовательском интерфейсе имен задач, выходов из задач и т.д.
+
+Для открытия экрана задания локализованных значений выберите свойство Localization модели.
+
+Для локализации имени задачи необходимо создать запись, ключом которой является id задачи.
+
+Для локализации имени выхода из задачи необходимо создать запись, ключом которой является выражение вида TASK_ID.OUTCOME_NAME
+
+Для локализации имени процессной роли необходимо создать запись, ключом которой является код роли.
+
+.Локализованные сообщения в XML
+[source,xml]
+----
+<process id="testProcess" name="Test process">
+    <extensionElements>
+        <cuba:localizations>
+            <cuba:localization lang="en">
+                <cuba:msg key="key1" value="value1"/>
+                <cuba:msg key="key2" value="value2"/>
+            </cuba:localization>
+            <cuba:localization lang="ru">
+                <cuba:msg key="key1" value="value1"/>
+                <cuba:msg key="key2" value="value2"/>
+            </cuba:localization>
+      </cuba:localizations>
+    </extensionElements>
+</process>
+----
+
+[[submodels]]
+=== Submodels
+
+Узел Sub model группы Structural позволяет использовать существующую модель в качестве части новой модели. При развертывании процесса из модели элементы подмодели вставляются в текущую модель, и из результата этой операции формируется XML с процессом.
