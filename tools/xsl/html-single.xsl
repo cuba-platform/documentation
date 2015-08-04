@@ -74,8 +74,7 @@
     </xsl:variable>
 
     <xsl:template name="user.header.content">
-        <xsl:variable name="docLang" select="//book/@lang"/>
-
+        <xsl:variable name="docLang" select="//book/@*[local-name() = 'lang']"/>
         <xsl:variable name="search">
             <xsl:choose>
                 <xsl:when test="$docLang = 'ru'">Поиск</xsl:when>
