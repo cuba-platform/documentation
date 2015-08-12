@@ -220,7 +220,13 @@
     <para>В данном разделе описывается структура скриптов, а также предназначение и параметры задач (tasks) Gradle.</para>
     <section id="build.gradle">
       <title>Структура build.gradle</title>
-      <para>Секция <code>allprojects</code> задает группу и версию собираемых <link linkend="artifact">артефактов</link> проекта. Имена артефактов формируются на основе имен модулей, заданных в <filename>settings.gradle</filename>. Если свойство <code>ext.isSnapshot</code> равно <code>true</code>, то в именах  артефактов будет присутствовать суффикс <code>SNAPSHOT</code>. Свойство <code>ext.tomcatDir</code> задает расположение каталога <link linkend="build.gradle_setupTomcat">установки</link> <application>Tomcat</application>. Кроме того, в секции <code>allprojects</code> могут быть заданы следующие опциональные свойства:<itemizedlist>
+      <para>Секция <code>allprojects</code> задает группу и версию собираемых <link linkend="artifact">артефактов</link>
+        проекта. Имена артефактов формируются на основе имен модулей, заданных в <filename>settings.gradle</filename>.
+        Если свойство <code>ext.isSnapshot</code> равно <code>true</code>, то в именах  артефактов будет присутствовать
+        суффикс <code>SNAPSHOT</code>. Свойство <code>ext.tomcatDir</code> задает расположение каталога
+        <link linkend="build.gradle_setupTomcat">установки</link> <application>Tomcat</application>. Кроме того, в секции
+        <code>allprojects</code> могут быть заданы следующие опциональные свойства:
+        <itemizedlist>
           <listitem>
             <para><code>ext.copyright</code> - текст Copyright Notice,  вставляемый <application>IntelliJ IDEA</application> в файлы исходных текстов.</para>
           </listitem>
@@ -236,7 +242,13 @@
           <listitem>
             <para><code>ext.uploadPassword</code> - пароль пользователя репозитория для выгрузки собранных артефактов проекта. По умолчанию используется значение переменной окружения <literal>HAULMONT_REPOSITORY_PASSWORD</literal>. </para>
           </listitem>
-        </itemizedlist><tip>
+          <listitem>
+            <para>Свойства <code>ext.tomcatPort</code>, <code>ext.tomcatShutdownPort</code> и <code>ext.tomcatDebugPort</code>
+              оказывают влияние на задачу <code>setupTomcat</code> (см. ниже) и могут быть использованы для установки
+              Tomcat с нестандартными портами.</para>
+          </listitem>
+        </itemizedlist>
+        <tip>
           <para>Любое из свойств проекта можно задать не в самом <filename>build.gradle</filename>, а путем передачи в командной строке аргумента с префиксом <literal>-P</literal>, например:</para>
           <para><prompt>gradlew uploadArchives -PuploadUser=myuser -PuploadPassword=mypassword</prompt></para>
         </tip></para>
@@ -252,7 +264,8 @@
           </listitem>
         </itemizedlist></para>
       <para>Далее в секциях <code>configure</code> определяются параметры сборки модулей приложения.</para>
-      <para>Исполняемыми единицами в Gradle являются <firstterm>задачи</firstterm> (tasks). Они задаются как внутри плагинов, так и в самом скрипте сборки. Рассмотрим специфические для CUBA задачи, параметры которых могут быть сконфигурированы в <filename>build.gradle</filename>.<itemizedlist>
+      <para>Исполняемыми единицами в Gradle являются <firstterm>задачи</firstterm> (tasks). Они задаются как внутри плагинов, так и в самом скрипте сборки. Рассмотрим специфические для CUBA задачи, параметры которых могут быть сконфигурированы в <filename>build.gradle</filename>.
+        <itemizedlist>
           <listitem>
             <para><code>enhance</code> - задача типа <code>CubaEnhancing</code>, выполняющая bytecode enhancement классов персистентных сущностей. Объявляется в <link linkend="app_modules">модуле</link> <structname>global</structname>. В параметре задачи <code>persistenceXml</code> указывается путь к файлу <link linkend="persistence.xml">
                 <filename>persistence.xml</filename>
@@ -403,7 +416,20 @@ cuba.useLocalServiceInvocation = false</programlisting></para>
           <listitem id="build.gradle_restart">
             <para><code>restart</code> - задача, выполняющая остановку, <link linkend="fast_deployment">быстрое развертывание</link>, и старт локального сервера Tomcat. </para>
           </listitem>
-        </itemizedlist></para>
+          <listitem id="build.gradle_debugWidgetSet">
+            <para><code>debugWidgetSet</code> - задача типа <code>CubaWidgetSetDebug</code>, которая запускает GWT Code Server
+              для отладки виджетов в веб-браузере.</para>
+            <para>Пример использования:
+              <programlisting><xi:include href="../../source/development/build_gradle_debugWidgetSet_1.groovy" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
+            <para>Убедитесь, что кофигурация <code>runtime</code> модуля <code>web-toolkit</code> содержит зависимость
+              от библиотеки Servlet API:
+              <programlisting><xi:include href="../../source/development/build_gradle_debugWidgetSet_2.groovy" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
+            <para>См. <xref linkend="debug_widgets"/> для получения информации о том как отлаживать код в веб-браузере.</para>
+          </listitem>
+        </itemizedlist>
+      </para>
     </section>
     <section>
       <title>Запуск задач сборки</title>
@@ -741,6 +767,42 @@ public class ...
       <para>либо запуском командного файла <filename>bin/debug.*</filename> установленного <application>Tomcat</application>.</para>
       <para>После этого сервер будет принимать подключения отладчика на порту 8787. Порт можно изменить в файле <filename>bin/setenv.*</filename> в переменной <code>JPDA_OPTS</code>.</para>
       <para>Для пошаговой отладки в <application>Intellij IDEA</application> необходимо в проекте приложения создать новый элемент  <guilabel>Run/Debug Configuration</guilabel> типа <guilabel>Remote</guilabel>, и в его поле <guilabel>Port</guilabel> указать 8787.</para>
+    </section>
+    <section id="debug_widgets">
+      <title>Отладка виджетов в веб-браузере</title>
+      <para>Для отладки виджетов на стороне браузера можно использовать <application>GWT Super Dev Mode</application>.</para>
+      <orderedlist>
+        <listitem>
+          <para>Настройте задачу
+            <link linkend="build.gradle_debugWidgetSet">debugWidgetSet</link> в <code>build.gradle</code>.
+          </para>
+        </listitem>
+        <listitem>
+          <para>Разверните приложение и запустите Tomcat.</para>
+        </listitem>
+        <listitem>
+          <para>Запустите задачу <code>debugWidgetSet</code>:</para>
+          <para><prompt>gradlew debugWidgetSet</prompt></para>
+          <para>GWT Code Server будет перекомпилировать ваш widgetset при изменениях кода виджетов.</para>
+        </listitem>
+        <listitem>
+          <para>Откройте страницу <code>http://localhost:8080/app?debug&amp;superdevmode</code> в браузере Chrome и
+            подождите пока widgetset будет построен первый раз.</para>
+        </listitem>
+        <listitem>
+          <para>Откройте консоль отладки браузера:
+            <mediaobject>
+              <imageobject>
+                <imagedata align="center" fileref="img/debugWidgetSet_chrome_console.png"/>
+              </imageobject>
+            </mediaobject>
+          </para>
+        </listitem>
+        <listitem>
+          <para>После изменения Java-кода в модуле <code>web-toolkit</code> обновляйте страницу в браузере.
+            Widgetset будет инкрементально перестраиваться примерно за 8-10 секунд.</para>
+        </listitem>
+      </orderedlist>
     </section>
     <section id="testing">
       <title>Тестирование</title>

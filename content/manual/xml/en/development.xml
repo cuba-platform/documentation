@@ -196,7 +196,13 @@
     <para>This section describes the structure of the scripts and the purpose and parameters of Gradle tasks.</para>
     <section id="build.gradle">
       <title>The Structure of build.gradle</title>
-      <para>The  <code>allprojects</code> section defines the group and version of the project  <link linkend="artifact">artifacts</link> being built. Artifact names are based on module names specified in <filename>settings.gradle</filename>. If the <code>ext.isSnapshot</code> property is  <code>true</code>, artifact names will have the <code>SNAPSHOT</code> suffix. The <code>ext.tomcatDir</code> property sets the location of the Tomcat <link linkend="build.gradle_setupTomcat">installation</link> directory. Furthermore, the  <code>allprojects</code> section may have the following optional properties:<itemizedlist>
+      <para>The  <code>allprojects</code> section defines the group and version of the project
+        <link linkend="artifact">artifacts</link> being built. Artifact names are based on module names specified in
+        <filename>settings.gradle</filename>. If the <code>ext.isSnapshot</code> property is  <code>true</code>,
+        artifact names will have the <code>SNAPSHOT</code> suffix. The <code>ext.tomcatDir</code> property sets the
+        location of the Tomcat <link linkend="build.gradle_setupTomcat">installation</link> directory. Furthermore,
+        the  <code>allprojects</code> section may have the following optional properties:
+        <itemizedlist>
           <listitem>
             <para><code>ext.copyright</code> – the copyright notice text that is inserted by  <application>IntelliJ IDEA</application> into the source text files.</para>
           </listitem>
@@ -212,7 +218,13 @@
           <listitem>
             <para><code>ext.uploadPassword</code> repository user password that will be used to upload assembled project artifacts.  <literal>HAULMONT_REPOSITORY_PASSWORD</literal> environment variable value is used by default. </para>
           </listitem>
-        </itemizedlist><tip>
+          <listitem>
+            <para><code>ext.tomcatPort</code>, <code>ext.tomcatShutdownPort</code> and <code>ext.tomcatDebugPort</code>
+              properties affect the <code>setupTomcat</code> task (see below) and  can be used to install Tomcat with
+              non-standard ports.</para>
+          </listitem>
+        </itemizedlist>
+        <tip>
           <para>Instead of setting project properties in <filename>build.gradle</filename> itself, you can do it by passing a command-line argument with the  <literal>-P</literal> prefix, for example:</para>
           <para><prompt>gradlew uploadArchives -PuploadUser=myuser -PuploadPassword=mypassword</prompt></para>
         </tip></para>
@@ -228,7 +240,8 @@
           </listitem>
         </itemizedlist></para>
       <para>Then, application modules building parameters are defined  in the  <code>configure</code> section.</para>
-      <para><firstterm>Tasks</firstterm> are executable units in Gradle. They are defined both in the plugins and in the build script itself. Below are CUBA-specific tasks; their parameters can be configured in <filename>build.gradle</filename>.<itemizedlist>
+      <para><firstterm>Tasks</firstterm> are executable units in Gradle. They are defined both in the plugins and in the build script itself. Below are CUBA-specific tasks; their parameters can be configured in <filename>build.gradle</filename>.
+        <itemizedlist>
           <listitem>
             <para><code>enhance</code> – the  <code>CubaEnhancing</code>-type task that executes bytecode enhancement of persistent entity classes. It is declared in the <structname>global</structname> <link linkend="app_modules">module</link>. The path to the  <link linkend="persistence.xml">persistence.xml</link> project file is specified in the <code>persistenceXml</code> task parameter.</para>
             <para>For example:<programlisting>task enhance(type: CubaEnhancing) {
@@ -375,7 +388,20 @@ cuba.useLocalServiceInvocation = false</programlisting></para>
           <listitem id="build.gradle_restart">
             <para><code>restart</code> – the task that stops the local Tomcat server, runs  <link linkend="fast_deployment">fast deployment</link>, and starts the server once again.</para>
           </listitem>
-        </itemizedlist></para>
+          <listitem id="build.gradle_debugWidgetSet">
+            <para><code>debugWidgetSet</code> - the <code>CubaWidgetSetDebug</code> type task that launches GWT Code Server
+              for debugging widgets in the browser.</para>
+            <para>Example usage:
+              <programlisting><xi:include href="../../source/development/build_gradle_debugWidgetSet_1.groovy" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
+            <para>Ensure that the <code>web-toolkit</code> module has a dependency on Servlet API library in the <code>runtime</code>
+              configuration:
+              <programlisting><xi:include href="../../source/development/build_gradle_debugWidgetSet_2.groovy" encoding="UTF-8" parse="text"/></programlisting>
+            </para>
+            <para>See <xref linkend="debug_widgets"/> for information on how to debug code in the browser.</para>
+          </listitem>
+        </itemizedlist>
+      </para>
     </section>
     <section id="build_task_start">
       <title lang="en">Starting Build Tasks</title>
@@ -391,9 +417,9 @@ cuba.useLocalServiceInvocation = false</programlisting></para>
           </listitem>
         </itemizedlist></para>
       <tip lang="en">
-        <para>It is recommended to run the <literal>gradlew</literal> or  <literal>gradle</literal> commands with the <literal>--daemon</literal> key; in this case the Gradle daemon is retained in memory, which significantly accelerates the subsequent execution.
-
-</para>
+        <para>It is recommended to run the <literal>gradlew</literal> or  <literal>gradle</literal> commands with the
+          <literal>--daemon</literal> key; in this case the Gradle daemon is retained in memory, which significantly
+          accelerates the subsequent execution.</para>
         <para>To remove the daemon from memory, you can use the  <literal>--stop</literal> key. </para>
       </tip>
       <para>For example, in order to compile the Java files and build the JAR files for project artifacts, you need to run the following command:</para>
@@ -698,11 +724,50 @@ public class ...
     <para>This section covers various aspects of testing and debugging CUBA applications.</para>
     <section id="debug_setup">
       <title lang="en">Connecting a Debugger</title>
-      <para>You can start Tomcat server in debug mode by either running the build command</para>
-      <para><prompt>gradle start</prompt></para>
+      <para>You can start Tomcat server in debug mode by either running the
+        <link linkend="build_task_start">Gradle task</link>
+      </para>
+      <para><prompt>gradlew start</prompt></para>
       <para>or by running the  <filename>bin/debug.*</filename> command file of the installed  <application>Tomcat</application>.</para>
       <para>After this, the server will accept debugger connections over port 8787. Port number can be changed in the  <filename>bin/setenv.*</filename> file, in the  <code>JPDA_OPTS</code> variable.</para>
       <para>For debugging in  <application>Intellij IDEA</application> you need to create a new <guilabel>Remote</guilabel> type    <guilabel>Run/Debug Configuration</guilabel> element in the application project and set its  <guilabel>Port</guilabel>  property to 8787.</para>
+    </section>
+    <section id="debug_widgets">
+      <title>Debugging Web Widgets</title>
+      <para>You can use <application>GWT Super Dev Mode</application>
+        to debug web widgets on the browser side.</para>
+      <orderedlist>
+        <listitem>
+          <para>Setup the
+            <link linkend="build.gradle_debugWidgetSet">debugWidgetSet</link> task in <code>build.gradle</code>.
+          </para>
+        </listitem>
+        <listitem>
+          <para>Deploy the application and start Tomcat.</para>
+        </listitem>
+        <listitem>
+          <para>Run the <code>debugWidgetSet</code> task:</para>
+          <para><prompt>gradlew debugWidgetSet</prompt></para>
+          <para>The running GWT Code Server will recompile your widgetset on modification.</para>
+        </listitem>
+        <listitem>
+          <para>Open <code>http://localhost:8080/app?debug&amp;superdevmode</code> in Chrome web browser and wait for
+            the widgetset is built for the first time.</para>
+        </listitem>
+        <listitem>
+          <para>Open the debug console in Chrome:
+            <mediaobject>
+              <imageobject>
+                <imagedata align="center" fileref="img/debugWidgetSet_chrome_console.png"/>
+              </imageobject>
+            </mediaobject>
+          </para>
+        </listitem>
+        <listitem>
+          <para>After changing the Java code in the <code>web-toolkit</code> module, refresh the web page in the browser.
+            The widgetset will be rebuilt incrementally in approximately 8-10 seconds.</para>
+        </listitem>
+      </orderedlist>
     </section>
     <section id="testing">
       <title lang="en">Testing</title>
