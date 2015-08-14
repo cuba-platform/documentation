@@ -42,27 +42,6 @@ class DocPlugin implements Plugin<Project> {
     }
 }
 
-//class AsciidocToHtmlTask extends Exec {
-//
-//    String docName
-//    String docLang
-//
-//    String workingDir = './content/bpm/adoc/ru'
-//
-//
-//    String htmlBuildDir = "$docName/$docLang/html-single/${docName}.html"
-//
-//    {
-//        if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-//            commandLine = ['cmd', '/c']
-//        } else {
-//            commandLine = 'sh'
-//        }
-//        args = ['asciidoctor', 'docName.adoc', '-D', "$docName/$docLang/html-single/${docName}.html"]
-//
-//    }
-//}
-
 class Asciidoc2Html extends DefaultTask {
     String docName
     String docLang
@@ -83,10 +62,11 @@ class Asciidoc2Html extends DefaultTask {
             workingDir "content/$docName/adoc/$docLang"
             if (System.getProperty('os.name').toLowerCase().contains('windows')) {
                 commandLine 'cmd', '/c'
+                args 'asciidoctor', "${docName}.adoc", '-D', "$project.buildDir/$docName/$docLang/html-single"
             } else {
                 commandLine 'sh'
+                args '-c', "asciidoctor ${docName}.adoc -D $project.buildDir/$docName/$docLang/html-single"
             }
-            args 'asciidoctor', "${docName}.adoc", '-D', "$project.buildDir/$docName/$docLang/html-single"
         }
 
         project.copy {
@@ -116,10 +96,11 @@ class Asciidoc2Docbook extends DefaultTask {
             workingDir "content/$docName/adoc/$docLang"
             if (System.getProperty('os.name').toLowerCase().contains('windows')) {
                 commandLine 'cmd', '/c'
+                args 'asciidoctor', "${docName}.adoc", '-b', 'docbook45', '-D', "$project.buildDir/$docName/$docLang/docbook"
             } else {
                 commandLine 'sh'
+                args '-c', "asciidoctor ${docName}.adoc -b docbook45 -D $project.buildDir/$docName/$docLang/docbook"
             }
-            args 'asciidoctor', "${docName}.adoc", '-b', 'docbook45', '-D', "$project.buildDir/$docName/$docLang/docbook"
         }
     }
 }
