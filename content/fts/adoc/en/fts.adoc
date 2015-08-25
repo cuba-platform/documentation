@@ -1,0 +1,165 @@
+= CUBA Platform. Full Text Search
+:toc: left
+:toc-title: Table of contents
+:sectnums:
+:linkcss:
+:source-highlighter: pygments
+:imagesdir: ./img
+:stylesdir: ./styles
+:sourcesdir: ../../source
+:doctype: book
+:docinfo:
+:sectlinks:
+:sectanchors:
+:icons: font
+:lang: en
+:hide-uri-scheme:
+
+[[preface]]
+[preface]
+== Preface
+
+This document serves as a guide for using _full text search_ (_FTS_) subsystem of the CUBA platform.
+
+=== Target Audience
+
+This manual is intended for developers building CUBA applications with full text search support. It is assumed that the reader is familiar with the *Developer's Manual*, which is available at https://www.cuba-platform.com/manual.
+
+[[additional_info]]
+=== Additional Materials
+
+This guide, as well as any other CUBA platform documentation, is available at https://www.cuba-platform.com/en/manual.
+
+CUBA full text search subsystem is based on the *Apache Lucene* framework, therefore familiarity with the framework will be beneficial. See http://lucene.apache.org/core.
+
+=== Feedback
+
+If you have any feedback or would like to suggest an improvement for this manual, please contact us at https://www.cuba-platform.com/support/topics.
+
+If you find an error in the document, please specify section number and attach a small piece of surrounding text to help us locate it.
+
+include::chapter1.adoc[]
+
+include::chapter2.adoc[]
+
+[[fts_config]]
+[appendix]
+== FTS Configuration File
+
+The full text search configuration file is an XML file, which is usually located in the `src` directory of the *core* module and contains the description of indexed entities and their attributes.
+
+The set of FTS configuration files, including those defined in the base projects, is specified in the <<cuba.ftsConfig,cuba.ftsConfig>> application property.
+
+The file has the following structure: 
+
+`fts-config` - root element.
+
+`fts-config` elements:
+
+* `entities` - list of entities to be indexed and searched.
++
+`entities` elements:
+
+** entity - indexed entity description.
++
+`entity` attributes:
++
+--
+*** `class` - entity Java class.
+*** `show` - defines whether this entity should appear in the search results. The `false` value is used for connecting entities which are not of interest to the user, but are required, for example, to link uploaded files and entities of the domain model. Default is `true`.
+--
++
+`entity` elements:
+
+*** `include` - determines whether to include a single or multiple entity attributes in the index.+
+`include` attributes:
+
+**** `re` - regular expression to select attributes by name. Only the following attribute types are allowed: string, number, date, enumeration.
+
+**** `name` - attribute name. It can be reference attributes path (divided by period). The type is not checked. However, if the name is defined by a path, then the final attribute must be an entity. Including non-entity type attribute does not make sense here, as it must be indexed within its owning entity.
+
+*** `exclude` - excludes attributes previously included by `include` element. Possible attributes are the same as in include.
+
+*** `searchables` - a Groovy script to add arbitrary entities associated with the changed one to the indexing queue.
++
+For example, when a `CardAttachment` instance is either added or removed, the associated `Card` instance should also be re-indexed. The reason is that the `Card` instance itself will not be added to the queue, as it has not been changed (it stores a collection of `CardAttachment` istances). Thus it will not be shown in search results if matching data is found in its linked entity - a newly added `CardAttachment`.
++
+The following objects are passed into the script at invocation: 
++
+--
+**** `searchables` - the list of entities that should be appended.
+**** `entity` - the current entity instance, which is being added to the queue automatically.
+--
++
+Script example:
++
+[source,xml]
+----
+include::{sourcesdir}/fts_config_1.xml[]
+----
+
+*** `searchableIf` - a Groovy script to exclude certain instances of the indexed entity from the queue.
++
+For example, you may not want to index old versions of documents. 
++
+When running the script, the `entity` variable - the current entity instance - is passed into it. The script should return a boolean value: `true` if the current instance should be indexed, and `false` otherwise.
++
+Script example:
++
+[source,xml]
+----
+include::{sourcesdir}/fts_config_2.xml[]
+----
+
+FTS configuration file example:
+
+[source,xml]
+----
+include::{sourcesdir}/fts_config_3.xml[]
+----
+
+[[fts_properties]]
+[appendix]
+== Application Properties
+
+This section lists the application properties that are relevant to the full text search subsystem.
+
+cuba.ftsConfig:: Configuration parameter, specifies a set of FTS configuration files in the project.
++
+The value of the property should include a list of files separated with spaces. Files are loaded according to the rules of the `Resources` interface.
++
+Used in the `Middleware` block.
++
+Example:
++
+----
+cuba.ftsConfig = cuba-fts.xml fts.xml
+----
+
+All properties that are described below are runtime parameters stored in the database and available in the application code via the `FtsConfig` configuration interface.
+
+[[cuba.fts.enabled]]
+cuba.fts.enabled:: The flag enabling the FTS functionality in the project.
++
+Can be changed via the *Enabled* attribute of the `app-core.fts:type=FtsManager` JMX bean.
++
+Default value: `false`
+
+[[cuba.fts.indexDir]]
+cuba.fts.indexDir:: Absolute path to the directory storing indexed files. If not specified, the `ftsindex` subdirectory of the application work directory (defined by the cuba.dataDir property) is used; in the default deployment configuration, it is *tomcat/work/app-core/ftsindex*.
++
+Default value: unspecified
+
+cuba.fts.indexingBatchSize:: Number of records extracted from the indexing queue per one invocation of `processQueue()`. 
++
+This limitation is relevant to the situation when the indexing queue contains a very large number of records, for example, after executing the `reindexAll()` method of the `app-core.fts:type=FtsManager` JMX bean. In this case, indexing is done in batches, which takes more time, but creates a limited and predictable server load.
++
+Default value: `300`
+
+cuba.fts.maxSearchResults:: The maximum number of entries in the search result. 
++
+Default value: `100`
+
+cuba.fts.searchResultsBatchSize:: Number of elements in a single batch of search results. A user will need to click *More* on the results screen to view the next batch.
++
+Default value: `5`

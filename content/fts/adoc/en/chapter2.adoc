@@ -1,0 +1,156 @@
+[[ch2_quick_start]]
+== Quick Start
+
+This chapter describes the example of using the full text search subsystem in the Library sample application which can be downloaded by means of CUBA Studio.
+
+We will split the task into the following stages:
+
+. Enable search functionality for the project, configure the indexing process and verify that it works.
+. Adjust the FTS configuration file to include entities from the sample Library data model.
+. Use the `EBook` entity and the functionality described in the *Workflow subsystem* guide to illustrate search function for the loaded files.
+
+=== Project Setup
+
+. Run CUBA Studio, go to *Open project* -> *Samples* window and download the Library project.
+. Open the Library project in Studio.
+. Open *Project properties* -> *Edit*, include the *fts* project in the list of *Base projects* and save changes. Confirm action after Studio will suggest recreating Gradle scripts.
+. Select *Run* -> *Deploy*. At this point, the application will be assembled and deployed to the Tomcat application server located at *build/tomcat*.
+. Create the application database: *Run* -> *Create database*.
+. Start the application server: *Run* -> *Start application server*.
+. Open the application's web-interface at http://localhost:8080/app[http://localhost:8080/app]. Log into the system with the name *`admin`* and password *`admin`*.
+. To enable full text search functionality, open *Administration* -> *JMX Console* in the application main menu, find and open the `app-core.fts:type=FtsManager` JMX bean. Open the *Enable* attribute using double click and check the *Value* checkbox.
+
+Once the steps above are completed, full text search functionality will be added to the application and ready to work. If you log out of the system and then log in again, a search field will appear in the top right panel of the main application window. However, search will not produce any results because the data has not been indexed yet.
+
+To start one-off indexing of the current state of the database (i.e. the entities listed in the FTS configuration file by default), open the `app-core.fts:type=FtsManager` JMX bean again and consequently invoke `reindexAll()` first and then `processQueue()`. After this, searching the "adm" string should give the following results:
+
+image::SearchResults1.png[align="center"]
+
+=== Configuring Invocation of Indexing Process
+
+You can use the platform's scheduled tasks mechanism (see *Application Development Guide* -> *CUBA Scheduled tasks*) to invoke indexing process on a scheduled basis.
+
+First, you will need to activate the task starting functionality itself. Add the following property to the `app.properties` file of the project *core* module:
+
+----
+cuba.schedulingActive = true
+----
+
+Restart the application server, log into the system as *`admin`*, open the JMX Console screen, find and open the `app-core.cuba:type=Scheduling` JMX bean and make sure that the *Active* attribute is set to `true`.
+
+Then open the *Administration* -&gt; *Scheduled Tasks* screen, click *Create* and fill in the following attribute values for a new task:
+
+* *Defined by*: Bean
+* *Bean name*: cuba_FtsManager
+* *Method name*: processQueue()
+* *Singleton*: true
+* *Period, sec*: 30
+
+Save the task, select it in the table and click *Activate*. From now on, the system will start indexing changed entities every 30 seconds.
+
+[WARNING]
+====
+Automatic indexing does not cover the entities created before its start. To index such entities, open the *JMX Console* screen and call sequentially the following methods of the `app-core.fts:type=FtsManager `JMX bean: `reindexAll()` and `processQueue()`.
+====
+
+=== Setting up Configuration File
+
+Create the `fts.xml` file with the following content in the source text directory of the *core* module:
+
+[source, xml]
+----
+<fts-config>
+    <entities>
+
+        <entity class="com.sample.library.entity.Author">
+            <include re=".*"/>
+        </entity>
+
+        <entity class="com.sample.library.entity.Book">
+            <include re=".*"/>
+        </entity>
+
+        <entity class="com.sample.library.entity.BookInstance">
+            <include re=".*"/>
+        </entity>
+
+        <entity class="com.sample.library.entity.BookPublication">
+            <include re=".*"/>
+        </entity>
+
+        <entity class="com.sample.library.entity.LibraryDepartment">
+            <include re=".*"/>
+        </entity>
+
+        <entity class="com.sample.library.entity.LiteratureType">
+            <include re=".*"/>
+        </entity>
+
+        <entity class="com.sample.library.entity.Publisher">
+            <include re=".*"/>
+        </entity>
+
+        <entity class="com.sample.library.entity.Town">
+            <include re=".*"/>
+        </entity>
+
+    </entities>
+</fts-config>
+----
+
+This is the FTS configuration file, which in our case enables indexing of all domain model entities with all their attributes.
+
+Add the following property to the *app.properties* file of the application *core* module:
+
+----
+cuba.ftsConfig = cuba-fts.xml fts.xml
+----
+
+As a result, indexing will include both the entities defined in the platform's *cuba-fts.xml* and the project&rsquo;s *fts.xml* files.
+
+Restart the application server. From now on, full text search should work for all entities of the application model as well as entities of the platform security subsystem: `Role`, `Group`, `User`.
+
+=== Uploaded Files Content Search 
+
+Take the following steps to see the example of uploaded files content search: add the workflow base project, add `EBook` entity to the project and create and complete the book scanning workflow as described in the *Workflow* subsystem guide (see <<fts.adoc#additional_info>>). Further in this section it is assumed that the application already has an instance of `EBook` and that a file with the original book has already been uploaded as a result of the *`Book scanning`* process execution.
+
+Add the following elements to the project's `fts.xml` file:
+[source, xml]
+----
+...
+        <entity class="com.sample.library.entity.EBook">
+            <include name="publication.book"/>
+            <include name="attachments.file"/>
+        </entity>
+
+        <entity class="com.haulmont.workflow.core.entity.CardAttachment" show="false">
+            <include re=".*"/>
+            <exclude name="card"/>
+
+            <searchables>
+                searchables.add(entity.card)
+            </searchables>
+        </entity>
+
+    </entities>
+</fts-config>
+----
+
+In order for search results screen to display the `EBook` instances properly, you should add `@NamePattern` annotation to the `EBook` class:
+[source, java]
+----
+@NamePattern("%s|publication")
+public class EBook extends Card {
+...
+----
+
+After that, restart the application server. Open the *JMX Console* screen, open the `app-core.fts:type=FtsManager` JMX bean and invoke sequentially `reindexAll()` and `processQueue()` to re-index the existing instances in the database and files according to the new search configuration. All new and changed data will be indexed automatically with a delay depending on the scheduled task interval, i.e. not longer than 30 seconds.
+
+As a result, if the database contains a book called *`Alice's Adventures`* with an original PDF available, search results for "alice" will look like this:
+
+image::SearchResults2.png[align="center"]
+
+Search results for "rabbit" will look like this:
+
+image::SearchResults3.png[align="center"]
+
