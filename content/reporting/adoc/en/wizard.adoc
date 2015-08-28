@@ -1,0 +1,252 @@
+[[wizard]]
+== Reports Wizard
+
+Reports wizard is a visual tool for quick report creation including both data structure and template design. Click *Create* -&gt; *Using wizard* in the *Reports* screen to run the wizard.
+
+image::reports_wizard_main.png[align="center"]
+
+Three types of reports can be created using the wizard:
+
+. Report for a single entity.
+. Report for a list of given entities.
+. Report for a list of entities filtered by query.
+
+Report design is a three steps process:
+
+. Creating a data structure of a report.
+. Editing of report regions.
+. Saving the report.
+
+The created report can be modified in the usual manner using the report editor and run through <<run_common, the generic report browser>>, or using `TablePrintFormAction` and `EditorPrintFormAction` <<run_actions, actions>>.
+
+The use cases below illustrate how to use the wizard. All the examples are based on the sample *Library* application which is available in the CUBA Studio samples. The *Library* application or any other sample CUBA application can be downloaded by clicking the *Samples* button in the project selection window.
+
+[[single_entity_report]]
+=== Report for a Single Entity
+
+Let us assume that we want to get an information about the particular publication of a book, i.e. an instance of `library$BookPublication` entity.
+
+First, run the reports wizard and specify the report details:
+
+* *Entity* - entity to be shown in the report - `library$BookPublication`.
+* *Format of template file* - report template format that defines the format of the output - DOCX. Note that XSLX and PDF formats are also available.
+* *Report name* - `++'Publication details'++`.
+
+Next, specify the report type: *Report for single entity*.
+
+image::single_entity_step_1.png[align="center"]
+
+Then click *Next* button; the *Select attributes for the simple report region* window appears. Specify the attributes of the `BookPublication` entity and linked entities that should be reflected in the report (`Publication.Book.Name`, `Publication.Publisher.Name`, `Publication.Year` and `Publication.City.Name`). In order to do this, select them in the left column and move them to the right clicking image:attributes_selection_arrow.png[] or by double-click.
+
+The order of the attributes in the report will correspond the order specified in the right hand side list. To change the display order, move the attributes up and down by clicking image:attributes_selection_up.png[]/image:attributes_selection_down.png[].
+
+image::single_entity_attributes.png[align="center"]
+
+Click *ОК* to move to the second stage - report regions editing.
+
+The appeared screen contains a list of named regions - bands that display related data. The wizard enables adding several plain-text regions to the template in order to display different data sets.
+
+A set of entity attributes loaded to a particular region can be modified by clicking the link represented as the list of the selected attributes. You can also add a new region by clicking *Add simple region*.
+
+If the entity contains collection attributes, *Add tabulated region*, button will appear. It enables adding a region for tabular data display.
+
+In both cases, the selection dialog will appear with a list of attributes of the `library$BookPublication` entity, allowing you to add or remove attributes from the set.
+
+image::single_entity_step_2.png[align="center"]
+
+At this stage, we already can run the report and see how the report looks. Click *Run* button, pick the instance of `library$BookPublication` and see the result..
+
+image::single_entity_test_running.png[align="center"]
+
+When all report regions are configured you can move on to the third stage: saving the report. At this point, you can view the complete report template, or change the name and format of the output file to any of three available types: DOCX, HTML, PDF.
+
+image::single_entity_step_3.png[align="center"]
+
+After clicking the *Save* button, the standard report editor comes up. Now you can fine-tune the report in the usual manner. Once editing is complete, click *Save and close* in the report editor.
+
+The report is now added to the *General* reports group in the reports browser, where you can run it from by clicking the *Run* buttons.
+
+image::single_entity_reports_list.png[align="center"]
+
+Additionally, we can enable the report run on the publications browser. In order to do this, we want to add the `bookpublication-browse.xml` button to the *Print details* screen descriptor:
+
+[source, xml]
+----
+<groupTable id="bookPublicationTable"
+    ...
+    <buttonsPanel>
+        ...
+        <button id="printDetails"
+        caption="msg://printDetails"/>
+----
+
+Then we need to implement `TablePrintFormAction` in the controller:
+
+[source, java]
+----
+@Inject
+private Button printDetails;
+
+@Override
+public void init(Map<String, Object> params) {
+    TablePrintFormAction action = new TablePrintFormAction("report", this, bookPublicationTable);
+          bookPublicationTable.addAction(action);
+          printDetails.setAction(action);
+    }
+----
+
+Now you can run the report for any publication by selecting it in the table and simply pressing the *Print details* button.
+
+image::single_entity_running.png[align="center"]
+
+The output is as follows:
+
+image::single_entity_result.png[align="center"]
+
+[[list_of_entities_report]]
+=== Report for a List of Entities
+
+Reports wizard allows you to create two types of reports for a list of entity instances:
+
+. report for manually selected instances of a particular entity
+. report for entity instances filtered by a certain request.
+
+Let us have a look at the first report type. Let us assume we want to obtain a list of all book instances in the library (`library$BookInstance` entity) with titles and library departments they belong to.
+
+At the first stage, we specify the report details:
+
+* *Entity* - report entity - `library$BookInstance`.
+* *Format of template file* - output format - XSLX.
+* *Report name* - report name - `++'Book items location'++`.
+
+After that, select the type of the report (*Report for list of entities*) and click *Next*.
+
+image::list_of_entities_step_1.png[align="center"]
+
+As per the task, we select `BookItem.Publication.Book.Name`and `BookItem.LibraryDepartment.Name` in the attributes selection window.
+
+image::list_of_entities_attributes.png[align="center"]
+
+Click *ОК* and move to the second stage of report regions editing.
+
+The report template for a list of entities restricted to have only one region that displays data in tabular form. Adding new regions is not allowed, but you can edit an existing set of data by clicking on the link with the list of attributes, or remove an existing region and recreate it.
+
+In this case, we do not need to make any changes. Click *Next* -&gt; *Save* to save the report. The report looks as follows in the report editor:
+
+image::list_of_entities_editor.png[align="center"]
+
+Once the report is saved, you can run it from the reports browser.
+
+In addition, we can add a button to run the report from the book items browser, which can be opened by clicking the *Show items* button in the publications browser. In order to do this, we will set the `multiselect` attribute for the book instances table to `true` to be able to specify a set of records for the report and then add the source code of the button:
+
+[source, xml]
+----
+      <table id="bookInstanceTable"
+             multiselect="true">
+             ...
+                  <buttonsPanel>
+                  ...
+                      <button id="printList"
+                      caption="msg://printList"/>
+----
+
+After that, inject the `Button` component in the screen controller:
+
+[source, java]
+----
+@Inject
+private Button printList;
+----
+
+Next, add the following implementation within the overridden `init()` method:
+
+[source, java]
+----
+TablePrintFormAction action = new TablePrintFormAction("report", this, bookInstanceTable);
+    bookInstanceTable.addAction(action);
+    printList.setAction(action);
+----
+
+Now the report can be run from the book items browser by selecting items for the report in the table and pressing the *Print list* button. *Print selected* option exports the selected items, *Print all* option prints all instances selected by the current filter.
+
+image::list_of_entities_running.png[align="center"]
+
+The output is as follows:
+
+image::list_of_entities_result.png[align="center"]
+
+[[query_report]]
+=== Report for a List of Entities Filtered by Query
+
+Now let us have a look at the second <<list_of_entities_report>> for a list of entities filtered by query. To demonstrate the use case of this report type use we will being complications to our task. As before the report should contain a list of books (with their titles and department names), but only added after a certain date.
+
+Let us set the details of the report like in the previous case:
+
+* *Entity* - report entity - `library$BookInstance`.
+* *Format of template file* - output file format - XSLX.
+* *Report name* - `++'Recently added book items'++`.
+
+Then select the *Report for list of entities, selected by query* report type.
+
+image::query_step_1.png[align="center"]
+
+The selected report type enables us to select the list of entities that match the specified conditions. In order to set the query, click *Set query* link below.
+
+The *Define* query window appears. As you can see the window is similar to the generic filter window. Here you specify conditions, combine them into AND/OR groups and configure their settings.
+
+In order to add new query conditions, click *Add*. Select `Created at` attribute in the appeared window. Now the attribute is added to the query conditions tree and the right hand side panel displays its properties. Select an operator (&gt;=).
+
+image::query_parameter.png[align="center"]
+
+After saving the query, click *Next* and move to `library$BookInstance` attributes selection. We move `BookItem.Publication.Book.Name` and `BookItem.LibraryDepartment.Name`. After saving the query, click *Next* and move to `library$BookInstance` attributes selection. We move `BookItem.Publication.Book.Name` and `BookItem.LibraryDepartment.Name` attributes to the right. Click *OK* to move on to accomplish the first stage.
+
+image::query_step_2.png[align="center"]
+
+Press *Next* -&gt; *Save* to save the report. The report will look as follows:
+
+image::query_editor.png[align="center"]
+
+The editor allows making the report structure more sophisticated by adding new bands and data sets, as well as configuring the report template design, localization, access rights.
+
+For instance, we can switch to *Parameters and Values* tab and modify the query parameter in the *Parameters* list: `Date` instead of the standard `CreateTs1`.
+
+image::query_parameter_rename.png[align="center"]
+
+After all, let us add the *Report* button that runs the report right from the library departments browser.
+
+In order to do this, we need to define a button in the `librarydepartment-browse.xml` screen descriptor:
+
+[source, xml]
+----
+<table id="libraryDepartmentTable"
+    ...
+    <buttonsPanel id="buttonsPanel">
+        ...
+        <button id="reportBtn"
+         caption="msg://reportBtn"/>
+     </buttonsPanel>
+</table>
+----
+
+After that, inject the button in the screen controller:
+
+[source, java]
+----
+@Inject
+private Button reportBtn;
+----
+
+and assign `RunReportAction` to the button in the overridden `init()` method:
+
+[source, java]
+----
+reportBtn.setAction(new RunReportAction("report", this));
+----
+
+The *Report* button will appear in the library departments browser, displaying the list of all reports available in the system in one click. In order to run the report, select *Recently added book items* in the list, specify the date and click *Run report*.
+
+image::query_running.png[align="center"]
+
+The output is as follows:
+
+image::query_result.png[align="center"]
