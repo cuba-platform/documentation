@@ -1,0 +1,298 @@
+[[chart]]
+== Displaying Charts
+
+CUBA platform charts display subsystem supports various chart types: pie charts, line plots, bubble charts, radar charts, funnel charts and more. It is also possible to export charts. Most chart types support zoom and scrolling. At the moment of writing, the chart display subsystem supports only the *Web Client* for *Vaadin7*.
+
+*AmCharts* library which is the basis of the chart display subsystem is distributed under a license, which allows its free use if you keep the link to the library website. Alternatively, you can link:$$http://www.amcharts.com/online-store$$[purchase] an *AmCharts* license for your project and remove the link.
+
+[[chart_configuration]]
+=== Configuring Charts
+
+Charts are displayed using the `Chart` component acting as a universal canvas. Chart type is defined by the `configuration` property, which has the `AbstractChart` type.
+
+.Chart Types Hierarchy 
+image::chart/charts_hierarchy_dia.png[]
+
+Charts can be described in a screen XML-descriptor. To do this, you should connect the corresponding `namespace`:
+
+[source, xml]
+----
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+        xmlns:chart="http://schemas.haulmont.com/charts/charts.xsd"
+        ...>
+----
+
+XML elements corresponding to different chart types:
+
+* `chart:xyChart` - XYChart
+* `chart:serialChart` - SerialChart
+* `chart:pieChart` - PieChart
+* `chart:funnelChart` - FunnelChart
+* `chart:gaugeChart` - AngularGaugeChart
+* `chart:radarChart` - RadarChart
+
+Each chart type has its own set of attributes and methods, which replicate the functionality of the corresponding charts from AmCharts library. Documentation on the properties and methods of the charts is available at link:$$http://docs.amcharts.com/3/javascriptcharts$$[docs.amcharts.com/3/javascriptcharts].
+
+Any configuration attribute can be set to `null`; in this case the system will use the default value (except the cases specified in the *AmCharts* documentation).
+
+[[chart_data_binding]]
+=== Connecting Data
+
+There are two ways how you can pass data to a chart: through the `DataProvider` interface or using the datasource mechanism. 
+
+* The `DataProvider` interface has a standard implementation: `ListDataProvider` class. It contains a list of `DataItem` instances, each one containing a set of key-value pairs. An instance of `DataProvider` is passed to the `setDataProvider()` method of chart configuration. This approach to providing chart data is the most universal, but it requires you to create instances of `DataProvider` and `DataItem` in a screen controller.
+
+* A `CollectionDatasource` type datasource can be assigned to a `Chart` component by invoking the `setDatasource()` method. This approach requires an entity that will represent chart data. It may be convenient when such entity already exists in the application data model and also when chart data should be displayed as a table.
+
+<<chart_example>> illustrates both approaches to providing chart data.
+
+Entity properties or the values contained in an instance of `DataProvider` which are used for display purposes are defined in the chart attributes. The set of chart attributes may differ for different chart types. For example, for the `chart:pieChart` component, you should define the `valueField` and `titleField`attributes. The following types are allowed for attribute values: `Integer`, `Long`, `Double`, `String`, `Boolean`, `Date`.
+
+Dynamic addition of data to an existing chart is not supported; you should redraw the entire chart to display new data. This can be done using the `repaint()` method.
+
+[[chart_listeners]]
+=== Events
+
+It is possible to configure handling of different event types. The following listener types are available:
+
+* `AxisZoomListener` - chart axis scaling.
+* `ChartClickListener` - click on the canvas.
+* `RightClickListener` - right click on the canvas.
+* `CursorPeriodSelectListener` - selection of the display period with a cursor.
+* `CursorZoomListener` - scaling of the chart area with a cursor.
+* `GraphClickListener` - click on a graph.
+* `GraphItemClickListener` - click on a graph item.
+* `LegendItemHideListener` - hiding a legend item.
+* `LegendItemShowListener` - showing a legend item.
+* `LegendItemClickListener` - click on a legend item.
+* `SliceClickListener` - click on a slice in a pie chart.
+* `SliceRightClickListener` - right-click on a slice in a pie chart.
+* `SlicePullInListener` - shift of a slice of a pie chart into the chart.
+* `SlicePullOutListener` - shift of a slice of a pie chart out of the chart.
+* `ZoomListener` - scaling of the canvas.
+
+Event handling examples are available in <<section_use_of_events>>.
+
+[[chart_example]]
+=== Example of Working with Charts
+
+This chapter shows how you can use the chart display subsystem using the sample Library application which can be downloaded by means of CUBA Studio.
+
+[[chart_project_setup]]
+==== Setting up the Application Project
+
+. Run CUBA Studio, go to *Open project > Samples* window and download the Library project.
+
+. Open the Library project in Studio.
+
+. Open *Project properties* -> *Edit* and include the *charts* project into the list of *Base projects*; save changes. Confirm when *Studio* will suggest recreating Gradle scripts.
+
+. Select *Run* -> *Deploy*. At this point, the application will be assembled and deployed to the Tomcat application server located at `build/tomcat`.
+
+. Create the application database by selecting *Run* -> *Create database*.
+
+. Select *Build* -> *Create or update IDEA project files* to create project files for *IntelliJ IDEA*.
+
+Once the steps above are complete, the chart display functionality will be connected to the application and ready to be used.
+
+==== Creating Data Extraction Service
+
+In this section, we shall create a service allowing us to extract data for the chart from the database. 
+
+. One of the methods of the service will return a list of non-persistent entities, therefore let us start by creating and registering a class for this entity.
++
+Create the `com.sample.library.entity` class in the *global* `BooksByGenre` package of the global module:
++
+[source,java]
+----
+include::{sourcesdir}/chart/BooksByGenre.java[]
+----
++
+An instance of this class contains the number of books of a certain genre. Then, we should register the entity class in the `metadata.xml` file of the global module:
++
+[source, xml]
+----
+<metadata-model root-package="com.sample.library">
+        <class>com.sample.library.entity.BooksByGenre</class>
+</metadata-model>
+----
+
+. An interface and a service class can be created using CUBA Studio. For this, open the *Services* tab of the navigation panel and click *New*. In a window that opens, fill in the *Interface* field with the following value: *`com.sample.library.service.StatisticsService`*. *Bean* and *Service* name fields will be updated with suitable values of *`com.sample.library.service.StatisticsServiceBean`* and *`library_StatisticsService`* respectively. Save changes.
++
+Open the interface of the `StatisticsService` service in IDE and declare the methods retrieving data from the database:
++
+[source,java]
+----
+include::{sourcesdir}/chart/StatisticsService.java[]
+----
+
+. Then, open the `StatisticsServiceBean` service class and replace its content with the following code:
++
+[source,java]
+----
+include::{sourcesdir}/chart/StatisticsServiceBean.java[]
+----
++
+The `getCountOfBooksByGenre()` method returns the number of books of every genre as a list of `BooksByGenre` entities. The `getTopPublishers(int count)` method sorts publishers by the number of issued books available in the library in descending order, and returns the first `count` of publishers. The `getCountOfBooksByPublisherAndYear()` method returns the number of books issued by publishers in a given year.
+
+[[qs_adding_charts]]
+==== Creating Charts
+
+===== Screen XML Descriptor
+
+Open the *Screens* tab in CUBA Studio and create a screen in the *web* module. Enter the value *`com/sample/library/web/charts/statistics.xml`* in the *Reference* field. The fields - *Id*, *Controller Name* and *Messages Pack* will be filled in with appropriate values. Save changes. Open the *XML* tab and replace its content with the following code:
+
+[source,java]
+----
+include::{sourcesdir}/chart/statistics.xml[]
+----
+
+The root element of the screen descriptor contains a new `xmlns:chart` attribute:
+
+[source, xml]
+----
+<window xmlns:chart="http://schemas.haulmont.com/charts/charts.xsd"
+    ...
+    >
+----
+
+The screen that we created contains a panel with two tabs. The first tab contains a pie chart showing the distribution of books by genre:
+
+[source, xml]
+----
+<chart:pieChart id="pieChart"
+                    angle="30"
+                    balloonText="[[genre]] - [[percents]]%"
+                    datasource="pieDs"
+                    depth3D="15"
+                    height="100%"
+                    titleField="genre"
+                    valueField="countOfBooks"
+                    width="100%">
+        <chart:exportConfig menuTop="0px">
+            <chart:menuItems>
+                <chart:menu format="PNG"
+                            icon="VAADIN/resources/amcharts/images/export.png"/>
+            </chart:menuItems>
+        </chart:exportConfig>
+    </chart:pieChart>
+----
+
+The chart retrieves data from the `pieDs` datasource defined in the `datasource` attribute. Names and values are displayed using the `genre` and `countOfBooks` attributes of the `BooksByGenre` entity; the list of instances for this entity is stored in the datasource. The datasource is also connected to a table that shows the same data as the chart.
+
+The `pieChart` component contains the following attributes:
+
+* `angle` - defines the chart angle. May have a value from `0` to `90`.
+
+* `balloonText` - defines text for the tooltip that appears when hovering over a pie slice. You can use the following tags: `\[\[value\]\]`, `\[\[title\]\]`, `\[\[persents\]\]`, `\[\[description\]\]`, as well as keys from the `DataItem` listed in a `DataProvider` instance, or names of the entity attributes from the datasource.
+
+* `depth3D` - chart thickness. When used in combination with the `angle` attribute, helps to create a 3D effect.
+
+* `titleField` - a key from the list of pairs contained in the `DataItem` objects listed in a `DataProvider` instance; this key is used to determine the name of a pie chart slice.
+
+* `valueField` - a key from the list of pairs contained in the `DataItem` objects listed in a `DataProvider` instance; this key is used to determine the value of a pie chart slice.
+
+The `pieChart` component contains the following elements:
+
+* `chart:legend` - defines chart legend. The `position` attribute defines the location of the legend relative to the chart, and `markerType` defines the shape of the information marker for pie chart slices.
+
+* `chart:exportConfig` – enables chart export. The `menuTop`, `menuLeft`, `menuRight` and `menuBottom` attributes define the *Save* button location. In our example, the button is located in the top right corner of the chart.
++
+The `chart:menuItems` element contains export settings. In addition to the `png` format used in our example, the chart can also be exported as `jpg`, `svg` or `pdf`. The `icon` attribute contains a path to an image that should be used as an icon for the export button.
+
+The second tab contains a chart showing the number of books issued by several publishers in different years:
+
+[source, xml]
+----
+<chart:serialChart id="stackedChart"
+                       categoryField="year"
+                       height="100%"
+                       width="100%">
+       <chart:chartCursor/>
+       <chart:legend markerType="TRIANGLE_RIGHT"
+                     position="TOP"
+                     valueAlign="LEFT"/>
+       <chart:categoryAxis startOnAxis="true"
+                           title="msg://year"/>
+       <chart:valueAxes>
+          <chart:axis position="LEFT"
+                      stackType="REGULAR"
+                      title="msg://countOfBooks"/>
+       </chart:valueAxes>
+       <chart:exportConfig menuTop="0px">
+          <chart:menuItems>
+             <chart:menu format="PNG"
+                         icon="VAADIN/resources/amcharts/images/export.png"/>
+          </chart:menuItems>
+       </chart:exportConfig>
+    </chart:serialChart>
+----
+
+This chart retrieves data through the `DataProvider` created in the controller (see below), so the `datasource` attribute is not defined.
+
+`chart:serialChart` attributes:
+
+* `categoryField` - a key from the set of pairs contained in the `DataItem` objects listed in a `DataProvider` instance; this key is used to determine the labels for the category axis.
+
+The elements of `chart:serialChart`:
+
+* `chart:chartCursor` - an optional element adding a cursor to the chart; the cursor follows the mouse pointer and shows a tooltip with the value of the corresponding point on a chart.
+
+* `chart:categoryAxis` - an element that describes the category axis. Setting `startOnAxis` to *true* causes drawing the chart right from the value axis. The default value for this attribute is `false`. In this case, there will be a small gap between the value axis and the chart. The `title` attribute defines the title of the value axis.
+
+* `chart:valueAxes` - an element that defines vertical value axes. In our case, only one vertical axis is used; the axis is described by the `chart:axis` element. The `position` attribute defines position of the value axis relative to the chart. Setting `stackType` to `REGULAR` makes the chart display a rolling value. Setting this attribute to `none` refers to a non-rolling value.
+
+===== Screen Controller
+
+Open the *Controller* tab and replace its content with the following code:
+
+[source,java]
+----
+include::{sourcesdir}/chart/Statistics.java[]
+----
+
+The `initPieChart()` method populates the `pieDs` datasource with the data retrieved from the service. The `refresh()` method initializes the datasource. This method should be invoked regardless of the `refreshMode="NEVER"` attribute declared in the XML-descriptor.
+
+The `initStackedChart(List<String> allPublishers)` method submits data to the chart as a rolling value. This type of charts shows the ratio of separate parts to their total value. The method accepts a list of publishers who have published the largest number of books available in the library. For each publisher, a separate graph is rendered showing the number of books issued in different years. The graph corresponds to an instance of the `Graph` class. Let&rsquo;s have a look at different graph configuration options:
+
+* `setFillAlphas(0.6)` - defines fill opacity.
+* `setLineAlpha(0.4)` - defines graph line width. Possible values are from `0` to `1`.
+* `setTitle(publisher)` - defines the graph title.
+* `setType(GraphType.LINE)` - defines data display style.
+* `setValueField(publisher)` - a key from the list of pairs contained in the `DataItem` objects listed in a `DataProvider` instance; this key is used to determine graph values.
+* `++setBaloonText(publisher + " - [[year]] year: [[" + publisher + "]] books")++` - defines tooltip content.
+
+===== Chart Screenshots
+
+Below are the screenshots of the screen that we have just created. Add the screen to the menu, then rebuild the project using *Run* -> *Restart application server* and log in to the system. Open the statistics screen.
+
+.Pie Chart
+image::chart/pie_chart.png[]
+
+.Rolling Chart
+image::chart/stacked_chart.png[]
+
+The rolling chart illustrates the cursor showing detailed information on the number of books issued by the publishers during the selected year.
+
+[[section_use_of_events]]
+==== Using Events
+
+Let us consider the use of events. We will add handling of a slice shift out to the screen created in <<qs_adding_charts>>. Open the screen XML descriptor in the IDE and inject the chart:
+
+[source, java]
+----
+@Inject
+private Chart pieChart;
+----
+
+Then add a listener in the `initPieChart()` method:
+
+[source,java]
+----
+include::{sourcesdir}/chart/SlicePullOutListener.java[]
+----
+
+To see the results, rebuild the project using *Run* -> *Restart application server* and log in to the system. Open the screen and click one of the pie slices to shift it out.
+
+.Chart that handles slice pull out event 
+image::chart/chart_with_event.png[]
