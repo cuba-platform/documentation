@@ -1,0 +1,150 @@
+[[running]]
+== Запуск отчетов
+
+В данном разделе рассматриваются способы запуска созданных отчетов на выполнение.
+
+[[run_common]]
+=== Запуск из общего списка отчетов
+
+Простейший способ запуска отчетов - из общего списка, доступного в экране *Reports* -&gt; *Run Reports*. Для этого у пользователя должно быть право на открытие данного экрана. В списке будут присутствовать все отчеты, <<permissions,доступные пользователю>> в соответствии с его ролью. Если для отчета заданы внешние параметры, они будут запрошены при запуске отчета в специальной форме.
+
+[[run_actions]]
+=== Запуск отчетов из экранов
+
+Отчеты можно запускать из произвольных экранов системы, используя специальные действия и связанные с ними кнопки или элементы контекстного меню компонентов. При этом кроме доступности отчета в соответствии с ролью пользователя проверяется также его <<permissions,принадлежность>> данному экрану.
+
+Рассмотрим типы действий и примеры их использования.
+
+* `com.haulmont.reports.gui.actions.RunReportAction` - действие, отображающее список всех доступных отчетов. При выборе пользователем отчета из списка отображается форма ввода параметров (если они заданы), и отчет запускается на исполнение.
++
+Пример использования действия совместно с кнопкой, объявленной в XML-дескрипторе экрана:
+
+** XML-дескриптор
++
+[source, xml]
+----
+<layout>
+    <table id="bookTable">
+        ...
+        <buttonsPanel id="buttonsPanel">
+            ...          
+            <button id="reportButton"
+                    icon="icons/reports-print.png"/>
+        </buttonsPanel>
+    </table>
+----
+
+** Контроллер
++
+[source, java]
+----
+@Inject
+private Button reportButton;
+
+@Override
+public void init(Map<String, Object> params) {
+    reportButton.setAction(new RunReportAction("report", this));
+}
+----
+
+** messages.properties
++
+[source, properties]
+----
+report = Report
+----
+
+* `com.haulmont.reports.gui.actions.TablePrintFormAction` - действие, связанное с таблицей, отображающей список экземпляров сущности. Действие отбирает только те отчеты, которые имеют внешний параметр типа *Entity* или *List of entities*, и тип сущности параметра совпадает с типом сущности, отображаемой таблицей. Если в результате отбора доступен только один отчет, он сразу запускается на выполнение. Если доступно несколько отчетов, их список предлагается пользователю.
++
+--
+В отчет передается значение внешнего параметра по следующим правилам:
+
+** Если параметр типа *List of entities*, то в него передается список выбранных в данный момент в таблице экземпляров.
+
+** Если параметр типа *Entity*, и в таблице выбран один экземпляр (выделена одна строка), то в отчет передается этот экземпляр.
+
+** Если параметр типа *Entity*, а в таблице выделено несколько строк, то отчет выполняется несколько раз по числу выбранных экземпляров. После выполнения пользователю возвращается один ZIP архив, в котором находятся все сформированные отчеты.
+--
++
+Пример использования с кнопкой и контекстным меню таблицы:
+
+** XML-дескриптор
++
+[source, xml]
+----
+<layout>
+    <table id="bookTable">
+        ...
+        <buttonsPanel id="buttonsPanel">
+            ...          
+            <button id="reportButton"
+                    icon="icons/reports-print.png"/>
+        </buttonsPanel>
+    </table>
+----
+
+** Контроллер
++
+[source, java]
+----
+@Inject
+private Button reportButton;
+
+@Inject
+private Table bookTable;
+
+@Override
+public void init(Map<String, Object> params) {
+    TablePrintFormAction action = new TablePrintFormAction("report", this, bookTable);
+    bookTable.addAction(action);
+    reportButton.setAction(action);
+}
+----
+
+** messages.properties
++
+[source, properties]
+----
+report = Report
+----
+
+* `com.haulmont.reports.gui.actions.EditorPrintFormAction` - действие, связанное с экраном редактирования экземпляра сущности. Действие отбирает только те отчеты, которые имеют внешний параметр типа *Entity* или *List of entities*, и тип сущности параметра совпадает с типом редактируемой сущности. Если в результате отбора доступен только один отчет, он сразу запускается на выполнение. Если доступно несколько отчетов, их список предлагается пользователю.
++
+В отчет передается значение внешнего параметра - экземпляр редактируемой сущности. Если тип параметра - *List of entities*, то передается список из одного элемента.
++
+Пример использования с кнопкой, размещенной рядом со стандартными кнопками *OK* и *Cancel*:
+
+** XML-дескриптор
+
+[source, xml]
+----
+<layout expand="windowActionsBox">
+    ...
+    <hbox id="windowActionsBox"
+          spacing="true">
+        <iframe id="windowActions"
+                screen="editWindowActions"/>
+        <button id="reportButton"/>
+    </hbox>
+</layout>
+----
+
+** Контроллер
++
+[source, java]
+----
+@Inject
+private Button reportButton;
+
+@Override
+public void init(Map<String, Object> params) {
+    reportButton.setAction(new EditorPrintFormAction("report", this, null));
+}
+----
+
+** messages.properties
++
+[source, properties]
+----
+report = Report
+----

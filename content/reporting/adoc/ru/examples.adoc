@@ -1,0 +1,87 @@
+[[examples]]
+== Пример отчета
+
+Рассмотрим устройство одного отчета в приложении-примере *Библиотека*, исходные тексты которого доступны по адресу https://www.cuba-platform.com/download.
+
+Для импорта отчета откройте экран *Reports* -&gt; *Reports* и нажмите кнопку *Import*. Выберите файл Reports.zip в корневом каталоге проекта. В таблице появятся два отчета, один из которых - Books by author. Данный отчет выводит список публикаций книг по автору, группируя их по названию книги и издателю. Формат вывода - XLS.
+
+. <<structure,Структура данных>> отчета.
++
+--
+image::sample1_structure.png[align="center"]
+
+Рассмотрим полосы отчета.
+
+* Полоса header - заголовок отчета. Содержит набор данных с Groovy-скриптом, выводящим значения <<parameters,внешних параметров>> отчета:
++
+[source, groovy]
+----
+[['authorName' : (params['author'].firstName + ' ' + params['author'].lastName)]]
+----
+
+* Полоса book выводит книги путем выполнения следующего SQL-запроса:
++
+[source, sql]
+----
+select b.name as book_name, b.id as book_id
+from library_book b 
+    join library_book_author_link ba on ba.book_id = b.id
+    join library_author a on a.id = ba.author_id
+where a.id = ${author}
+----
++
+В данном запросе используется внешний параметр отчета - author. Параметр имеет тип *Entity*, однако в SQL-запросах его можно напрямую сравнивать с полями-идентификаторами сущностей, преобразование будет выполнено автоматически.
+
+* Вложенная в book полоса publisher выводит издателей книги путем выполнения следующего SQL-запроса:
++
+[source, sql]
+----
+select p.name as publisher, bp.year, p.id as publisher_id
+from library_book_publication bp
+    join library_publisher p on p.id = bp.publisher_id
+where bp.book_id = ${book.book_id}
+----
++
+В данном запросе в качестве параметра используется поле родительской полосы - `++book_id++`. Таким образом осуществляется связь между родительской и дочерней полосами.
+
+* Вложенная в publisher полоса publication выводит издания книги путем выполнения следующего SQL-запроса:
++
+[source, sql]
+----
+select ld.name as department, count(bi.id) as amount
+from library_book_instance bi
+    join library_book_publication bp on bp.id = bi.book_publication_id
+    join library_library_department ld on ld.id = bi.library_department_id
+where bp.publisher_id = ${publisher.publisher_id} and bp.book_id = ${book.book_id}
+group by ld.name
+----
++
+В данном запросе в качестве параметров используются поля обоих родительских полос - `++book_id++` и `++publisher_id++`. 
+--
+
+. <<parameters,Параметры>> отчета. 
++
+--
+На вкладке *Parameters and Formats* объявлен один внешний параметр отчета - Author:
+
+image::sample1_param.png[align="center"]
+
+Этот параметр будет запрошен у пользователя при запуске отчета. Выбор автора будет производиться через экран `library$Author.lookup`, имеющийся в приложении.
+--
+
+. <<template,Шаблоны>> отчета.
++
+На вкладке *Templates* определен один шаблон формата XLS, загруженный из файла BooksByAuthor.xls:
++
+image::sample1_template.png[align="center"]
+
+. <<localization,Локализация>> названия отчета.
++
+На вкладке *Localization* задано название отчета для русской локали:
++
+[source, properties]
+----
+ru = Книги по автору
+----
+
+Вызвать отчет на <<running,исполнение>> можно из общего списка в экране *Reports* -&gt; *Run Reports*.
