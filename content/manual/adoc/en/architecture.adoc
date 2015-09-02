@@ -1,0 +1,92 @@
+[[architecture]]
+=== Architecture
+
+This section covers the architecture of CUBA applications in different aspects: in regard to tiers, blocks, modules, and to the used basic projects.
+
+[[app_tiers]]
+==== Application Tiers and Blocks
+
+The platform allows building applications according to the classic three-tier pattern: client tier, middleware tier, database. The _tier_ indicates the degree of "remoteness" from the stored data.
+
+Further on, mainly middleware and client tiers will be described, therefore the words "all tiers" will refer to these tiers only.
+
+Each tier allows creating one or more application _blocks_. A block is a separate executable program interacting with other blocks in the application. CUBA platform tools enable creation of blocks in the form of web or desktop applications. Block development for mobile platforms currently remains beyond CUBA framework; however, mobile blocks made up using other tools can be integrated with the standard blocks of the application.
+
+.Application Tiers and Blocks
+image::AppTiers.png[align="center"]
+
+Middleware:: The middle tier contains core business-logic of the application and provides access to the database. It is represented by a separate web application running on Java EE Web Profile standard container. See <<middleware>>.
+
+Web Client:: The main block in the Client tier. It contains the interface designed primarily for internal users. It is represented by a separate web application running on *Java EE Web Profile* standard container. The <<gui_framework,user interface>> is implemented on the base of *Vaadin* framework. See <<gui_framework>>.
+
+Desktop Client:: The additional block of Client tier. It contains the interface designed primarily for internal users. It is represented by a desktop Java application; the user interface is implemented on the base of *Java Swing* framework. See <<gui_framework>>.
+
+Web Portal:: The additional block of Client tier. It contains the interface for external users and integration tools for mobile devices and third-party applications. It is represented by a separate web application running under *Java EE Web Profile* standard container. The user interface is implemented on the base of *Spring MVC* framework. See <<portal>>.
+
+The mandatory block for any application is the middle tier – *Middleware*. User interface is generally implemented on the basis of one or several blocks, such as *Web Client* and *Web Portal*.
+
+The above mentioned blocks are standard, however, in order to separate the functionality in a complex application one can easily create any number of Client blocks as well as Middleware blocks.
+
+All of the Client blocks interact with the middle tier uniformly via *HTTP* protocol enabling to place the middle tier arbitrarily, behind firewall as well. It is worth mentioning, that in the simplest case when the middle tier and the web client are deployed on the same server local interaction between them can bypass the network stack in order to reduce overhead.
+
+[[app_modules]]
+==== Application Modules
+
+A module is the smallest structural part of CUBA application. It is a single module of application project and the corresponding JAR file with executable code.
+
+Standard modules:
+
+* *global* – includes entity classes, service interfaces, and other classes common for all tiers. It is used in all <<app_tiers,application blocks>>.
+
+* *core* – implements services and all other components of the middle tier. It is used only in *Middleware*.
+
+* *gui* – common components of the <<gui_framework,generic user interface>>. It is used in *Web Client* and *Desktop Client*.
+
+* *web* – the implementation of generic user interface based on *Vaadin* and other specific web client classes. It is used in *Web Client* block.
+
+* *desktop* – an optional module – implementation of generic user interface based on *Java Swing*, as well as other specific desktop client classes. It is used in *Desktop Client* block.
+
+* *portal* – an optional module – implementation of Web portal based on *Spring MVC*.
+
+.Application Modules
+image::AppModules.png[align="center"]
+
+[[base_projects]]
+==== Base Projects
+
+The functionality of the platform is divided into several so-called _base projects_: 
+
+* *cuba* – the main base project containing all of the functionality described in this manual
+
+* *reports* – reports generating subsystem
+
+* *workflow* – workflow management subsystem with built-in visual designer for business processes 
+
+* *fts* – full-text search subsystem 
+
+* *charts* – subsystem for displaying charts and maps 
+
+* *ccpayments* – subsystem dealing with credit cards 
+
+* *bpmn* – the mechanism of business processes execution according to the standard *BPMN 2.0*
+
+The application created on the platform can comprise the functionality of the base projects by declaring dependencies on their artifacts. Dependence on *cuba* artifacts is mandatory. Optional base projects in turn also depend on *cuba*, and may contain dependencies between them.
+
+.Dependencies between Projects 
+image::BaseProjects.png[align="center"]
+
+Solid lines demonstrate mandatory dependencies, dashed lines mean optional ones. 
+
+[[app_structure]]
+==== Application Structure
+
+The above-listed architectural principles are directly reflected in the composition of assembled application. Let us consider the example of a simple application *sales*, which has two blocks – *Middleware* and *Web Client*; and includes functionality of the two base projects *cuba* and *reports*.
+
+.The structure of a simple application 
+image::SampleAppArtifacts.png[align="center"]
+
+The figure demonstrates the contents of several directories on *Tomcat* server with a deployed application *sales* in it.
+
+The *Middleware* <<app_tiers,block>> is represented by the `app-core` web application, the *Web Client* block – by the `app` web application. The executable code of the web applications can be found in directories `WEB-INF/lib` in sets of JAR-files. Each JAR (artifact) is a result of assembly of one of the application <<app_modules,modules>> or <<base_projects,base projects>>.
+
+For instance, the contents of JAR-files of the web application in middle tier `app-core` is determined by the facts that *Middleware* block includes *global* and *core* modules, and the application uses base projects *cuba* and *reports*.

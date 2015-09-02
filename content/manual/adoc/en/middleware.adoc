@@ -1,0 +1,716 @@
+[[middleware]]
+=== Middleware Components
+
+The following figure shows the main components of the CUBA application middle tier.
+
+.Components of the Middle Tier
+image::Middleware.png[align="center"]
+
+<<services,Services>> are container-managed components that form the application boundary and provide the interface to the client <<app_tiers,tier>>. Services may contain the business logic themselves or delegate the execution to managed beans.
+
+<<managed_beans,Managed beans>> are container-managed components that contain the business logic of the application. They are called by services, other beans or via the optional JMX interface.
+
+<<persistence,Persistence>> is the infrastructure interface to access the data storage functionality: <<orm,ORM>> and <<transactions,transactions>> management. 
+
+[[services]]
+==== Services
+
+Services form the component layer that defines a set of *Middleware* operations available to the client <<app_tiers,tier>>. Services encapsulate business logic and <<transactions,transaction>> management. 
+
+The main objectives of services:
+
+* Provide the remote interface to call from the client tier.
+* Check the availability of the active <<userSession,user session>>, that corresponds to the session identifier transferred from the client.
+* Log unhandled middleware exceptions.
+
+In addition, it is recommended to perform user authorization in the service layer, i.e. to check their rights for a particular functionality.
+
+The objectives common to all services are handled as follows:
+
+* Checking the availability of the user session and logging exceptions are performed by the `ServiceInterceptor`, class which <<interceptor,intercepts>> the execution of each service method using *Spring AOP*.
+
+* The remote interface to access the service through *Spring HTTP Invoker* is created by the `RemoteServicesBeanCreator`, bean, which is configured in the <<remoting-spring.xml,remoting-spring.xml>> file of the *core* module. 
+
+.The Service Class Diagram
+image::MiddlewareServices.png[align="center"]
+
+[[service_creation]]
+===== Creating a Service
+
+The name of service interface should end with `Service`, the names of implementation class – with `ServiceBean`.
+
+The following steps are required for creating a service:
+
+. Create the service interface in the *global *<<app_modules,module>>, as the service interface must be available at all <<app_tiers,tiers>>), and specify the service name in it. It is recommended to specify the name in the following format: `++{project_name}_{interface_name}++`. For example:
++
+[source, java]
+----
+include::{sourcesdir}/middleware/service_1.java[]
+----
+
+. Create the service class in the *core* module and add the `@org.springframework.stereotype.Service` annotation to it with the name specified in the interface: 
++
+[source, java]
+----
+include::{sourcesdir}/middleware/service_2.java[]
+----
+
+The service class, being a <<managed_beans,managed bean>>, should be placed inside the package tree with the root specified in the `context:component-scan` element of the <<spring.xml,spring.xml>> file. In this case, the spring.xml file contains the element: 
++
+[source, xml]
+----
+include::{sourcesdir}/middleware/service_3.xml[]
+----
++
+which means that the search for annotated beans for this application block will be performed starting with the `com.sample.sales` package.
+
+[WARNING]
+====
+Services are only intended for calling &ldquo;outside of&rdquo; Middleware. It is not recommended to call service methods from other components of the middle tier. An error message is logged upon detection of a service call from another service.
+
+If different services or other Middleware components require to call the same business logic, it should be extracted and encapsulated inside an appropriate <<managed_beans,managed bean>>.
+====
+
+[[service_import]]
+===== Using the Service
+
+In order to call the service, the corresponding proxy object should be created in the client block of the application. Declare the service name and interface in the parameters of the proxy object factory to achieve this. For the *Web Client* block, it is `WebRemoteProxyBeanCreator`, for *Web Portal* – `PortalRemoteProxyBeanCreator` , for *Desktop Client* – `RemoteProxyBeanCreator` .
+
+The proxy object factory is configured in <<spring.xml,spring.xml>> of the corresponding client block.
+
+For example, to call the `++sales_OrderService++` service from the web client in the *sales* application, it is necessary to add the following code into the web-spring.xml file of the *web* module:
+
+[source, xml]
+----
+include::{sourcesdir}/middleware/service_4.xml[]
+----
+
+All imported services are declared in a single `remoteServices` property in the `map/entry` elements.
+
+From the application code perspective, the service&rsquo;s proxy object at the client level is a standard *Spring* bean and can be obtained either by injection or through `AppBeans` class. For example: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/service_5.java[]
+----
+
+[[dataService]]
+===== DataService
+
+`DataService` provides a facade for calling <<dataManager,DataManager>> middleware implementation from the client tier. The usage of `DataService` interface in the application code is not recommended. Instead, use `DataManager` directly on both middle and client tiers.
+
+[[system_authentication]]
+==== System Authentication
+
+When executing user requests, the Middleware program code always has access to the information on the current user via the <<userSessionSource,UserSessionSource>> interface. This is possible because the corresponding <<securityContext,SecurityContext>> object is automatically set for the current thread when a request is received from the client tier.
+
+However, there are situations when the current thread is not associated with any system user, for example, when calling a bean&rsquo;s method from the <<scheduled_tasks_spring,scheduler>>, or via the JMX interface. In case the bean modifies entities in the database, it will require information on who is making changes, i.e., authentication.
+
+This kind of authentication is called &ldquo;system authentication&rdquo; as it requires no user participation – the application middle layer simply creates or uses an existing user session and sets the corresponding `SecurityContext` object for the current thread.
+
+The following methods can be used to provide the system authentication for a code block: 
+
+* Make use of the `com.haulmont.cuba.security.app.Authentication` bean: 
++
+[source, java]
+----
+include::{sourcesdir}/middleware/auth_1.java[]
+----
+
+* Add the `@Authenticated` annotation to the bean method: 
++
+[source, java]
+----
+include::{sourcesdir}/middleware/auth_2.java[]
+----
+
+The second case uses the `Authentication` bean implicitly, via the `AuthenticationInterceptor` object, which intercepts calls of all bean methods with the `@Authenticated` annotation.
+
+In the examples above, the user session will be created on behalf of the user, whose login is specified in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. If authentication on behalf of another user is required, pass the login of the desired user to the `begin()` method of the first variant.
+
+[WARNING]
+====
+If current thread has an active user session assigned at the time of `Authentication.begin()` execution, it will not be replaced. Therefore the code will be executed with the existing session and the subsequent call to the `end()` method will not clear the thread.
+
+For example, if a bean is in the same JVM as the Web Client block, to which the user is currently connected, the call of the JMX bean method from the Web Client built-in <<jmx_console,JMX console>> will be executed on behalf of the currently logged in user, regardless of the system authentication.
+====
+
+[[persistence]]
+==== The Persistence Interface
+
+The infrastructure interface, serving as an entry point to data storage functionality.
+
+The interface has the following methods:
+
+* `createTransaction()`, `getTransaction()` – obtain the interface to manage <<transactions,transactions>>.
+* `isInTransaction()` – checks if an active transaction exists at the moment.
+* `getEntityManager()` – returns the <<entityManager,EntityManager>> instance bound to the current transaction.
+* `isSoftDeletion()` – allows you to determine if the <<soft_deletion,soft deletion>> mode is active.
+* `setSoftDeletion()` – enables or disables the soft deletion mode. Setting this property affects all newly created `EntityManager`. instances. Soft deletion is enabled by default.
+* `getDbTypeConverter()` – returns the <<dbTypeConverter,DbTypeConverter>> instance for the currently used database.
+* `getDataSource()` – returns the `javax.sql.DataSource` instance for the currently used database.
++
+[WARNING]
+====
+For all `javax.sql.Connection` objects obtained through `getDataSource().getConnection()` method the `close()` method should be called in the `finally` section after using the connection. Otherwise, the connection will not be returned to the pool. Over time, the pool will overflow and the application will not be able to execute database queries.
+====
+
+* `getTools()` – returns an instance of the `PersistenceTools` interface (see below).
+
+[[persistenceTools]]
+===== PersistenceTools
+
+<<managed_beans,Managed bean>> containing helper methods related to data storage functionality. It can be obtained either by calling the `Persistence.getTools()` method or like any other bean, through injection or the `AppBeans` class.
+
+The `PersistenceTools` bean has the following methods:
+
+* `getDirtyFields()` – returns a collection of entity attribute names that have been changed since the last load of the instance from the DB. For new instances an empty collection is returned.
+
+* `isLoaded()` – determines if the specified instance attribute was loaded from the DB. The attribute may not be loaded, if it was not present in the <<views,view>> specified when loading the instance. 
++
+This method only works for instances in the <<entity_states,Managed>> state.
+
+* `getReferenceId()` – returns an ID of the related entity without loading it from the DB.
++
+Let us suppose that an `Order` instance was loaded in the persistent context and it is necessary to get the ID value of the `Customer` instance related to this `Order`. A call to the `order.getCustomer().getId()` method will execute the DB query to load the `Customer` instance, which in this case is unnecessary, because the value of the Customer ID is also located in the `Order` table as a foreign key. Whereas the execution of 
++
+[source, java]
+----
+include::{sourcesdir}/middleware/persistencetools_1.java[]
+----
++
+will not send any additional queries to the database.
++
+This method works only for instances in the <<entity_states,Managed>> state.
+
+The `PersistenceTools` bean can be <<bean_extension,overridden>> in your application to extend the set of default helper methods. An example of working with the extended interface is shown below: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/persistencetools_2.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/middleware/persistencetools_3.java[]
+----
+
+ 
+
+[[persistenceHelper]]
+===== PersistenceHelper
+
+A helper class for obtaining the information on persistent entities. Unlike the `Persistence` and `PersistenceTools` beans, this class is available on all <<app_tiers,tiers>>.
+
+The `PersistenceHelper` bean has the following methods: 
+
+* `isNew()` – determines if the passed instance is newly created, i.e., in the <<entity_states,New>> state. Also returns `true` if this instance is actually in <<entity_states,Managed>> state but newly-persisted in the current transaction, or if it is not a persistent entity.
+
+* `isDetached()` – determines if the passed instance is in the <<entity_states,Detached>> state. Also returns `true`, if this instance is not a persistent entity.
+
+* `isSoftDeleted()` – determines if the passed entity class supports the <<soft_deletion,soft deletion>>.
+
+* `getEntityName()` – returns the name of the entity specified in the <<entity_annotation,@Entity>> annotation.
+
+[[dbTypeConverter]]
+===== DbTypeConverter
+
+The interface containing methods for conversion between <<data_model,data model>> attribute values and parameters/results of JDBC queries. An object of this interface can be obtained through the <<persistence,Persistence.getDbTypeConverter()>> method. 
+
+The `DbTypeConverter` interface has the following methods:
+
+* `getJavaObject()` – converts the result of the JDBC query into a type suitable for assigning to entity attribute.
+
+* `getSqlObject()` – converts the value of the entity attribute into a type suitable for assigning to the JDBC query parameter.
+
+* `getSqlType()` – returns a `java.sql.Types` constant that corresponds to the passed entity attribute type.
+
+[[orm]]
+==== ORM Layer
+
+Object-Relational Mapping is the technology for linking relational database tables to programming language objects. 
+
+Benefits of using ORM::: 
+
+* Allows working with a relational DBMS by means of Java objects manipulation.
+* Simplifies programming by eliminating routine writing of SQL queries.
+* Simplifies programming by letting you extract and save entire object graphs with one command.
+* Ensures easy porting of the application to different DBMS.
+* Uses a concise object query language – JPQL.
+* Optimizes the number of SQL requests for insert and update.
+
+Shortcomings:::
+
+* Requires understanding of specifics of working with ORM.
+* Does not allow to directly optimize SQL or use specifics of the DBMS.
+
+
+
+CUBA uses the ORM implementation according to Java Persistence API standard based on *Apache OpenJPA *framework.
+
+[[entityManager]]
+===== EntityManager
+
+`EntityManager` – main ORM interface, used to manage <<data_model,persistent entities>>.
+
+Reference to the `EntityManager` may be obtained via the <<persistence,Persistence>> interface, by calling the `getEntityManager()` method.The retrieved instance of `EntityManager` is bound to the current <<transactions,transaction>>, i.e. all calls to `getEntityManager()` as part of one transaction return one and the same instance of `EntityManager`. After the end of transaction calls to the corresponding `EntityManager` instance are impossible.
+
+An instance of `EntityManager` contains a "persistent context" – a set of instances loaded from DB or newly created. Persistent context is a kind of data cache within a transaction.`EntityManager` automatically flushes to DB all changes done in its persistent context at the moment when a transaction is committed or when the `flush()` method is called explictly.
+
+`EntityManager` interface used in CUBA applications mainly copies the standard javax.persistence.EntityManager interface. Let us have a look at its main methods:
+
+* `persist()` – adds a <<entity_states,new instance>> of the entity to the persistent context. When the transaction is committed a corresponding record is created in DB using SQL `INSERT`.
+
+* `merge()` – copies the state of <<entity_states,detached instance>> to the persistent context the following way: an instance with the same identifier gets loaded from DB and the state of the passed Detached instance is copied into it and then the loaded Managed instance is returned. After that you should work with the returned Managed instance. The state of this entity will be stored in DB using SQL `UPDATE` on transaction commit.
+
+* `remove()` – removes an object from the database, or, if <<soft_deletion,soft deletion>> mode is turned on, sets `deleteTs` and `deletedBy` attributes.
++
+If the passed instance is in Detached state, `merge()` is performed first.
+
+* `find()` – loads an entity instance by its identifier. 
++
+When forming a request to the database the system considers the <<views,view>> which has been passed as a parameter to this method, or set to the entire `EntityManager` via `setView()`. As a result the persistent context will contain a graph of objects with all non-lazy view attributes loaded. The rest of the attributes may be loaded by calling the corresponding access methods of the entity, or by calling `EntityManager.fetch()`.
+
+* `createQuery()` – creates a `Query` object for executing a <<query,JPQL query>>. 
++
+We recommend using the variant of this method, which receives an entity class to return an instance of `TypedQuery`.
+
+* `createNativeQuery()` – creates a `Query` object to execute an <<nativeQuery,SQL query>>. 
+
+* `setView()` – sets the default <<views,view>>, which will be used for further loading of instance via `find()` or JPQL requests. As a result, all non-lazy attributes of the view will be eagerly fetched.
++
+Passing `null` to this method or not calling it at all will load the attributes according to <<entity_annotations,entity annotations>>.
++
+The views explicitly passed to `find()` method or set in the `Query` object have a priority over the one set by this method. 
+
+* `addView()` is similar to `setView()`, but does not replace the view if it was already set in the `EntityManager`. Instead it adds the attributes of the passed view to it.
+
+* `fetch()` – ensures loading of all attributes of the specified <<views,view>> for the entity instance, including lazy attributes. The entity instance should be in Managed state.
++
+We recommend calling this method before committing a transaction, if the view contains lazy attributes and the entity instance should be sent to the client tier. In this case, only calling `fetch()` will ensure that all attributes required by the client code have been actually loaded.
+
+* `reload()` – reloads the entity instance with the provided <<views,view>>. Ensures loading of all view attributes by calling `fetch()` internally. 
+
+* `isSoftDeletion()` – checks if the `EntityManager` is in <<soft_deletion,soft deletion>> mode.
+
+* `setSoftDeletion()` – sets <<soft_deletion,soft deletion>> mode for this `EntityManager`.
+
+* `getConnection()` – returns a `java.sql.Connection`, which is used by this instance of `EntityManager`, and hence by the current transaction. Such connection does not need to be closed, it will be closed automatically when the transaction is complete.
+
+* `getDelegate()` – returns `javax.persistence.EntityManager` provided by the ORM implementation. 
+
+[[entity_states]]
+===== Entity States
+
+New:: 
++
+--
+An instance which has been just created in memory: `Car car = new Car()`.
+
+New instance may be passed to `EntityManager.persist()` to be stored to the DB, in which case it switches into Managed state.
+--
+
+Managed:: 
++
+--
+The instance loaded from DB, or a new one passed to EntityManager.persist(). Belongs to a `EntityManager` instance, i.e. is contained in its persistent context.
+
+Any changes of the instance in Managed state will be saved to the DB when a transaction that the `EntityManager` belongs to is committed.
+--
+
+Detached:: 
++
+--
+An instance loaded from the DB and detached from its persistent context (as result of transaction closing or serialization).
+
+The changes applied to a Detached instance will be saved in DB only if this instance is switched back to the Managed state by being passed to EntityManager.merge(). 
+--
+
+[[lazy_loading]]
+===== Lazy Loading
+
+Loading on demand (lazy loading) allows delayed loading of linked entities, i.e. they get loaded when their properties are accessed for the first time.
+
+Lazy loading generates more DB queries than eager fetching, but it is stretched in time.
+
+* For example, in case of lazy loading of a list of N instances of entity A, each containing a link to an instance of entity B, will require N+1 requests to DB.
+
+* It is important to aim towards fewer requests to DB to minimize response time and load levels. The platform uses the mechanism of <<views,views>> to achieve this. Using view allows ORM to create only one request to DB with table joining for the above mentioned case.
+
+* If A includes a collection of B, then eager fetching will result in an SQL request, returning Cartesian product of rows A and B. 
+
+* Sometimes lazy loading provides better performance than eager fetching. For example, when an asynchronous process is carrying out business logic, the execution time may not be critical and it may be better to distribute the load on DB in time.
+
+Lazy loading works only for instances in <<entity_states,Managed>> state, i.e. within the transaction which loaded the specified instance.
+
+[[query]]
+===== Executing JPQL Queries
+
+<<jpql,JPQL>> queries should be run through the `Query` interface. The reference to it may be obtained from the current `EntityManager` instance by calling `createQuery()` method. If the query is supposed to be used to load entities, we recommend calling `createQuery()` and passing the result type as parameter. This will create a `TypedQuery` instance. 
+
+The methods of `Query` mainly correspond to the methods of a standard javax.persistence.Query interface. Let us have a look at the differences.
+
+* `setParameter()` – sets a value to a query parameter. If the value is an entity instance, implicitly converts the instance into its identifier. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/middleware/jpqlquery_1.java[]
+----
++
+Note that the actual entity is passed as parameter while comparison in the query is done using identifier. 
++
+A variant of the method with `implicitConversions = false` does not do such conversion.
+
+* `setView()`, `addView()` – are similar to the `EntityManager` methods with the same names – they define a <<views,view>>, used to load data with the current query and do not affect the view of the entire `EntityManager`.
+
+* `getDelegate()` – returns an instance of `javax.persistence.Query`, provided by the ORM implementation.
+
+When a request is run through `Query` changes in the current persistent context are ignored, i.e. the query just runs in DB. If the results of selection are the instances already contained in persistent context, then the query result will contain instances from context and not the ones read from DB. The following test fragment should clarify this: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/jpqlquery_2.java[]
+----
+
+This behavior is controlled by `openjpa.IgnoreChanges=true`, parameter defined in <<persistence.xml,persistence.xml>> file of the *cuba* base project. It is possible to change this parameter in your project by including it in the project's own persistence.xml.
+
+The queries, which change data (`update`, `delete`) cause flush of the data from the current persistent context to the database prior to execution. In other words, ORM first synchronizes the states of entities in the persistent context and DB, and only after that runs the modifying query. We recommend to run such queries in an unchanged persistent context in order to prevent implicit actions by the ORM, which may have negative impact on performance.
+
+[[query_case_insensitive]]
+====== Case-Insensitive Substring Search
+
+You can use `(?i)` prefix in the value of the query parameters to conveniently specify conditions for case insensitive search by any part of the string. For example, let us assume we have a query: 
+
+[source, sql]
+----
+select c from sales$Customer c where c.name like :name
+----
+
+If we pass the string `(?i)%doe% ` as a value of the `name` parameter, the search will return `John Doe`, if such record exists in DB, even though the case of the D is different. This will happen because ORM will run the SQL query with condition like `lower(C.NAME) like ? `
+
+It should be kept in mind that such search will not use index on the name field, even if such exists in the DB.
+
+[[jpql_macro]]
+====== Macros in JPQL
+
+JPQL query text may include macros, which are processed before the query is executed. They are converted into the executable JPQL and thus additionally modify the set of parameters.
+
+The macros defined in the platform solve the following problems:
+
+* Provide a workaround for the limitation of JPQL which makes it impossible to express the condition of dependency of a given field on current time (i.e. expressions like &ldquo;current_date -1&rdquo; do not work).
+
+* Allow comparing `Timestamp` type fields (the date/time fields) with a date.
+
+Let us consider them in more detail:
+
+@between:: 
++
+--
+Has the format `++@between(field_name, moment1, moment2, time_unit)++`, where 
+
+* `++field_name++` is the name of the compared attribute. 
+
+* `moment1`, `moment2` – start and end points of the time interval where the value of `++field_name++` should fall into. Each of the points should be defined by an expression containing `now` variable with an addition or subtraction of an integer number.
+
+* `++time_unit++` – defines the unit for time interval added to or subtracted from `now` in the time point expressions and time points rounding precision. May be one of the following: `year`, `month`, `day`, `hour`, `minute`, `second`. With included *workflow* base project, work time units can also be used: `workday`, `workhour`, `workminute`. 
+
+The macro gets converted to the following expression in JPQL: `++field_name &gt;= :moment1 and field_name &lt; :moment2++`
+
+Example 1. Customer was created today: 
+
+[source, sql]
+----
+select c from sales$Customer where @between(c.createTs, now, now+1, day)
+----
+
+Example 2. Customer was created within the last 10 minutes:
+
+[source, sql]
+----
+select c from sales$Customer where @between(c.createTs, now-10, now, minute)
+----
+
+Example 3. Documents dated within the last 5 work days (for the projects including *workflow*):
+
+[source, sql]
+----
+select d from sales$Doc where @between(d.createTs, now-5, now, workday)
+----
+--
+
+@today:: 
++
+--
+Has the format `++@today(field_name)++` and helps to define a condition checking that the attribute value falls into the current date. Essentially, this is a special case of the `@between` macro.
+
+Example. Customer was created today: 
+
+[source]
+----
+select d from sales$Doc where @today(d.createTs)
+----
+--
+
+@dateEquals:: 
++
+--
+Has the format `++@dateEquals(field_name, parameter)++` and allows you to define a condition checking that `++field_name++` value (in `Timestamp` format) falls into the date passed as `parameter`.
+
+Example: 
+
+[source]
+----
+select d from sales$Doc where @dateEquals(d.createTs, :param)
+----
+--
+
+@dateBefore:: 
++
+--
+Has the format `++@dateBefore(field_name, parameter++`) and allows you to define a condition checking that `++field_name++` value (in `Timestamp` format) is smaller than the date passed as `parameter`.
+
+Example: 
+
+[source]
+----
+select d from sales$Doc where @dateBefore(d.createTs, :param)
+----
+--
+
+@dateAfter:: 
++
+--
+Has the format `++@dateAfter(field_name, parameter++`) and allows you to define a condition that the date of the `++field_name++` value (in `Timestamp` format) is more or equal to the date passed as `parameter`.
+
+Example: 
+
+[source]
+----
+select d from sales$Doc where @dateAfter(d.createTs, :param)
+----
+--
+
+@enum:: 
++
+--
+Allows you to use a fully qualified enum constant name instead of its database identifier. This simplifies searching for enum usages throughout the application code.
+
+Example: 
+
+[source]
+----
+select r from sec$Role where r.type = @enum(com.haulmont.cuba.security.entity.RoleType.SUPER) order by r.name
+----
+--
+
+The list of macros may be extended in the application project. To create a new macro, it is necessary to define a bean implementing the interface `QueryMacroHandler`, and define its `@Scope("prototype")`. The execution mechanism of JPQL queries creates all accessible `QueryMacroHandler` beans and passes the query text with a set of parameters to these beans one by one. The handlers are called without any specific order..
+
+[[nativeQuery]]
+===== Running SQL Queries
+
+ORM allows running SQL queries to the database returning either the lists of individual fields or entity instances. For this, it is necessary to create a `Query` or `TypedQuery` object by calling one of the methods of `EntityManager.createNativeQuery()`. 
+
+If individual columns are selected within a table, the resulting list will include the rows as `Object[]`. For example: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/sqlquery_1.java[]
+----
+
+Keep in mind when using SQL that the columns corresponding to entity attributes of `UUID `type are returned as `UUID` or as `String`, depending on the used DBMS and JDBC driver:
+
+* *HSQLDB* – `String`
+* *PostgreSQL*, driver postgresql-8.3-603.jdbc4.jar – `String`
+* *PostgreSQL*, driver postgresql-9.1-901.jdbc4.jar – `UUID`
+* *Microsoft SQL Server*, driver jtds-1.2.4.jar – `String`
+* *Oracle* – `String`
+
+Parameters of this type should also be defined either as UUID or using their string representation, depending on the DBMS and JDBC driver. To ensure that your code does not depend on the DBMS used, it is recommended to use `DbTypeConverter`. 
+
+If the resulting entity class is passed along with the query text, `TypedQuery` is returned, and the attempt to map the query results to entity attributes is performed. For example: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/sqlquery_2.java[]
+----
+
+Behavior of SQL queries returning entities and modifying queries (`update`, `delete`), in relation to the current persistent context is similar to that of <<query,JPQL queries>> described above.
+
+[[entity_listeners]]
+===== Entity Listeners
+
+_Entity Listeners_ are designed to react to lifecycle events of entity instances on <<app_tiers,Middleware>>.
+
+A listener is a class implementing one or several interfaces of `com.haulmont.cuba.core.listener` package. The listener will react to events corresponding to the implemented interfaces. 
+
+`BeforeDetachEntityListener`:: 
++
+--
+`onBeforeDetach()` method is called before the object is detached from <<entityManager,EntityManager>> on transaction commit. 
+
+This listener can be used for filling non-persistent entity attributes before sending it to the client tier. 
+--
+
+`BeforeAttachEntityListener`:: 
++
+--
+`onBeforeAttach()` method is called before the object is attached to the persistent context as a result of `EntityManager.merge()` operation.
+
+This listener can be used, for example, to fill persistent entity attributes before saving it in the database. 
+--
+
+`BeforeInsertEntityListener`:: 
+`onBeforeInsert()` method is called before a record is inserted into database. All kinds of operations can be performed with the current <<entityManager,EntityManager>> available within this method.
+
+`AfterInsertEntityListener`:: 
+`onAfterInsert()` is called after a record is inserted into database, but before transaction commit. This method does not allow modifications of the current persistent context, however, database modifications can be done using <<queryRunner,QueryRunner>>.
+
+`BeforeUpdateEntityListener`:: 
+`onBeforeUpdate()` method is called before a record is updated in the database. All kinds of operations can be performed with the current <<entityManager,EntityManager>> available within this method. 
+
+`AfterUpdateEntityListener`:: 
+`onAfterUpdate()` method is called after a record was updated in the database, but before transaction commit. This method does not allow modifications of the current persistent context, however, database modifications can be done using <<queryRunner,QueryRunner>>.
+
+`BeforeDeleteEntityListener`:: 
+`onBeforeDelete()`method is called before a record is deleted from the database (in the case of <<soft_deletion,soft deletion>> – before updating a record). All kinds of operations can be performed with the current <<entityManager,EntityManager>> available within this method.
+
+`AfterDeleteEntityListener`:: 
+`onAfterDelete()` method is called after a record is deleted from the database (in the case of <<soft_deletion,soft deletion>> – before updating a record), but before transaction commit. This method does not allow modifications of the current persistent context, however, database modifications can be done using <<queryRunner,QueryRunner>>.
+
+An entity listener can be a plain Java class or a managed bean. In the latter case, injection can be used as follows: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/entitylisteners_1.java[]
+----
+
+Entity Listener can be created in two ways:
+
+* Statically – the names of listener classes are listed in <<listeners_annotation,@Listeners>> annotation in the entity class. 
+
+* Dynamically – entity and listener classes are passed to `addListener()` method of `EntityListenerManager` bean. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/middleware/entitylisteners_2.java[]
+----
+
+Only one listener instance of a certain type is created for all instances of a particular entity class, therefore listener must not have a state.
+
+If several listeners of the same type (for example from annotations of entity class and its parents and also added dynamically) were declared for an entity, they will be called in the following order: 
+
+. For each ancestor, starting from the most distant one, dynamically added listeners are called first, followed by statically assigned listeners. 
+. Once parent classes are processed, dynamically added listeners for given class are called first, followed by statically assigned.
+
+[[transactions]]
+==== Transaction Management
+
+This section covers various aspects of transaction management in CUBA applications.
+
+[[transactions_prog]]
+===== Programmatic Transaction Management
+
+Programmatic transaction management is done using `com.haulmont.cuba.core.Transaction` interface, a reference to which may be obtained via the `createTransaction()` or `getTransaction()` methods of the <<persistence,Persistence>> infrastructure interface.
+
+The `createTransaction()` method creates a new transaction and returns the `Transaction` interface. Subsequent calls of `commit()`, `commitRetaining()`, `end()` methods of this interface control the created transaction. If at the moment of creation there was another transaction, it will be paused and resumed after the completion of the newly created one.
+
+The `getTransaction()` method either creates a new transaction or attaches to an existing one. If at the moment of the call there is an active transaction, then the method completes successfully, but subsequent calls of `commit()`, `commitRetaining()`, `end()` have no influence on the existing transaction. However calling `end()` without a prior call to `commit()` will mark current transaction as `RollbackOnly`.
+
+An example of programmatic transaction management: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_1.java[]
+----
+
+`Transaction` interface also has the `execute()` method accepting an action class as input. This class defines an action which should be performed in this transaction. This allows organizing transaction management in functional style, for example: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_2.java[]
+----
+
+If the transactional block is expected to return a result, the action class should implement `Transaction.Callable` interface. If the result is not required as in the example above, it is recommended to inherit the action class from the abstract class `Transaction.Runnable`.
+
+Keep in mind that `execute()` method of a given instance of `Transaction` may be called only once because the transaction ends after the action class code is executed.
+
+[[transactions_decl]]
+===== Declarative Transaction Management
+
+Any method of the Middleware <<managed_beans,managed bean>> may be marked with the annotation `@org.springframework.transaction.annotation.Transactional`, which will automatically create a transaction when the method is called. Such method does not require invoking `Persistence.createTransaction()`, you can immediately get `EntityManager` and work with it.
+
+`@Transactional` annotation supports a number of parameters. The main parameter is transaction creation mode – `Propagation`. The value `REQUIRED` corresponds to `getTransaction()`, the value `++REQUIRES_NEW++` – to `createTransaction()`. The default value is `REQUIRED`.
+
+Declarative transaction management allows you to reduce the amount of boilerplate code, but it has the following drawback: transactions are committed outside of the application code, which often complicates debugging because it conceals the moment when changes are sent to the DB and the entities become <<entity_states,Detached>>. Additionally, keep in mind that declarative markup will only work if the method is called by the container, i.e. calling a transaction method from another method of the same object will not start a transaction.
+
+With this in mind, we recommend using declarative transaction management only for simple cases like a <<services,service>> method reading a certain object and returning it to the client. 
+
+[[transactions_interaction]]
+===== Examples of Transactions Interaction
+
+====== Rollback of a Nested Transaction
+
+If a nested transaction was created via `getTransaction()` and rolled back, then commit of the enclosing transaction will be impossible. For example: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_3.java[]
+----
+
+If the transaction in `methodB()` is created with `createTransaction()` instead, then rolling it back will have no influence on the enclosing transaction in `methodA()`.
+
+====== Reading and Modifying Data in a Nested Transaction
+
+Let us first have a look at a dependent nested transaction created using `getTransaction()`: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_4.java[]
+----
+
+Now, let us have a look at the same example with an independent nested transaction created with `createTransaction()`:
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_5.java[]
+----
+
+In the last example, the exception at point (8) will only occur if the entity supports optimistic blocking, i.e. if it implements `Versioned` interface.
+
+[[transaction_timeout]]
+===== Transaction Timeout
+
+You can set timeout in seconds for created transaction. When the timeout is exceeded, transaction will be interrupted and rolled back. Transaction timeout effectively limits the maximum duration of a database request.
+
+When transactions are managed programmatically, the timeout is specified by passing `TransactionParams` object to the `Persistence.createTransaction()`. method. For example: 
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_6.java[]
+----
+
+In case of declarative transactions management, `timeout` parameter of the ` @Transactional` annotation can be used, for example:
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_7.java[]
+----
+
+The default timeout can be defined using <<cuba.defaultQueryTimeoutSec,cuba.defaultQueryTimeoutSec>> application property.
+
+====== Implementation Specifics for Different DBMS
+
+*PostgreSQL*
+
+Unfortunately, JDBC driver for *PostgreSQL* does not support the `setQueryTimeout()` method of the `java.sql.Statement` interface. For this reason an extra command `++set local statement_timeout to {value}++` is executed in DB at the beginning of each transaction, for which timeout has been set using any approach, including a non-zero value of <<cuba.defaultQueryTimeoutSec,cuba.defaultQueryTimeoutSec>>. In this case, the DB server will interrupt the request itself if the timeout is exceeded. 
+
+We recommend the following to decrease the load generated by these extra operators: 
+
+* Default timeout should be set not on *Middleware* using `cuba.defaultQueryTimeoutSec` property, but on *PostgreSQL* server in the file postgresql.conf. For example, `++statement_timeout = 3000++` (in milliseconds). 
+
+* For methods which need a longer timeout (reports and similar) the timeout should be specified explicitly in transaction parameters.
+
+*Microsoft SQL Server*
+
+JTDS driver supports the `setQueryTimeout()` method of the `java.sql.Statement` interface, so you can just set the standard `EntityManager` property `javax.persistence.query.timeout`, which will automatically apply to JDBC queries. 
+

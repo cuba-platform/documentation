@@ -1,0 +1,714 @@
+[[config_files]]
+[appendix]
+== Configuration Files
+
+This appendix describes the main configuration files included in CUBA-applications.
+
+[[context.xml]]
+=== context.xml
+
+context.xml file is the application deployment descriptor for the *Apache Tomcat* server. In a deployed application, this file is located in the META-INF subfolder of web application folder or the WAR file, for example, tomcat/webapps/app-core/META-INF/context.xml. In application project, the files of this type can be found in the /web/META-INF folders of the *core*, *web* and *portal* modules.
+
+The main purpose of this file in the Middleware block is to define a datasource and assign a JNDI name, specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property.
+
+An example of a data source declaration for *PostgreSQL*:
+
+[source, xml]
+----
+<Resource
+  name="jdbc/CubaDS"
+  type="javax.sql.DataSource"
+  maxActive="100"
+  maxIdle="2"
+  maxWait="5000"
+  driverClassName="org.postgresql.Driver"
+  username="cuba"
+  password="cuba"
+  url="jdbc:postgresql://localhost/sales"/>
+----
+
+An example of a data source declaration for *Microsoft SQL Server*:
+
+[source, xml]
+----
+<Resource
+  name="jdbc/CubaDS"
+  type="javax.sql.DataSource"
+  maxActive="100"
+  maxIdle="2"
+  maxWait="5000"
+  driverClassName="net.sourceforge.jtds.jdbc.Driver"
+  username="sa"
+  password="saPass1"
+  url="jdbc:jtds:sqlserver://localhost/sales"/>
+----
+
+An example of a data source declaration for *Oracle*:
+
+[source, xml]
+----
+<Resource
+name="jdbc/CubaDS"
+type="javax.sql.DataSource"
+maxActive="100"
+maxIdle="2"
+maxWait="5000"
+driverClassName="oracle.jdbc.OracleDriver"
+username="sales"
+password="sales"
+url="jdbc:oracle:thin:@//localhost:1521/orcl"/>
+----
+
+In all <<app_tiers,blocks>> implemented as web applications, this file may be used to disable serialization of HTTP-sessions:
+
+[source, xml]
+----
+<Manager className="org.apache.catalina.session.PersistentManager" debug="0" distributable="false"
+       saveOnRestart="false">
+  <Store className="org.apache.catalina.session.FileStore"/>
+</Manager>
+----
+
+[[datatypes.xml]]
+=== datatypes.xml
+
+datatypes.xml defines the available data types for entity attributes. See <<datatype,>>
+
+The default file is located in the `com.haulmont.chile.core.datatypes` package of the *cuba* <<base_projects,base project>>. If a similar file is created in the CLASSPATH root of the *global* <<app_modules,module>> in an application project, the data types will be loaded from this file.
+
+[WARNING]
+====
+The loading mechanism does not support extension, i.e. all data types are loaded from a single file – either from the CLASSPATH root or from the `com.haulmont.chile.core.datatypes` package.
+====
+
+Available data types should be specified as `datatype` elements. The only mandatory attribute is `class`, which defines a data type class implementing the `Datatype` interface. The remaining attribute set depends on the class. The object created from the class, receives the corresponding XML element when created, and should parse the element itself.
+
+Typical attributes:
+
+* `format` – format for conversion to string.
+
+* `groupingSeparator` – number grouping separator character.
+
+* `decimalSeparator` – decimal separator character.
+
+Example:
+
+[source, xml]
+----
+<datatypes>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.BooleanDatatype"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.IntegerDatatype"
+            format="0" groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.LongDatatype"
+            format="0" groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.DoubleDatatype"
+            format="0.###" decimalSeparator="." groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.BigDecimalDatatype"
+            format="0.####" decimalSeparator="." groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.StringDatatype"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.DateTimeDatatype"
+            format="yyyy-MM-dd'T'HH:mm:ss.SSS"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.DateDatatype"
+            format="yyyy-MM-dd"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.TimeDatatype"
+            format="HH:mm:ss"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.UUIDDatatype"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.ByteArrayDatatype"/>
+
+</datatypes>
+----
+
+[[dispatcher-spring.xml]]
+=== dispatcher-spring.xml
+
+The files of this type define configuration of an additional *Spring Framework* container for client blocks containing *Spring MVC* controllers.
+
+A set of dispatcher-spring.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.dispatcherSpringContextConfig,cuba.dispatcherSpringContextConfig>> application property. File order is important, because each subsequent file can override bean configurations defined by the previous files.
+
+The Spring MVC controllers container is created with the main container (configured by <<spring.xml,spring.xml>> files) as its parent. Therefore, the beans of the controllers container can use the beans of the main container, while the beans of the main container cannot &ldquo;see&rdquo; the beans of the controllers container.
+
+[[menu.xml]]
+=== menu.xml
+
+The files of this type are used in the application <<app_tiers,blocks>> implementing the <<gui_framework,generic user interface>>, such as the Web Client and the Desktop Client. These files define the main menu structure of the application.
+
+XML schema is available at http://schemas.haulmont.com/cuba/5.6/menu.xsd
+
+A set of menu.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.menuConfig,cuba.menuConfig>> application property. The file has the following structure:
+
+`menu-config` – the root element.
+
+Elements of `menu-config` form a tree structure:
+
+* `menu` – a folding menu containing menu items and other folding menus.
++
+`menu` attributes:
+
+** `id` – identifier of an element, used for name localization (see below).
+
+** `insertBefore`, `insertAfter` – determines whether the item should be inserted before or after a particular element or a menu item with specified identifier. This attribute is used to insert an element to an appropriate place in the menu defined in files of base projects. Before and after elements cannot be used at the same time.
++
+CUBA Studio supports `insertBefore` and `insertAfter` attributes only for the top-level menu elements. Therefore the Studio menu designer should not be used if such attributes were defined manually, as Studio will delete them.
++
+Menu elements:
+
+** `menu`
+
+** `item` – menu item (see below).
+
+** `separator` – separator.
+
+* `item` – menu item.
++
+`item` attributes:
+
+** `id` – identifier of an element, used for name localization (see below), and for linking to one of the UI screen elements registered in <<screens.xml,screens.xml>> file. When user clicks on a menu item, the corresponding screen will be opened in the main application window.
+
+** `shortcut` – a keyboard shortcut for this menu item. Possible modifiers – `ALT`, `CTRL`, `SHIFT` – are separated with "`-`". For example:
++
+[source, properties]
+----
+shortcut="ALT-C"
+shortcut="ALT-CTRL-C"
+shortcut="ALT-CTRL-SHIFT-C"
+----
++
+Shortcuts can also be configured in <<app_properties,application properties>> and then used in menu.xml file in the following way:
++
+[source, properties]
+----
+shortcut="${sales.menu.customer}"
+----
+
+** `openType` – screen open mode. The following modes are available: `WindowManager.OpenType`: `++NEW_TAB++`, `++THIS_TAB++`, `DIALOG`, `++NEW_WINDOW++`.
++
+Default value – `++NEW_TAB++`. 
++
+`++NEW_WINDOW++` mode is only supported in the Desktop Client. For the Web Client it is equivalent to `++NEW_TAB++` mode.
+
+** `insertBefore`, `insertAfter` – determines whether the item should be inserted before or after a particular element or a menu item with specified identifier.
++
+Studio does not support `insertBefore`, `insertAfter` attributes for the `item` element. Therefore the Studio menu designer should not be used if such attributes were defined manually, as Studio will delete them.
+
+** `resizable` – only relevant to `DIALOG` screen open mode. Controls window resizing ability. Possible values − `true`, `false`.
++
+By default, the main menu does not affect the ability to resize dialog windows.
++
+`item` elements:
+
+** `param` – screen parameters passed to the <<screen_controller,controller&rsquo;s>> `init()` method. The properties configured in menu.xml override the parameters set in <<screen_xml,screens.xml>> with the same name.
++
+`param` attributes:
+
+*** `name` – parameter name.
+
+*** `value` – parameter value. String value, may be converted to an arbitrary object according to the following rules:
+
+**** If a string is an entity identifier, specified according to the rules of the `EntityLoadInfo` class, the system loads the specified entity instance.
+
+**** If a string has the format `++${some_name}++`, the value of the parameter will be set to the `some_name` application property.
+
+**** Strings `true` and `false` are converted to the corresponding `Boolean` values.
+
+**** Otherwise, the string itself becomes the parameter value.
+
+** `permissions` – an element defining a set of permissions required to make the menu item available to the current user. This mechanism should only be used when item availability should be tied to a specific permission, or to more than one arbitrary permissions. In most cases, the standard capabilities of the security subsystem should be sufficient to manage the menu item availability based on screen identifiers.
++
+The element should contain nested `permission` elements, each describing a single required permission. The menu item will only be accessible if all permissions are granted.
++
+`permission` attributes:
+
+*** `type` – permission type. The following types are available for `PermissionType`: `SCREEN`, `++ENTITY_OP++`, `++ENTITY_ATTR++`, `SPECIFIC`, `UI`.
+
+*** `target` – an object checked for permission. Depends on permission type:
+
+**** `SCREEN` – screen identifier, for example `sales$Customer.lookup`.
+
+**** `++ENTITY_OP++` – a string formatted as `++{entity_name}:{op}++`, where `{op}` – `read`, `create`, `update`, `delete`. For example: `sales$Customer:create`.
+
+**** `++ENTITY_ATTR++` – a string formatted as `++{entity_name}:{attribute}++`, for example `sales$Customer:name`.
+
+**** `SPECIFIC` – specific permission identifier, for example `sales.runInvoicing`.
+
+**** `UI` – path to a visual component of a screen.
+
+Example of a menu file:
+
+[source, xml]
+----
+<menu-config xmlns="http://schemas.haulmont.com/cuba/menu.xsd">
+
+  <menu id="sales" insertBefore="administration">
+      <item id="sales$Customer.lookup"/>
+      <separator/>
+      <item id="sales$Order.lookup"/>
+  </menu>
+
+</menu-config>
+----
+
+A localized name of a menu element is defined the following way: the `menu-config` prefix with a dot at the end is added to the element identifier; the resulting string is used as a key for the <<main_message_pack,main message pack>>. For example:
+
+[source, properties]
+----
+menu-config.sales=Sales
+menu-config.sales$Customer.lookup=Customers
+----
+
+[[metadata.xml]]
+=== metadata.xml
+
+Files of this type are used to register non-persistent entities and assign <<meta_annotations,meta annotations>>, see <<metadata_framework,>>.
+
+XML schema is available at http://schemas.haulmont.com/cuba/5.6/metadata.xsd.
+
+A set of metadata.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.metadataConfig,cuba.metadataConfig>> application property. 
+
+The file has the following structure:
+
+`metadata` – root element.
+
+`metadata` elements:
+
+* `metadata-model` – the project's meta model descriptor.
++
+`metadata-model` attribute:
+
+** `root-package` – the project&rsquo;s root package.
++
+`metadata-model` elements:
+
+** `class` – a non-persistent entity class.
+
+* `annotations` – contains assignments of entity <<meta_annotations,meta annotations>>.
++
+`annotations` elements:
+
+** `entity` – entity to assign meta annotation to.
++
+`entity` attributes:
+
+*** `class` – entity class.
++
+`entity` elements:
+
+*** `annotation` – meta annotation element.
++
+`annotation` attributes:
+
+**** `name` – meta annotation name.
+
+**** `value` – meta annotation value.
+
+Example:
+
+[source, xml]
+----
+<metadata xmlns="http://schemas.haulmont.com/cuba/metadata.xsd">
+
+  <metadata-model root-package="com.sample.sales">
+      <class>com.sample.sales.entity.SomeTransientEntity</class>
+      <class>com.sample.sales.entity.OtherTransientEntity</class>
+  </metadata-model>
+
+  <annotations>
+      <entity class="com.haulmont.cuba.security.entity.User">
+          <annotation name="com.haulmont.cuba.core.entity.annotation.TrackEditScreenHistory"
+                      value="true"/>
+          <annotation name="com.haulmont.cuba.core.entity.annotation.EnableRestore"
+                      value="true"/>
+      </entity>
+  </annotations>
+
+</metadata>
+----
+
+[[permissions.xml]]
+=== permissions.xml
+
+Files of this type are used in the Web Client and the Desktop Client blocks for registration of specific user <<permissions,permissions>>. 
+
+A set of permissions.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.permissionConfig,cuba.permissionConfig>> application property. 
+
+XML schema is available at http://schemas.haulmont.com/cuba/5.6/permissions.xsd.
+
+The file has the following structure:
+
+`permission-config` - root element.
+
+`permission-config` elements:
+
+* `specific` - specific permissions descriptor.
++
+`specific` elements:
+
+** `category` - permissions category which is used for grouping permissions in the <<roles,role>> edit screen. `id` attribute is used as a key for retrieving a localized category name from the <<main_message_pack,main message pack>>.
+
+** `permission` - named permission. `id` attribute is used to obtain the permission value by the `Security.isSpecificPermitted()` method, and as a key for retrieving a localized permission name form the <<main_message_pack,main message pack>> to display the permission in the <<roles,role>> edit screen.
+
+For example:
+
+[source, xml]
+----
+<permission-config xmlns="http://schemas.haulmont.com/cuba/permissions.xsd">
+    <specific>
+        <category id="app">
+            <permission id="app.doSomething"/>
+            <permission id="app.doSomethingOther"/>
+        </category>
+    </specific>
+</permission-config>
+---- 
+
+[[persistence.xml]]
+=== persistence.xml
+
+Files of this type are standard for JPA, and are used for registration of persistent entities and configuration of <<orm,ORM>> framework parameters.
+
+A set of persistence.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.persistenceConfig,cuba.persistenceConfig>> application property. 
+
+When the Middleware block starts, the specified files are combined into a single persistence.xml, stored in the application <<work_dir,work folder>>. File order is important, because each subsequent file in the list can override previously defined ORM parameters. There are several DBMS specific (set in <<cuba.dbmsType,cuba.dbmsType>>) parameters that cannot be overridden in the persistence.xml. These parameters are:
+
+* `openjpa.jdbc.DBDictionary`
+
+* `openjpa.jdbc.MappingDefaults`
+
+Additionally, if the <<cuba.disableOrmXmlGeneration,cuba.disableOrmXmlGeneration>> application property is set to `false`, and the project contains <<extension,extended entities>>, the orm.xml file will be created in the application work folder on application start. The path to this file is written to the `openjpa.MetaDataFactory` parameter, which means that this parameter cannot be defined in the persistence.xml in advance. 
+
+Example of a file:
+
+[source, xml]
+----
+<persistence xmlns="http://java.sun.com/xml/ns/persistence" version="1.0">
+  <persistence-unit name="sales" transaction-type="RESOURCE_LOCAL">
+      <class>com.sample.sales.entity.Customer</class>
+      <class>com.sample.sales.entity.Order</class>
+  </persistence-unit>
+</persistence>
+----
+
+[[remoting-spring.xml]]
+=== remoting-spring.xml
+
+Files of this type configure an additional *Spring Framework* container for the Middleware block, used for exporting services and other middleware components accessed by the client tier (hereafter _remote access container_). 
+
+A set of remoting-spring.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.remotingSpringContextConfig,cuba.remotingSpringContextConfig>> application property. File order is important because each subsequent file overrides already defined bean configurations.
+
+Remote access container is created with the main container (configured by <<spring.xml,spring.xml>> files) as its parent. Therefore, the beans of the remote access container can use the beans of the main container, while the beans of the main container cannot &ldquo;see&rdquo; the beans of the remote access container.
+
+The primary goal of remote access is to make Middleware services accessible to the client level using the *Spring HttpInvoker* mechanism. The cuba-remoting-spring.xml file in the *cuba* base project defines the `servicesExporter` bean of `RemoteServicesBeanCreator` type, which receives all service classes from the main container and exports them. In addition to regular annotated services, remote access container exports a number of specific beans, such as `LoginService`.
+
+Furthermore, the cuba-remoting-spring.xml file defines a base package that serves as a starting point for lookup of annotated *Spring MVC* controller classes used for file uploading and downloading.
+
+The remoting-spring.xml file in the application project should only be created when specific *Spring MVC* controllers are used. Application project services will be imported by the standard `servicesExporter` bean defined in the *cuba* base project.
+
+[[screens.xml]]
+=== screens.xml
+
+Files of this type are used in the <<app_tiers,generic user interface>> of the Web Client and the Desktop Client for registration of screen XML-descriptors.
+
+XML schema is available at http://schemas.haulmont.com/cuba/5.6/screens.xsd.
+
+A set of screens.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.windowConfig,cuba.windowConfig>> application property.
+
+The file has the following structure:
+
+`screen-config` – the root element.
+
+`screen-config` elements:
+
+* `screen` – screen descriptor.
++
+`screen` attributes:
+
+** `id` – screen identifier used to reference this screen from the application code (e.g. in the `IFrame.openWindow()` and other methods) and in the <<menu.xml,menu.xml>>.
+
+** `template` – path to screen&rsquo;s <<screen_xml,XML-descriptor>>. <<resources,Resources>> interface rules apply to loading the descriptor.
+
+** `class` – if the `template` attribute is not set, this attribute should contain the name of the class implementing either `Callable` or `Runnable`.
++
+In case of `Callable`, the `call()` method should return an instance of `Window`, which will be returned to the invoking code as the result of calling `WindowManager.openWindow()`. The class may contain a constructor with string parameters, defined by the nested `param` element (see below).
+
+** `multipleOpen` – optional attribute, allowing a screen to be opened multiple times. If set to `false` or not defined and the screen with this identifier has already been opened in the main window, the system will show the existing screen instead of opening a new one. If set to `true`, any number of screen instances can be opened.
++
+`screen` elements:
+
+** `param` – defines a screen parameter submitted as a map to the <<screen_controller,controller>>&rsquo;s `init()` method. Parameters, passed to the `openWindow()` methods by the invoking code, override the matching parameters set in screens.xml.
++
+`param` attributes:
+
+*** `name` – parameter name.
+
+*** `value` – parameter value. Strings `true` and `false` are converted into the corresponding `Boolean` values.
+
+* `include` – includes a different file, e.g. screens.xml.
++
+`include` attributes:
+
+** `file` – path to a file according to the rules of the <<resources,Resources>> interface.
+
+Example of a screens.xml file:
+
+[source, xml]
+----
+<screen-config xmlns="http://schemas.haulmont.com/cuba/screens.xsd">
+
+  <screen id="sales$Customer.lookup" template="/com/sample/sales/gui/customer/customer-browse.xml"/>
+  <screen id="sales$Customer.edit" template="/com/sample/sales/gui/customer/customer-edit.xml"/>
+
+  <screen id="sales$Order.lookup" template="/com/sample/sales/gui/order/order-browse.xml"/>
+  <screen id="sales$Order.edit" template="/com/sample/sales/gui/order/order-edit.xml"/>
+
+</screen-config>
+----
+
+[[spring.xml]]
+=== spring.xml
+
+The files of this type configure the main *Spring Framework* container for each application <<app_tiers,block>>. 
+
+A set of spring.xml files, including the ones defined in <<base_projects,base projects>>, is declared in the <<cuba.springContextConfig,cuba.springContextConfig>> application property. File order is important because each subsequent file overrides already defined bean configurations.
+
+Most of the configuration of the main container is performed using bean annotations (e.g. `@ManagedBean`, `@Service`, `@Inject` and others), therefore the only mandatory part of spring.xml in an application project is the `context:component-scan` element, which specifies the base Java package for lookup of annotated classes. For example:
+
+[source, xml]
+----
+<context:component-scan base-package="com.sample.sales"/>
+----
+
+The remaining configuration depends on the block that a container is being configured for, e.g. the registration of <<jmx_beans,JMX-beans>> for the Middleware block, or <<service_import,services import>> for client blocks.
+
+[[views.xml]]
+=== views.xml
+
+Files of this type are used to describe views, see <<views,>>.
+
+XML schema is available at http://schemas.haulmont.com/cuba/5.6/view.xsd.
+
+`views` – root element.
+
+`views` elements:
+
+* `view` – `view` descriptor.
++
+`view` attributes:
+
+** `class` – entity class.
+
+** `entity` – the name of the entity, for example `sales$Order`. This attribute can be used instead of the `class` attribute.
+
+** `name` – view name, unique within the entity.
+
+** `systemProperties` – enables inclusion of system attributes defined in <<entity_base_classes,base interfaces>> for persistent entities `BaseEntity` and `Updatable`. Optional attribute, `false` by default.
+
+** `overwrite` – enables overriding a view with the same class and name already deployed in the repository. Optional attribute, `false` by default.
+
+** `extends` – specifies an entity view, from which the attributes should be inherited. For example, declaring `++extends="_local"++`, will add all <<local_attribute,local attributes>> of an entity to the current view. Optional attribute.
++
+`view` elements:
+
+** `property` – `ViewProperty` descriptor.
++
+`property` attributes:
+
+*** `name` – entity attribute name.
+
+*** `view` – for reference type attributes, specifies a view name the associated entity should be loaded with.
+
+*** `lazy` – for reference type attributes, enables excluding the attribute from the fetch plan and loading it via a separate SQL query initiated by a call to the attribute. Optional attribute, `false` by default.
++
+Using `lazy` is recommended, if the current view graph contains more than one collection attribute. `lazy = "true"` should be set for all collections, except one.
++
+`property` elements:
+
+*** `property` – associated entity attribute descriptor. This allows defining an unnamed inline view for an associated entity in the current descriptor. 
+
+* `include` – include another views.xml file.
++
+`include` attributes:
+
+** `file` – file path according to the <<resources,Resources>> interface rules.
+
+Example:
+
+[source, xml]
+----
+<views xmlns="http://schemas.haulmont.com/cuba/view.xsd">
+
+  <view class="com.sample.sales.entity.Order"
+        name="orderWithCustomer"
+        extends="_local">
+      <property name="customer" view="_minimal"/>
+  </view>
+
+  <view class="com.sample.sales.entity.Item"
+        name="itemsInOrder">
+      <property name="quantity"/>
+      <property name="product" view="_minimal"/>
+  </view>
+
+  <view class="com.sample.sales.entity.Order"
+        name="orderWithCustomerDefinedInline"
+        extends="_local">
+      <property name="customer">
+          <property name="name"/>
+          <property name="email"/>
+      </property>
+  </view>
+
+</views>
+----
+
+See also the <<cuba.viewsConfig,cuba.viewsConfig>> application property.
+
+[[web.xml]]
+=== web.xml
+
+The web.xml file is a standard descriptor of a *Java EE* web application and should be created for the Middleware, Web Client and Web Portal blocks.
+
+In an application project, web.xml files are located in the web/WEB-INF folders of the corresponding <<app_modules,modules>>.
+
+web.xml for the Middleware block (*core* project module) has the following content:
+
+[source, xml]
+----
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+         version="2.5">
+
+  <!-- Application properties config files -->
+  <context-param>
+      <param-name>appPropertiesConfig</param-name>
+      <param-value>
+          classpath:cuba-app.properties
+          classpath:app.properties
+          file:${catalina.home}/conf/app-core/local.app.properties
+      </param-value>
+  </context-param>
+
+  <listener>
+      <listener-class>com.haulmont.cuba.core.sys.AppContextLoader</listener-class>
+  </listener>
+
+  <servlet>
+      <servlet-name>remoting</servlet-name>
+      <servlet-class>com.haulmont.cuba.core.sys.remoting.RemotingServlet</servlet-class>
+      <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+      <servlet-name>remoting</servlet-name>
+      <url-pattern>/remoting/*</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+      <servlet-name>restapi</servlet-name>
+      <servlet-class>com.haulmont.cuba.core.sys.restapi.RestApiServlet</servlet-class>
+      <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+      <servlet-name>restapi</servlet-name>
+      <url-pattern>/api/*</url-pattern>
+  </servlet-mapping>
+</web-app>
+----
+
+The `context-param` elements define initializing parameters for the `ServletContext` object of the current web application. The list of <<app_properties_files,application property files>> is also defined in the `appPropertiesConfig` parameter.
+
+The `listener` element defines a listener class implementing the `ServletContextListener` interface. The Middleware block uses the `AppContextLoader` class as a listener. This class initializes the <<appContext,AppContext>>.
+
+Servlet descriptions follow, including the `RemotingServlet` class, mandatory for the Middleware block. This servlet is accessible via the `++/remoting/*++` URL, and is related to the remote access container (see <<remoting-spring.xml,>>).
+
+web.xml for the Web Client block (*web* project module) has the following content:
+
+[source, xml]
+----
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+         version="2.5">
+
+  <context-param>
+      <description>Vaadin production mode</description>
+      <param-name>productionMode</param-name>
+      <param-value>false</param-value>
+  </context-param>
+
+  <context-param>
+      <param-name>appPropertiesConfig</param-name>
+      <param-value>
+          classpath:cuba-web-app.properties
+          classpath:web-app.properties
+          file:${catalina.home}/conf/app/local.app.properties
+      </param-value>
+  </context-param>
+
+  <listener>
+      <listener-class>com.haulmont.cuba.web.sys.WebAppContextLoader</listener-class>
+  </listener>
+
+  <servlet>
+      <servlet-name>app_servlet</servlet-name>
+      <servlet-class>com.haulmont.cuba.web.sys.CubaApplicationServlet</servlet-class>
+      <init-param>
+          <param-name>application</param-name>
+          <param-value>com.haulmont.sales.web.App</param-value>
+      </init-param>
+      <init-param>
+          <param-name>widgetset</param-name>
+          <param-value>com.haulmont.cuba.web.toolkit.ui.WidgetSet</param-value>
+      </init-param>
+      <init-param>
+          <param-name>UI</param-name>
+          <param-value>com.haulmont.cuba.web.AppUI</param-value>
+      </init-param>
+      <init-param>
+          <param-name>UIProvider</param-name>
+          <param-value>com.haulmont.cuba.web.sys.CubaUIProvider</param-value>
+      </init-param>
+  </servlet>
+
+  <servlet-mapping>
+      <servlet-name>app_servlet</servlet-name>
+      <url-pattern>/*</url-pattern>
+  </servlet-mapping>
+
+  <filter>
+      <filter-name>cuba_filter</filter-name>
+      <filter-class>com.haulmont.cuba.web.sys.CubaHttpFilter</filter-class>
+  </filter>
+
+  <filter-mapping>
+      <filter-name>cuba_filter</filter-name>
+      <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+</web-app>
+----
+
+The list of <<app_properties_files,application property files>> is defined in the `appPropertiesConfig` parameter. The `productionMode` property disables the *Vaadin* framework debugging mode.
+
+The Web Client block uses the `WebAppContextLoader` class as a `ServletContextListener`.
+
+Next, the `CubaApplicationServlet` is defined, providing the <<gui_framework,generic user interface>> implementation based on the *Vaadin* framework. The servlet has a number of parameters, including:
+
+* `application` – defines a project specific client application class, inherited from `com.haulmont.cuba.web.App`.
+
+* `widgetset` – defines a set of *GWT* components used on the browser side.
+
+Later, the `CubaHttpFilter` required for functioning of the Web Client block is defined.

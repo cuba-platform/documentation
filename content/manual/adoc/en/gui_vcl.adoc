@@ -1,0 +1,3877 @@
+[[gui_vcl]]
+==== Visual Components Library
+
+<<gui_components,Components>>
+
+<<gui_layouts,Containers>>
+
+<<gui_misc,Miscellaneous>>
+
+[[gui_components]]
+===== Components
+
+.Components Diagram
+image::Components_new.png[align="center"]
+
+`Component` is the parent of all visual components. It contains basic attributes to identify a component and place it within a screen.
+
+[cols="2", frame="none"]
+|===
+
+| *Buttons*| 
+
+| <<gui_Button,Button>>| image:Button.png[]
+
+| <<gui_PopupButton,PopupButton>>| image:PopupButton.png[]
+
+| <<gui_LinkButton,LinkButton>>| image:LinkButton.png[]
+
+| |
+
+| *Text*| 
+
+| <<gui_Label,Label>>| image:gui_label.png[]
+
+| |
+
+| *Text inputs*| 
+
+| <<gui_TextField,TextField>>| image:gui_textField.png[]
+
+| <<gui_PasswordField,PasswordField>>| image:gui_PasswordField.png[]
+
+| <<gui_MaskedField,MaskedField>>| image:gui_MaskedField.png[]
+
+| <<gui_TextArea,TextArea>>| image:gui_TextArea.png[]
+
+| <<gui_RichTextArea,RichTextArea>>| image:gui_RichTextArea.png[]
+
+| |
+
+| *Date inputs*| 
+
+| <<gui_DateField,DateField>>| image:gui_dateField.png[]
+
+| <<gui_TimeField,TimeField>>| image:gui_timeField.png[]
+
+| |
+
+| *Selects*| 
+
+| <<gui_CheckBox,CheckBox>>| image:CheckBox.png[]
+
+| <<gui_OptionsGroup,OptionsGroup>>| image:gui_optionsGroup.png[]
+
+| <<gui_PickerField,PickerField>>| image:PickerField.png[]
+
+| <<gui_LookupField,LookupField>>| image:LookupField.png[]
+
+| <<gui_LookupPickerField,LookupPickerField>>| image:LookupPickerField.png[]
+
+| <<gui_SearchPickerField,SearchPickerField>>| image:gui_searchPickerField.png[]
+
+| <<gui_TwinColumn,TwinColumn>>| image:TwinColumn.png[]
+
+| |
+
+| *Uploads*| 
+
+| <<gui_FileUploadField,FileUploadField>>| image:Upload.png[]
+
+| <<gui_FileMultiUploadField,FileMultiUploadField>>
+
+| 
+
+| *Tables and trees*| 
+
+| <<gui_Table,Table>>| image:gui_table.png[]
+
+| <<gui_GroupTable,GroupTable>>| image:gui_groupTable.png[]
+
+| <<gui_TreeTable,TreeTable>>| image:gui_treeTable.png[]
+
+| <<gui_Tree,Tree>>| image:gui_Tree.png[]
+
+| |
+
+| *Others*| 
+
+| <<gui_FieldGroup,FieldGroup>>| image:gui_fieldGroup.png[]
+
+| <<gui_TokenList,TokenList>>| image:gui_tokenList.png[]
+
+| <<gui_Filter,Filter>>| image:gui_filter_mini.png[]
+
+|===
+
+[[gui_Button]]
+====== Button
+
+A button is a component which performs an action when clicked.
+
+Component&rsquo;s XML-name: `button`
+
+image::gui_Button_dia.png[align="center"]
+
+Button component is implemented for both *Web* and *Desktop* clients.
+
+Buttons can contain a caption, an icon, or both. The figure below shows different button types.
+
+image::gui_buttonTypes.png[align="center"]
+
+An example of a button with a tooltip and a caption retrieved from a <<message_packs,localized message pack>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_1.xml[]
+---- 
+
+The button&rsquo;s caption is set using the <<gui_attr_basic_caption,caption>> attribute, the tooltip – using the <<gui_attr_basic_description,description>> attribute.
+
+The <<gui_attr_basic_icon,icon>> attribute defines icon location. Detailed information on recommended icon placement is available in  .
+
+Example of creating a button with an icon: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_2.xml[]
+---- 
+
+The button&rsquo;s main function is to perform an action on a click. Controller method that should be invoked after a click can be defined using `invoke` attribute. The attribute value should contain name of the controller method satisfying the following conditions:
+
+* The method should be `public`.
+
+* The method should return `void`.
+
+* The method should not have any arguments, or should have a single argument of `Component` type. If the method has a `Component` argument, then an instance of the invoking button will be passed in it.
+
+Below is the example of a button invoking `someMethod:` 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_3.xml[]
+---- 
+
+A method named `someMethod` should be defined in the screen controller: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/button_4.java[]
+---- 
+
+The `invoke` attribute is ignored if `action` attribute is set. The action attribute contains an <<gui_Action,Action>> name corresponding to the button.
+
+Example of a button with an `action`: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_5.xml[]
+---- 
+
+Any action present in the component implementing `Component.ActionsHolder` interface can be assigned to a button. This applies to <<gui_Table,Table>>, <<gui_GroupTable,GroupTable>>, <<gui_TreeTable,TreeTable>>, <<gui_Tree,Tree>>. The way of adding components (declaratively in the XML descriptor or programmatically in the controller) is irrelevant. In any case, for using an action, the name of the component and the identifier of the required action must be specified in the `action` attribute, separated by dot. For instance, in the next example the `create` action of the `coloursTable` table is assigned to a button: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_6.xml[]
+---- 
+
+Button actions can be also created programmatically in the screen controller by deriving them from <<baseAction,BaseAction>> class.
+
+If an `Action` instance is defined for a `Button`, the button will import the following properties from it: <<gui_attr_basic_caption,caption>>, <<gui_attr_basic_icon,icon>>, <<gui_attr_basic_enable,enable>>, <<gui_attr_basic_visible,visible>>. `caption` property will be imported from `Action` only if it is not set in the `Button` itself. All other listed `Action` properties have priority over the `Button` properties. If `Action` properties are changed after the `Action` is set for a `Button`, then `Button` properties also change accordingly, i.e. the button listens to the changes in `Action` properties and the `caption` property will change even if it was initially assigned to the button itself.
+
+`button` attibutes:
+
+[cols="4", frame="none"]
+|===
+
+| action| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_icon,icon>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_description,description>>| invoke
+
+|===
+
+[[gui_BulkEditor]]
+====== Bulk Editor
+
+`Bulk Editor` – is a component that enables changing attribute values for several entity instances at once. The component is a button, usually added to a <<gui_Table,table>> or a <<gui_Tree,tree>>, which opens the entity bulk editor on click. 
+
+image::gui_bulkEdit.png[align="center"]
+
+XML-name of the component: `bulkEditor`
+
+image::gui_BulkEditor_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+To enable the use of Bulk Editor, the table or tree must have the `multiselect` attribute set to `"true"`.
+
+The entity editor is automatically generated based on the defined view (containing the fields of this entity, including references) and the user permissions. System attributes are not displayed in the editor either.
+
+Entity attributes in the editor are sorted alphabetically. By default, the fields are empty. At screen commit, non-empty attribute values defined in the editor, are set for all the entity instances. 
+
+The editor also allows removing a specific field value for all the instances by setting it to `null`. In order to do this, click image:gui_bulkEditorSetNullButton.png[] button next to the field. After that, the field will become non-editable. The field can be unlocked by clicking the same button again.
+
+image::gui_invoiceBulkEdit.png[align="center"]
+
+Example of `bulkEditor` use in a table:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/bulkEditor_1.xml[]
+----
+
+The `for` attribute is required. It contains the identifier of a table or a tree; in this case, it is the `invoiceTable`.
+
+The `exclude` attribute can contain a regular expression to exclude some fields explicitly from the list of attributes available for editing. For example: `date|customer` 
+
+image::gui_TableBulkEdit.png[align="center"]
+
+The `BulkEditor` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_bulkedit_exclude,exclude>>| <<gui_attr_tokenList_lookup_openType,openType>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_bulkedit_for,for>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_icon,icon>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_CheckBox]]
+====== CheckBox
+
+`CheckBox` is a component with two states: checked, unchecked.
+
+image::CheckBox.png[align="center"]
+
+Component&rsquo;s XML-name: `checkBox`.
+
+image::gui_checkBox_dia.png[align="center"]
+
+`CheckBox` component is implemented for both *Web* and *Desktop Client*s.
+
+An example of a checkbox with a label retrieved from a <<message_packs,localized messages pack>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/checkbox_1.xml[]
+---- 
+
+Checking / unchecking of the checkbox changes its value: `Boolean.TRUE` or `Boolean.FALSE.`The value can be retrieved using `getValue()` method and set using `setValue()`. Submitting `null` using `setValue()` will change the value to `Boolean.FALSE` and uncheck the checkbox.
+
+Changes of checkbox value, as well as of any other components implementing the `Field` interface, can be tracked using a `ValueListener`. For example: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/checkbox_2.java[]
+---- 
+
+The <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> attributes should be used to create a checkbox associated with data. 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/checkbox_3.xml[]
+---- 
+
+According to the example the screen includes the description of `customerDs` <<datasources,data source>> for a `Customer` entity with `active` attribute. The `datasource` attribute of the `checkBox` component should contain a reference to a data source; the `property` attribute should contain the name of an entity attribute which value should be displayed in the checkbox. The attribute should have `Boolean` type. If the attribute value is `null` the checkbox is unchecked.
+
+`checkBox` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_property,property>>| 
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_stylename,stylename>>| 
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_visible,visible>>| 
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>| 
+
+|===
+
+[[gui_DateField]]
+====== DateField
+
+`DateField` is a field to display and enter date and time. It is an input field, inside which there is a button with a drop-down calendar. To the right, there is a time field.
+
+image::gui_dateFieldSimple.png[align="center"]
+
+XML name of the component: `dateField`.
+
+image::gui_dateField_dia.png[align="center"]
+
+The `DateField` component is implemented for *Web Client* and *Desktop Client*.
+
+* To create a date field associated with data, you should use the <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> attributes: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datefield_1.xml[]
+---- 
++
+In the example above, the screen has an `orderDs` data source for an Order entity, which has the `date` property. In the date component, you should specify a link to a data source as <<gui_attr_basic_datasource,datasource>> and a name of an entity attribute (which value should be displayed in the field) as <<gui_attr_basic_property,property>>.
+
+* If the field is associated with an entity attribute, it will automatically take the appropriate form:
+
+** If the attribute has the `java.sql.Date` type or the `@Temporal(TemporalType.DATE)` annotation is specified, the time field will not be displayed. The date format is defined by the `date` <<datatype,datatype>> and is specified in the <<main_message_pack,main localized message pack>> in the `dateFormat` key.
+
+** Otherwise, the time field with hours and minutes will be displayed. The time format is defined by the `time` <<datatype,datatype>> and is specified in the main localized message pack in the `timeFormat` key.
+
+* You can change the date and time format using the `dateFormat` attribute. An attribute value can be either a format string itself or a key in a message pack (if the value starts with `msg://`).
++
+The format is defined by rules of the `SimpleDateFormat` class (http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html). If there are no `H` or `h` characters in the format, the time field will not be displayed. 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datefield_2.xml[]
+---- 
+
+image::gui_dateField_format.png[align="center"]
+
+* Date and time accuracy can be defined using a `resolution` attribute. An attribute value should match the `DateField.Resolution` enumeration − `SEC`, `MIN`, `HOUR`, `DAY`, `MONTH`, `YEAR`. Default is `MIN`, i.e., to within a minute.
++
+If `resolution="DAY"` and `dateFormat` is not specified, the format will be taken from one specified in the <<main_message_pack,main message pack>> with the `dateFormat` key.
++
+If `resolution="MIN"` and `dateFormat` is not specified, the format will be taken from one specified in the main message pack with the `dateTimeFormat` key. Below is a field definition for entering a date up to within a month. 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datefield_3.xml[]
+---- 
+
+image::gui_dateField_resolution.png[align="center"]
+
+* `DateField` can perform timestamp value conversions between server and user time zones if the user's <<timeZone,time zone>> is set by `setTimeZone()` method. The time zone is assigned automatically from the current <<userSession,user session>> when the component is bound to an entity attribute of the timestamp type. If the component is not bound to such attribute, you can call `setTimeZone()` in the screen controller to make the `DateField` perform required conversions..
+
+[WARNING]
+====
+`DateField` is primarily intended for quick input by filling placeholders from keyboard. Therefore the component supports only formats with digits and separators. Complex formats with textual representation of weekdays or months will not work.
+====
+
+`dateField` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_dateField_resolution,resolution>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_property,property>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_required,required>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_dateField_dateFormat,dateFormat>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_requiredMessage,requiredMessage>>| <<gui_attr_basic_width,width>>
+
+|===
+
+`dateField` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_validator,validator>>
+
+|===
+
+[[gui_Embedded]]
+====== Embedded
+
+`Embedded` component is intended for displaying images and embedding optional web pages into the screen.
+
+XML name of the component: `embedded`
+
+image::gui_Embedded_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*. *Desktop Client* supports image display only.
+
+Below is an example of using the component to display an image from a file located in <<file_storage,FileStorage>>. 
+
+* Declare the component in an XML screen descriptor: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/embedded_1.xml[]
+---- 
+
+* In a screen controller, inject the component itself, and the `FileStorageService` interface. In `init()` method, get the `FileDescriptor` passed from the calling code, upload the corresponding file as a byte array, create a `ByteArrayInputStream` for it, and pass it to the `setSource()` method of the component: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/embedded_2.java[]
+---- 
+
+Web Client allows image output from any files available to the Web Client block. Define the resource files directory in <<cuba.web.resourcesRoot,cuba.web.resourcesRoot>> application property, and specify the name of the file inside this directory for the `Embedded` component 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/embedded_3.java[]
+---- 
+
+Pass the URL to the component to embed an external web page into the screen: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/embedded_4.java[]
+---- 
+
+`embedded` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_id,id>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_FieldGroup]]
+====== FieldGroup
+
+`FieldGroup` is intended for the joint display and editing of multiple entity attributes. 
+
+image::gui_fieldGroup.png[align="center"]
+
+XML-name of the component: `fieldGroup`
+
+image::gui_FieldGroup_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+Below is an example of describing a group of fields in an XML screen descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_1.xml[]
+---- 
+
+In the example above, `dsContext` defines an `orderDs` <<datasources,data source>>, which contains a single instance of the `Order` entity. For the `fieldGroup` component, you should specify a data source in `datasource` attribute. Entity attributes containing in the data source, which you need to display, should be specified in `field` elements.
+
+`fieldGroup` elements:
+
+* `column` – optional element that allows you to position fields in multiple columns. For this purpose, `field` elements should be placed not immediately within `fieldGroup`, but within its `column`. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_2.xml[]
+---- 
++
+In this case, fields will be arranged in two columns; the first column will contain all fields with the width of `250px`, the second one with the width of `400px`.
++
+`column` may have the following attributes:
+
+** `width` – specifies the field width of a column. By default, fields have the width of `200px`. In this attribute, the width can be specified both in pixels and in percentage of the total horizontal width of the column.
+
+** `flex` – a number, which indicates the degree of horizontal change in the overall size of the column relative to other columns as a result of changing the entire width of `fieldGroup`. For example, you can specify `flex=1` for a column, and `flex=3` for another one. 
+
+** `id` – an optional column identifier, which allows you to refer to it in case of <<screen_extension,screen extension>>.
+
+* `field` – main component element. It describes one component field. 
++
+Attributes of `field`:
+
+** `id` – required attribute; it should contain either an entity attribute name, which is displayed in the field, or an arbitrary unique identifier of a programmatically defined field. In the latter case, `field` should have `custom="true"` as well (see below).
+
+** `caption` − allows you to specify a field caption. If not specified, an <<entity_localization,entity attribute localized name>> will be displayed.
+
+** `visible` − allows you to hide the field together with the caption.
+
+** `datasource` − allows you to specify a <<datasources,data source>> for the field, other than specified for the entire `fieldGroup` component. Thus, attributes of different entities can be displayed in a field group.
+
+** `optionsDatasource` specifies a name of a <<datasources,data source>>, used to create a list of options. You can specify this attribute for a field related to a reference entity attribute. By default, the selection of a related entity is made through a selection screen. If `optionsDatasource` is specified, you can select the related entity from a drop-down list of options. Actually, specifying `optionsDatasource` will lead to the fact that <<gui_LookupPickerField,LookupPickerField>> will be used in the field instead of <<gui_PickerField,PickerField>>.
+
+** `width` − allows you to specify the field width excluding caption. By default, the field width will be `200px`. The width can be specified both in pixels and in percentage of the total horizontal width of the column. To specify the width of all fields simultaneously, you can use the `width` attribute of `column`, described above.
+
+** `custom` – if set to `true`, it means that a field identifier does not refer to an entity attribute, and a component, which is in the field, will be set programmatically using `addCustomField()` method of `FieldGroup` (see below).
+
+** `link` - if set to `true`, allows displaying a link to an entity editor instead of an entity picker field (supported for *Web Client* only). Such behaviour may be required when the user should be able to view the related entity, but should not change the relationship.
+
+** `linkScreen` - contains the identifier of the screen that is opened by clicking the link, enabled in the `link` attribute.
+
+** `linkScreenOpenType` - sets the screen opening mode (`++THIS_TAB++`, `++NEW_TAB++` or `DIALOG`).
+
+** `linkInvoke` - contains the controller method to be invoked instead of opening the screen.
++
+The following attributes of `field` can be applied depending on an entity attribute type, which is displayed in the field:
+
+** If you specify a value of the `mask` attribute for a text entity attribute, <<gui_MaskedField,MaskedField>> with an appropriate mask will be used instead of <<gui_TextField,TextField>>. In this case, you can also specify the `valueMode` attribute.
+
+** If you specify a value of the `rows` attribute for a text entity attribute, <<gui_TextArea,TextArea>> with an appropriate number of rows will be used instead of <<gui_TextField,TextField>>. In this case, you can also specify the `cols` attribute.
+
+** For a text entity attribute, you can specify the `maxLength` attribute similarly to one described for <<gui_TextField,TextField>>.
+
+** For an entity attribute of the `date` or `dateTime` type, you can specify the `dateFormat` and `resolution` for the parameterization of the <<gui_DateField,DateField>> component located in the field.
+
+** For an entity attribute of the `time` type, you can specify the `showSeconds` attribute for the parameterization of the <<gui_TimeField,TimeField>> component located in the field.
+
+`fieldGroup` attributes:
+
+* The `border` attribute can be set either to `hidden` or `visible`. Default is `hidden`. If set to `visible`, the `fieldGroup` component is highlighted with a border. In the web implementation of the component, displaying a border is done by adding the `cuba-fieldgroup-border` CSS class. 
+
+Methods of the `FieldGroup` interface:
+
+* `addCustomField()` is used together with the `custom="true"` attribute of `field` and it allows you to set your own field view. It takes two parameters: field identifier specified in the `id` attribute of `field` and the implementation of the `FieldGroup.CustomFieldGenerator` interface.
++
+`generateField()` of the `CustomFieldGenerator` interface is invoked by `FieldGroup`. A <<datasources,data source>> and field identifier, for which this generator is registered, are passed into the method. The method should return a visual component (or container), which will be displayed in the field.
++
+Example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_3.java[]
+---- 
+
+* `getFieldComponent()` returns a visual component, which is located in a field with the specified identifier. This may be required for additional component parameterization, which is not available through XML attributes of `field` described above.
++
+To obtain a reference to a field component in a screen controller, you can use <<screen_controller_injection,injection>> instead of the explicit invocation of `getFieldComponent()`. To do this, use the `@Named` annotation with the indication of an identifier of `fieldGroup` and a field identifier after a dot. 
++
+For example, in the field to select a related entity, you can add an action to open an instance and remove the field cleaning action as follows: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_4.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_5.java[]
+---- 
++
+To use `getFieldComponent()` or to inject field components, you need to know which component type is located in the field. The table below shows the matching of entity attribute types and components created for them:
+
+[cols="3", frame="all"]
+|===
+
+| Entity attribute type| Additional conditions| Field component type
+
+| Related Entity| `optionsDatasource` is specified| <<gui_LookupPickerField,LookupPickerField>>
+
+| | <<gui_PickerField,PickerField>>
+
+| Enumeration (`enum`)| | <<gui_LookupField,LookupField>>
+
+| `string`| `mask` is specified| <<gui_MaskedField,MaskedField>>
+
+| `rows` is specified| <<gui_TextArea,TextArea>>
+
+| | <<gui_TextField,TextField>>
+
+| `boolean`| | <<gui_CheckBox,CheckBox>>
+
+| `date`, `dateTime`| | <<gui_DateField,DateField>>
+
+| `time`| | <<gui_TimeField,TimeField>>
+
+| `int`, `long`, `double`, `decimal`| | <<gui_TextField,TextField>>
+
+|===
+
+All `fieldGroup` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_fieldGroup_border,border>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_id,id>>
+
+| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+All `field` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_fieldGroup_field_caption,caption>>| <<gui_attr_basic_description,description>>| <<gui_attr_fieldGroup_linkScreen,linkScreen>>| <<gui_attr_dateField_resolution,resolution>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_fieldGroup_linkScreenOpenType,linkScreenOpenType>>| <<gui_attr_fieldGroup_field_rows,rows>>
+
+| <<gui_attr_textArea_cols_rows,cols>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_textField_maxLength,maxLength>>| <<gui_attr_timeField_showSeconds,showSeconds>>
+
+| <<gui_attr_fieldGroup_field_custom,custom>>| <<gui_attr_fieldGroup_field_id,id>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_dateField_dateFormat,dateFormat>>| <<gui_attr_fieldGroup_link,link>>| <<gui_attr_basic_required,required>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_fieldGroup_field_datasource,datasource>>| <<gui_attr_fieldGroup_linkInvoke,linkInvoke>>| <<gui_attr_basic_requiredMessage,requiredMessage>>
+
+|===
+
+`field` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_validator,validator>>
+
+|===
+
+`column` attributes:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_fieldGroup_flex,flex>>
+
+| <<gui_attr_fieldGroup_width,width>>
+
+|===
+
+[[gui_FileMultiUploadField]]
+====== FileMultiUploadField
+
+The `FileMultiUploadField` component allows a user to upload files to a server. The component is a button; when it is clicked, the screen will show a standard OS file picker window where you can select multiple files for upload.
+
+image::gui_multipleUpload.png[align="center"]
+
+XML name of the component: `multiUpload`.
+
+image::gui_FileMultiUploadField_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*. For the operation of component web version, a browser should support the Flash technology.
+
+* Declare the component in an XML screen descriptor: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/multiupload_1.xml[]
+---- 
+
+* In the screen controller, inject the component itself, and the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. Then, in `init()` add a listener to the component, which will react to successful upload events or errors: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/multiupload_2.java[]
+---- 
++
+The component will invoke `queueUploadComplete()` after uploading all selected files to a temporary storage of the client <<app_tiers,tier>>. At this point, by invoking `getUploadsMap()` you can get a map of temporary storage file identifiers to file names. Then, for each file, a corresponding `FileDescriptor` object is created based on this data. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
++
+`FileUploadingAPI.putFileIntoStorage()` is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object. 
++
+After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in a database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. In this case, `FileDescriptor` is simply stored in the database and gives access to the file through the *Administration* -&gt; *External Files* screen.
++
+After processing, the list of files should be cleared via the `clearUploads()` method in order to prepare for further uploads. 
+
+* Maximum upload size is determined by the <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> application property and is equal to 20Mb by default. If a user selects a file of a larger size, a corresponding message will be displayed and the upload will be interrupted.
+
+`multiUpload` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_FileUploadField]]
+====== FileUploadField
+
+The `FileUploadField` component allows a user to upload files to a server. The component is a button; when it is clicked, the screen will show a standard OS file picker window where you can select one file. To allow a user to upload multiple files, use <<gui_FileMultiUploadField,FileMultiUploadField>>. 
+
+image::gui_upload.png[align="center"]
+
+XML name of the component: `upload`.
+
+image::gui_FileUploadField_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*. 
+
+* Declare the component in an XML screen descriptor: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/upload_1.xml[]
+---- 
+
+* In the screen controller, inject the component itself, and the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. Then, in `init()` add a listener to the component, which will react on successful upload events or errors: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/upload_2.java[]
+---- 
++
+The component will invoke `uploadSucceeded()` after uploading the file to a temporary storage of the client <<app_tiers,tier>>. At this point, you can get component&rsquo;s `FileDescriptor` object, which corresponds to the uploaded file. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
++
+`FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client level storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object. Both of these parameters are provided by `FileUploadField`.
++
+After uploading the file to `FileStorage` the `FileDescriptor` instance is saved in a database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. In this case, `FileDescriptor` is simply stored in the database and gives access to the file through the *Administration* -&gt; *External Files* screen.
++
+`uploadFailed()` will be invoked by the `FileUploadField` component if an error occurs when uploading a file to the temporary storage of the client level.
+
+* Maximum upload size is determined by the <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> application property and is equal to 20Mb by default. If a user selects a file of a larger size, a corresponding message will be displayed and the upload will be interrupted.
+
+`upload` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_Filter]]
+====== Filter
+
+The `Filter` is a versatile tool for filtering lists of entities extracted from a database to display in a tabular form. The component enables quick data filtering by arbitrary conditions, as well as creating filters for repeated use.
+
+`Filter` should be connected to the <<datasources,collectionDatasource>> containing a JPQL <<datasource_query,query>>. Its logic is based on the modification of this query in accordance with criteria provided by the user. Thus, filtering is done at the database level on the execution of the query translated from JPQL to SQL, and only selected data is loaded to the Middleware and Client <<app_tiers,tiers>>.
+
+[[gui_Filter_use]]
+======= Using a Filter
+
+A typical filter is shown below:
+
+image::gui_filter_descr.png[align="center"]
+
+By default, the component is in quick filter mode. This means that a user can add a set of conditions for a one-off data search. After the screen is closed, the conditions will disappear.
+
+To create a quick filter, click *Add search condition* link. The condition selection screen will be displayed:
+
+image::gui_filter_conditions.png[align="center"]
+
+Possible condition types are described below:
+
+* *Attributes* – attributes of this entity and related entities. Only persistent attributes are displayed. They should also either be explicitly set in the `property` element of the filter XML descriptor, or comply with the rules specified in the `properties` element (see below).
+
+* *Custom conditions* – conditions specified by developer in the `custom` elements of the filter XML descriptor.
+
+* *Create new...* – allows creating a new arbitrary JPQL condition. This option is only available to users having the specific `cuba.gui.filter.customConditions` <<permissions,permission>>.
+
+Selected conditions are displayed at the top of the filter panel. The image:gui_filter_remove_condition.png[] icon will appear next to each condition field, allowing them to be removed from the set.
+
+Quick filters can be saved for further re-use. In order to save a quick filter, click the filter settings icon, select *Save/Save as* and provide a new filter name in the popup dialog:
+
+image::gui_filter_name.png[align="center"]
+
+After that, the filter will be saved and will appear in the drop-down menu of the *Search* button.
+
+image::gui_filter_reset.png[align="center"]
+
+The filter settings popup button provides the list of options for filter management:
+
+* Save – save changes to the current filter.
+
+* Save as – save the filter under a new name.
+
+* Edit – open the filter editor (see below).
+
+* Make default – make the filter default for this screen. The filter will be automatically displayed on the filter panel when the screen is opened.
+
+* Remove – delete the current filter.
+
+* Pin applied – use the results of the last search for sequential data filtering (see ).
+
+* Save as search folder – create a <<search_folder,search folder>> based on the current filter.
+
+* Save as application folder – create an <<search_folder,application folder>> based on the current filter. This option is available to users having the specific `cuba.gui.appFolder.global` permission only.
+
+The Edit option opens the filter editor, allowing advanced configuration of the current filter:
+
+image::gui_filter_editor.png[align="center"]
+
+Filter name should be provided in the *Name* field. This name will be displayed in available filters list for the current screen.
+
+Filter can be made _global_ (i.e., available for all users) using the *Available to all users* checkbox, or default using the *Default* checkbox.
+
+The filter conditions are contained in the tree. They can be added using the *Add* button, swapped using image:gui_filter_cond_down.png[]/image:gui_filter_cond_up.png[] or removed using the *Remove* button.
+
+AND or OR grouping conditions can be added with the help of the corresponding buttons. All top level conditions (i.e., without explicit grouping) are joined with AND.
+
+Selecting a condition in the tree opens the list of its properties in the right part of the editor.
+
+The conditions can be made hidden or required by means of corresponding checkboxes. The hidden condition parameter is invisible to the user, so it should be provided when the filter is being edited.
+
+*Width* property allows selecting the width of the parameter field on the filter panel for the current condition. By default, conditions on the filter panel are displayed in three columns. The field width equals to the number of columns it will occupy (1, 2 or 3).
+
+Default parameter value for the current condition can be selected in the *Default value* field.
+
+A custom caption for filter condition can be provided in the *Caption* field.
+
+*Operation* field allows selecting the condition operator. The list of available operators depends on the attribute type.
+
+[WARNING]
+====
+If filter has not been previously saved, clicking *OK* in the filter editor saves the changes to the filter only for the current search. In order to keep them for further use, click the *Options* button and *Save/Save as*. Otherwise, all changes will disappear once the screen is closed.
+====
+
+[[gui_Filter_component]]
+======= Filter Component
+
+XML name of the component: `filter`.
+
+image::gui_filter_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+An example of component declaration in XML screen descriptor is shown below: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/filter_1.xml[]
+---- 
+
+In the example above, a `collectionDatasource` is defined in the `dsContext`. The datasource selects `Car` entity instances using JPQL query. The datasource which is to be filtered is specified in the `filter` component&rsquo;s `datasource` attribute. Data is displayed using the <<gui_Table,Table>> component, which is connected to the same data source.
+
+`filter` may contain nested elements. They describe conditions available for user selection in *Add Condition* dialog:
+
+* `properties` – multiple entity attributes can be made available for selection. This element has the following attributes:
+
+** `include` – required attribute. It contains a regular expression, which should match an entity attribute name.
+
+** `exclude` – contains a regular expression. If an attribute matches the expression, it will be excluded from previously included (using `include`).
++
+Example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/filter_2.xml[]
+---- 
++
+The following entity attributes are ignored when `properties` element is used:
+
+** Collections (`@OneToMany`, `@ManyToMany`).
+
+** Attributes which do not have <<entity_localization,localized names>>.
+
+** The `version` attribute.
+
+* `property` – explicitly includes an entity attribute by name. This element has the following attributes:
+
+** `name` – rrequired attribute, containing the name of entity attribute to be included. It can be a path (using ".") in the entity graph. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/filter_3.xml[]
+---- 
+
+** `caption` – localized entity attribute name displayed in filter conditions. Generally it is a string with the `msg://` prefix in accordance with <<messageTools.loadString,MessageTools.loadString>>() rules. 
++
+If the `name` attribute is specified as an entity graph path (using ".") , the `caption` attribute is required.
+
+** `paramWhere` − specifies the JPQL expression which is used to select the list of condition parameter values if the parameter is a related entity. The `{E}` placeholder should be used in the expression instead of the alias of the entity being selected.
++
+For example, let us assume that `Car` has a reference to `Model`. Then possible condition parameter values list can be limited to Audi models only: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/filter_4.xml[]
+---- 
++
+Screen parameters, session attributes and screen components including those showing other parameters can be used in JPQL expression. Query parameters specification rules are described in . 
++
+An example of session and screen parameters usage is shown below: 
++
+[source]
+----
+{E}.createdBy = :session$userLogin and {E}.name like :param$groupName
+---- 
++
+With the `paramWhere` clause, you can introduce dependencies between parameters. For example, let us assume that `Manufacturer` is a separate entity. That is `Car` has a reference to `Model` which in turn has a reference to `Manufacturer`. Then you may want to create two conditions for the Cars filter: first to select a Manufacturer and second to select a Model. To restrict the list of models by previously selected manufacturer, add a parameter to the `paramWhere` expression: 
++
+[source]
+----
+{E}.manufacturer.id = :component$filter.model_manufacturer90062
+---- 
++
+The parameter references a component which displays Manufacturer parameter. You can see the name of the component showing condition parameter by opening context menu on a condition table row in the filter editor:
+
+image::gui_filter_component_name.png[align="center"]
+
+** `paramView` − specifies a <<views,view>>, which will be used to load the list of condition parameter values if the parameter is a related entity. For example, `++_local++`. If view is not specified, `++_minimal++` view will be used.
+
+* `custom` – the element defining an arbitrary condition. The element content should be a JPQL expression (<<jpql_macro,JPQL Macros>> can be used), which will be added to the data source query's `where` clause. The `{E}` placeholder should be used in the expression instead of the alias of the entity being selected. The condition can only have one parameter denoted by "?" if used.
++
+An example of a filter with arbitrary conditions is shown below: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/filter_5.xml[]
+---- 
++
+`custom` conditions are displayed in the *Custom conditions* section of the *Add condition* dialog:
++
+image::gui_filter_custom.png[align="center"]
++
+`custom` attributes:
+
+** `name` − required attribute, condition name.
+
+** `caption` − required attribute, localized condition name. Generally it is a string with the `msg://` prefix in accordance with <<messageTools.loadString,MessageTools.loadString()>> rules.
+
+** `paramClass` − Java class of the condition parameter. If the parameter is not specified, this attribute is optional.
+
+** `inExpr` − should be set to `true`, if the JPQL expression contains `in (?)` conditions. In this case user will be able to enter several condition parameter values.
+
+** `join` − optional attribute. It specifies a string, which will be added to the data source query `from` section. This can be required to create a complex condition based on an attribute of a related collection. `join` or `left join` statements should be included into the attribute value. 
++
+For example, let us assume that the `Car` entity has a `repairs` attribute, which is a related entity `Repair` instances collection. Then the following condition can be created to filter `Car` by `Repair` entity's `description` attribute: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/filter_6.xml[]
+---- 
++
+If the condition above is used, the original data source query 
++
+[source]
+----
+select c from sample$Car c order by c.createTs
+----
+
+will be transformed into the following one:
++
+[source]
+----
+select c from sample$Car c join c.repairs cr
+where (cr.description like ?)
+order by c.createTs
+----
+
+** `paramWhere` − specifies a JPQL expression used to select the list of condition parameter values if the parameter is a related entity. See the description of the `property` element's attribute of the same name.
+
+** `paramView` − specifies a <<views,view>>, which will be used when a list of condition parameter values are loaded if the parameter is a related entity. For example, `++_local++`. If it is not specified, `++_minimal++` view will be used.
+
+`filter` attributes:
+
+* `editable` – if the attribute value is `false`, the *Edit* option is disabled.
+
+* `required` – if the attribute value is `true`, user should select one of available filters. If no default filter is set for the screen, the first created filter will be automatically selected in the filter list.
+
+* `manualApplyRequired` − defines when the filter will be applied. If the attribute value is `false`, the filter will be applied when the screen is opened. If the value is `true`, the filter will be applied only after the *Apply* button is clicked. This attribute takes precedence over the <<cuba.gui.genericFilterManualApplyRequired,cuba.gui.genericFilterManualApplyRequired>> application property.
+
+*  `useMaxResults` − limits the page size of entity instances loaded into the data source. It is set to `true` by default. 
++
+If the attribute value is `false`, the filter will not show the *Show rows* field. The number of records in the data source (and displayed in the table accordingly) will be limited only by the `MaxFetchUI` parameter of the<<entity_statistics,entity statistics>>, which is set to 10000 by default. 
++
+If the attribute is not specified or is`true`, the *Show rows* field will be displayed only if the user has specific `cuba.gui.filter.maxResults` <<permissions,permission>>. If the `cuba.gui.filter.maxResults` permission is not granted, the filter will force selecting only the first N rows without user to be able to disable it or specify another N. N is defined by `FetchUI`, `DefaultFetchUI` parameters. They are obtained from the <<entity_statistics,entity statistics>> mechanism. 
++
+A filter shown below has the following parameters: `useMaxResults="true"`, specific permission is denied, and `cuba.gui.filter.maxResults` `DefaultFetchUI = 2.`
+
+image::gui_filter_useMaxRezult.png[align="center"]
+
+* `textMaxResults` - enables using the text field instead of the drop-down list as the *Show rows* field. `false` by default.
+
+* `folderActionsEnabled` − if it is set to `false`, the following filter actions will be hidden: *Save as Search Folder*, *Save as Application Folder*. By default, the attribute value is `true`, and *Save as Search Folder*, *Save as Application Folder* are available.
+
+* `applyTo` − optional attribute, contains the identifier of a component associated with the filter. It is used when access to related component views is required. For example, when saving the filter as a <<search_folder,search folder>> or as an <<application_folder,application folder>>, the view that will be applied when browsing this folder can be specified.
+
+image::gui_filter_apply_to.png[align="center"]
+
+* `caption` - allows setting a custom caption for the filter panel.
+
+* `columnsQty` - defines the number of columns for conditions on the filter panel. Default value is 3.
+
+All `filter` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_filter_applyTo,applyTo>>| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_filter_folderActionsEnabled,folderActionsEnabled>>| <<gui_attr_basic_margin,margin>>
+
+| <<gui_attr_filter_panel_caption,caption>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_id,id>>| <<gui_attr_filter_required,required>>
+
+| <<gui_attr_filter_columnsQty,columnsQty>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_filter_manualApplyRequired,manualApplyRequired>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_filter_useMaxResults,useMaxResults>>| <<gui_attr_basic_visible,visible>>
+
+|===
+
+`filter` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_filter_custom,custom>>
+
+| <<gui_element_filter_properties,properties>>
+
+| <<gui_element_filter_property,property>>
+
+|===
+
+`properties` attributes:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_filter_exclude,exclude>>
+
+| <<gui_attr_filter_include,include>>
+
+|===
+
+`property` attributes:
+
+[cols="2", frame="none"]
+|===
+
+| <<gui_attr_filter_caption,caption>>| <<gui_attr_filter_paramView,paramView>>
+
+| <<gui_attr_filter_name,name>>| <<gui_attr_filter_paramWhere,paramWhere>>
+
+|===
+
+`custom` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_filter_custom_caption,caption>>| <<gui_attr_filter_custom_name,name>>| <<gui_attr_filter_paramWhere,paramWhere>>
+
+| <<gui_attr_filter_custom_inExpr,inExpr>>| <<gui_attr_filter_custom_paramClass,paramClass>>
+
+| <<gui_attr_filter_custom_join,join>>| <<gui_attr_filter_paramView,paramView>>
+
+|===
+
+[[gui_Filter_permissions]]
+======= User Permissions
+
+* o	To create/change/delete global (available to all users) filters, user must have the `cuba.gui.filter.global` <<permissions,permission>>.
+
+* To create/change `custom` conditions user must have a `cuba.gui.filter.customConditions` permission.
+
+* To change the maximum number of rows per table page using the *Show rows* field, user must have the `cuba.gui.filter.maxResults` permission. See also the <<gui_attr_filter_useMaxResults,useMaxResults>> filter attribute.
+
+For specific permissions configuration information, see .
+
+[[gui_Filter_ext_params]]
+======= External Filter Control Parameters
+
+*System-wide parameters*
+
+The following application properties affect filter behavior:
+
+* <<cuba.gui.genericFilterManualApplyRequired,cuba.gui.genericFilterManualApplyRequired>> − disables automatic applying of the filter (i.e., data loading) when the screen is opened.
+
+* <<cuba.gui.genericFilterChecking,cuba.gui.genericFilterChecking>> − enables the check that at least one condition is filled before applying the filter.
+
+* <<cuba.gui.genericFilterControlsLayout,cuba.gui.genericFilterControlsLayout>> − defines an internal layout of the filter controls.
+
+* <<cuba.allowQueryFromSelected,cuba.allowQueryFromSelected>> enables <<sequential_filter_para,sequential filters application>> mechanism.
+
+* <<cuba.cuba.gui.genericFilterColumnsQty,cuba.gui.genericFilterColumnsQty>> - sets the default number of columns for placing conditions on the filter panel.
+
+* <<cuba.gui.genericFilterConditionsLocation,cuba.gui.genericFilterConditionsLocation>> - defines the location of the conditions panel.
+
+* <<cuba.gui.genericFilterPopupListSize,cuba.gui.genericFilterPopupListSize>> - defines the maximum number of items displayed in the popup list of the *Search* button.
+
+*Screen invocation parameters *
+
+It is possible to specify the filter and parameters which should be applied when the screen is opened. For this purpose, the filter should be created in advance, stored in the database, and a corresponding entry in the *SEC_FILTER* table should have the *CODE* field set.
+
+To specify a filter code, pass to the screen a parameter with the same name as filter component identifier in this screen . Parameter value should be the code of the filter, which should be set and applied.
+
+To set filter parameter values, passed to the screen parameters with the names equal to parameter names and their values in string format.
+
+An example of main menu item descriptor is shown below. It sets a filter with the FilterByVIN code to the `carsFilter` component of the `sample$Car.browse` screen which it opens. It also sets TMA value to the $carsFilter.vin79216 condition: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/filter_ext_param_1.xml[]
+---- 
+
+It should be noted that that a filter with a defined *CODE* field has some specifics:
+
+* It cannot be edited by users.
+
+* This filter name can be displayed in several languages. To achieve this, specify a string with key equal to the filter code in the application <<main_message_pack,main message pack>>.
+
+[[sequential_filter]]
+======= Applying Filters Sequentially
+
+*Applying Filters Sequentially*
+
+If the <<cuba.allowQueryFromSelected,cuba.allowQueryFromSelected>> application property is enabled, the last applied filter and the current filtered results can be pinned via the component's user interface. After that another filter or other parameters of the current filter can be selected and applied to the currently selected records.
+
+This approach helps to achieve two aims:
+
+* Decompose complex filters, which may lead to better performance as well.
+
+* Apply filters to the records selected using <<application_folder,application>> or <<search_folder,search>> folders.
+
+Take the following steps to use sequential filters. First, choose and apply one of the filters. Next click the filter settings button and select *Pin applied*. The filter will be pinned at the top of the filter panel. Then another filter can be applied to the selected records and so on. Any number of filters can be applied sequentially. Filters can also be removed using image:gui_filter_remove.png[].
+
+image::gui_filter_sequential.png[align="center"]
+
+The sequential filters implementation is based on the ability of <<dataManager,DataManager>> to run <<query_from_selected,sequential queries>>.
+
+[[gui_GroupTable]]
+====== GroupTable
+
+`GroupTable` component is a table with an ability to group information dynamically by any field. In order to group a table by a column the required column should be dragged to the left and dropped on the image:gui_groupTableIcon.png[] element of the table header. Grouped values can be expanded and collapsed using image:gui_groupBox_plus.png[]/image:gui_groupBox_minus.png[].
+
+image::gui_groupTableDragColumn.png[align="center"]
+
+XML name of the component: `groupTable`.
+
+image::gui_GroupTable_dia.png[align="center"]
+
+Component is implemented only for *Web Client*. In *Desktop Client* it behaves like a regular table.
+
+<<datasources,groupDatasource>> must be specified for `GroupTable` in the `datasource` attribute of the `rows` element. Otherwise, grouping will not work. Example:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/grouptable_1.xml[]
+---- 
+
+`group` is an optional element that can be present in a single instance inside <<gui_element_table_columns,columns>>. It contains a set of `column` elements, by which grouping will be performed initially when opening a screen.
+
+If `aggregatable` attribute is `true`, the table shows aggregation results for each group and results for all rows in an additional row on the top. If `showTotalAggregation` attribute is `false`, results for all rows are not shown.
+
+The rest of the `GroupTable` functionality is similar to a simple <<gui_Table,Table>>.
+
+`groupTable` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_table_allowPopupMenu,allowPopupMenu>>| <<gui_attr_basic_height,height>>| <<gui_attr_table_reorderingAllowed,reorderingAllowed>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_table_columnControlVisible,columnControlVisible>>| <<gui_attr_basic_id,id>>| <<gui_attr_table_sortable,sortable>>
+
+| <<gui_attr_basic_editable,editable>>| <<gui_attr_table_multiselect,multiselect>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_table_presentations,presentations>>| <<gui_attr_basic_visible,visible>>
+
+|===
+
+`groupTable` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_table_actions,actions>>
+
+| <<gui_ButtonsPanel,buttonsPanel>>
+
+| <<gui_element_table_columns,columns>>
+
+| <<gui_element_table_rows,rows>>
+
+| <<gui_attr_table_rowsCount,rowsCount>>
+
+|===
+
+`columns` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_table_columns,column>>
+
+| <<gui_element_groupTable_group,group>>
+
+|===
+
+<<gui_element_table_columns,column>> attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_table_column_caption,caption>>| <<gui_attr_dateField_dateFormat,dateFormat>>| <<gui_attr_dateField_resolution,resolution>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_table_column_editable,editable>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_clickAction,clickAction>>| <<gui_attr_table_column_id,id>>| <<gui_attr_table_column_width,width>>
+
+| <<gui_attr_table_column_collapsed,collapsed>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>
+
+|===
+
+<<gui_element_table_columns,column>> elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_formatter,formatter>>
+
+|===
+
+<<gui_element_table_rows,rows>> attributes:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_basic_datasource,datasource>>
+
+|===
+
+[[gui_Label]]
+====== Label
+
+`Label` is a text component that displays static text or value of entity attribute.
+
+XML name of the component: `label`
+
+image::gui_label_dia.png[align="center"]
+
+The `Label` component is implemented for *Web Client* and *Desktop Client*.
+
+Below is an example of setting a label with text taken from the <<message_packs,localized message pack>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/label_1.xml[]
+---- 
+
+The `value` attribute sets text for a label.
+
+In a web client, the text contained in `value` will be split into multiple lines if its length exceeds the <<gui_attr_basic_width,width>> value. Therefore, to display a multiline label, it is sufficient to specify an absolute value of <<gui_attr_basic_width,width>>. If the label text is too long and the value of <<gui_attr_basic_width,width>> is not specified, the text will be truncated. 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/label_2.xml[]
+---- 
+
+You can set label parameters in the screen controller. To do this, you should specify a component identifier to get a reference to it in the controller: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/label_3.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/label_4.java[]
+---- 
+
+The `Label` component can display value of an entity attribute. For this purpose, <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> attributes are used. For example: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/label_5.xml[]
+---- 
+
+In the example above, component displays the `name` attribute of the `Customer` entity located in the `customerDs` data source.
+
+`htmlEnabled` attribute indicates the way the <<gui_attr_label_value,value>> attribute will be interpreted: if `htmlEnabled="true"`, the attribute will be treated as HTML code, otherwise as string. Note that the desktop implementation of the screen will not support all `html` tags.
+
+`label` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_label_htmlEnabled,htmlEnabled>>| <<gui_attr_label_value,value>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_property,property>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+`label` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_formatter,formatter>>
+
+|===
+
+[[gui_Link]]
+====== Link
+
+`Link` is a hyperlink, which allows uniform opening of external web resources for the Web and Desktop client. 
+
+XML-name of the component: `link`
+
+image::gui_link_dia.png[align="center"]
+
+An example of XML-description for `link`: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/link_1.xml[]
+---- 
+
+`link` attributes:
+
+* `url` – the URL of the web resource.
+
+* `target` – sets the web page opening mode for the Web Client, similar to the `target` attribute of the `&lt;a&gt;` HTML element.
+
+Additional `link` attributes: <<gui_attr_basic_align,align>> | <<gui_attr_basic_caption,caption>> | <<gui_attr_basic_description,description>> | <<gui_attr_basic_enable,enable>> | <<gui_attr_basic_id,id>> | <<gui_attr_basic_icon,icon>> | <<gui_attr_basic_stylename,stylename>> | <<gui_attr_basic_visible,visible>> | <<gui_attr_basic_width,width>> 
+
+[[gui_LinkButton]]
+====== LinkButton
+
+`LinkButton` is a button that looks like a hyperlink.
+
+XML name of the component: `linkButton`
+
+image::gui_linkButton_dia.png[align="center"]
+
+The link button component is implemented for *Web Client* and *Desktop Client*.
+
+The link button can contain text or icon (or both). The figure below shows different types of buttons.
+
+image::gui_linkButtonTypes.png[]
+
+The link button differs from regular `Button` only in its appearance. All properties and behavior are identical to those described for <<gui_Button,Button>>.
+
+Below is an example of XML description of a link button that invokes the `someMethod()` method of a controller with caption (the <<gui_attr_basic_caption,caption>> attribute), tooltip (the <<gui_attr_basic_description,description>> attribute) and icon (the <<gui_attr_basic_icon,icon>> attribute): 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/linkbutton_1.xml[]
+---- 
+
+`linkButton` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_button_action,action>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_icon,icon>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_button_invoke,invoke>>
+
+|===
+
+[[gui_LookupField]]
+====== LookupField
+
+This is a component to select a value from drop-down list. Drop-down list provides the filtering of values as the user inputs some text, and the pagination of available values.
+
+image::gui_lookupField.png[align="center"]
+
+XML name of the component: `lookupField`.
+
+image::gui_LookupField_dia.png[align="center"]
+
+The `LookupField` component is implemented for *Web Client* and *Desktop Client*.
+
+* The simplest case of using `LookupField` is to select an enumeration value for an entity attribute. For example, a `Role` entity has a `type` attribute of the `RoleType` type, which is an enumeration. Then you can use `LookupField` to edit this attribute as follows: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_1.xml[]
+---- 
++
+In the example above, the screen defines `roleDs` <<datasources,data source>> for the `Role` entity. In the `lookupField` component, you should specify a link to a data source in the <<gui_attr_basic_datasource,datasource>> attribute, and a name of an entity attribute, which value should be displayed in the <<gui_attr_basic_property,property>> attribute. In this case, the attribute is an enumeration and the drop-down list will display <<enum_localization,localized names>> of all enumeration values.
+
+* Similarly, `LookupField` can be used to select an instance of a related entity. <<gui_attr_basic_optionsDatasource,optionsDatasource>> attribute is used to create a list of options: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_2.xml[]
+---- 
++
+In this case, the component will display <<namePattern,instance names>> of the `Colour` entity located in the `colorsDs` data source, and the selected value will be put into the `colour` attribute of the `Car` entity, which is located in the `carDs` data source.
++
+<<gui_attr_basic_captionProperty,captionProperty>> attribute defines which entity attribute can be used instead of an instance name for string option names.
+
+* The list of component options can be specified arbitrarily using `setOptionsList()` and `setOptionsMap()`, or using an XML `optionsDatasource` attribute.
+
+** `setOptionsList()` allows you to programmatically specify a list of component options. To do this, declare a component in the XML descriptor: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_3.xml[]
+---- 
++
+Then inject the component into the controller and specify a list of options in the `init()` method: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_4.java[]
+---- 
++
+In the dropdown list of the component values 2, 4, 5 and 7 will be displayed. Selected number will be put into the `numberOfSeats` attribute of an entity located in the `modelDs` data source.
+
+** `setOptionsMap()` allows you to specify string names and option values separately. For example, in the `numberOfSeatsField` component in the XML descriptor, specify an option map in `init()`: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_5.java[]
+---- 
++
+In the drop down list of the component, two, four, five, seven strings will be displayed. However, the value of the component will be a number that corresponds to the selected row. It will be put into the `numberOfSeats` attribute of an entity located in the `modelDs` data source.
+
+* Using the `filterMode` attribute, option filtering type can be defined for the user input:
+
+** `NO` − no filtering.
+
+** `++STARTS_WITH++` − by the beginning of a phrase.
+
+** `CONTAINS` − by any occurrence (is used by default).
+
+* If the `LookupField` component has no <<gui_attr_basic_required,required>> attribute to set up and if the related entity attribute is not declared as required, the list of component options has an empty row. If this row is selected, the component returns `null`. The <<gui_attr_nullName,nullName>> attribute allows you to specify a row to be displayed in this case instead of an empty one. Below is an example of use: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_6.xml[]
+---- 
++
+In this case, instead of an empty row, (none) will be displayed. If this row is selected, `null` will be put into a related entity attribute.
++
+If you specify a list of options programmatically using `setOptionsList()` , you can pass one of the options into `setNullOption()` method. Then, if the user selects it, the component value will be `null`.
+
+* The `LookupField` component is able to handle user input if there is no suitable option in the list. In this case, `setNewOptionAllowed()` and `setNewOptionHandler()` are used. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_7.java[]
+---- 
++
+The `NewOptionHandler` handler is invoked if the user enters a value that does not coincide with any option and presses Enter. In this case, a new `Colour` entity instance is created in the handler, its `name` attribute is set to the value entered by the user, this instance is added to an option data source and selected in the component.
+
+Instead of implementing the `LookupField.NewOptionHandler` interface for processing user input, the controller method name can be specified in the `newOptionHandler` XML-attribute. This method should have two parameters, one of `LookupField`, and the other of `String` type. They will be set to the component instance and the value entered by the user, accordingly.
+
+`lookupField` attributes: 
+
+<<gui_attr_basic_align,align>> | <<gui_attr_basic_caption,caption>> | <<gui_attr_basic_captionProperty,captionProperty>> | <<gui_attr_basic_datasource,datasource>> | <<gui_attr_basic_description,description>> | <<gui_attr_basic_editable,editable>> | <<gui_attr_basic_enable,enable>> | <<gui_attr_lookupField_filterMode,filterMode>> | <<gui_attr_basic_height,height>> | <<gui_attr_basic_id,id>> | <<gui_attr_basic_inputPrompt,inputPrompt>> | <<gui_attr_newOptionHandler,newOptionHandler>> | <<gui_attr_nullName,nullName>> | <<gui_attr_basic_optionsDatasource,optionsDatasource>> | <<gui_attr_basic_property,property>> | <<gui_attr_basic_required,required>> | <<gui_attr_basic_requiredMessage,requiredMessage>> | <<gui_attr_basic_stylename,stylename>> | <<gui_attr_basic_visible,visible>> | <<gui_attr_basic_width,width>>
+
+`lookupField` elements:
+
+<<gui_validator,validator>>
+
+[[gui_LookupPickerField]]
+====== LookupPickerField
+
+The `LookupPickerField` component enables to display an entity instance in a text field, select an instance in a drop-down list and perform actions by pressing buttons on the right.
+
+image::gui_lookupPickerField.png[align="center"]
+
+XML name of the component: `lookupPickerField`.
+
+image::gui_LookupPickerField_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+In fact `LookupPickerField` is a hybrid of <<gui_LookupField,LookupField>> and <<gui_PickerField,PickerField>>. Thus it has the same features except the default list of actions added when determining the component in XML: for `LookupPickerField` these are `lookup` image:lookupBtn.png[] and `open` image:openBtn.png[] actions.
+
+Below is an example of using `LookupPickerField` to select a value of the `colour` reference attribute of the `Car` entity: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookuppickerfield_1.xml[]
+---- 
+
+`lookupPickerField` attributes: 
+
+<<gui_attr_basic_align,align>> | <<gui_attr_basic_caption,caption>> | <<gui_attr_basic_captionProperty,captionProperty>> | <<gui_attr_basic_datasource,datasource>> | <<gui_attr_basic_description,description>> | <<gui_attr_basic_editable,editable>> | <<gui_attr_basic_enable,enable>> | <<gui_attr_lookupField_filterMode,filterMode>> | <<gui_attr_basic_height,height>> | <<gui_attr_basic_id,id>> | <<gui_attr_basic_inputPrompt,inputPrompt>> | <<gui_attr_pickerField_metaclass,metaClass>> | <<gui_attr_nullName,nullName>> | <<gui_attr_basic_optionsDatasource,optionsDatasource>> | <<gui_attr_basic_property,property>> | <<gui_attr_basic_required,required>> | <<gui_attr_basic_requiredMessage,requiredMessage>> | <<gui_attr_basic_stylename,stylename>> | <<gui_attr_basic_visible,visible>> | <<gui_attr_basic_width,width>>
+
+`lookupPickerField` elements:
+
+<<gui_Action,actions>> | <<gui_validator,validator>>
+
+[[gui_MaskedField]]
+====== MaskedField
+
+This is a text field, in which data is entered in a predefined format. For example, it is convenient to use `MaskedField` to enter telephone numbers. 
+
+XML name of the component: `maskedField`.
+
+image::gui_MaskedField_dia.png[align="center"]
+
+The `MaskedField` component is implemented for *Web Client* only.
+
+Basically, `MaskedField` repeats the functionality of <<gui_TextField,TextField>>, except that you cannot set `datatype` for it. So, `MaskedField` is intended for work only with text and string entity attributes. `MaskedField` has the following specific attributes:
+
+* `mask` – sets a mask for the field. To set a mask, use the following characters:
+
+** `#` – number
+
+** `U` – uppercase letter
+
+** `L` – lowercase letter
+
+** `?` – letter
+
+** `А` – letter or number
+
+** `*` – any character
+
+** `H` – uppercase hex character
+
+** `H` – lowercase hex character
+
+** `~` – " +" or "-" character
+
+* `valueMode` – defines a format of a returned value (with a mask or not) and can take either `masked` or `clear`.
+
+Example of a text field with a mask for entering telephone numbers is provided below: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/maskedfield_1.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/maskedfield_2.java[]
+---- 
+
+image::gui_MaskedField.png[align="center"]
+
+image::gui_MaskedField_maskedValueMode.png[align="center"]
+
+`maskedField` attributes:
+
+[cols="5", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_maskedField_mask,mask>>| <<gui_attr_basic_requiredMessage,requiredMessage>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_textField_maxLength,maxLength>>| <<gui_attr_basic_stylename,stylename>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_property,property>>| <<gui_attr_textField_trim,trim>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_required,required>>| <<gui_attr_maskedField_valueMode,valueMode>>
+
+|===
+
+`maskedField` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_validator,validator>>
+
+|===
+
+[[gui_OptionsGroup]]
+====== OptionsGroup
+
+This is a component that allows you to choose from a list of options using radio buttons to choose a single value or a checkbox group to select several values.
+
+image::gui_optionsGroup.png[align="center"]
+
+XML name of the component: `optionsGroup`.
+
+image::gui_OptionsGroup_dia.png[align="center"]
+
+The `OptionsGroup` component is implemented for *Web Client* and *Desktop Client*.
+
+* The simplest case of using `OptionsGroup` is to select an enumeration value for an entity attribute. For example, a `Role` entity has `type` attribute of the `RoleType` type, which is an enumeration. Then you can use `OptionsGroup` to edit this attribute as follows: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/optionsgroup_1.xml[]
+---- 
++
+In the example above `roleDs` <<datasources,data source>> is defined for the `Role` entity. In the `optionsGroup` component, you should specify link to a data source in the <<gui_attr_basic_datasource,datasource>> attribute and a name of an entity attribute, which value should be displayed, in the <<gui_attr_basic_property,property>> attribute.
++
+As a result, the component will be as follows:
+
+image::gui_optionsGroup_roleType.png[align="center"]
+
+* The list of component options can be specified arbitrarily using `setOptionsList()` and `setOptionsMap()`, or using an `optionsDatasource` attribute.
+
+** `setOptionsList()` allows you to specify programmatically a list of component options. To do this, declare a component in the XML descriptor: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/optionsgroup_2.xml[]
+---- 
++
+Then inject the component into the controller and specify a list of options in the `init()` method: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/optionsgroup_3.java[]
+---- 
++
+The component will be as follows:
+
+image::gui_optionsGroup_integerList.png[align="center"]
++
+Depending on the selected option, the `getValue()` method of the component will return `Integer` values: 2, 4, 5, 7.
+
+** `setOptionsMap()` allows you to specify string names and option values separately. For example, we can set the following options map for the `numberOfSeatsField` component, described the XML descriptor, in the `init()` method of the controller: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/optionsgroup_4.java[]
+---- 
++
+The component will be as follows:
+
+image::gui_optionsGroup_integerMap.png[align="center"]
++
+Depending on the selected option, the `getValue()` method of the component will return `Integer` values: 2, 4, 5, 7, and not the strings that are displayed on the screen.
+
+** The component can take a list of options from a data source. For this purpose, the <<gui_attr_basic_optionsDatasource,optionsDatasource>> attribute is used. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/optionsgroup_5.xml[]
+---- 
++
+In this case, the `coloursField` component will display <<namePattern,instance names>> of the `Colour` entity, located in the `coloursDs` data source, and its `getValue()` method will return the selected entity instance.
++
+With the help of <<gui_attr_basic_captionProperty,captionProperty>> attribute entity attribute to be used instead of an instance name for string option names can be defined.
+
+* `multiselect` attribute is used to switch `OptionsGroup` to a multiple choice mode. If `multiselect` is turned on, the component is displayed as a group of independent checkboxes, and the component value is a list of selected options.
++
+For example, if we create the component in the XML screen descriptor: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/optionsgroup_6.xml[]
+---- 
++
+and set a list of options for it – `RoleType` enumeration values: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/optionsgroup_7.java[]
+---- 
++
+then the component will be as follows:
+
+image::gui_optionsGroup_roleType_multi.png[align="center"]
++
+In this case the `getValue()` method of the component will return a `java.util.List`, containing `RoleType.READONLY` and `RoleType.DENYING` values.
++
+The example above also illustrates an ability of the `OptionsGroup` component to display localized values of enumerations included in the data model.
+
+* The `orientation` attribute defines the orientation of group elements. By default, elements are arranged vertically. The `horizontal` value sets the horizontal orientation.
+
+`optionsGroup` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_optionsGroup_orientation,orientation>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_property,property>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_required,required>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_optionsGroup_multiselect,multiselect>>| <<gui_attr_basic_requiredMessage,requiredMessage>>
+
+|===
+
+`optionsGroup` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_validator,validator>>
+
+|===
+
+[[gui_PasswordField]]
+====== PasswordField
+
+This is a text field that displays echo characters instead of those entered by a user.
+
+XML name of the component: `passwordField`.
+
+image::gui_PasswordField_dia.png[align="center"]
+
+`PasswordField` is implemented for *Web Client* and *Desktop Client*.
+
+Basically, `PasswordField` is similar to <<gui_TextField,TextField>> apart from the ability to set `datatype`. `PasswordField` is intended to work with text and string entity attributes only.
+
+Example:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/passwordfield_1.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/passwordfield_2.java[]
+----
+
+image::gui_passwordField.png[align="center"]
+
+`passwordField` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_textField_maxLength,maxLength>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_property,property>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_required,required>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_requiredMessage,requiredMessage>>
+
+|===
+
+`passwordField` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_validator,validator>>
+
+|===
+
+[[gui_PickerField]]
+====== PickerField
+
+The input field with additional action buttons (`PickerField`) allows you to display an entity instance in a text field and perform actions by clicking buttons on the right.
+
+image::PickerField.png[align="center"]
+
+XML name of the component: `pickerField`.
+
+image::gui_pickerField_dia.png[align="center"]
+
+The `PickerField` component is implemented for *Web Client* and *Desktop Client*.
+
+* As a rule, `PickerField` is used for reference entity attributes. It is sufficient to specify <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> attributes for the component: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_1.xml[]
+---- 
++
+In the example above, the screen defines `carDs` <<datasources,data source>> for a `Car` entity having the `colour` attribute. In the `pickerField` element, you should specify a link to a data source in the `datasource` attribute, and a name of an entity attribute, the value of which should be displayed in the component – in the `property` attribute. The entity attribute should refer to another entity, in the example above it is `Colour`.
+
+* For `PickerField`, you can define an arbitrary number of <<gui_Action,actions>>, displayed as buttons on the right. It can be done either in the XML descriptor using the `actions` nested element, or programmatically in the controller using `addAction()`. 
+
+** There are <<standard_actions,standard actions>>, defined by the `PickerField.ActionType`: `lookup`, `clear`, `open`. They perform the selection of a related entity, clearing the field and opening the edit screen of a selected related entity, respectively. For standard actions in XML, you do not have to define any attributes except the identifier. If no actions in the `actions` element are defined when declaring the component, the XML loader will define `lookup` and `clear` actions for it. To add a default action, for example, `open`, you need to define the `actions` element as follows: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_2.xml[]
+---- 
++
+The `action` element does not extend but overrides a set of standard actions. Identifiers of all required actions have to be defined in order to use them. The component looks like the following:
+image::gui_pickerFieldActionsSt.png[align="center"]
++
+Use `addLookupAction()`, `addOpenAction()` and `addClearAction()` to set standard actions programmatically. If the component is defined in the XML descriptor without `actions` nested element, it is sufficient to add missing actions: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_3.java[]
+---- 
++
+If the component is created in the controller, it will get no default actions and you need to explicitly add all necessary actions: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_4.java[]
+---- 
++
+You can parameterize standard actions. The XML descriptor has limited abilities to do this: there is only `openType` attribute, in which you can specify the mode to open a selection screen (for `LookupAction`) or edit screen (for `OpenAction`).
++
+If you create actions programmatically, you can specify any properties of `PickerField.LookupAction`, `PickerField.OpenAction` and `PickerField.ClearAction` objects returned by methods of adding standard actions. For example, you can set a specific selection screen as follows: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_5.java[]
+---- 
++
+For more information, see JavaDocs for <<standard_actions,standard actions>> classes.
+
+** Arbitrary actions in the XML descriptor are also defined in the `actions` nested element, for example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_6.xml[]
+---- 
++
+You can programmatically set an arbitrary action as follows: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_7.java[]
+---- 
++
+The declarative and programmatic creation of actions is described in .
+
+* `PickerField` can be used without any direct reference to data, i.e., without <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> specification. In this case `metaClass` attribute should be used to specify an entity type for `PickerField`. <<entity_class_annotations,Entity name in metadata>> should be defined, for example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_8.xml[]
+---- 
++
+You can get an instance of a selected entity by injecting the component into a controller and invoking its `getValue()` method.
++
+[WARNING]
+====
+For proper operation of the `PickerField` component you need either set a `metaClass` attribute, or simultaneously set <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> attributes.
+====
+
+* You can use keyboard shortcuts in PickerField, see  for details.
+
+`pickerField` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_property,property>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_required,required>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_requiredMessage,requiredMessage>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_pickerField_metaclass,metaClass>>| <<gui_attr_basic_visible,visible>>
+
+|===
+
+`pickerField` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_pickerField_actions,actions>>
+
+| <<gui_validator,validator>>
+
+|===
+
+[[gui_PopupButton]]
+====== PopupButton
+
+This is a button with a drop-down list of actions.
+
+image::PopupButton.png[align="center"]
+
+XML name of the component: `popupButton`.
+
+image::gui_popupButton_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+The PopupButton contain text or icon (or both). The figure below shows different types of buttons.
+
+image::gui_popupButtonTypes.png[align="center"]
+
+Below is an example of a button with a drop-down list containing two actions.
+
+The button has a caption, which is specified using the <<gui_attr_basic_caption,caption>> attribute, and a tooltip defined in the <<gui_attr_basic_description,description>> attribute. The drop-down <<gui_Action,actions>> list is specified in the `actions` element. `PopupButton` displays only the following action properties: `caption`, `enable`, `visible`. The `description`, `icon`, and `shortcut` properties are ignored.
+
+`popupButton` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_icon,icon>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_id,id>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_visible,visible>>
+
+|===
+
+`popupButton` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_Action,actions>>
+
+|===
+
+[[gui_ProgressBar]]
+====== ProgressBar
+
+The `ProgressBar` component is used to display the progress of a long process.
+
+image::gui_progressBar.png[align="center"]
+
+XML name of the component: `progressBar`
+
+image::gui_progressBar_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*. 
+
+Below is an example of the component usage together with the mechanism of <<background_tasks,background tasks>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/progressbar_1.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/progressbar_2.java[]
+---- 
+
+Here in the `BackgroundTask.progress()` method, which is executed in UI thread, the `ProgressBar` component is set to the current value. The component value should be a `float` number from `0.0` to `1.0`.
+
+If a running process is unable to send information about the progress an indeterminate state of the indicator can be displayed using the `indeterminate` attribute. Indicator shows an indeterminate state if the attribute value is `true`. Default is `false`. For example:
+
+[source, xml]
+----
+<progressBar id="progressBar" width="100%" indeterminate="true"/>
+----
+
+`progressBar` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_progressBar_indeterminate,indeterminate>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+[[gui_RelatedEntities]]
+====== Related Entities
+
+`Related Entities` component is a popup button with a list of classes related to the entity displayed in the table. Once the user selects the required entity class, a new lookup window is opened, containing the instances of this entity class, related to the entity instances selected in the initial table.
+
+image::gui_relatedEntities.png[align="center"]
+
+The XML-name of the component: `relatedEntities`
+
+image::gui_relatedEntities_dia.png[align="center"]
+
+The component is implemented for *Web Client* and*Desktop Client*. 
+
+Related entities are selected according to the user permissions for entities , entity attributes and screens. 
+
+By default, the lookup window for the class selected in the dropdown is defined by convention (`.browse`,`.lookup`). Optionally, you can define the screen explicitly in the component.
+
+A filter selecting records related to the selected entities is dynamically created in the lookup window. 
+
+Example of using the component in screen XML-descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/relatedentities_1.xml[]
+---- 
+
+The `for` attribute is required. It contains the table identifier.
+
+The `++openType=&rdquo;NEW_TAB&rdquo;++` attribute sets the opening mode of the lookup windows to new tab. The entity browser is opened in the current tab by default. 
+
+The `property` element allows explicitly defining the related entity displayed in the dropdown.
+
+`property` attributes:
+
+* `name` – the current entity attribute name, referencing the related entity. 
+
+* `screen` – the identifier of the lookup screen that should be opened.
+
+* `filterCaption` – the name of the dynamically generated filter.
+
+The `exclude` attribute allows excluding some of the related entities from the dropdown list. The value of the property is a list of reference attributes of the current entity, separated by commas.
+
+.Related Entities Component in a Table
+image::gui_relatedEntitiesTable.png[align="center"]
+
+.Related Entities Browser in a New Tab
+image::gui_relatedEntitiesBrowser.png[align="center"]
+
+The `relatedEntities` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_related_exclude,exclude>>| <<gui_attr_tokenList_lookup_openType,openType>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_related_for,for>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_icon,icon>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+|===
+
+`property` attributes:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_basic_caption,caption>>
+
+| <<gui_attr_related_property_filterCaption,filterCaption>>
+
+| <<gui_attr_related_property_name,name>>
+
+| <<gui_attr_related_property_screen,screen>>
+
+|===
+
+[[gui_RichTextArea]]
+====== RichTextArea
+
+This is a text area to display and enter rich text.
+
+XML name of the component: `richTextArea`
+
+image::gui_RichTextArea_dia.png[align="center"]
+
+`RichTextArea` is implemented only for *Web Client*.
+
+Basically, `RichTextArea` mirrors the functionality of <<gui_TextField,TextField>>, except that you cannot set `datatype` for it. So, `RichTextArea` is intended for work only with text and string entity attributes.
+
+You can apply formatting tools to the text entered in the `RichTextArea` component: change the font style, size and family – using controls located at the top of the component.
+
+image::gui_RichTextAreaInfo.png[align="center"]
+
+`richTextArea` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_property,property>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_required,required>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_requiredMessage,requiredMessage>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+[[gui_SearchPickerField]]
+====== SearchPickerField
+
+The `SearchPickerField` component is used to search for entity instances according to the entered string. User should enter a few characters and press Enter. If several matches have been found all of them will be displayed in a drop-down list. If only one instance matches the search query it immediately becomes a component value. `SearchPickerField` allows also to perform actions by clicking on buttons on the right.
+
+image::gui_searchPickerFieldOverlap.png[align="center"]
+
+XML name of the component: `searchPickerField`.
+
+image::gui_SearchPickerField_dia.png[align="center"]
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+* To use `SearchPickerField` component, you need to create <<datasources,collectionDatasource>> and specify a query, which contains corresponding search conditions. Condition must contain a parameter named `custom$searchString`. Component will pass a substring entered by the user after pressing Enter. A data source with a search condition should be defined in the <<gui_attr_basic_optionsDatasource,optionsDatasource>> attribute of the component. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/searchpickerfield_1.xml[]
+---- 
++
+In this case, the component will look for instances of `Colour` entity according to the occurrence of the substring in its `name` attribute. The `(?i)` prefix is used for case-insensitive search (see ). The selected value will be put into the `colour` attribute of the `Car` entity located in the `carDs` datasource.
+
+* Using the `minSearchStringLength` attribute the minimum number of characters, which the user should enter to search for values, can be defined.
+
+* In the screen controller two component methods can be implemented that will be invoked:
+
+** If the number of entered characters is less than the value of `minSearchStringLength` attribute.
+
+** If the search of characters entered by the user has returned no results.
++
+Below is an example of implementing methods to display on-screen messages: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/searchpickerfield_2.java[]
+---- 
+
+* `SearchPickerField` implements <<gui_LookupField,LookupField>> and <<gui_PickerField,PickerField>> interfaces. Thus, it inherits the same functionality except the default list of actions added when defining the component in XML: for `SearchPickerField` these are `lookup` image:lookupBtn.png[] and `open` image:openBtn.png[] actions.
+
+`searchPickerField` attributes: 
+
+<<gui_attr_basic_align,align>> | <<gui_attr_basic_caption,caption>> | <<gui_attr_basic_captionProperty,captionProperty>> | <<gui_attr_basic_datasource,datasource>> | <<gui_attr_basic_description,description>> | <<gui_attr_basic_editable,editable>> | <<gui_attr_basic_enable,enable>> | <<gui_attr_lookupField_filterMode,filterMode>> | <<gui_attr_basic_height,height>> | <<gui_attr_basic_id,id>> | <<gui_attr_basic_inputPrompt,inputPrompt>> | <<gui_attr_pickerField_metaclass,metaClass>> | <<gui_attr_searchPickerField_minSearchStringLength,minSearchStringLength>> | <<gui_attr_nullName,nullName>> | <<gui_attr_basic_optionsDatasource,optionsDatasource>> | <<gui_attr_basic_property,property>> | <<gui_attr_basic_required,required>> | <<gui_attr_basic_requiredMessage,requiredMessage>> | <<gui_attr_basic_stylename,stylename>> | <<gui_attr_basic_visible,visible>> | <<gui_attr_basic_width,width>>
+
+`searchPickerField` elements:
+
+<<gui_Action,actions>> | <<gui_validator,validator>>
+
+[[gui_Table]]
+====== Table
+
+The `Table` component presents information in a table view, sorts data, manages table columns and headers and invokes actions for selected rows.
+
+image::gui_table.png[align="center"]
+
+XML-name of the component: `table`
+
+image::gui_Table_dia.png[align="center"]
+
+The component is implemented for both *Web Client* and *Desktop Client*. 
+
+An example of component definition in an XML-descriptor of a screen: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/table_1.xml[]
+---- 
+
+In the example the `dsContext` element defines <<datasources,collectionDatasource>>, which selects `Order` entities using <<jpql,JPQL>> query. For the `table` component `rows` element defines the data source that should be used, while `columns` element defines which entity attributes from the datasource should be used as table columns.
+
+`table` elements:
+
+* `rows` – a mandatory element; its `datasource` attribute defines the <<datasources,data source>> to be used by the table.
++
+Each row can have an icon in an additional column on the left. Create an implementation of the `Table.IconProvider` interface in the screen controller and set it for the table: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableIconProvider_1.java[]
+---- 
+
+* `columns` – a mandatory element defining the set of columns for a table. 
++
+Each column is described in a nested `column` element with the following attributes:
+
+** `id` − a mandatory attribute, contains the name of an entity attribute displayed in the column. Can be either an attribute of the entity from the data source or a linked entity – object graph traversal is indicated with a dot. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableId_1.xml[]
+---- 
+
+** `caption` − an optional attribute containing the column caption. If not specified, a <<entity_localization,localized attribute name>> will be displayed.
+
+** `collapsed` − an optional attribute; hides the column by default when set to `true`. Users can control column&rsquo;s visibility using the menu accessible via a image:gui_table_columnControl.png[] button in the top right part of the table when the table&rsquo;s `columnControlVisible` attribute is not `false`. By default, `collapsed` is set to `false`.
+
+** `width` − an optional attribute controlling default column width.
+
+** `align` − an optional attribute that sets text align for column cells. Possible values: `LEFT`, `RIGHT`, `CENTER`. Default is `LEFT`.
+
+** `editable` − an optional attribute allowing / prohibiting editing of the corresponding column in the table. In order for a column to be editable, the `editable` attribute of the entire table (see below) should be set to `true` as well.
+
+** `maxTextLength` – an optional attribute allowing to limit the number of characters in a cell. If the difference between the actual and the maximum allowed number of characters does not exceed the 10 character threshold, the "extra&rdquo; characters remain unhidden. To see the entire record, users need to click on its visible part. An example of a column with a 5 character limitation:
+
+image::gui_table_column_maxTextLength.png[align="center"]
+
+** `link` - if set to `true`, allows displaying a link to an entity editor in a table column (supported for *Web Client* only). The `link` attribute may be set to true for primitive type columns, too; in this case, the main entity editor will be opened. This approach may be used to ease the navigation: the users will be able to open entity editors simply by clicking on some key attributes.
+
+** `linkScreen` - contains the identifier of the screen that is opened by clicking the link enabled in the `link` attribute.
+
+** `linkScreenOpenType` - sets the screen opening mode (`++THIS_TAB++`, `++NEW_TAB++` or `DIALOG`).
+
+** `linkInvoke` - invokes the controller method instead of opening the screen.
+
+** `column` element may contain a nested <<gui_formatter,formatter>> element that allows you to represent the attribute value in a format different from the standard for this <<datatype,Datatype>>:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableFormatter_1.xml[]
+----
+
+* `rowsCount` − an optional element adding the `RowsCount` component for the table; this component allows loading the table data in pages. Page size can be defined by limiting the number of records in the data source using `CollectionDatasource.setMaxResults()` method. Typically, this is performed by a <<gui_Filter,Filter>> component linked to the table&rsquo;s data source. However, if there is no generic filter, this method can be called directly from the screen controller.
++
+`RowsCount` component can also show the total number of records returned by the current query from the datasource without extracting the records themselves. It invokes `AbstractCollectionDatasource.getCount()` when user clicks the *?* icon, which results in performing a database query with the same conditions as the current query, but using a `++COUNT(*)++` aggregate function instead. The number retrieved is displayed instead of the *?* icon.
+
+* `actions` − an optional element describing the <<gui_Action,actions>>, related to the table. In addition to custom arbitrary actions, the element supports the following <<standard_actions,standard actions>>, defined in `ListActionType` enum: `create`, `edit`, `remove`, `refresh`, `add`, `exclude`, `excel`.
+
+* `buttonsPanel` – an optional element, which adds a <<gui_ButtonsPanel,ButtonsPanel>> container to show action buttons above the table.
+
+`table` attributes:
+
+* `multiselect` attribute allows setting multiple selection mode for table rows. If `multiselect` is `true`, users can select multiple rows in the table using keyboard or mouse holding Ctrl or Shift keys. By default, multiple selection mode is switched off.
+
+* `sortable` attribute enables sorting data in the table. By default, it is set to `true`. If sorting is allowed, clicking a column header will show a image:gui_sortable_down.png[]/image:gui_sortable_up.png[] icon to the right of the column name.
++
+Table sorting can be performed differently depending on whether all the records can be placed on one page or not. If they can, sorting is performed in memory without database queries. If there is more than one page, sorting is performed in the database by sending a new query with the corresponding `ORDER BY` condition.
++
+A table column may refer to a local attribute or a linked entity. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableSortable_1.xml[]
+----
+
+In the latter case, the database sorting will be performed by attributes defined in the `@NamePattern` annotation of the related entity. If the entity has no such annotation, the sorting will be performed in memory only within the current page.
++
+If the column refers to a non-persistent entity attribute, the database sorting will be performed by attributes defined in the `related()` parameter of the `@MetaProperty` annotation. If no related attributes are specified, the sorting will be performed in memory only within the current page.
+
+* `presentations` attribute controls the mechanism of <<gui_Table_presentations,presentations>>. By default, the value is `false`. If the attribute value is `true`, a corresponding icon is added to the top right corner of the table image:gui_presentation.png[]. The mechanism of presentations is implemented for the *Web Client* only.
+
+* Setting `columnControlVisible` attribute to `false` forbids the user to hide columns using the drop-down menu of the image:gui_table_columnControl.png[] button in the right part of the table header. Currently displayed columns are marked with checkmarks in the menu.
+
+image::gui_table_columnControl_all.png[align="center"]
+
+* Setting `reorderingAllowed` attribute to `false` forbids users to change columns order by dragging them with a mouse.
+
+* `contextMenuEnabled` attribute enables the context menu. By default this attribute is set to `true`. The context menu shows table actions (if any) and the *System Information* item containing information on the selected entity (if the user has `cuba.gui.showInfo` <<permissions,permission>>).
+
+* Setting `multiLineCells` to `true` enables multi-line display for cells containing several lines of text. In this mode, the web browser will load all the rows of the current table page at once, instead of lazy-loading the visible part of the table. It is required for proper scrolling in the Web Client. The default value is `false`.
+
+* `aggregatable` attribute enables aggregation for table rows. The following operations are supported: 
+
+** `SUM` – calculate the sum
+
+** `AVG` – find the average value
+
+** `COUNT` – calculate the total number
+
+** `MIN` – find the minimum value
+
+** `MAX` – find the maximum value 
++
+The `aggregation` element should be set for aggregated table cells with the `type` attribute, which sets the aggregation function. The aggregated table values are shown in an additional row at the top of the table. An example of an aggregated table description: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableAggregatable_1.xml[]
+---- 
++
+A <<gui_formatter,Formatter>> can be specified to display the aggregated value in the format other than the standard for this <<datatype,Datatype>>: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableAggregatable_2.xml[]
+---- 
++
+In addition to the operations listed above, you can define a custom aggregation strategy by implementing the `AggregationStrategy` interface and passing it to the `setAggregation()` method of the `Table.Column` class inside the `AggregationInfo` instance. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableAggregationStrategy_1.java[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableAggregationStrategy_2.java[]
+---- 
+
+* `editable` attribute allows switching the table to in-place editing mode for cells. In this mode, the columns with `editable = true` attribute show components to edit the attributes of the corresponding entity.
++
+The component type for each editable column is selected automatically based on the type of the corresponding entity attribute. For example, for string and numeric attributes, the application will use <<gui_TextField,TextField>>, for `Date` – <<gui_DateField,DateField>>, for lists – <<gui_LookupField,LookupField>>, for links to other entities – <<gui_PickerField,PickerField>>. 
++
+For a `Date` type editable column, you can additionally define `dateFormat` or `resolution` attributes similar to the ones described for the <<gui_DateField,DateField>>.
++
+<<gui_attr_basic_optionsDatasource,optionsDatasource>> and <<gui_attr_basic_captionProperty,captionProperty>> attributes can be additionally defined for an editable column showing a linked entity. If `optionsDatasource` is set, the application will use <<gui_LookupField,LookupField>> instead of <<gui_PickerField,PickerField>>.
++
+Custom configuration (including editing) of a cell can be performed using `Table.addGeneratedColumn()` method – see below.
+
+Methods of the `Table` interface:
+
+* `getSelected()`, `getSingleSelected()` return instances of the entities corresponding to the selected rows of the table. A collection can be obtained by invoking `getSelected()`. If nothing is selected, the application returns an empty set. If `multiselect` is disabled, it is more convenient to use `getSingleSelected()` method returning one selected entity or `null`, if nothing is selected.
+
+* `addGeneratedColumn()` method allows you to define custom representation of data in a column. It takes two parameters: identifier of the column and an implementation of the `Table.ColumnGenerator` interface. Identifier can match one of the identifiers set for table columns in XML-descriptor – in this case the new column is inserted instead of the one defined in XML. If the identifier does not match any of the columns, a new column is added to the right.
++
+`generateCell()` method of the `Table.ColumnGenerator` interface is invoked for each row of the table. The method receives an instance of the entity displayed in the corresponding row. `generateCell()` method should return a visual component which will be displayed in the cell. 
++
+Example of using the component: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableColumnGenerator_1.java[]
+---- 
++
+In the example above, all cells within the `colour` column in the table show the <<gui_LookupPickerField,LookupPickerField>> component. The component should save its value into the `colour` attribute of the entity which instance is displayed in the corresponding row. For this purpose `getItemDatasource()` method is used to get the datasource for the current entity instance from the table and pass it to the `LookupPickerField` component.
++
+If you want to display just dynamic text, use special class `Table.PlainTextCell` instead of the <<gui_Label,Label>> component. It will simplify rendering and make the table faster.
++
+If `addGeneratedColumn()` method receives the identifier of a column which is not declared in XML-descriptor, the header for the new column to be set as follows: 
++
+[source, java]
+----
+carsTable.getColumn("colour").setCaption("Colour");
+----
+
+* `setClickListener()` method can save you from adding generated columns with components when you need to draw something in cells and receive notifications when a user clicks inside these cells. The `CellClickListener` implementation passed to this method receives the selected entity and the column identifier. The cells content will be wrapped in span element with `cuba-table-clickable-cell` style which can be used to specify the cell representation.
+
+*  `setStyleProvider()` method allows setting table cell display style. The method accepts an implementation of `Table.StyleProvider` interface as a parameter. `getStyleName()` method of this interface is invoked by the table for each row and each cell separately. If the method is invoked for a row, the first parameter contains the entity instance displayed by the row, the second parameter is `null`. If the method is called for a cell, the second parameter contains the name of the attribute displayed by the cell. 
++
+Example of setting a style:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_setStyleProvider_1.java[]
+----
++
+Then the cell and row styles set in the application theme should be defined. Detailed information on creating a theme is available in . For web client, new styles are defined in the styles.scss file. Style names defined in the controller, together with prefixes identifying table row and column form CSS selectors. For example: 
++
+[source, css]
+----
+include::{sourcesdir}/gui_vcl/table_setStyleProvider_2.css[]
+---- 
+
+* `addPrintable()` method allows setting a custom presentation of the data within a column when exporting to an XLS file via the `excel` <<standard_actions,standard action>> or directly using the `ExcelExporter` class. The method accepts the column identifier and an implementation of the `Table.Printable` interface for the column. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_addPrintable_1.java[]
+---- 
++
+`getValue()` method of the `Table.Printable` interface should return data to be displayed in the table cell. This is not necessarily a string – the method may return values of other types, for example, numeric data or dates, which will be represented in the XLS file accordingly. 
++
+If formatted output to XLS is required for a generated column, an implementation of the `Table.PrintableColumnGenerator` interface passed to the `addGeneratedColumn()` method should be used. The value for a cell in an XLS document is defined in the `getValue()` method of this interface: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_addPrintable_2.java[]
+---- 
++
+If `Printable` presentation is not defined for a generated column in one way or another, then the column will either show the value of corresponding entity attribute or nothing if there is no associated entity attribute.
+
+* The `setItemClickAction()` method allows you to define an <<gui_Action,action>> that will be performed when a table row is double-clicked. If such action is not defined, the table will attempt to find an appropriate one in the list of its actions in the following order: 
+
+** The action assigned to the Enter key by the `shortcut` property
+
+** The `edit` action
+
+** The `view` action
++
+If such action is found, and has `enabled = true` property, the action is executed.
+
+* The `setEnterPressAction()` allows you to define an <<gui_Action,action>> executed when Enter is pressed. If such action is not defined, the table will attempt to find an appropriate one in the list of its actions in the following order: 
+
+** The action defined by the `setItemClickAction()` method
+
+** The action assigned to the Enter key by the `shortcut` property
+
+** The `edit` action
+
+** The `view` action
++
+If such action is found, and has ` enabled = true` property, the action is executed.
+
+`table` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_table_allowPopupMenu,allowPopupMenu>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_table_multiselect,multiselect>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_table_columnControlVisible,columnControlVisible>>| <<gui_attr_basic_height,height>>| <<gui_attr_table_presentations,presentations>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_table_reorderingAllowed,reorderingAllowed>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_margin,margin>>| <<gui_attr_table_sortable,sortable>>
+
+|===
+
+`table` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_table_actions,actions>>
+
+| <<gui_ButtonsPanel,buttonsPanel>>
+
+| <<gui_element_table_columns,columns>>
+
+| <<gui_element_table_rows,rows>>
+
+| <<gui_attr_table_rowsCount,rowsCount>>
+
+|===
+
+<<gui_element_table_columns,column>> attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_table_column_caption,caption>>| <<gui_attr_dateField_dateFormat,dateFormat>>| <<gui_attr_table_column_linkInvoke,linkInvoke>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_table_column_editable,editable>>| <<gui_attr_table_column_linkScreen,linkScreen>>| <<gui_attr_dateField_resolution,resolution>>
+
+| <<gui_attr_basic_clickAction,clickAction>>| <<gui_attr_table_column_id,id>>| <<gui_attr_table_column_linkScreenOpenType,linkScreenOpenType>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_table_column_collapsed,collapsed>>| <<gui_attr_table_column_link,link>>| <<gui_attr_table_column_maxTextLength,maxTextLength>>| <<gui_attr_table_column_width,width>>
+
+|===
+
+<<gui_element_table_columns,column>> elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_formatter,formatter>>
+
+|===
+
+<<gui_element_table_rows,rows>> attribute:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_basic_datasource,datasource>>
+
+|===
+
+[[gui_TextArea]]
+====== TextArea
+
+`TextArea` is a multi-line text editor field.
+
+XML-name of the component: `textArea`
+
+image::gui_TextArea_dia.png[align="center"]
+
+`TextArea` component is implemented for both *Web Client* and *Desktop Client*.
+
+`TextArea` mostly replicates the functionality of the <<gui_TextField,TextField>> component except that a `datatype` can not be assigned to it. I.e. `TextArea` is intended to be used for text and string attributes of entities only.
+
+`TextArea` component has the following attributes:
+
+* `cols` and `rows` set the number of columns and rows of text: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textarea_1.xml[]
+---- 
++
+The values of `width` and `height` have priority over the values of `cols` and `rows`.
+
+* `resizable` – if this attribute is set to `true` and the number of rows is more than one, it becomes possible to change the size of the component: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textarea_2.xml[]
+---- 
+
+image::gui_textField_resizable.png[align="center"]
+
+`textArea` attributes:
+
+[cols="5", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_requiredMessage,requiredMessage>>| <<gui_attr_textField_trim,trim>>
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_textField_maxLength,maxLength>>| <<gui_attr_textArea_resizable,resizable>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_textArea_cols_rows,cols>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_property,property>>| <<gui_attr_textArea_cols_rows,rows>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_required,required>>| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+[[gui_TextField]]
+====== TextField
+
+`TextField` is a component for text editing. It can be used both for working with entity attributes and entering/displaying arbitrary textual information.
+
+XML-name of the component: `textField`
+
+image::gui_TextField_dia.png[align="center"]
+
+Text field component is implemented for both *Web Client* and *Desktop Client*.
+
+* An example of a text field with a caption retrieved from the <<message_packs,localized messages pack>>: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_1.xml[]
+---- 
+
+The figure below shows an example of a simple text field.
+
+image::gui_textField.png[align="center"]
+
+* To create a text field connected to data, <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> attributes should be used.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_2.xml[]
+---- 
++
+As you can see in the example, the screen describes the `customerDs` <<datasources,datasource>> for `Customer` entity, which has `name` attribute. The text field component has a link to the data source specified in the <<gui_attr_basic_datasource,datasource>> attribute; <<gui_attr_basic_property,property>> attribute contains the name of the entity attribute that should be displayed in the text field.
+
+image::gui_textField_data.png[align="center"]
+
+* If the field is not connected to an entity attribute (i.e. the data source and attribute name are not set), you can set the data type using the `datatype` attribute. It is used to format field values. The attribute value accepts any data type registered in the application metadata – see . Typically, `TextField` uses the following data types:
+** `decimal`
+
+** `double`
+
+** `int`
+
+** `long`
++
+As an example, let&rsquo;s look at a text field with an `Integer` data type. 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_3.xml[]
+---- 
++
+If a user enters a value that cannot be interpreted as an integer number, then when the field looses focus, the application will show an error message and revert field value to the previous one:
+
+image::gui_textField_int.png[align="center"]
+
+* Text field can be assigned a <<gui_validator,validator>> – a class implementing `Field.Validator` interface. The validator limits user input in addition to what is already done by the `datatype`. For example, to create an input field for positive integer numbers, you need to create a validator class:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_4.java[]
+---- 
++
+and assign it as a validator to the text field with `int` datatype: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_5.xml[]
+---- 
++
+Unlike input check against the data type, validation is performed not when the field looses focus, but after invocation of the field&rsquo;s `validate()` method. It means that the field (and the linked entity attribute) may temporarily contain a value that does not satisfy validation conditions (a non-positive number in the example above). This should not be an issue, because validated fields are typically used in <<screen_edit,editor screens>>, which automatically invoke validation for all their fields before commit. If the field is located not in an editing screen, the field&rsquo;s `validate()` method should be invoked explicitly in the controller.
+
+* If a text field is linked to an entity attribute (via `datasource` and `property`), and if the entity attribute has a `length` parameter defined in the `@Column` JPA-annotation, then the `TextField` will limit the maximum length of entered text accordingly.
++
+If a text field is not linked to an attribute, or if the attribute does not have `length` value defined, or this value needs to be overridden, then the maximum length of the entered text can be limited using `maxLength` attribute. The value of "-1" means there are no limitations. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_6.xml[]
+---- 
+
+* By default, text field trims spaces at the beginning and at the end of the entered string. I.e. if user enters "  aaa bbb  ", the value of the field returned by the `getValue()` method and saved to the linked entity attribute will be "aaa bbb". You can disable trimming of spaces by setting the `trim` attribute to `false`.
++
+It should be noted that trimming only works when users enter a new value. If the value of the linked attribute already has spaces in it, the spaces will be displayed until user edits the value.
+
+* Text field always returns `null` instead of an entered empty string. Therefore, with the `trim` attribute enabled, any string containing spaces only will be converted to `null`.
+
+* The `setCursorPosition()` method can be used to focus the field and set the cursor position to the specified 0-based index.
+
+`textField` attributes:
+
+<<gui_attr_basic_align,align>> | <<gui_attr_basic_caption,caption>> | <<gui_attr_basic_datasource,datasource>> | <<gui_attr_textField_datatype,datatype>> | <<gui_attr_basic_description,description>> | <<gui_attr_basic_editable,editable>> | <<gui_attr_basic_enable,enable>> | <<gui_attr_basic_height,height>> | <<gui_attr_basic_id,id>> | <<gui_attr_basic_inputPrompt,inputPrompt>> | <<gui_attr_textField_maxLength,maxLength>> | <<gui_attr_basic_property,property>> | <<gui_attr_basic_required,required>> | <<gui_attr_basic_requiredMessage,requiredMessage>> | <<gui_attr_basic_stylename,stylename>> | <<gui_attr_textField_trim,trim>> | <<gui_attr_basic_visible,visible>> | <<gui_attr_basic_width,width>>
+
+`textField` elements:
+
+<<gui_validator,validator>>
+
+[[gui_TimeField]]
+====== TimeField
+
+`TimeField` is a field to display and enter date and time values.
+
+image::gui_timeField.png[]
+
+XML-name of the component: `timeField`.
+
+image::gui_timeField_dia.png[align="center"]
+
+`TimeField` component is implemented for both *Web Client* and *Desktop Client*.
+
+* To create a date field associated with data, <<gui_attr_basic_datasource,datasource>> and <<gui_attr_basic_property,property>> attributes should be used: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/timefield_1.xml[]
+---- 
++
+As you can see in the example above, the screen defines the `orderDs` <<datasources,data source>> for `Order` entity, which has `deliveryTime` attribute. The `datasource` attribute of the time input component contains a link to the `datasource`, and the `property` attribute – the name of the entity attribute displayed in the field.
++
+Related entity attribute should have `java.util.Date` or `java.sql.Time` type.
+
+* The time format for representation is defined by the `time` <<datatype,datatype>> and is specified in the <<main_message_pack,main localized messages pack>> in the `timeFormat` key.
+
+* The time format can also be specified in the `timeFormat` attribute. It can be either a format string, or a key in a message pack (with the `msg://` prefix).
+
+* Regardless of the mentioned above format display of seconds can be controlled using `showSeconds` attribute. By default, seconds are displayed if the format contains "`ss"`. 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/timefield_2.xml[]
+----
+
+image::gui_timeFieldSec.png[]
+
+`timeField` attributes: <<gui_attr_basic_align,align>> | <<gui_attr_basic_caption,caption>> | <<gui_attr_basic_editable,editable>> | <<gui_attr_basic_enable,enable>> | <<gui_attr_basic_datasource,datasource>> | <<gui_attr_basic_description,description>> | <<gui_attr_basic_height,height>> | <<gui_attr_basic_id,id>> | <<gui_attr_basic_property,property>> | <<gui_attr_basic_required,required>> | <<gui_attr_basic_requiredMessage,requiredMessage>> | <<gui_attr_timeField_showSeconds,showSeconds>> | <<gui_attr_basic_stylename,stylename>> | <<gui_attr_timeField_timeFormat,timeFormat>> | <<gui_attr_basic_visible,visible>> | <<gui_attr_basic_width,width>>
+
+`timeField` elements: <<gui_validator,validator>> 
+
+[[gui_TokenList]]
+====== TokenList
+
+`TokenList` component offers a simplified way of working with lists: instance names are listed vertically or horizontally, adding is done using drop-down list, removal – using the buttons located near each instance.
+
+image::gui_tokenList.png[align="center"]
+
+XML-name of the component: `tokenList`
+
+image::gui_TokenList_dia.png[align="center"]
+
+The component is implemented for both *Web Client* and *Desktop Client*.
+
+Below is an example description of `TokenList` in an XML-descriptor of a screen: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tokenList_1.xml[]
+---- 
+
+In the example the nested `productsDs` <<datasources,datasource>> which includes a collection of products within an order is defined in `dsContext`, as well as `allProductsDs` datasource containing a collection of all products available in the database. The `TokenList` component with `productsList` identifier displays the content of the `productsDs` datasource and allows changing the collection by adding instances from `allProductsDs`.
+
+`tokenList` attributes:
+
+* `position` – sets the position for the drop-down list. The attribute can take two values: `TOP`, `BOTTOM`. Default is `TOP`.
+
+image::gui_tokenListBottom.png[align="center"]
+
+* `inline` attribute defines how the list with selected items will be displayed: vertically or horizontally. `true` corresponds to horizontal alignment, `false` – to vertical. An example of a component with horizontal alignment:
+
+image::gui_tokenListInline.png[align="center"]
+
+*  `simple` – when set to `true`, the items selection component will be hidden with only the *Add* button left. Clicking the *Add* button opens the screen with the list of entity instances which type is defined by the datasource. Selection screen identifier is selected according to the rules for the `PickerField.LookupAction` standard action.
+
+image::gui_tokenListSimple.png[align="center"]
+
+`tokenList` elements:
+
+* `lookup` − values selection component descriptor.
++
+Attributes of the `lookup` attribute:
++
+
+** `lookup` attribute makes it possible to select items using an entity lookup screen:
+
+image::gui_tokenListLookup.png[align="center"]
+
+** `lookupScreen` attribute sets the identifier of the screen used for items selection in `lookup="true"` mode. If this attribute is not set, screen identifier is selected according to the rules for the `PickerField.LookupAction` <<standard_actions,standard action>>.
+
+** `openType` attribute defines how the lookup screen will be opened, similar to what is described for the `PickerField.LookupAction` <<standard_actions,standard action>>. Default value – `++THIS_TAB++`.
+
+** If the value of the `multiselect` attribute is set to `true`, then a value of `true` will be passed to parameters map of the lookup screen for the `++MULTI_SELECT++` key. This flag can be used to set the screen into multiple selection mode. This flag is defined in the `WindowParams` enum so it is convenient to work with it in the following way: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tokenListMultiselect_1.java[]
+---- 
+
+* `button` – descriptor of the button for adding items. Can contain <<gui_attr_basic_caption,caption>> and <<gui_attr_basic_icon,icon>> attributes.
+
+A full list of `tokenList` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_tokenList_inline,inline>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_tokenList_position,position>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_height,height>>| <<gui_attr_tokenList_simple,simple>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+`tokenList` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_tokenList_button,button>>
+
+| <<gui_element_tokenList_lookup,lookup>>
+
+|===
+
+A full list of <<gui_element_tokenList_lookup,lookup>> attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_tokenList_lookup_lookupScreen,lookupScreen>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>
+
+| <<gui_attr_lookupField_filterMode,filterMode>>| <<gui_attr_tokenList_lookup_multiselect,multiselect>>
+
+| <<gui_attr_tokenList_lookup_lookup,lookup>>| <<gui_attr_tokenList_lookup_openType,openType>>
+
+|===
+
+<<gui_element_tokenList_button,button>> attributes:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_basic_caption,caption>>
+
+| <<gui_attr_basic_icon,icon>>
+
+|===
+
+[[gui_Tree]]
+====== Tree
+
+The `Tree` component is intended to display hierarchical structures represented by entities referencing themselves.
+
+image::gui_Tree.png[align="center"]
+
+XML-name of the component: `tree`
+
+image::gui_tree_dia.png[align="center"]
+
+The component is implemented for both *Web Client* and *Desktop Client*. 
+
+For the `Tree` component, the `datasource` attribute of the `treechildren` element should contain a reference to a <<datasources,hierarchicalDatasource>>. Declaration of a `hierarchicalDatasource` should contain a `hierarchyProperty` attribute – the name of the entity attribute which is a reference to same entity.
+
+Below is an example of the `Tree` component description in a screen XML-descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tree_1.xml[]
+---- 
+
+The name of the entity attribute to be displayed in the tree can be set using the `captionProperty` attribute of the `treechildren` element. If this attribute is not defined, the screen will show the entity <<namePattern,instance name>>.
+
+The `setItemClickAction()` method may be used to define an <<gui_Action,action>> that will be performed when a tree node is double-clicked.
+
+`tree` attributes:
+
+[cols="2", frame="none"]
+|===
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+|===
+
+`tree` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_table_actions,actions>>
+
+| <<gui_element_tree_treechildren,treechildren>>
+
+|===
+
+`treechildren` attributes:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_basic_captionProperty,captionProperty>>
+
+| <<gui_attr_basic_datasource,datasource>>
+
+|===
+
+[[gui_TreeTable]]
+====== TreeTable
+
+`TreeTable` component is a hierarchical table displaying a tree-like structure in the leftmost column. The component is used for entities that have references to themselves. For example, it can be a file system or a company organization chart.
+
+image::gui_treeTable.png[align="center"]
+
+XML-name of the component: `treeTable`
+
+image::gui_TreeTable_dia.png[align="center"]
+
+The component is implemented for both *Web Client* and *Desktop Client*. 
+
+For `TreeTable`, the <<datasources,hierarchicalDatasource>> should be set in the `datasource` attribute of the `rows` element. Declaration of a `hierarchicalDatasource` should contain `hierarchyProperty` attribute – the name of the entity attribute which references the same entity.
+
+Below is an example of component description in a screen XML descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/treetable_1.xml[]
+---- 
+
+The functionality of `TreeTable` is similar to a simple <<gui_Table,Table>>.
+
+`treeTable` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_table_allowPopupMenu,allowPopupMenu>>| <<gui_attr_basic_height,height>>| <<gui_attr_table_reorderingAllowed,reorderingAllowed>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_table_columnControlVisible,columnControlVisible>>| <<gui_attr_basic_id,id>>| <<gui_attr_table_sortable,sortable>>
+
+| <<gui_attr_basic_editable,editable>>| <<gui_attr_table_multiselect,multiselect>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_table_presentations,presentations>>| <<gui_attr_basic_visible,visible>>
+
+|===
+
+`treeTable` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_element_table_actions,actions>>
+
+| <<gui_ButtonsPanel,buttonsPanel>>
+
+| <<gui_element_table_columns,columns>>
+
+| <<gui_element_table_rows,rows>>
+
+|===
+
+<<gui_element_table_columns,column>> attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_table_column_caption,caption>>| <<gui_attr_dateField_dateFormat,dateFormat>>| <<gui_attr_dateField_resolution,resolution>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_table_column_editable,editable>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_clickAction,clickAction>>| <<gui_attr_table_column_id,id>>| <<gui_attr_table_column_width,width>>
+
+| <<gui_attr_table_column_collapsed,collapsed>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>
+
+|===
+
+<<gui_element_table_columns,column>> elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_formatter,formatter>>
+
+|===
+
+<<gui_element_table_rows,rows>> elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_attr_basic_datasource,datasource>>
+
+|===
+
+[[gui_TwinColumn]]
+====== TwinColumn
+
+`TwinColumn` is a twin list component for multiple items selection. The left part of the list contains available unselected values, the right part – selected values. Users select the values by transferring them from the left to the right and backward using double click or dedicated buttons. A unique representation style and an icon can be defined for each value.
+
+image::TwinColumn.png[align="center"]
+
+XML name of the component: `twinColumn`
+
+image::gui_TwinColumn_dia.png[align="center"]
+
+The component is implemented for *Web Client* only.
+
+Below is an example of a `twinColumn` component usage to select entity instances: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/twincolumn_1.xml[]
+---- 
+
+In this example, the `coloursField` component will display `Colour` entity instances names located in the `coloursDs` <<datasources,data source>> and its `getValue()` method will return a collection of selected entity instances.
+
+`addAllBtnEnabled` attribute shows the buttons moving all items between the lists.
+
+`columns` attribute is used to set the number of characters in a row, and the `rows` attribute – to set the number of rows in each list.
+
+The presentation of the items can be defined by implementing the `TwinColumn.StyleProvider` interface and returning a style name and icon path for each entity instance displayed in the component.
+
+The list of component options can be specified arbitrarily using `setOptionsList()` and `setOptionsMap()` as described for the <<gui_OptionsGroup,OptionsGroup>> component.
+
+`twinColumn` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_editable,editable>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_basic_required,required>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_twinColumn_columns_rows,columns>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_requiredMessage,requiredMessage>>
+
+| <<gui_attr_basic_datasource,datasource>>| <<gui_attr_basic_id,id>>| <<gui_attr_twinColumn_columns_rows,rows>>
+
+| <<gui_attr_basic_description,description>>| <<gui_attr_basic_property,property>>| <<gui_attr_basic_visible,visible>>
+
+|===
+
+`twinColumn` elements:
+
+[cols="1", frame="none"]
+|===
+
+| <<gui_validator,validator>>
+
+|===
+
+[[gui_layouts]]
+===== Containers
+
+<<gui_BoxLayout,BoxLayout>>
+
+<<gui_ButtonsPanel,ButtonsPanel>>
+
+<<gui_IFrame,IFrame>>
+
+<<gui_GridLayout,GridLayout>>
+
+<<gui_GroupBoxLayout,GroupBoxLayout>>
+
+<<gui_ScrollBoxLayout,ScrollBoxLayout>>
+
+<<gui_SplitPanel,SplitPanel>>
+
+<<gui_TabSheet,TabSheet>>
+
+[[gui_BoxLayout]]
+====== BoxLayout
+
+`BoxLayout` is a container with sequential placement of components.
+
+There are three types of `BoxLayout`, identified by the XML-elements:
+
+* `hbox` − components are placed horizontally.
+
+image::gui_hbox.png[align="center"]
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/boxlayout_1.xml[]
+----
+
+* `vbox` − components are placed vertically. `vbox` has 100% width by default.
+
+image::gui_vbox.png[align="center"]
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/boxlayout_2.xml[]
+----
+
+* `flowBox` − components are placed horizontally with line wrapping. If there is not enough space in a line, the components that do not fit will be displayed in the next line (the behavior is similar to Swing `FlowLayout`).
+
+image::gui_flowbox.png[align="center"]
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/boxlayout_3.xml[]
+----
+
+The following XML-attributes can be used in the `hbox`, `vbox`, `flowBox` elements:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_expand,expand>>| <<gui_attr_basic_margin,margin>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_spacing,spacing>>| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_ButtonsPanel]]
+====== ButtonsPanel
+
+`ButtonsPanel` is a container that streamlines the use and placement of the components (usually, buttons) for data management in a table. 
+
+image::gui_buttonsPanel.png[align="center"]
+
+XML-name of the component: `buttonsPanel`.
+
+A sample description of a `ButtonsPanel` in screen XML-descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/buttonspanel_1.xml[]
+---- 
+
+`buttonsPanel` element can be located either inside a `table`, or in any other place of a screen. 
+
+If the `buttonsPanel` is located in a `table`, it is combined with the table's <<gui_attr_table_rowsCount,rowsCount>> component thus using vertical space more effectively. Additionally, if a lookup screen is opened using `IFrame.openLookup()` (for example, from the <<gui_PickerField,PickerField>> component) the buttons panel becomes hidden.
+
+`alwaysVisible` attribute disables panel hiding in a lookup screen when it is opened by `IFrame.openLookup()`. If the attribute value is `true`, the buttons panel is not hidden. By default, the attribute value is f `false`.
+
+`buttonsPanel` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_id,id>>
+
+| <<gui_attr_buttonsPanel_alwaysVisible,alwaysVisible>>| <<gui_attr_basic_stylename,styleName>>
+
+| <<gui_attr_basic_expand,expand>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_GridLayout]]
+====== GridLayout
+
+`GridLayout` is a container with grid placement of components.
+
+image::gui_gridlayout.png[align="center"]
+
+XML-name of the component: `grid`.
+
+Example container usage: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/gridlayout_1.xml[]
+---- 
+
+`grid` elements:
+
+* `columns` – a required element, describes grid columns. It should have either a `count` attribute, or a nested `column` element for each column.
++
+In the simplest case, it is enough to set the number of columns in the `count` attribute. Then, if the container width is explicitly defined in pixels or percents, free space will be divided between the columns equally.
++
+In order to divide screen space non-equally, a `column` element with a `flex` attribute should be defined for each column.
++
+An example of a grid where the second and the fourth columns take all extra horizontal space and the fourth column takes three times more space: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/gridlayout_2.xml[]
+---- 
++
+If `flex` is not defined, or is set to 0, the width of the column will be set according to its contents given that at least one other column has a non-zero `flex`. In the example above, the first and the third columns will get the width according to the maximum text length.
++
+[TIP]
+====
+In order for the free space to appear, the entire container width should be set in either pixels or percents. Otherwise, column width will be calculated according to content length, and `flex` attribute will have no effect.
+====
+
+* `rows` − a required element, contains a set of rows. Each line is defined in its own `row` element.
++
+`row` element can have a `flex` attribute similar to the one defined for `column`, but affecting the distribution of free vertical space with a given total grid height.
++
+`row` element should contain elements of the components displayed in the grid's current row cells. The number of components in a row should not exceed the defined number of columns, but it can be less.
+
+Any component located in a `grid` container can have `colspan` and `rowspan` attributes. These attributes set the number of columns and rows occupied by the corresponding component. For example, this is how `Field3` field can be extended to cover three columns:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/gridlayout_3.xml[]
+----
+
+As a result the components will be placed in the following way:
+
+image::gui_gridlayout_colspan.png[align="center"]
+
+`grid` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_spacing,spacing>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_id,id>>| <<gui_attr_basic_stylename,styleName>>
+
+| <<gui_attr_basic_margin,margin>>| <<gui_attr_basic_visible,visible>>
+
+|===
+
+`grid` elements:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_grid_columns,columns>>
+
+| <<gui_attr_grid_rows,rows>>
+
+|===
+
+`columns` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_grid_columns,count>>
+
+|===
+
+`column` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_grid_rows,flex>>
+
+|===
+
+`row` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_grid_rows,flex>>
+
+| <<gui_attr_basic_visible,visible>>
+
+|===
+
+[[gui_GroupBoxLayout]]
+====== GroupBoxLayout
+
+`GroupBoxLayout` is a container that allows framing the embedded components and setting a universal header for them. Additionally, it can collapse content.
+
+image::gui_groupBox.png[align="center"]
+
+Component XML-name: `groupBox`.
+
+An example container description in a screen XML-descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/groupboxlayout_1.xml[]
+---- 
+
+`groupBox` attributes:
+
+* `caption` – group header.
+
+* `orientation` – defines embedded components direction − horizontal or vertical. The default value is `vertical`.
+
+* `collapsable` – if the value is set to `true` the component&rsquo;s content can be hidden using the icons image:gui_groupBox_minus.png[]/image:gui_groupBox_plus.png[].
+
+* `collapsed` – if set to `true`, component&rsquo;s content will be collapsed immediately after the screen gets opened. It is used with `collapsable="true"`. 
++
+An example of a collapsed `GroupBox`:
+
+image::gui_groupBox_collapsed.png[align="center"]
+
+By default, the `groupBox` container is 100% wide, similar to <<gui_BoxLayout,vbox>>.
+
+All `groupBox` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_expand,expand>>| <<gui_attr_groupBox_orientation,orientation>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_groupBox_collapsable,collapsable>>| <<gui_attr_basic_height,height>>| <<gui_attr_basic_spacing,spacing>>
+
+| <<gui_attr_groupBox_collapsed,collapsed>>| <<gui_attr_basic_id,id>>| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+[[gui_IFrame]]
+====== IFrame
+
+`iframe` element is intended for including <<frame,frames>> into a screen.
+
+Attributes:
+
+* `src` − path to the frame XML-descriptor.
+
+* `screen` – frame identifier in <<screens.xml,screens.xml>> (if the frame is registered).
+
+One of these attributes should be defined. If both attributes are defined, frame will be loaded from the file explicitly set in `src`. 
+
+Other `iframe` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_ScrollBoxLayout]]
+====== ScrollBoxLayout
+
+`ScrollBoxLayout` − a container that supports content scrolling.
+
+image::gui_scrollBox.png[align="center"]
+
+Component XML-name: `scrollBox`
+
+An example container description in a screen XML-descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/scrollboxlayout_1.xml[]
+---- 
+
+* The components direction can be defined by `orientation` attribute − `horizontal`or `vertical`. Default is `vertical`.
+
+* `scrollBars` attribute allows configuring scroll bars. It can be `horizontal`, `vertical` – for horizontal and vertical scrolling respectively, `both` – for scrolling in any direction. Setting the value to `none` forbids scrolling in any direction.
+
+[WARNING]
+====
+The components embedded into the `scrollBox` should have fixed size or default size. It can not be set to `height="100%"` or `width="100%"`.
+
+At the same time, `scrollBox` cannot calculate its own size based on its content. Its absolute size should either be specified or the scrollBox should be stretched it in a parent container by setting `height="100%"` and `width="100%"`.
+====
+
+`scrollBox` attributes:
+
+[cols="3", frame="none"]
+|===
+
+| <<gui_attr_basic_align,align>>| <<gui_attr_basic_margin,margin>>| <<gui_attr_basic_spacing,spacing>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_scrollBox_orientation,orientation>>| <<gui_attr_basic_stylename,stylename>>
+
+| <<gui_attr_basic_id,id>>| <<gui_attr_scrollBox_scrollBars,scrollBars>>| <<gui_attr_basic_width,width>>
+
+|===
+
+[[gui_SplitPanel]]
+====== SplitPanel
+
+`SplitPanel` − a container divided into two areas, its horizontal or vertical size can be adjusted by moving the separator. 
+
+image::gui_splitPanel.png[align="center"]
+
+Component XML-name: `split`.
+
+An example description of a split panel in a screen XML-descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/splitpanel_1.xml[]
+---- 
+
+`split` container must contain two nested containers or components. They will be displayed astride the separator.
+
+`split` attributes:
+
+* `orientation` – defines component orientation. `horizontal` – nested components are aligned horizontally, `vertical` – they are aligned vertically.
+
+* `pos` – an integer number defining percentage of the first component area compared to the second one. For example, `pos="30"` means that the areas ration is 30/70. By default the areas are divided 50/50.
+
+All attributes of `split`:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_id,id>>| <<gui_attr_split_pos,pos>>
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_split_orientation,orientation>>
+
+|===
+
+[[gui_TabSheet]]
+====== TabSheet
+
+`TabSheet` container is a tabbed panel. The panel shows content of one tab at a time. 
+
+image::gui_tabsheet.png[align="center"]
+
+XML-name of the component: `tabSheet`.
+
+An example description of a tabbed panel in a screen XML-descriptor: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tabsheet_1.xml[]
+---- 
+
+The `tabSheet` component should contain nested `tab`, elements describing tabs. Each tab is a container with a vertical components layout similar to <<gui_BoxLayout,vbox>>.
+
+`tab` element attributes:
+
+* `id` – tab identifier. Please note that tabs are not components and their IDs are used only within a `TabSheet` in order to work with tabs from the controller.
+
+* <<gui_attr_basic_caption,caption>> – tab caption. 
+
+* `lazy` – sets lazy loading for tab content. 
++
+Lazy-tabs do not load their content when a screen is opened, it reduces the number of components in memory. Components within a tab are loaded only when user selects the tab. Additionally, if a lazy-tab includes visual components linked to a <<datasources,data source>>, containing a JPQL query, this query is not invoked as well. As a result, screen opens quicker and data is loaded only when user requests it by selecting this tab. 
++
+Please note that the components located on a lazy-tab do not exist when the screen is opened. That is why they cannot be <<screen_controller_injection,injected>> into a controller and cannot be obtained by invoking `getComponent()` in the controller&rsquo;s `init()` method. The `lazy`-tab components can be called only after user opens it. This moment may be caught using `TabSheet.TabChangeListener`, for example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tabsheet_2.java[]
+---- 
++
+By default, tabs are not `lazy`, which means that all their content is loaded when a screen is opened.
+
+* `detachable` – when it is `true`, a tab can be detached to a separate window in a screen desktop implementation . It allows , for example, different parts of the application UI to be located on different displays. A detached tab has a dedicated button in its header:
+
+image::gui_tabsheetDetachable.png[align="center"]
+
+`tabSheet` attributes:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_height,height>>| <<gui_attr_basic_visible,visible>>
+
+| <<gui_attr_basic_id,id>>| <<gui_attr_basic_width,width>>
+
+| <<gui_attr_basic_stylename,stylename>>
+
+|===
+
+All attributes of the `tab` element:
+
+[cols="4", frame="none"]
+|===
+
+| <<gui_attr_basic_caption,caption>>| <<gui_attr_basic_expand,expand>>| <<gui_attr_basic_margin,margin>>
+
+| <<gui_attr_tabsheet_detachable,detachable>>| <<gui_attr_tabsheet_id,id>>| <<gui_attr_basic_spacing,spacing>>
+
+| <<gui_attr_basic_enable,enable>>| <<gui_attr_tabsheet_lazy,lazy>>
+
+|===
+
+[[gui_misc]]
+===== Miscellaneous
+
+This section describes different elements of the universal user interface that are related to visual components.
+
+[[gui_formatter]]
+====== Formatter
+
+[WARNING]
+====
+Formatter should be used with read-only components, such as <<gui_Label,Label>>, <<gui_Table,Table>> column and similar. Editable components values, for example, <<gui_TextField,TextField>>, can be formatted using the `<<datatype,Datatype>>` mechanism.
+====
+
+In an XML-descriptor of a screen, a component's formatter can be defined in a nested `formatter` element. The element has a single attribute:
+
+* `class` − the name of a class implementing a `com.haulmont.cuba.gui.components.Formatter`
+
+If formatter's constructor class has a `org.dom4j.Element`, parameter, then it will receive an XML element, describing this `formatter`. This can be used to parameterize a formatter instance. For example, using a formatted string. Particularly, `DateFormatter` and `NumberFormatter` classes in the platform can take the format string from the `format` attribute. Example of using the component: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/formatter_1.xml[]
+---- 
+
+Additionally, `DateFormatter` class also recognizes a `type` attribute, which can have a `DATE` or `DATETIME` value. In this case, formatting is done using the `<<datatype,Datatype>>` mechanism using a `dateFormat` or a `dateTimeFormat` string respectively. For example:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/formatter_2.xml[]
+---- 
+
+[TIP]
+====
+If a formatter is implemented as an internal class, it should be declared with a `static` modifier and its name should be separated by "$" for loading, for example:
+
+`&lt;formatter class="com.sample.sales.gui.OrderBrowse$CurrencyFormatter"/&gt;`
+====
+
+Formatter can be assigned to a component not only using a screen XML-descriptor , but also programmatically – by submitting an formatter instance into aд `setFormatter()` component.
+
+An example of declaring a custom formatter and using it to format values in a table column: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/formatter_3.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/formatter_4.java[]
+---- 
+
+[[gui_Table_presentations]]
+====== Presentation
+
+The mechanism of presentations allows users to manage component display settings.
+
+*Capabilities*:
+
+* Saving presentations using their unique names
+
+* Editing and removing presentations
+
+* Fast switching between presentations
+
+* Setting up a default presentation, which will be applied when a screen with a component opens
+
+* Auto saving for security controls in an active presentation
+
+* Global presentations, which can be accessed by any system user
+
+*Classes and Interfaces *
+
+In order to use presentations, a component class should implement a `com.haulmont.cuba.gui.components.Component.HasPresentations` interface. In the platform, these components are:
+
+* <<gui_Table,Table>>
+
+* <<gui_GroupTable,GroupTable>>
+
+* <<gui_TreeTable,TreeTable>>
+
+`Presentation` − POJO presentation object.
+
+`Presentations` contains a list of component's presentations and a set of methods to work with them. Main methods:
+
+* `getCurrent()` − returns current presentation or `null`, if presentation is not defined
+
+* `setCurrent(Presentation p)` − sets an active presentation
+
+* `getSettings(Presentation p)` − returns an XML-element with display settings for the current presentation
+
+* `setSettings(Presentation p, Element e)` − modifies display settings for the specified presentation
+
+* `getPresentation(Object id)` − returns a presentation based on its identifier
+
+* `getPresentations()` − returns a list of presentations identifiers for the given component
+
+* `commit()` − saves presentations to the database 
+
+`PresentationsImpl` − element implementation `Presentations`.
+
+`PresentationsChangeListener` − a listener interface tracking presentation changes.
+
+In order to create, change or remove global presentations, user should have rights to `cuba.gui.presentations.global`. More details are available in the CUBA Platform Manual. Security Subsystem.
+
+[[gui_Timer]]
+====== Timer
+
+Timer is a non-visual component allowing certain screen controller code to be run at specified time intervals. The timer works in a thread that handles user interface events, which allows screen to be refreshed without any limitations. Timer stops working when a screen it was created for gets closed.
+
+The component is implemented for the *Web Client* and the *Desktop Client*. For the web client, timer implementation is based on interrogation server from web-browser, for the desktop client it based on `javax.swing.Timer`.
+
+The main approach for creating the timers is by declaring them in a screen XML-descriptor – in the `timers`, element which is located between `dsContext` and `layout` elements. 
+
+Timers are described using the `timer` element.
+
+* `delay` is a required attribute; it defines timer interval in milliseconds.
+
+* `autostart` – an optional attribute; when it is set to `true`, timer starts immediately after a screen gets opened. By default the value is `false`, which means that timer should be started by invoking its `start()` method.
+
+* `repeating` – an optional attribute, turns on repeating action for a timer. If the attribute is set to `true`, timer runs in cycles at equal intervals defined in the `delay` attribute. Otherwise, timer runs only once – `delay` milliseconds after the timer start.
+
+* `onTimer` – optional attribute containing a name of a method called when the timer fires. The handling method should be defined in a screen controller with a `public` modifier and have one `com.haulmont.cuba.gui.components.Timer` type parameter. 
+
+An example of using a timer to refresh table content periodically:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/timer_1.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/timer_2.java[]
+----
+
+Timer can be injected into a controller field, or acquired using the `Window.getTimer()` method. Timer activity can be controlled using the timer&rsquo;s `start()` and `stop()` methods. For an already active timer, `start()` invocation will be ignored. After stopping the timer using `stop()` method, it can be started again with `start()`.
+
+An event handler can be set for a timer using the implementation of a `Timer.TimerListener` interface:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/timer_3.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/timer_4.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/timer_5.java[]
+----
+
+[[gui_validator]]
+====== Validator
+
+Validator is intended to check values entered into visual components.
+
+[WARNING]
+====
+Validation and input type checking should be differentiated. If given component data type, for example <<gui_TextField,TextField>> is set to anything different than string (this can happen when linking to an entity attribute or setting `datatype`), then the component will not allow the user to enter a value that does not comply with this data type – when the component loses focus or when the user presses Enter, the component will show the previous value. 
+
+On the other hand, validation does not act immediately on data entry or on focus loss, but rather when the component's `validate()` method is invoked. It means that the component (and the entity attribute that it&rsquo;s linked to) may temporarily contain a value, which does not comply with the conditions of validation. This should not be a problem, because the validated fields are typically found in <<screen_edit,edit screens>>, which automatically invoke validation for all their fields before commit. If the component is located not in an editing screen, its `validate()` method should be invoked explicitly in the controller. 
+====
+
+In a screen XML-descriptor, a component validator can be defined in a nested `validator` elements. The `validator` element can have the following attributes:
+
+* `script` − path to the Groovy script performing validation.
+
+* `class` − name of the Java class implementing a `Field.Validator` interface.
+
+* Groovy validator and standard classes of Java validators, located in the `com.haulmont.cuba.gui.components.validators` package support `message` attribute − a message displayed to a user when validation fails. The attribute value should contain either a message or a message key from the <<message_packs,messages pack>> of the current screen. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validator_1.xml[]
+----
++
+[source]
+----
+include::{sourcesdir}/gui_vcl/validator_1.properties[]
+---- 
+
+* If the value of the `script` attribute is not set and the `validator` element itself does not contain text with a Groovy expression, then the system will use a class defined in the `class` attribute as a validator.
+
+* If the `validator` element contains text, it will be used as a Groovy expression and will be executed using <<scripting,Scripting>>.
+
+* Otherwise, the system will use <<scripting,Scripting>> to run a Groovy script defined in the `script` attribute.
+
+`value` variable will be passed to a Groovy expression or script. It contains the value entered into a visual component. An expression or a script should return a `boolean` value: `true` − valid, `false` − not valid.
+
+If a Java class is being used as a validator, it should have a default constructor without parameters or a constructor with the following set of parameters: 
+
+* `org.dom4j.Element`, `String` – this constructor will receive the validator XML-element and a message pack name of the screen.
+
+* `org.dom4j.Element` – this constructor will receive a validator XML-element.
+
+[TIP]
+====
+If the validator is implemented as an internal class, it should be declared with a `static` modifier and its name should be separated by "$", for example:
+
+`&lt;validator class="com.sample.sales.gui.AddressEdit$ZipValidator"/&gt;`
+====
+
+The platform contains a set of implementations for the most frequently used validators (see `com.haulmont.cuba.gui.components.validators` package), which can be used in your project:
+
+* `DateValidator`
+
+* `DoubleValidator`
+
+* `EmailValidator`
+
+* `IntegerValidator`
+
+* `LongValidator`
+
+* `PatternValidator`
+
+* `ScriptValidator`
+
+A validator class can be assigned to a component not only using a screen XML-descriptor, but also programmatically – by submitting a validator instance into the component's `addValidator()` method.
+
+Example of creating a validator class for ZIP codes: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validator_2.java[]
+---- 
+
+Example of using a zip code validator and a standard pattern validator for fields within a <<gui_FieldGroup,FieldGroup>> component: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validator_3.xml[]
+---- 
+
+Example of setting a validator programmatically in a screen controller: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validator_4.java[]
+---- 
+
+[[gui_attributes]]
+===== XML-Attributes of Components
+
+[[gui_attr_basic_align]]
+align:: 
++
+--
+An attribute defining component position relative to the above container.Possible values are:
+
+* `++TOP_RIGHT++`
+
+* `++TOP_LEFT++`
+
+* `++TOP_CENTER++`
+
+* `++MIDDLE_RIGHT++`
+
+* `++MIDDLE_LEFT++`
+
+* `++MIDDLE_CENTER++`
+
+* `++BOTTOM_RIGHT++`
+
+* `++BOTTOM_LEFT++`
+
+* `++BOTTOM_CENTER++`
+
+--
+
+[[gui_attr_basic_caption]]
+caption:: 
++
+--
+An attribute setting a visual component's caption.
+
+Attribute value can either be a message string or a key for the <<message_packs,message pack>>. In case of a key, the value should begin with `msg://prefix`.
+
+There are two ways of setting a key:* A short key – in this case the message will be searched in a package set for the current screen:
++
+[source]
+----
+caption="msg://infoFieldCaption"
+----
+
+* Full key including package name:
++
+[source]
+----
+caption="msg://com.haulmont.refapp.gui.app/infoFieldCaption"
+----
+
+--
+
+[[gui_attr_basic_captionProperty]]
+captionProperty:: 
++
+--
+Defines the name of an entity attribute which is displayed by a component. The property can only be used for entities in a datasources (for example, defined by the <<gui_attr_basic_optionsDatasource,optionsDatasource>>) property of the <<gui_LookupField,LookupField>>component.If `captionProperty` is not defined, <<namePattern,names of instances>> contained in a list will be shown.
+--
+
+[[gui_attr_basic_clickAction]]
+clickAction:: 
++
+--
+The attribute contains a description of an action that will be executed when a user clicks in a cell or a field (for the <<gui_FieldGroup,FieldGroup>> component). Two types of actions are possible:
+
+* `open` − opens an editing screen with the specified name for an entity displayed in the cell, for example: `clickAction="open:sec$User.edit"`. Entity name is displayed as a link:
+
+image::gui_clickAction_open.png[align="center"]
+
+* `invoke` − invokes a method of a screen controller with a specified name, for example: `clickAction="invoke:onClick"`. The method should have a single `Object` type parameter, which will be used to send an instance of the displayed entity.
+
+--
+
+[[gui_attr_basic_colspan]]
+colspan:: 
++
+--
+Sets the number of <<gui_GridLayout_span,extra grid columns>> that the component should occupy (default is 1).
+
+This attribute can be defined for any component located immediately within a <<gui_GridLayout,GridLayout>> container.
+--
+
+[[gui_attr_basic_datasource]]
+datasource:: 
++
+--
+Intended for setting a <<datasources,data source>>, described in a `dsContext` section of a screen XML-descriptor.
+
+When setting a `datasource` attribute for a component implementing a `DatasourceComponent` interface, a <<gui_attr_basic_property,property>> attribute should also be set. 
+--
+
+[[gui_attr_basic_description]]
+description:: 
+An attribute defining hint text for a component.
+
+[[gui_attr_basic_editable]]
+editable:: 
++
+--
+An attribute indicating that the component&rsquo;s content can be edited (do not mix with <<gui_attr_basic_enable,enable>>).
+
+Possible values − `true`, `false`. Default value is `true`.
+
+Ability to edit content of a component linked to data (inheritor of `DatasourceComponent` or `ListComponent`) is also influenced by the security subsystem. If the security subsystem data indicates that a component should not be editable, the value of its `editable` attribute will be ignored.
+--
+
+[[gui_attr_basic_enable]]
+enable:: 
++
+--
+An attribute defining component state: 
+
+If a component is disabled, it does not accept input focus. Disabling a container disables all of its components as well. Possible values are `true`, `false`.By default all components are enabled.
+--
+
+[[gui_attr_basic_expand]]
+expand:: 
+An attribute of a container controlling its internal layout.Defines a component within a container that should be expanded to cover all available space in the directions of component placement. For a container with components vertical placement, this attribute sets 100% height to a component; for the containers with horizontal placement - 100% width. Additionally, resizing a container will also resize this component.
+
+[[gui_attr_basic_height]]
+height:: 
++
+--
+An attribute setting component&rsquo;s height.Can be set in pixels or in percents of the parent container height. For example: `100px`, `100%`, `50`. If it is specified without units, pixels are assumed.
+
+Setting a value in `%` means that the component will occupy the corresponding height within an area provided by the parent container.
+
+When set to `AUTO` or `-1px`, a default value will be used for the component height. For a container, height is defined by the content, according to a sum of heights of all nested components.
+--
+
+[[gui_attr_basic_icon]]
+icon:: 
++
+--
+An attribute setting a visual component icon.
++
+Attribute value should contain a path to an icon file relative to the <<gui_themes,themes>> folder. For example::
+
+[source, xml]
+----
+icon="icons/create.png"
+----
+
+If the icon should be changed depending on the user&rsquo;s language, you can set a path to it in the messages package and specify a message key in an `icon` attribute, for example: 
+
+[source, xml]
+----
+icon="msg://addIcon"
+---- 
+
+Font elements of Font Awesome can be used instead of files in web client with Halo <<web_theme,theme>> (or derived from it). For this, specify the name of the required constant of the `com.vaadin.server.FontAwesome` class in the icon property with the `font-icon:` prefix, for example: 
+
+[source, xml]
+----
+icon="font-icon:BOOK"
+----
+--
+
+[[gui_attr_basic_id]]
+id:: 
+Component identifier.It&rsquo;s recommended that values are generated using the rules for Java-identifiers and camelСase is used, for example, `userGrid`, `filterPanel`.It can be specified for any component and should be unique within a screen.
+
+[[gui_attr_basic_inputPrompt]]
+inputPrompt:: 
++
+--
+Defines a string which is displayed in the field when its value is `null`.
+
+The attribute is used for <<gui_TextField,TextField>>, <<gui_LookupField,LookupField>>, <<gui_LookupPickerField,LookupPickerField>>, <<gui_SearchPickerField,SearchPickerField>> components in *web* client only.
+--
+
+[[gui_attr_basic_margin]]
+margin:: 
++
+--
+`margin` attribute defines indentation between the outer borders and the container content.
+
+It can take 2 value types:* `margin`=`"true"` − enables margins for all sides
+
+* `margin`=`"true,false,true,false"` − enables only the top and the bottom margin (the value format is "top,right,bottom,left")
+
+By default margins are disabled.
+--
+
+[[gui_attr_nullName]]
+nullName:: 
++
+--
+Selection of this option is equal to setting the `null` value.
+
+Attribute is used for <<gui_LookupField,LookupField>>, <<gui_LookupPickerField,LookupPickerField>>, and <<gui_SearchPickerField,SearchPickerField>> components.
+
+Example for a <<gui_LookupField,LookupField>>, component, setting an attribute value in an <<screen_xml_glossentry,XML-descriptor>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/nullname_1.xml[]
+---- 
+
+Example for a <<gui_LookupField,LookupField>>, component, setting an attribute value in a <<screen_controller_glossentry,controller>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/nullname_2.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/nullname_3.java[]
+---- 
+--
+
+[[gui_attr_basic_optionsDatasource]]
+optionsDatasource:: 
++
+--
+Sets the name of a <<datasources,data source>>, used to generate a list of options.
+
+<<gui_attr_basic_captionProperty,captionProperty>> attribute can be used together with `optionsDatasource`.
+--
+
+[[gui_attr_basic_property]]
+property:: 
++
+--
+An attribute of a component implementing a `DatasourceComponent` interface.
+
+It is intended to set the name of an entity attribute which value will be displayed and edited using this visual component.
+
+It is always used together with a <<gui_attr_basic_datasource,datasource>> attribute.
+--
+
+[[gui_attr_basic_required]]
+required:: 
++
+--
+An attribute of a visual component implementing a `Field` interface. Identifies that this field requires a value.
+
+Possible values − `true`, `false`. Default is `false`.
+
+`requiredMessage` attribute can be used together with `required`.
+--
+
+[[gui_attr_basic_requiredMessage]]
+requiredMessage:: 
++
+--
+An XML-attribute used together with a <<gui_attr_basic_required,required>> attribute. It allows setting a message that will be displayed to a user when the <<gui_attr_basic_required,required>> rule is not fulfilled..
+
+An attribute should contain a key of a message from a package, for example: `requiredMessage`="`msg://infoTextField.requiredMessage`"
+--
+
+[[gui_attr_basic_rowspan]]
+rowspan:: 
++
+--
+Sets the number of <<gui_GridLayout_span,additional grid lines>> that the component should occupy (default is 1).
+
+This attribute can be set for any component located immediately within a <<gui_GridLayout,GridLayout>> container.
+--
+
+[[gui_attr_basic_spacing]]
+spacing:: 
++
+--
+`spacing` attribute sets spacing between components within a container.
+
+Possible values − `true`, `false`.
+
+By default spacing is disabled.
+--
+
+[[gui_attr_basic_stylename]]
+stylename:: 
+An attribute defining a style name for a component.
+
+[[gui_attr_basic_visible]]
+visible:: 
++
+--
+An attribute setting component visibility. Possible values − `true`, `false`. 
+
+If a container is invisible all its components are invisible. By default all components are visible.
+--
+
+[[gui_attr_basic_width]]
+width:: 
++
+--
+An attribute defining component width.
+
+The value can be set in pixels or in percents of the width of the parent container. For example: `100px`, `100%`, `50`. If specified without units, pixels are assumed. Setting a value in `%` means that the component will occupy the corresponding width within an area provided by the parent container.
+
+When set to `AUTO` or `-1px`, a default value will be used for a component width. For a container, width is defined by the content, according to the sum of widths of all nested components.
+--

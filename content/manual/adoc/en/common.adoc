@@ -1,0 +1,2481 @@
+[[common_components]]
+=== Common Components
+
+This chapter covers platform components, which are common for all <<app_tiers,tiers>> of the application.
+
+[[data_model]]
+==== Data Model
+
+Entities are divided into two categories:
+
+* Persistent – instances of such entities are stored in the database tables.
+* Non-persistent – instances exist only in memory.
+
+The entities are characterized by their attributes. An attribute corresponds to a field and a pair of access methods (get / set) of the field. To make an attribute immutable (read only), it is enough to omit "set" method.
+
+Persistent entities may include attributes that are not stored in the database. For non-persistent attribute the field is optional, creation of access methods will be sufficent.
+
+The entity class should meet the following requirements:
+
+* Be inherited from one of the base classes provided by the platform (see below).
+
+* Have a set of fields and access methods corresponding to the entity attributes.
+
+* The class and its fields (or access methods if the attribute has no corresponding field) must be <<entity_annotations,annotated>> in a definite way for correct operation of JPA (in case of a persistent entity) and the <<metadata_framework,metadata framework>>.
+
+* To enable support of potential <<extension,extension>> of the entity, fields should be declared with the modifier `protected`, instead of `private`.
+
+The following attribute types of entities are supported: 
+
+* `java.lang.String`
+* `java.lang.Boolean`
+* `java.lang.Integer`
+* `java.lang.Long`
+* `java.lang.Double`
+* `java.math.BigDecimal`
+* `java.util.Date`
+* `java.sql.Date`
+* `java.sql.Time`
+* `java.util.UUID`
+* `byte[]`
+* `enum`
+* `entity`
+
+Base entity classes (see below) override `equals()` and `hashCode()` methods to provide entity instance matching by comparing their identifiers. I.e., instances are considered equal, if their identifiers match. An identifier of the UUID type is assigned to an instance right after its creation in memory, which is why new instances can also be compared and added to collections.
+
+[[base_entity_classes]]
+===== Base Entity Classes 
+
+The base entity classes and interfaces are described in detail in this section. 
+
+[[entity_base_classes]]
+.Base Entity Classes
+image::EntityClasses.png[align="center"]
+
+* `Instance` – declares the basic methods for working with objects of application domain:
+
+* getting the global unique identifier (UUID) of the entity
+
+* getting references to the object meta-class
+
+* generating the instance name
+
+* reading/writing attribute values by name
+
+* adding listeners receiving notifications about attribute changes
+
+* `Entity` – extends `Instance` with entity identifier (which is not necessarily equal to the UUID); at the same time `Entity` does not define the type of the identifier leaving this option to descendants.
+
+* `AbstractInstance` – implements the logic of working with attribute change listeners.
++
+[WARNING]
+====
+`AbstractInstance` stores the listeners in `WeakReference`, and if there are no external references to the added listener, it will be immediately destroyed by garbage collector. Normally, attribute change listeners are <<gui_vcl,visual components >> and <<datasources,UI datasources>> that are always referenced by other objects, so there is no problem with listeners dropout. However, if a listener is created by application code and no objects refer to it in a natural way, it is necessary to save it in a certain object field apart from just adding it to `Instance`.
+====
+
+* `AbstractNotPersistentEntity` – base class of non-persistent entities with `UUID` identifier.
+
+* `BaseEntity` – base class of persistent entities; declares methods for working with information about when and by whom the entity instance was created in the database.
+
+* `BaseGenericIdEntity` – implements `BaseEntity` with added JPA annotations without specifying the type of the identifier (i.e. the primary key) of the entity.
+
+* `BaseUuidEntity` – extends `BaseGenericIdEntity` and sets the `id` identification attribute of the `UUID` type.
+
+* `BaseLongIdEntity` – extends `BaseGenericIdEntity` and sets the `id` identification attribute of the `Long` type.
+
+* `BaseIntegerIdEntity` – extends `BaseGenericIdEntity` and sets the `id` identification attribute of the `Integer` type.
+
+* `BaseStringIdEntity` – extends `BaseGenericIdEntity` and sets only the type of the identifier - `String`. A specific entity class, extended from `BaseStringIdEntity`, must have a `String`-type identifier attribute with the `@Id` JPA annotation.
+
+* `Versioned` – interface for entities supporting optimistic locking .
+
+* `Updatable` – interface for entities which require to keep the information about when and by whom the instance was last changed. 
+
+* `SoftDelete` – interface for entities supporting <<soft_deletion,soft deletion>>.
+
+* `StandardEntity` – the most commonly used base class of persistent entities that implements the interfaces given above.
+
+When creating entity classes it is recommended to choose a base class according to the following rules:
+
+* If an entity is not stored in the database, inherit it from `AbstractNotPersistentEntity`.
+
+* If an entity is embedded, inherit it from `EmbeddableEntity`.
+
+* If an entity is only created in DB, never changes and needs no soft deletion, inherit it from `BaseUuidEntity`.
+
+* If an entity behaves in a standard way: changes in the database, requires optimistic locking and soft deletion − inherit it from `StandardEntity`.
+
+* Otherwise inherit the entity from `BaseUuidEntity` and implement `Versioned`, `Updatable`, `SoftDelete` interfaces if required.
+
+* For some entities, it is desirable to use integer or string primary keys. In this case, inherit the entity from `BaseLongIdEntity`, `BaseIntegerIdEntity` or `BaseStringIdEntity` instead of `BaseUuidEntity`.
+
+[[entity_annotations]]
+===== Entity Annotations
+
+This section describes all annotations of entity classes and attributes supported by the platform.
+
+Annotations of the `javax.persistence` package are needed for JPA, annotations of `com.haulmont.*` packages are designed for <<metadata_framework,metadata>> management and control of other mechanisms in the platform.
+
+In this manual, if an annotation is identified by a simple class name, it refers to a platform class, located in one of `com.haulmont.*` packages. 
+
+[[entity_class_annotations]]
+====== Class Annotations
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Entity.html$$[@javax.persistence.Entity]`::
++
+--
+Declares a class to be a data model entity.
+
+Parameters:
+
+* `name` – the name of the entity, must begin with a prefix, separated by a `$` sign. It is recommended to use a short name of the project as a prefix to form a separate namespace.
+
+Example:
+
+[source, java]
+----
+@Entity(name = "sales$Customer")
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/MappedSuperclass.html$$[@javax.persistence.MappedSuperclass]`::
++
+Defines that the class is an ancestor for some entities and its attributes must be used as part of descendant entities. Such class is not associated with any particular database table.
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Table.html$$[@javax.persistence.Table]`::
++
+--
+Defines database table for the given entity.
+
+Parameters:
+
+* `name` – the table name
+
+Example:
+
+[source, java]
+----
+@Table(name = "SALES_CUSTOMER")
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Embeddable.html$$[@javax.persistence.Embeddable]`::
++
+--
+Defines an embedded entity stored in the same table as the owning entity.
+
+<<metaclass_annotation,@MetaClass>> annotation should be used to specify the entity name.
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Inheritance.html$$[@javax.persistence.Inheritance]`::
++
+--
+Defines the inheritance strategy to be used for an entity class hierarchy. It is specified on the entity class that is the root of the entity class hierarchy.
+
+Parameters:
+
+* `strategy` – inheritance strategy, `++SINGLE_TABLE++` by default
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/DiscriminatorColumn.html$$[javax.persistence.DiscriminatorColumn]`::
++
+--
+Is used for defining a database column responsible for the distinction of entity types in the cases of `++SINGLE_TABLE++` and `JOINED` inheritance strategies.
+
+Parameters:
+
+* `name` – the discriminator column name
+* `discriminatorType` – the discriminator column type
+
+Example:
+
+[source, java]
+----
+@DiscriminatorColumn(name = "TYPE", discriminatorType = DiscriminatorType.INTEGER)
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/DiscriminatorValue.html$$[@javax.persistence.DiscriminatorValue]`::
++
+--
+Defines the discriminator column value for this entity.
+
+Example:
+
+[source, java]
+----
+@DiscriminatorValue("0")
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/PrimaryKeyJoinColumn.html$$[@javax.persistence.PrimaryKeyJoinColumn]`::
++
+--
+Is used in the case of `JOINED` inheritance strategy to specify a foreign key column for the entity which refers to the primary key of the ancestor entity.
+
+Parameters:
+
+* `name` – the name of the foreign key column of the entity
+* `referencedColumnName` – the name of primary key column of the ancestor entity
+
+Example:
+
+[source, java]
+----
+@PrimaryKeyJoinColumn(name = "CARD_ID", referencedColumnName = "ID")
+----
+--
+
+`@NamePattern`::
++
+--
+Determines the way of getting the name of the instance returned by the method `Instance.getInstanceName()`.
+
+The annotation value should be a string in the format `{0}|{1}`, where:
+
+* `{0}` – formatting string according to the `String.format()` rules, or this object method name with the prefix `#`. The method should return `String` and should have no parameters.
+
+* `{1}` – a list of field names separated by commas, corresponding to `{0}` format. If the method is used in `{0}`, the list of fields is still required as it forms the `++_minimal++` <<views,view>>.
+
+Examples:
+
+[source, java]
+----
+@NamePattern("%s|name")
+----
+
+[source, java]
+----
+@NamePattern("#getCaption|login,name")
+----
+--
+
+`@Listeners`::
++
+--
+Defines the list of listeners intended for reaction to the events of the entity instance lifecycle on the Middleware <<app_tiers,tier>>.
+
+The annotation value should be a string or an array of strings containing class names of the listeners. See <<entity_listeners>>.
+
+The strings here are used instead of class references because classes of the listeners are contained only on *Middleware* tier and are inaccessible for client code, while the classes of the entities are used on all tiers.
+
+Examples:
+[source, java]
+----
+@Listeners("com.haulmont.cuba.security.listener.UserEntityListener")
+----
+
+[source, java]
+----
+@Listeners({"com.abc.sales.entity.FooListener","com.abc.sales.entity.BarListener"})
+----
+--
+
+`@MetaClass`::
++
+--
+Is used for declaring non-persistent or <<embeddable_annotation,embedded>> entity (meaning that `@javax.persistence.Entity` annotation cannot be applied)
+
+Parameters:
+
+* `name` – the entity name, must begin with a prefix, separated by a `$` sign. It is recommended to use a short name of the project as prefix to form a separate namespace.
+
+Example:
+
+[source, java]
+----
+@MetaClass(name = "sys$LockInfo")
+----
+--
+
+`@SystemLevel`:: Indicates that the entity is system only and should not be available for selection in various lists of entities, such as <<gui_Filter,generic filter>> parameter types or <<dynamic_attributes,dynamic attribute>> type.
+
+`@EnableRestore`:: Indicates that the entity instances are available for recovery after <<soft_deletion,soft deletion>> on a special screen `core$Entity.restore`. 
+
+`@TrackEditScreenHistory`:: Indicates that editor screens opening history (`++{entity_name}.edit++`) will be recorded with the ability to display it on a special screen `sec$ScreenHistory.browse`.
+
+`@Extends`:: Indicates that the entity is an extension and it should be used everywhere instead of the base entity. See <<extension>>.
+
+`@PostConstruct`:: This annotation can be specified for a method. Such method will be invoked right after the entity instance is created by <<metadata,Metadata.create()>>. This is convenient, when instance initialization requires invocation of <<managed_beans,beans>>. For example, see <<init_values_in_class>>.
+
+[[entity_attr_annotations]]
+====== Attribute Annotations
+
+Attribute annotations should be set for the corresponding fields, with the following exception: if there is a need to declare read-only, non-persistent attribute `foo`, it is sufficient to create `getFoo()` method and annotate it with `@MetaProperty`.
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Transient.html$$[@javax.persistence.Transient]`::
++
+--
+Indicates that field is not stored in the database, meaning it is non-persistent.
+
+The fields supported by JPA types (See link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Basic.html$$[http://docs.oracle.com/javaee/5/api/javax/persistence/Basic.html]) __are persistent by default__, that is why `@Transient` annotation is mandatory for non-persistent attribute of such type.
+
+<<metaProperty_annotation,@MetaProperty>> annotation is required if `@Transient` attribute should be included in metadata.
+--
+
+`link:$$http://openjpa.apache.org/builds/2.2.2/apache-openjpa-2.2.2/docs/javadoc/org/apache/openjpa/persistence/Persistent.html$$[@org.apache.openjpa.persistence.Persistent]`::
++
+--
+Indicates that field is stored in the database, meaning it is persistent.
+
+This annotation is only required for non-standard JPA fields. The platform currently supports one such type – `java.util.UUID`. Thus, `@Persistent` annotation is only required when declaring persistent `UUID` type field.
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Column.html$$[@javax.persistence.Column]`::
++
+--
+Defines DB column for storing attribute values.
+
+Parameters:
+
+* `name` – the column name.
+
+* `length` – (optional parameter, `255` by default) – the length of the column. It is also used for <<metadata_framework,metadata>> generation and ultimately, can limit the maximum length of the input text in visual components implementing this attribute. Add the `@Lob` annotation to remove restriction on the attribute length.
+
+* `nullable` – (optional parameter, `true` by default) – determines if an attribute can contain `null` value. When `nullable = false` JPA ensures that the field has a value when saved. In addition, visual components working with the attribute can request the user to enter a value.
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Id.html$$[@javax.persistence.Id ]`::
++
+--
+Indicates that the attribute is the entity primary key. Typically, this annotation is set on the field of a base class, such as <<base_entity_classes,BaseUuidEntity>>. Using this annotation for a specific entity class is required only in case of inheritance from the `BaseStringIdEntity` base class (i.e. creating an entity with a string primary key).
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/ManyToOne.html$$[@javax.persistence.ManyToOne]`::
++
+--
+Defines a reference attribute with many-to-one relationship type.
+
+Parameters:
+
+* `fetch` – (`EAGER` by default) parameter that determines whether JPA will eagerly fetch the referenced entity. This parameter should always be set to `LAZY`, since retrieval of referenced entity in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
+
+For example, several `Order` instances refer to the same `Customer` instance. In this case `Order` class should contain the following annotations:
+
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/OneToMany.html$$[@javax.persistence.OneToMany]`::
++
+--
+Defines a collection attribute with one-to-many relationship type.
+
+Parameters:
+
+* `mappedBy` – the field of the referenced entity, which determines the relationship.
+
+* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using *Java generics*.
+
+* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will eagerly fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+* `cascade` – (optional parameter, `{}` by default) – determines operations that should be cascaded to the referenced entities. Cascading on this level is not recommended.
+
+For example, several `Item` instances refer to the same `Order` instance using `@ManyToOne` field `Item.order`. In this case `Order` class can contain a collection of `Item` instances:
+
+[source, java]
+----
+@OneToMany(mappedBy = "order")
+protected Set<Item> items;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/OneToOne.html$$[@javax.persistence.OneToOne]`::
++
+--
+Defines a reference attribute with one-to-one relationship type.
+
+Parameters:
+
+* `fetch` – (`EAGER` by default) determines whether JPA will eagerly fetch the referenced entity. This parameter should be set to `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+* `mappedBy` – the field of the referenced entity, which determines the relationship. It must only be set on the non-owning side of the relationship.
+
+* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
+
+Example of owning side of the relationship, `Driver` class:
+
+[source, java]
+----
+@OneToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CALLSIGN_ID")
+protected DriverCallsign callsign;
+----
+
+Example of non-owning side of the relationship, `DriverCallsign` class:
+[source, java]
+----
+@OneToOne(fetch = FetchType.LAZY, mappedBy = "callsign")
+protected Driver driver;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/ManyToMany.html$$[@javax.persistence.ManyToMany]`::
++
+--
+Defines a collection attribute with many-to-many relationship type.
+
+Many-to-many relationship always has an owning side and can also have inverse, non-owning side. The owning side should be marked with additional `@JoinTable` annotation, and the non-owning side – with `mappedBy` parameter.
+
+Parameters:
+
+* `mappedBy` – the field of the referenced entity, which determines the relationship. It must only be set on the non-owning side of the relationship.
+
+* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using *Java generics*.
+
+* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will eagerly fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/JoinColumn.html$$[@javax.persistence.JoinColumn]`::
++
+--
+Defines DB column that determines the relationship between entities.
+
+Parameters:
+
+* `name` – the column name
+
+Example:
+
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/JoinTable.html$$[@javax.persistence.JoinTable]`::
++
+--
+Defines a join table on the owning side of `@ManyToMany` relationship.
+
+Parameters:
+
+* `name` – the join table name
+
+* `joinColumns` – `@JoinColumn` element in the join table corresponding to primary key of the owning side of the relationship (the one containing `@JoinTable` annotation)
+
+* `inverseJoinColumns` – `@JoinColumn `element in the join table corresponding to primary key of the non-owning side of the relationship.
+
+Example of the `customers` attribute of the `Group` class on the owning side of the relationship:
+
+[source, java]
+----
+@ManyToMany
+@JoinTable(name = "SALES_CUSTOMER_GROUP_LINK",
+ joinColumns = @JoinColumn(name = "GROUP_ID"),
+ inverseJoinColumns = @JoinColumn(name = "CUSTOMER_ID"))
+protected Set<Customer> customers;
+----
+
+Example of the `groups` attribute of the `Customer`class on non-owning side of the same relationship:
+
+[source, java]
+----
+@ManyToMany(mappedBy = "customers")
+protected Set<Group> groups;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/OrderBy.html$$[@javax.persistence.OrderBy]`::
++
+--
+Determines the order of elements in a collection attribute at the point when the association is retrieved from the database. This annotation should be specified for ordered Java collections such as `List` or `LinkedHashSet` to get a predictable sequence of elements.
+
+Parameters:
+
+* `value` – string, determines the order in the format:
+
+----
+orderby_list::= orderby_item [,orderby_item]*
+orderby_item::= property_or_field_name [ASC | DESC]
+----
+
+Example:
+
+[source, java]
+----
+@OneToMany(mappedBy = "user")
+@OrderBy("createTs")
+protected List<UserRole> userRoles;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Embedded.html$$[@javax.persistence.Embedded]`::
++
+--
+Defines a reference attribute of embeddable type. The referenced entity should have `@Embeddable` annotation.
+
+Example:
+
+[source, java]
+----
+@Embedded
+protected Address address;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Temporal.html$$[@javax.persistence.Temporal]`::
++
+--
+Specifies the type of the stored value for `java.util.Date` attribute: date, time or date+time.
+
+Parameters:
+
+* `value` – the type of the stored value: `DATE`, `TIME`, `TIMESTAMP`
+
+Example:
+
+[source, java]
+----
+@Column(name = "START_DATE")
+@Temporal(TemporalType.DATE)
+protected Date startDate;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Version.html$$[@javax.persistence.Version]`::
++
+--
+Indicates that the annotated field stores version for optimistic locking support.
+
+Such field is required when an entity class implements the `Versioned` interface (`StandardEntity` base class already contains such field).
+
+Example:
+
+[source, java]
+----
+@Version
+@Column(name = "VERSION")
+private Integer version;
+----
+--
+
+`link:$$http://docs.oracle.com/javaee/5/api/javax/persistence/Lob.html$$[@javax.persistence.Lob]`::
++
+--
+Indicates that the attribute does not have any length restrictions. This annotation is used together with the `@Column` annotation. If `@Lob` is set, the default or explicitly defined length in `@Column` is ignored.
+
+Example:
+
+[source, java]
+----
+@Column(name = "DESCRIPTION")
+@Lob
+private String description;
+----
+--
+
+`@MetaProperty`::
++
+--
+Indicates that <<metadata_framework,metadata>> should include the annotated attribute. This annotation can be set for a field or for a getter method, if there is no corresponding field.
+
+This annotation is not required for the fields already containing the following annotations from `javax.persistence` package: `@Column`, `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany`, `@Embedded`. Such fields are included in metadata automatically. Thus, `@MetaProperty` is mainly used for defining non-persistent attributes of the entities.
+
+Parameters:
+
+* `mandatory` – (optional parameter, `false` by default) – determines whether the attribute can contain `null` value. If `mandatory = true`, the visual components working with this attribute can request the user to enter a value.
+
+Field example:
+
+[source, java]
+----
+@Transient
+@MetaProperty
+protected String token;
+----
+
+Method example:
+
+[source, java]
+----
+@MetaProperty
+public String getLocValue() {
+ if (!StringUtils.isBlank(messagesPack)) {
+ return AppBeans.get(Messsages.class).getMessage(messagesPack, value);
+ } else {
+ return value;
+ }
+}
+----
+--
+
+`@OnDelete`::
++
+--
+Determines handling policy for related entities in case of soft deletion of the entity, containing the attribute. See <<soft_deletion>>.
+
+Example:
+
+[source, java]
+----
+@OneToMany(mappedBy = "group")
+@OnDelete(DeletePolicy.CASCADE)
+private Set<Constraint> constraints;
+----
+--
+
+`@OnDeleteInverse`::
++
+--
+Determines handling policy for related entities in case of soft deletion of the entity from the inverse side of the relationship. See <<soft_deletion>>.
+
+Example:
+
+[source, java]
+----
+@ManyToOne
+@JoinColumn(name = "DRIVER_ID")
+@OnDeleteInverse(DeletePolicy.DENY)
+private Driver driver;
+----
+--
+
+`@Composition`::
++
+--
+Indicates that the relationship is a composition, which is a stronger variant of the association. Essentially this means that the related entity should only exist as a part of the owning entity, i.e. created and deleted together with it.
+
+For example, a list of items in an order (`Order` class contains a collection of `Item` instances):
+
+[source, java]
+----
+@OneToMany(mappedBy = "order")
+@Composition
+protected List<Item> items;
+----
+
+Choosing `@Composition` annotation as the relationship type allows making use of a special commit mode for datasources in <<screen_edit,edit screens>>. In this mode, the changes to related instances are only stored when the master entity is committed. See <<composition_recipe>> for details.
+--
+
+`@LocalizedValue`::
++
+--
+Determines a method for retrieving a localized value for an attribute, using `<<messageTools,MessageTools>>.getLocValue()` method.
+
+Parameters:
+
+* `messagePack` – explicit indication of the package, from which a localized message will be taken, for example, `com.haulmont.cuba.core.entity`.
+
+* `messagePackExpr` – expression defining the path to the attribute, containing a package name from which the localized message should be taken (for example, `proc.messagesPack`). The path starts from the attribute of the current entity. 
+
+The annotation in the example below indicates that localized message for the `state` attribute value should be taken from the package name defined in the `messagesPack` attribute of the `proc` entity.
+
+[source, java]
+----
+@Column(name = "STATE")
+@LocalizedValue(messagePackExpr = "proc.messagesPack")
+protected String state;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "PROC_ID")
+protected Proc proc;
+----
+--
+
+`@IgnoreUserTimeZone`::
++
+--
+Directs the platform to ignore the user's <<timeZone,time zone>> (if it is set for the current session) for an attribute of the timestamp type (annotated with `@javax.persistence.Temporal.TIMESTAMP`).
+--
+
+[[enum_attributes]]
+===== Enum Attributes
+
+The standard use of JPA for `enum` attributes, involves an integer database field containing a value obtained from the `ordinal()` method. This approach may lead to the following issues with extending a system in production:
+
+* An entity instance cannot be loaded, if the value of the enum in the database does not equal to any `ordinal` value.
+
+* It is impossible to add a new value between the existing ones, which is important when sorting by enumeration value (order by).
+
+CUBA-style approach to solving these problems is to detach the value stored in the database from `ordinal` value of the enumeration. In order to do this, the field of the entity should be declared with the type, stored in the database (`Integer` or `String`), while the access methods (getter / setter) should be created with the actual enumeration type.
+
+Example:
+
+[source, java]
+----
+include::{sourcesdir}/common/enum_1.java[]
+----
+
+In this case, the enumeration class can look like this:
+
+[source, java]
+----
+include::{sourcesdir}/common/enum_2.java[]
+----
+
+For correct reflection in <<metadata_framework,metadata>> the enumeration class must implement `EnumClass` interface.
+
+As the examples show, `grade` attribute corresponds to the `Integer` type value stored in the database, which is specified by the `id` field of `CustomerGrade` enumeration, namely `10`, `20` or `30`. At the same time, the application code and metadata framework use `CustomerGrade` enum through access methods, which perform the actual conversion.
+
+A call to `getGrade()` method will simply return `null`, if the value in the database does not correspond to any of the enumeration values. In order to add a new value, for example, `HIGHER`, between `HIGH` and `PREMIUM`, it is sufficient to add new enumeration value with `id = 15`, which ensures that sorting by `Customer.grade` field remains correct.
+
+Enumeration values can be associated with <<enum_localization,localized names>> that will be displayed in the user interface of the application.
+
+[[soft_deletion]]
+===== Soft Deletion
+
+CUBA platform supports soft deletion mode, when the records are not deleted from the database, but instead, marked in a special way, so that they become inaccessible for common use. Later, these records can be either completely removed from the database using some kind of scheduled procedure or restored. 
+
+Soft deletion mechanism is transparent for an application developer, the only requirement is for entity class to implement `SoftDelete` interface. The platform will adjust data operations automatically.
+
+Soft deletion mode offers the following benefits:
+
+* Significantly reduces the risk of data loss caused by incorrect user actions.
+
+* Allows to make certain records inaccessible instantly even if there are references to them. 
++
+Using Orders-Customers data model as an example, let's assume that a certain customer has made several orders but we need to make him inaccessible. This is impossible with traditional hard deletion, as deletion of a customer requires either deletion of all his orders or setting to null all references to the customer (meaning data loss). After soft deletion, the customer becomes unavailable for search and modification; however, a user can see the name of the customer in the order editor, as deletion attribute is purposely ignored when the related entities are fetched.
++
+The standard behavior above can be modified with <<delete_policy,related entities processing policy>>.
+
+The negative impact of soft deletion is increase in database size and likely need for additional cleanup procedures. 
+
+====== Use of Soft Deletion
+
+To support soft deletion, the entity class should implement `SoftDelete` interface, and the corresponding database table should contain the following columns:
+
+* *DELETE_TS* – when the record was deleted.
+
+* *DELETED_BY* – the login of the user who deleted the record.
+
+The default behavior for instances implementing `SoftDelete` interface, is that soft deleted entities are not returned by queries or search by id. If required, this behavior can by dynamically turned off using the following methods:
+
+* Calling `setSoftDeletion(false)` for the current <<entityManager,EntityManager>> instance.
+
+* Calling `setSoftDeletion(false)` for `LoadContext` object when requesting data via <<dataManager,DataManager>>.
+
+* On <<datasources,datasource>> level – calling `CollectionDatasource.setSoftDeletion(false)` or setting `softDeletion="false"` attribute of `collectionDatasource` element in <<screen_xml,XML-descriptor>> screen.
+
+In soft deletion mode, the platform automatically filters out the deleted instances when loading by `id` and when using JPQL queries, as well as the deleted elements of the related entities in collection attributes. However, related entities in single-value attributes are loaded, regardless of whether the related instance was deleted or not.
+
+[[delete_policy]]
+====== Related Entities Processing Policy
+
+The platform offers a tool for managing related entities when deleting, which is largely similar to *ON DELETE* rules for database foreign keys. This tool works on the Middleware <<app_tiers,tier>> and uses <<onDelete_annotation,@OnDelete>>, <<onDeleteInverse_annotation,@OnDeleteInverse>> annotations for entity attributes.
+
+`@OnDelete` annotation is processed when the entity in which this annotation is found is deleted, but not the one pointed to by this annotation (this is the main difference from cascade deletion at the database level).
+
+`@OnDeleteInverse` annotation is processed when the entity which it points to is deleted (which is similar to cascade deletion at foreign key level in the database). This annotation is useful when the object being deleted has no attribute that can be checked before deletion. Typically, the object being checked has a reference to the object being deleted, and this is the attribute that should be annotated with` @OnDeleteInverse`.
+
+Annotation value can be: 
+
+* `DeletePolicy.DENY` – prohibits entity deletion, if the annotated attribute is not `null` or not an empty collection.
+
+* `DeletePolicy.CASCADE` – cascade deletion of the annotated attribute. 
+
+* `DeletePolicy.UNLINK` – disconnect the link with the annotated attribute. It is reasonable to disconnect the link only in the owner side of the association – the one with `@JoinColumn` annotation in the entity class.
+
+Examples:
+
+. Prohibit deletion of entity with references:` DeletePolicyException` will be thrown if you try to delete `Customer` instance, which is referred to by at least one `Order`.
++
+`Order.java`
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+@OnDeleteInverse(DeletePolicy.DENY)
+protected Customer customer;
+----
++
+`Customer.java`
++
+[source, java]
+----
+@OneToMany(mappedBy = "customer")
+protected List<Order> orders;
+----
+
+. Cascade deletion of related collection elements: deletion of `Role` instance causes all `Permission` instances to be deleted as well.
++
+`Role.java`
++
+[source, java]
+----
+@OneToMany(mappedBy = "role")
+@OnDelete(DeletePolicy.CASCADE)
+protected Set<Permission> permissions;
+----
++
+`Permission.java`
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "ROLE_ID")
+protected Role role;
+----
+
+. Disconnect the links with related collection elements: deletion of `Role` instance leads to setting to null references to this `Role` for all `Permission` instances included in the collection.
++
+`Role.java`
++
+[source, java]
+----
+@OneToMany(mappedBy = "role")
+protected Set<Permission> permissions;
+----
++
+`Permission.java`
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "ROLE_ID")
+@OnDeleteInverse(DeletePolicy.UNLINK)
+protected Role role;
+----
+
+Implementation notes:
+
+. Be careful when using `@OnDeleteInverse` together with `CASCADE` and `UNLINK` policies. During this process, all instances of the related objects are fetched from the database, modified and then saved.
++
+For example, if `@OnDeleteInverse(CASCADE)` policy is set on `Job.customer` attribute in a `Customer` – `Job` association with many jobs to one customer, if you set `@OnDeleteInverse(CASCADE)` policy on `Job.customer` attribute, all jobs will be retrieved and modified when deleting a Customer instance. This may overload the application server or the database.
++
+On the other hand, using `@OnDeleteInverse(DENY)` is safe, as it only involves counting the number of the related objects. If there are more than `0`, an exception is thrown. This makes use of `@OnDeleteInverse(DENY)` suitable for `Job.customer` attribute.
+
+. Related entities processing is implemented at Middleware using <<entity_listeners,Entity Listeners>>.
+
+[[soft_deletion_unique_constr]]
+====== Unique Restrictions at Database Level
+
+In order to apply unique restrictions for certain value in the soft deletion mode, at least one non-deleted record with this value and an arbitrary number of deleted records with the same value may exist in database. 
+
+This logic can be implemented in a specific way for each database server type:
+
+* If database server supports partial indexes (e.g. *PostgreSQL*), unique restrictions can be achieved as follows:
++
+----
+create unique index IDX_SEC_USER_UNIQ_LOGIN on SEC_USER (LOGIN_LC) where DELETE_TS is null
+----
+
+* If database server does not support partial indexes (e.g. *Microsoft SQL Server 2005*), *DELETE_TS *field can be included in the unique index:
++
+----
+create unique index IDX_SEC_USER_UNIQ_LOGIN on SEC_USER (LOGIN_LC, DELETE_TS)
+----
+
+[[metadata_framework]]
+==== Metadata Framework
+
+Metadata framework is used to support efficient work with <<data_model,data model>> in CUBA-applications. The framework:
+
+* provides API for obtaining information about entities, their attributes and relations between the entities; it is also used for traversing object graphs; 
+
+* serves as a specialized and more convenient alternative for *Java Reflection API*;
+
+* controls permitted data types and relationships between entities;
+
+* allows implementation of universal mechanisms for operations with data.
+
+[[metadata_interfaces]]
+===== Metadata Interfaces
+
+Let us consider the basic metadata interfaces.
+
+.Metadata Framework Interfaces 
+image::MetadataFramework.png[align="center"]
+
+`Session`:: Entry point of the metadata framework. Allows obtaining `MetaClass` instances by name and by the corresponding Java class. Note the difference in methods: `getClass()` methods can return `null `while `getClassNN()` (NonNull) methods cannot.
++
+`Session` object can be obtained using `<<metadata,Metadata>>` infrastructure interface.
++
+Example:
+[source, java]
+----
+@Inject
+protected Metadata metadata;
+...
+Session session = metadata.getSession();
+MetaClass metaClass1 = session.getClassNN("sec$User");
+MetaClass metaClass2 = session.getClassNN(User.class);
+assert metaClass1 == metaClass2;
+----
+
+`MetaModel`::
++
+Rarely used interface intended to group meta-classes.
++
+Meta-classes are grouped by the root name of Java project package specified in <<metadata.xml,metadata.xml>> file.
+
+`MetaClass`::
++
+--
+Entity class metadata interface. `MetaClass` is always associated with Java class which it represents.
+
+Basic methods:
+
+* `getName()` – entity name, according to convention the first part of the name before `$` sign is namespace code, for example, `sales$Customer`.
+
+* `getProperties()` – the list of meta-properties (`MetaProperty`).
+
+* `getProperty()`, `getPropertyNN()` – methods return meta-properties by name. In case when there is no attribute with provided name, the first method returns `null`, and the second throws an exception.
++
+Example:
++
+[source, java]
+----
+MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupProperty = userClass.getPropertyNN("group");
+----
+
+* `getPropertyPath()` – allows you to navigate by references. This method accepts string parameter – path in the format of dot-separated attribute names. The returned `MetaPropertyPath` object allows accessing the required (the last in the path) attribute by invoking `getMetaProperty()` method.
++
+Example:
++
+[source, java]
+----
+MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupNameProp = userClass.getPropertyPath("group.name").getMetaProperty();
+assert groupNameProp.getDomain().getName().equals("sec$Group");
+----
+
+* `getJavaClass()` – entity class, corresponding to this `MetaClass`.
+
+* `getAnnotations()` – collection of <<meta_annotations,meta-annotations>>.
+--
+
+`MetaProperty`::
++
+Entity attribute metadata interface.
++
+Basic methods:
+
+* `getName()` – property name, corresponds to entity attribute name.
+
+* `getDomain()` – meta-class, owning this property.
+
+* `getType()`- the property type:
+
+** simple type: `DATATYPE`
+
+** enumeration: `ENUM`
+
+** reference type of two kinds:
+
+*** `ASSOCIATION` − simple reference to another entity. For example, Order-Customer relationship is an association.
+
+*** `COMPOSITION` − reference to the entity, having no consistent value without the owning entity. `COMPOSITION` is considered to be a &ldquo;closer&rdquo; relationship than `ASSOCIATION`. For example, the relationship between Order and its Items is a `COMPOSITION`, as the Item cannot exist without the Order to which it belongs.
++
+The type of `ASSOCIATION` or `COMPOSITION` reference attributes affects entity edit mode: in the first case the related entity is persisted to the database independently, in the second case – only together with the owning entity. See <<composition_recipe>> for details.
+
+* `getRange()` – `Range` interface providing detailed description of the attribute type.
+
+* `isMandatory()` – indicates a mandatory attribute. For instance, it is used by visual components to signal a user that value is mandatory.
+
+* `isReadOnly()` – indicates a read-only attribute. 
+
+* `getInverse()` – for reference-type attribute, returns the meta-property from the other side of the association, if such exists.
+
+* `getAnnotatedElement()` – field (`java.lang.reflect.Field`) or method (`java.lang.reflect.Method`), corresponding to the entity attribute.
+
+* `getJavaType()` – Java class of the entity attribute. It can either be the type of corresponding field or the type of the value returned by corresponding method.
+
+* `getDeclaringClass()` – Java class containing this attribute.
+
+`Range`:: Interface describing entity attribute type in detail.
++
+Basic methods:
+
+* `isDatatype()` – returns `true` for simple <<metaProperty.getType,type>> attribute.
+
+* `asDatatype()` – returns <<datatype,Datatype>> for simple type attribute.
+
+* `isEnum()` – returns `true` for enumeration type attribute.
+
+* `asEnumeration()` – returns <<datatype,Enumeration>> for enumeration type attribute.
+
+* `isClass()` – returns `true` for reference attribute of `ASSOCIATION` or `COMPOSITION` type.
+
+* `asClass()` – returns <<metaClass,metaclass>> of associated entity for a reference attribute. 
+
+* `isOrdered()` – returns `true` if the attribute is represented by an ordered collection (for example `List`).
+
+* `getCardinality()` – relation kind of the reference attribute: `++ONE_TO_ONE++`, `++MANY_TO_ONE++`, `++ONE_TO_MANY++`, `++MANY_TO_MANY++`.
+
+[[metadata_building]]
+===== Metadata Building
+
+The main source for metadata structure generation are <<entity_annotations,annotated>> entity classes.
+
+Entity class will be present in the metadata in the following cases: 
+
+* Persistent entity class is annotated by `@Entity`, `@Embeddable`, `@MappedSuperclass` and is located within the root package specified in <<metadata.xml,metadata.xml>>.
+
+* Non-persistent entity class is annotated by `@MetaClass` and is located within the root package specified in `metadata.xml`.
+
+All entities inside same root package are put into the same `MetaModel` instance, which is given the name of this package. Entities within the same `MetaModel` can contain arbitrary references to each other. References between entities from different meta-models can be created in the order of declaration of `metadata.xml` files in <<cuba.metadataConfig,cuba.metadataConfig>> property.
+
+Entity attribute will be present in metadata if: 
+
+* A class field is annotated by `@Column`, `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany`, `@Embedded`.
+
+* A class field or an access method (getter) is annotated by `@MetaProperty`.
+
+Metaclass and metaproperty parameters are determined on the base of the listed <<entity_annotations,annotations>> parameters as well as field types and class methods. Besides, if an attribute does not have write access method (setter), it becomes immutable (read only).
+
+[[datatype]]
+===== Datatype
+
+`Datatype` interface describes a valid data type for the entity attribute if it is not a reference. Each `Datatype` implementation corresponds to a single Java class. 
+
+All of the instances are registered in repository – `Datatypes` class, which performs loading and initializing of `Datatype` implementation classes in the following way:
+
+* <<datatypes.xml,datatypes.xml>> file is searched in `CLASSPATH` root, and if it is found, `Datatypes` repository is initialized from it.
+
+* otherwise `Datatypes` repository is initialized from `/com/haulmont/chile/core/datatypes/datatypes.xml` file.
+
+`Datatype` instance can be obtained in two ways:
+
+* For an entity attribute – from the corresponding meta-property <<metaProperty.getType,DATATYPE>> using `getRange().asDatatype()` call.
+
+* Using `Datatypes.get()` static method by passing to it the name of the `Datatype` implementation or Java class it was created for.
+
+`Datatypes` are associated with entity attributes during application start according to the following rules: 
+
+* If `@MetaProperty` annotation is defined on the field or method having a non-empty `datatype` value, the attribute is associated with the `Datatype` instance with the given name.
++
+For instance, if the entity attribute is declared as in the example below, it will be associated with a nonstandard type – `GeoCoordinateDatatype`:
++
+[source, java]
+----
+@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
+@Column(name = "LATITUDE")
+private Double latitude;
+----
+
+* In most cases, explicit specification is omitted, and the attribute is associated with the `Datatype` instance from repository, which is returned by `Datatypes.get(Class)` by supplied field or method type.
++
+In example below, `latitude` attribute will get a standard `DoubleDatatype` type registered in the `/com/haulmont/chile/core/datatypes/datatypes.xml` base file:
++
+[source, java]
+----
+@Column(name = "LATITUDE")
+private Double latitude;
+----
+
+Basic methods of `Datatype` interfaces:
+
+* `getName()` – returns the unique name of the implementation.
+
+* `format()` – converts the passed value into a string.
+
+* `parse()` – transforms a string into the value of corresponding type.
+
+`Datatype` determines two sets of methods for formatting and parsing: considering and not considering locale. Conversion considering locale is applied everywhere in user interface, ignoring locale – in system mechanisms, for example, serialization in <<rest_api,REST API>>.
+
+Parsing formats ignoring locale are specified in the above mentioned <<datatypes.xml,datatypes.xml>> file.
+
+The parsing formats considering locale are provided in the <<main_message_pack,main localized messages pack>>, in the strings containing the following keys:
+
+* `numberDecimalSeparator` – specifies decimal separator for numeric types. 
+
+* `numberGroupingSeparator` – defines separator between digits groups for numeric types (e.g. when space is used as separator, number will be formatted as 1 000 000).
+
+* `integerFormat` – format for `Integer` and `Long` types.
+
+* `doubleFormat` – format for `Double` type.
+
+* `decimalFormat` – format for `BigDecimal `type.
+
+* `dateTimeFormat` – format for `java.util.Date` type.
+
+* `dateFormat` – format for `java.sql.Date` type.
+
+* `timeFormat` – format for `java.sql.Time` type.
+
+* `trueString` – string corresponding to `Boolean.TRUE`.
+
+* `falseString` – string corresponding to `Boolean.FALSE`.
+
+All the listed formats are specified in the main localized message pack of CUBA <<base_projects,base projects>> by default, and can be overridden in the similar files of the application project.
+
+====== Example of Data Formatting in UI 
+
+Let us consider the way `Order.date` attribute is displayed in orders browser table.
+
+`order-browse.xml`
+[source, xml]
+----
+include::{sourcesdir}/common/dateformat_1.xml[]
+----
+
+`date` attribute in `Order` class is defined using "date" type:
+
+[source, java]
+----
+@Column(name = "DATE", nullable = false)
+@Temporal(TemporalType.DATE)
+private Date date;
+----
+
+If the current user is logged in with the Russian locale, the following string is retrieved from the <<main_message_pack,main message pack>> on the client <<app_tiers,tier>>:
+[source]
+----
+dateFormat=dd.MM.yyyy
+----
+
+The result: date "6th August 2012 " is converted into a string "06.08.2012" which is displayed in the table cell. 
+
+====== Examples of Date and Number Formatting in the Application Code 
+
+* Date formatting example
++
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_2.java[]
+----
+
+* Example of formatting of numeric values with high accuracy (5 decimal numbers after comma) in *Web Client*:
++
+`++/com/sample/sales/web/messages_ru.properties++`
++
+[source]
+----
+coordinateFormat = #,##0.00000
+----
++
+`SomeClass.java`
++
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_3.java[]
+----
+
+====== Example of a Custom Datatype
+
+Let us consider the implementation of a custom `GeoCoordinateDatatype`, intended for the attributes storing geographical coordinates.
+
+First, we need to create a class in the *global* module:
+
+[source, java]
+----
+include::{sourcesdir}/common/datatype_1.java[]
+----
+
+Next, we create `datatypes.xml` file in the root of the *global* module `src` directory in the application project and copy contents from `/com/haulmont/chile/core/datatypes/datatypes.xml` file located in *global* module of *cuba *base project. Then add registration of the new type to it:
+
+[source, xml]
+----
+include::{sourcesdir}/common/datatype_2.xml[]
+----
+
+Finally we specify new datatype for the required attributes: 
+[source, java]
+----
+@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
+@Column(name = "LATITUDE")
+private Double latitude;
+----
+
+After the above listed operations are completed, `latitude` attribute will be displayed in the desired format throughout the application.
+
+[[meta_annotations]]
+===== Meta-Annotations
+
+Entity meta-annotations are a set of key/value pairs providing additional information about entities.
+
+Meta-annotations are accessed using <<metaClass,meta-class>> `getAnnotations()` method.
+
+The sources of meta-annotations are: 
+
+* `@OnDelete`, `@OnDeleteInverse`, `@Extends` <<entity_annotations,annotations>>. These annotations cause creation of special meta-annotations for describing relations between entities.
+
+* `@NamePattern`, `@SystemLevel`, `@EnableRestore`, `@TrackEditScreenHistory` annotations. These annotations cause generation of meta-annotations with keys corresponding to the full name of Java class of the annotation.
+
+* Optional: custom annotations can be defined in a project, and reflected to corresponding meta-annotations in the <<extension,overridden>> `MetadataImpl.initMetaAnnotations()` method.
+
+* Optional: entity meta-annotations can also be defined in <<metadata.xml,metadata.xml>> files. If a meta-annotation in XML has the same name as the meta-annotation created by Java entity class annotation, then it will override the latter.
++
+The example below shows meta-annotations definition in `metadata.xml`:
++
+[source, xml]
+----
+include::{sourcesdir}/common/metaannotations_1.xml[]
+----
+
+[[views]]
+==== Views
+
+When retrieving the entities from the database, we often face a question: how to ensure loading of the related entities to desired depth?
+
+For example, you need to display the date and order amount together with the Buyer name in Orders browser, which means that you need to fetch the related Buyer instance. And for Order editor screen, you need to fetch the collection of Items, in addition to that each Item should contain a related Product instance to display its name.
+
+<<lazy_loading,Lazy loading>> can not help in most cases because data processing is usually performed not in the transaction where the entities were loaded but, for example, on client <<app_tiers,tier>> in UI. At the same time it is unacceptable to apply eager fetching by <<entity_annotations,entity annotations>> as it leads to permanent retrieval of the entire graph of related entities which can be very large.
+
+Another similar problem is the requirement to limit the set of local entity attributes of the loaded graph: for example, some entity can have 50 attributes, including BLOB, but only 10 attributes need to be displayed on the screen. In this case, why should we download 40 remaining attributes from the database, then serialize them and transfer to the client when it does not need them at the moment?
+
+_Views_ mechanism resolves these issues by providing retrieval from database and transmitting to the client entity graphs, limited by depth and by attributes. A _view_ is the descriptor of object graph required on a certain UI screen or data-processing operation.
+
+Views processing is performed in the following way:
+
+* All relations in the data model are declared with lazy fetching property (`fetch = FetchType.LAZY`. See <<entity_annotations>>).
+
+* In the process of data loading using <<dataManager,DataManager>> the client code provides required view together with JPQL query.
+
+* The so-called _Fetch Plan_ is produced on the base of the view – this is a special feature of *Apache OpenJPA* framework lying in the base of <<orm, ORM layer>>. Fetch Plan affects the generation of SQL queries to the database: both the list of returned fields and joins with the other tables containing related entities.
+
+* References, excluded from the Fetch Plan (sometimes this helps to simplify the basic SQL query), are loaded by separate SQL queries. To maintain this process the view-processing mechanism just invokes corresponding attribute reading methods (getters).
+
+* As a result, when the data loading <<transactions,transaction>> is finished, the Middleware will contain the object graph, determined by JPQL query and the provided view.
+
+.View Classes
+image::View.png[align="center"]
+
+The view is determined by `View` class instance, where:
+
+* `entityClass` – the entity class, for which the view is defined. In other words, it is the&ldquo;root&rdquo; of the loaded entities tree.
+
+* `name` – the name of the view. It should be either `null`, or a unique name within all views for the entity.
+
+* `properties` – collection of `ViewProperty` instances, corresponding to the entity attributes which should be loaded. 
+
+* `includeSystemProperties` – if set, system attributes (included into <<entity_base_classes,basic interfaces>> of `BaseEntity` and `Updatable` persistent entities) are automatically included in the view. The system attributes are not explicitly listed in `properties` but they are included by view processing mechanism depending on the interfaces which are implemented by this entity.
+
+`ViewProperty` class has the following properties:
+
+* `name` – the name of the entity attribute.
+
+* `view` – for reference attributes, specifies the view which which will be used to load the related entity.
+
+* `lazy` – for reference attributes, indicates that this attribute should not be included into Fetch Plan, but loaded as a separate SQL query, initiated by accessing the attribute. It is important to mention that, if requesting data through <<dataManager,DataManager>> or <<datasource_query,datasource query>>, the attribute is loaded anyway, this property affects only the method of fetching. But if the view with lazy attributes is used on the ORM layer, after loading instances they should be passed to <<entityManager,EntityManager>>.fetch() method, otherwise the lazy attributes will not be fetched.
+
+[WARNING]
+====
+Regardless of the attributes defined in the view, the following attributes are always loaded:
+
+* `id` – entity identifier.
+* `version` – used for optimistic locking of the entities implementing `Versioned`.
+* `deleteTs`, `deletedBy` – used for the entities, implementing <<soft_deletion,SoftDelete>>.
+====
+
+Attributes, which were not loaded, have `null` value. By default an attempt to set the value for a not loaded attribute (setter call) for <<entity_states,detached>> entity raises an exception. This behavior can be modified using the application property <<cuba.allowSetNotLoadedAttributes,cuba.allowSetNotLoadedAttributes>>. If this property is set to `true`, then setter call will not cause exception, nevertheless the value will not be saved.
+
+Bear in mind that not loaded reference attributes of detached entity, corresponding to external keys (i.е. ManyToOne, OneToOne) can be set to a new non-zero value in any case and the changes will be saved during the subsequent `EntityManager.merge()`.
+
+[[views_creation]]
+===== Views Creation
+
+A view can be created in two possible ways: 
+
+* *Programmatically* – by creating `View` instance, for example:
++
+[source, java]
+----
+include::{sourcesdir}/common/views_1.java[]
+----
++
+Typically, this way can be appropriate for creating views that are used in a single piece of business-logic.
+
+* *Declaratively* – by creating an XML descriptor and deploying it to `ViewRepository`. `View` instances are created and cached when XML-based descriptor is deployed. Further on the required view can be retrieved in any part of the application code by repository call providing the entity class and view name.
+
+Let us consider in details the declarative way for creation and working with views.
+
+`ViewRepository` is a *Spring* bean, accessible to all application blocks. The link to `ViewRepository` can be obtained using <<metadata,Metadata>> infrastructure interface. `getView()` methods are used to retrieve `View` instance from the repository. `deployViews()` methods from `AbstractViewRepository `basic implementation are used to deploy XML view descriptors to the repository.
+
+Two views named `++_local++` and `++_minimal++` are available in the repository for each entity by default:
+
+* `++_local++` contains all local entity attributes.
+
+* `++_minimal++` contains the attributes which are included to the name of the entity instance and which are specified by <<namePattern,@NamePattern>> annotation. If `@NamePattern` annotation is not specified in the entity, this view does not contain any attributes.
+
+The detailed structure of XML descriptors is provided in <<views.xml>>.
+
+The example below shows view descriptor for `Order` entity which provides loading of all local attributes, associated `Customer` and ordered `Items` collection:
+
+[source, xml]
+----
+include::{sourcesdir}/common/views_2.xml[]
+----
+
+The recommended way of grouping and deployment of view descriptors is as follows: 
+
+* Create `views.xml` file in the *global* <<app_modules,module>> in `src` root and place all view descriptors which should be globally accessible (i.e. on all application <<app_tiers,tiers>> into it.
+
+* Register this file in <<cuba.viewsConfig,cuba.viewsConfig>> application property of all used blocks, i.e. in `app.properties` of the *core* module, `web-app.properties` of the *web* module, etc. This will ensure automatic deployment of the views upon application startup in the repository (See `AbstractViewRepository.init()` method).
+
+* If there are views which are used only in one application block, they can be specified in the similar file in this block, for example, `web-views.xml`, and registered in <<cuba.viewsConfig,cuba.viewsConfig>> property of this block only.
++
+If the repository contains a view with certain name for some entity, an attempt to deploy another view with this name for the same entity will be ignored. If you need to replace the existing view in the repository with a new one and guarantee its deployment, specify `overwrite = "true"` attribute for it.
+
+[TIP]
+====
+It is recommended to give &ldquo;descriptive&rdquo; names to the views. For example, not just &ldquo;browse&rdquo;, but &ldquo;customerBrowse&rdquo;. It simplifies the search of views in XML descriptors.
+====
+
+[[managed_beans]]
+==== Managed Beans
+
+_Managed Beans_ are program components intended for implementation of the application&rsquo;s business logic. &ldquo;Managed&rdquo; in this case means that the instance creation and dependency management is handled by the container, which is the main part of the *Spring* framework.
+
+[WARNING]
+====
+Managed Bean is a _singleton_, i.e., only one instance of such class exists in each application block. Therefore, if a bean contains mutable data in fields (in other words, has a state), it is necessary to synchronize access to such data.
+====
+
+[[managed_beans_creation]]
+===== Creating a Bean
+
+To create a managed bean, add the `@javax.annotation.ManagedBean` annotation to the Java class. For example:
+[source, java]
+----
+include::{sourcesdir}/common/managedbean_1.java[]
+----
+
+It is recommended to assign a unique name to the bean in form of `++{project_name}_{class_name}++` and to define it in the `NAME` constant.
+
+The managed bean class should be placed inside the package tree with the root specified in the `context:component-scan` element of the <<spring.xml,spring.xml>> file. In this case, the `spring.xml` file contains the element:
+
+[source, xml]
+----
+include::{sourcesdir}/common/managedbean_2.xml[]
+----
+
+which means that the search for annotated beans for this application block will be performed starting with the `com.sample.sales` package.
+
+To provide an ability to substitute the implementation in the future, it is recommended to give the bean a separate interface:
+
+[source, java]
+----
+include::{sourcesdir}/common/managedbean_3.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/managedbean_4.java[]
+----
+
+Managed beans can be created on any <<app_tiers,tier>>, because the *Spring Framework* container is used in all standard blocks of the application.
+
+[[managed_beans_usage]]
+===== Using the Bean
+
+A reference to the bean can be obtained through injection or through the `AppBeans` class. As an example of using the bean, let us look at the implementation of the `OrderService` bean that delegates the execution to the `OrderWorker` bean:
+
+[source, java]
+----
+include::{sourcesdir}/common/managedbean_5.java[]
+----
+
+In this example, the service starts a <<transactions,transaction>>, places the entity instance obtained from the client level into the <<entityManager,persistent context>>, and passes the control to the `OrderWorker` bean, which contains the main business logic.
+
+[[jmx_beans]]
+==== JMX Beans
+
+Sometimes, it is necessary to give system administrator an ability to view and change the state of some <<managed_beans,managed bean>> at runtime. In such case, it is recommended to create a JMX bean – a program component having the JMX interface. JMX bean is usually a wrapper delegating calls to the managed bean which actually maintains state: cache, configuration data or statistics.
+
+.JMX Bean Class Diagram
+image::JMXBeans.png[align="center"]
+
+As can be seen from the diagram, the JMX bean consists of the interface and implementation class. The class should be a <<managed_beans,managed bean>>, i.e., should have the `@ManagedBean` annotation and unique name. The interface of the JMX bean is registered in <<spring.xml,spring.xml>> in a special way to create the JMX interface in the current JVM.
+
+Calls to all JMX bean interface methods are intercepted using *Spring AOP* by the MBeanInterceptor interceptor class, which sets the correct `ClassLoader` in the current thread, and enables logging of unhandled exceptions.
+
+[WARNING]
+====
+The JMX bean interface name must conform to the following format: `++{class_name}MBean++`.
+====
+
+*jconsole**jvisualvm*<<jmx_console,JMX console>>[[jmx_beans_creation]]
+
+===== Creating a JMX Bean
+
+The following example shows how to create a JMX bean.
+
+* JMX bean interface:
++
+[source, java]
+----
+include::{sourcesdir}/common/jmxbean_1.java[]
+----
++
+The interface and its methods may contain annotations to specify the description of the JMX bean and its operations. This description will be displayed in all tools that work with this JMX interface, thereby helping the system administrator.
++
+Since the JMX tools support a limited set of data types, it is desirable to use `String` as the type for the parameters and result of the method and perform the conversion inside the method, if necessary.
+
+* The JMX bean class:
++
+[source, java]
+----
+include::{sourcesdir}/common/jmxbean_2.java[]
+----
++
+The `@ManagedBean` annotation defines class as a managed bean with the `++sales_OrdersMBean++` name. The name is specified directly in the annotation and not in the constant, since access to the JMX bean from Java code is not required.
++
+Lets overview the implementation of the `calculateTotals()` method.
+
+** The method has the `@Authenticated` annotation, i.e., <<system_authentication,system authentication>> is performed on method entry in the absence of the <<userSession,user session>>.
+
+** The method's body is wrapped in the `try/catch` block, so that, if successful, the method returns "Done", and in case of error – the stack trace of the exception as string.
++
+It should be kept in mind that, in this case, all exceptions are handled and therefore do not get logged automatically, because they never fall through to `MBeanInterceptor`. If logging of exceptions is required, the call of the logger should be added in the `catch` section.
+
+** The method starts the transaction, loads the `Order` entity instance by identifier, and passes control to the `OrderWorker` bean for processing.
+
+* The registration of the JMX bean in `spring.xml`:
++
+[source, xml]
+----
+include::{sourcesdir}/common/jmxbean_3.xml[]
+----
+
+All JMX beans of a project are declared in one `MBeanExporter` instance in the `map/entry` elements of the `beans` property. The key is JMX ObjectName, the value – the bean&rsquo;s name specified in the `@ManagedBean` annotation. ObjectName begins with the name of the web application, because several web applications, which export the same JMX interfaces, can be deployed in one *Tomcat* instance (i.e., in one JVM).
+
+[[jmx_beans_platform]]
+===== The Platform JMX Beans
+
+This section describes some of the JMX beans available in the platform.
+
+[[cachingFacadeMBean]]
+====== CachingFacadeMBean
+
+`CachingFacadeMBean` provides methods to clear various caches in the *Middleware* and *Web Client* blocks.
+
+JMX ObjectName: `app-core.cuba:type=CachingFacade` and `app.cuba:type=CachingFacade`
+
+[[configStorageMBean]]
+====== ConfigStorageMBean
+
+`ConfigStorageMBean` allows viewing and setting values of the <<app_properties,application properties>> in the *Middleware*, *Web Client* and *Web Portal* blocks.
+
+This interface has separate sets of methods for working with parameters of configuration and deployment (`*AppProperties`) and with runtime parameters (`*DbProperties`). This is due to the difference in mechanisms of storing these categories of properties.
+
+[WARNING]
+====
+The following usage restrictions of `ConfigStorageMBean` interface apply:
+
+* Only the properties explicitly set in the storage location are displayed. When accessed through the <<config_interfaces,configuration interface>>, the default value is returned, if the property value is not set. However, the default value cannot be obtained through `ConfigStorageMBean`.
+
+* The changes to property values stored in files are not persistent, and are valid only until a restart of this block.
+====
+
+JMX ObjectName: `app-core.cuba:type=ConfigStorage`, `app.cuba:type=ConfigStorage`, `app-portal.cuba:type=ConfigStorage`
+
+[[emailerMBean]]
+====== EmailerMBean
+
+`EmailerMBean` allows viewing the current values of the <<email_sending,email sending>> parameters, and to send a test message.
+
+JMX ObjectName: `app-core.cuba:type=Emailer`
+
+[[persistenceManagerMBean]]
+====== PersistenceManagerMBean
+
+`PersistenceManagerMBean` provides the following abilities:
+
+* Managing <<entity_statistics,entity statistics>> mechanism.
+* Viewing new DB update scripts using the `findUpdateDatabaseScripts()` method. Triggering DB update with the `updateDatabase()` method.
+* Executing arbitrary JPQL queries in the *Middleware* context by using `jpqlLoadList()`, `jpqlExecuteUpdate()` methods.
+
+JMX ObjectName: `app-core.cuba:type=PersistenceManager`
+
+[[scriptingManagerMBean]]
+====== ScriptingManagerMBean
+
+`ScriptingManagerMBean` is the JMX facade for the <<scripting,Scripting>> infrastructure interface.
+
+JMX ObjectName: `app-core.cuba:type=ScriptingManager`
+
+JMX attributes:
+
+* `RootPath` – absolute path to the <<conf_dir,configuration directory>> of the Middleware <<app_tiers,block>>, in which this bean was started.
+
+JMX operations:
+
+* `runGroovyScript()` – executes a Groovy script in the *Middleware* context and returns the result. The following variables should be passed to the script:
+** `persistence` of the <<persistence,Persistence>> type.
+** `metadata` of the <<metadata,Metadata>> type.
+** `configuration` of the <<configuration,Configuration>> type.
++
+--
+The result type should be of the String type, for it to be displayed in the JMX interface. Otherwise, the method is similar to the <<scripting.runGroovyScript,Scripting.runGroovyScript()>> method.
+
+The example script for creating a set of test users is shown below:
+
+[source, java]
+----
+include::{sourcesdir}/common/scriptingjmx_1.java[]
+----
+--
+
+[[serverInfoMBean]]
+====== ServerInfoMBean
+
+`ServerInfoMBean` provides the general information about this *Middleware* block: the build number, build date and the <<serverId,server id>>.
+
+JMX ObjectName: `app-core.cuba:type=ServerInfo`
+
+[[infrastructure_interfaces]]
+==== Infrastructure Interfaces 
+
+Infrastructure interfaces provide access to frequently used functionality of the platform. Most of them are located in *global* <<app_modules,module>> and can be used both on the Middle tier and in Client tier <<app_tiers,blocks>>. However, some of them (<<persistence,Persistence>>, for example) are accessible only for Middleware code.
+
+Infrastructure interfaces are implemented by *Spring Framework* beans, so they can be injected into any other managed components (<<managed_beans,managed beans>>, <<services,Middleware services>>, generic user interface <<screen_controller,screen controllers>>).
+
+Also, like any other beans, infrastructure interfaces can be obtained using static methods of `AppBeans` class, and can be used in non-managed components (POJO, helper classes etc.).
+
+[[configuration]]
+=====  Configuration 
+
+The interface helps to obtain references to <<config_interfaces,configuration interfaces>>.
+
+Examples:
+
+[source, java]
+----
+include::{sourcesdir}/common/configuration_1.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/configuration_2.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/configuration_3.java[]
+----
+
+[[messages]]
+===== Messages
+
+`Messages` interface provides methods to get <<localization,localized message strings>>.
+
+Let us consider interface methods in detail.
+
+* `getMessage()` – returns the localized message by key, pack name and required locale. There are several modifications of this method with different sets of parameters. If locale is not specified in the method parameter, the current user locale is used. 
++
+Examples:
++
+[source, java]
+----
+include::{sourcesdir}/common/messages_1.java[]
+----
+
+* `formatMessage()` – retrieves a localized message by key, pack name and required locale, then uses it to format the input parameters. The format is defined according to `String.format()` method rules. There are several modifications of this method with different sets of parameters. If locale is not specified in the method parameter, the current user locale is used.
++
+Example:
++
+[source, java]
+----
+include::{sourcesdir}/common/messages_2.java[]
+----
+
+* `getMainMessage()` – returns the localized message from the <<main_message_pack,main message pack>> of the application <<app_tiers,block>>.
++
+Example:
++
+[source, java]
+----
+include::{sourcesdir}/common/messages_3.java[]
+----
+
+* `getMainMessagePack()` – returns the name of the <<main_message_pack,main message pack>> of the application block. 
++
+Example:
++
+[source, java]
+----
+include::{sourcesdir}/common/messages_4.java[]
+----
+
+* `getTools()` – returns `MessageTools` interface instance (see below).
+
+[[messageTools]]
+====== MessageTools
+
+`MessageTools` interface is a <<managed_beans,managed bean>> containing additional methods for working with <<localization,localized messages>>. You can access `MessageTools` interface either using `Messages.getTools()` method, or as any other bean – by means of injection or through `AppBeans` class.
+
+`MessageTools` methods:
+
+* `loadString()` – returns a localized message, specified by reference in `msg://{messagePack}/{key}` format
++
+Reference components:
++
+--
+** `msg://` – mandatory prefix.
+
+** `{messagePack}` – optional name of the message pack. If it is not specified, it is assumed that the pack name is passed to `loadString()` as a separate parameter.
+
+** `{key}` – message key in the pack.
+--
++
+Examples of the message references:
++
+[source]
+----
+msg://someMessage
+msg://com.abc.sales.web.customer/someMessage
+----
+
+* `getEntityCaption()` – returns the localized entity name.
+
+* `getPropertyCaption()` – returns the localized name of an entity attribute.
+
+* `hasPropertyCaption()` – checks whether the entity attribute was given a localized name.
+
+* `getLocValue()` – returns the localized value of the entity attribute based on <<localizedValue_annotation,@LocalizedValue>> annotation.
+
+* `getMessageRef()` – forms a <<messageTools.loadString,message reference>> for <<metaProperty,meta-property>> which can be used to retrieve the localized name of the entity attribute.
+
+* `getDefaultLocale()` – returns default application locale, which is the first one listed in <<cuba.availableLocales,cuba.availableLocales>> application property.
+
+* `useLocaleLanguageOnly()` – returns `true`, if for all locales supported by the application (defined in `cuba.availableLocales` property) only the language parameter is specified, without country and variant. This method is used by platform mechanisms which need to find the most appropriate supported locale when locale info is received from the external sources such as operation system or HTTP request.
+
+* `trimLocale()` – deletes from the passed locale everything except language, if `useLocaleLanguageOnly()` method returns `true`.
+
+You can <<bean_extension,override>> `MessageTools` to extend the set of its methods in a particular application. Below are the examples of working with the extended interface:
+
+[source, java]
+----
+include::{sourcesdir}/common/messagetools_1.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/messagetools_2.java[]
+----
+
+[[metadata]]
+===== Metadata
+
+`Metadata` interface provides access to metadata session and <<views,view>> repository.
+
+Interface methods:
+
+* `getSession()` – returns the <<metadata_framework,metadata>> session instance.
+* `getViewRepository()` – returns the <<views,view>> repository instance.
+* `getExtendedEntities()` – returns `ExtendedEntities` instance, intended for working with the extended entities. See more in <<entity_extension>>.
+* `create()` – creates an entity instance, taking into account potential extension. See more in <<entity_extension>>.
+* `getTools()` – returns `MetadataTools` interface instance (see below).
+
+[[metadataTools]]
+====== MetadataTools
+
+`MetadataTools` is a <<managed_beans,managed bean>>, containing additional methods for working with metadata. You can access `MetadataTools` interface by either using `Metadata.getTools()` method, or as any other bean – by means of injection or through `AppBeans` class.
+
+`MetadataTools `methods:
+
+* `getAllPersistentMetaClasses()` – returns the collection of persistent entities <<metaClass,meta-classes>>.
+* `getAllEmbeddableMetaClasses()` – returns the collection of embeddable entities meta-classes.
+* `getAllEnums()` – returns the collection of enumeration classes used as entity attributes types.
+* `format()` – formats the passed value according to data type of the given <<metaProperty,meta-property>>.
+* `isSystem()` – checks if a meta-property is system, i.e. specified in one of the <<entity_base_classes,basic entity interfaces>>.
+* `isPersistent()` – checks if a meta-property is persistent, i.e. stored in the database.
+* `isTransient()` – checks if a meta-property or an arbitrary attribute is non-persistent.
+* `isEmbedded()` – checks if a meta-property is an embedded object.
+* `isAnnotationPresent()` – checks if an annotation is present on the class or on one of its ancestors.
+* `getNamePatternProperties()` – returns collection of meta-properties of attributes included in the instance name, returned by `Instance.getInstanceName()` method. See <<namePattern,@NamePattern>>.
+
+You can <<bean_extension,override>> `MetadataTools` bean in your application to extend the set of its methods. The examples of working with the extended interface:
+
+[source, java]
+----
+include::{sourcesdir}/common/metadatatools_1.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/metadatatools_2.java[]
+----
+
+[[resources]]
+===== Resources
+
+`Resources` interface maintains resources loading according to the following rules:
+
+. If the provided location is a URL, the resource is downloaded from this URL;
+
+. If the provided location begins with `classpath:` prefix, the resource is downloaded from classpath;
+
+. If the location is not a URL and it does not begin with `classpath:`, then:
+
+.. The file is searched in the <<conf_dir,configuration folder>> of application using the provided location as relative pathname. If the file is found, the resource is downloaded from it;
+
+.. If the resource is not found at the previous steps, it is downloaded from classpath.
+
+In practice, explicit identification of URL or `classpath:` prefix is rarely used, so resources are usually downloaded either from the <<conf_dir,configuration folder>> or from classpath. The resource in the configuration folder overrides the classpath resource with the same name.
+
+`Resources` methods:
+
+* `getResourceAsStream()` – returns `InputStream` for the provided resource, or `null`, if the resource is not found. The stream should be closed after it had been used, for example:
++
+[source, java]
+----
+include::{sourcesdir}/common/resources_1.java[]
+----
++
+You can also use "try with resources":
++
+[source, java]
+----
+include::{sourcesdir}/common/resources_2.java[]
+----
+
+* `getResourceAsString()` – returns the indicated resource content as string, or `null`, if the resource is not found. 
+
+[[scripting]]
+===== Scripting
+
+`Scripting` interface is used to compile and load Java and Groovy classes dynamically (i.e. at runtime) as well as to execute Groovy scripts and expressions.
+
+`Scripting` methods: 
+
+* `evaluateGroovy()` – executes the Groovy expression and returns its result.
++
+<<cuba.groovyEvaluatorImport,cuba.groovyEvaluatorImport>> application property is used to define the common set of the imported classes inserted into each executed expression. By default, all standard application blocks import <<persistenceHelper,PersistenceHelper>> class.
++
+The compiled expressions are cached, and this considerably speeds up repeated execution. 
++
+Example:
++
+[source, java]
+----
+include::{sourcesdir}/common/scripting_1.java[]
+----
+
+* `runGroovyScript()` – executes Groovy script and returns its result.
++
+The script should be located either in application <<conf_dir,configuration folder>> or in classpath (the current `Scripting` implementation supports classpath resources within JAR files only). A script in the configuration folder overrides the script in classpath with the same name.
++
+The path to the script is constructed using separators `/`. The separator is not required in the beginning of the path. 
++
+Example:
++
+[source, java]
+----
+include::{sourcesdir}/common/scripting_2.java[]
+----
+
+* `loadClass()` – loads Java or Groovy class using the following steps:
++
+--
+. If the class is already loaded, it will be returned.
+
+. The Groovy source code (file `*.groovy`) is searched in the configuration folder. If it is found, it will be compiled and the class will be returned.
+
+. The Java source code (file `*.java`) is searched in the configuration folder. If it is found, it will be compiled and the class will be returned.
+
+. The compiled class is searched in classpath. If it is found, it will be loaded and returned.
+
+. If nothing is found, `null` will be returned.
+--
++
+--
+The files in configuration folder containing Java and Groovy source code can be modified at runtime. On the next `loadClass()` call the corresponding class will be recompiled and the new one will be returned, with the following restrictions:
+
+* The type of the source code must not be changed from Groovy to Java;
+
+* If Groovy source code was once compiled, the deletion of the source code file will not lead to loading of another class from classpath. Instead of this, the class compiled from the removed source code will still be returned.
+--
++
+--
+Example:
+
+[source, java]
+----
+include::{sourcesdir}/common/scripting_3.java[]
+----
+--
+
+* `getClassLoader()` – returns `ClassLoader`, which is able to work according to the rules for `loadClass()` method described above.
+
+Cache of the compiled classes can be cleaned at runtime using <<cachingFacadeMBean,CachingFacadeMBean>> JMX bean.
+
+See also <<scriptingManagerMBean>>.
+
+[[security]]
+===== Security
+
+This interface provides authorization – checking user access rights to different objects in the system. Most of the interface methods delegate to the corresponding methods of current <<userSession,UserSession>> object, but before this they search for an original meta-class of the entity, which is important for projects with <<extension,extensions>>. Besides methods duplicating `UserSession` functionality, this interface contains `isEntityAttrReadPermitted()` and `isEntityAttrUpdatePermitted()` methods that check attribute path availability with respect to availability of all attributes and entities included in the path.
+
+The `Security` interface is recommended to use everywhere instead of direct calling of `UserSession`'s `is...Permitted()` methods.
+
+See more in <<authentication>>.
+
+[[timeSource]]
+===== TimeSource
+
+TimeSource interface provides the current time. Using `new Date()` and similar methods in the application code is not recommended. 
+
+Examples:
+
+[source, java]
+----
+include::{sourcesdir}/common/timesource_1.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/timesource_2.java[]
+----
+
+[[userSessionSource]]
+===== UserSessionSource
+
+The interface is used to obtain current user session object. See more in <<authentication>>.
+
+[[uuidSource]]
+===== UuidSource
+
+The interface is used to obtain `UUID` values, including those used for entity identifiers. Using `UUID.randomUUID()` in the application code is not recommended.
+
+To call from a static context, you can use the `UuidProvider` class, which also has an additional `fromString()` method that works faster than the standard `UUID.fromString()` method.
+
+[[dataManager]]
+===== DataManager
+
+`DataManager` interface provides CRUD functionality on both middle and client tiers. It is the universal tool for loading entity graphs from the database and saving changes applied to detached entity instances.
+
+`DataManager` always starts a new <<transactions,transaction>> and commits it on operation completion, thus returning entities in the <<entity_states,detached state>>.
+
+DataManager methods are listed below:
+
+* `load()`, `loadList()` – loads a graph of entities according to the parameters of the `LoadContext` object passed to it.
++
+`LoadContext` must include either a JPQL query or an entity identifier. If both are defined, the query is used, and the identifier is ignored. The rules for queries creation are similar to those described in <<query>> . The difference is that the query in `LoadContext` may only use named parameters; positional parameters are not supported.
++
+`load()` and `loadList()` methods check user <<permissions,permission>> `EntityOp.READ` for the entity being loaded. Additionally, loading entities from DB is subject for access group <<constraints,constraints>>. It is possible to ignore access constraints by passing `useSecurityConstraints = false` to `LoadContext`.
++
+Examples of loading entities in the screen controller:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_1.java[]
+----
+
+* `commit()` – saves the set of entities passed in `CommitContext` to the database. Collections of entities for updating and deletion must be specified separately.
++
+The method returns the set of entity instances returned by <<entityManager,EntityManager>>.merge(); essentially these are fresh instances just updated in DB. Further work should be performed with these returned instances to prevent data loss or optimistic locking. You can ensure that required attributes are present in the returned entities by setting a view for each saved instance using `CommitContext.getViews()` map.
++
+This method checks user <<permissions,permissions>> `EntityOp.UPDATE` for the updated entities and `EntityOp.DELETE` for the deleted ones.
++
+Examples for saving a collection of entities:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_2.java[]
+----
+
+* `reload()` - convenience methods to reload a specified instance from the database with the required <<views,view>>. They delegate to `load()` method.
+
+* `remove()` - removes a specified instance from the database. Delegates to `commit()` method.
+
+While loading data, `DataManager` may also implement additional functionality described below.
+
+[[query_with_distinct]]
+====== Queries with distinct
+
+The following may happen when `distinct` operator is omitted in JPQL queries for screens containing lists of entities with enabled paging and in scenario where an unpredictable modification of the query can happen as result of applying a <<gui_Filter,generic filter>> or access group <<constraints,constraints>> mechanisms:
+
+* If a collection is joined at database level, the dataset will contain duplicate rows.
+* On client level the duplicates disappear in the datasource as they are added to a map (`java.util.Map`).
+* In case of paged table, a page may show fewer lines than requested, while the total number of lines exceeds requested.
+
+Thus, we recommend including ` distinct` in JPQL queries, which ensures the absence of duplicates in the dataset returned from the DB. However, certain DB servers (*PostgreSQL* in particular) may take unacceptably long time to execute an SQL query with `distinct`, if the number of returned records is big (more than 10000).
+
+To solve this, the platform contains a mechanism to operate correctly without `distinct` at SQL level. This mechanism is enabled by <<cuba.inMemoryDistinct,cuba.inMemoryDistinct>> application property. When activated, it does the following:
+
+* The JPQL query should still include `select distinct`.
+* `DataManager` cuts `distinct` out of the JPQL query before sending it to ORM.
+* After the data page is loaded by `DataManager`, it deletes the duplicates and runs additional queries to DB in order to retrieve the necessary number of rows which are then returned to the client.
+
+[[query_from_selected]]
+====== Sequential Queries
+
+`DataManager` can select data from the results of previous requests. This ability is used by the <<gui_Filter,generic filter>> for sequential application of filters.
+
+The mechanism works as follows:
+
+* If a `LoadContext` with defined attributes `prevQueries` and `queryKey` is provided, the `DataManager` executes the previous query and saves identifiers of retrieved entities in *SYS_QUERY_RESULT* table (corresponding to `sys$QueryResult` entity), separating the sets of records by user sessions and the query session key `queryKey`.
+
+* The current query is modified to be combined with the results of the previous one, so that the resulting data complies with the conditions of both queries combined by AND.
+
+* The process may be further repeated. In this case the gradually reduced set of previous results gets deleted from *SYS_QUERY_RESULT* table and refilled again.
+
+The table *SYS_QUERY_RESULT* should be periodically cleaned of all unnecessary query results left by terminated user sessions. This is done by the `deleteForInactiveSessions()` method of the `QueryResultsManagerAPI` bean. In an application with enabled <<cuba.allowQueryFromSelected,cuba.allowQueryFromSelected>> property this method should be called by <<scheduled_tasks,scheduled tasks>>, for example:
+
+[source, xml]
+----
+include::{sourcesdir}/common/sequentialqueries_1.xml[]
+----
+
+[[appContext]]
+==== AppContext
+
+`AppContext` is a system class, which stores references to certain common components for each application <<app_tiers,block>> in its static fields:
+
+* `ApplicationContext` of *Spring* framework.
+* Set of <<app_properties,application properties >> loaded from `app.properties` files.
+* `ThreadLocal` variable, storing <<securityContext,SecurityContext>> instances.
+* Collection of application lifecycle listeners (`AppContext.Listener`).
+
+When the application is started, `AppContext` is initialized using loader classes, specific for each application <<app_tiers,block>>:
+
+* *Middleware* loader – `AppContextLoader`
+* *Web Client* loader – `WebAppContextLoader`
+* *Web Portal* loader – `PortalAppContextLoader`
+* *Desktop Client* loader – `DesktopAppContextLoader`
+
+`AppContext` can be used in the application code for the following tasks:
+
+* Registering listeners, triggered after full initialization and before termination of the application, for example:
++
+[source, java]
+----
+include::{sourcesdir}/common/appcontext_1.java[]
+----
++
+--
+At the moment of `applicationStarted()` call:
+
+** All the <<managed_beans,beans>> are fully initialized and their `@PostConstruct` methods are executed.
+** Static `AppBeans.get()` methods can be used for obtaining beans.
+** The `AppContext.isStarted()` method returns `true`.
+** The `AppContext.isReady()` method returns `false`.
+** If <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property is enabled, all database update scripts are successfully executed (in the Middleware block).
+--
++
+--
+At the moment of `applicationStopped()` call:
+
+** All the beans are operational and can be obtained via `AppBeans.get()` methods.
+** `AppContext.isStarted()` method returns `false`.
+** The `AppContext.isReady()` method returns `false`.
+--
++
+A real example of using `AppContext.Listener` can be found in <<app_start_recipe>>.
+
+* Getting the <<app_properties,application property>> values, stored in `app.properties` files in case they are not available through <<config_interfaces,configuration interfaces>>.
+* Passing `SecurityContext` to new execution threads, see <<authentication>>.
+
+[TIP]
+====
+Use injection or static methods of `AppBeans` class to obtain references to *Spring* beans.
+
+It is not recommended to use `AppContext.getApplicationContext().getBean()`.
+====
+
+[[app_properties]]
+==== Application Properties
+
+Application properties present named data of different types, which determine various aspects of application configuration and functions. 
+
+Application properties can be classified by the intended purpose as follows: 
+
+* _Configuration parameters_ – specify sets of configuration files and certain user interface parameters, i.e. determine the application functionality. 
++
+For example: <<cuba.springContextConfig,cuba.springContextConfig>>, <<cuba.web.useLightHeader,cuba.web.useLightHeader>>.
+
+* _Deployment parameters_ – describe different URLs to connect application <<app_tiers,blocks>>, DBMS type, security subsystem settings etc.
++
+For example: <<cuba.connectionUrlList,cuba.connectionUrlList>>, <<cuba.dbmsType,cuba.dbmsType>>, <<cuba.userSessionExpirationTimeoutSec,cuba.userSessionExpirationTimeoutSec>>.
+
+* _Runtime parameters_ – audit settings, email sending parameters etc.
++
+For example: `cuba.security.EntityLog.enabled`, `cuba.email.smtpHost`.
+
+Typically, a property belongs to one or several application <<app_tiers,blocks>>. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is only intended for *Middleware*, <<cuba.web.useLightHeader,cuba.web.useLightHeader>> belongs to *Web Client*, while <<cuba.springContextConfig,cuba.springContextConfig>> is used in all blocks.
+
+Belonging to a block means that if you need to set some value to a property, you should do it __in all blocks__, used in the application, to which this property belongs.
+
+You can find out where a property belongs as per below: 
+
+* From the documentation: See <<app_properties_reference>>.
+* By tracing property usage in the application code.
+* If a property has an access via <<config_interfaces,configuration interface>>, by project <<app_modules,module>> owning the interface .
+
+[[app_properties_access]]
+===== Access to Properties
+
+<<config_interfaces,Configuration interfaces>> mechanism is the main way to get access to the application properties from the application code. In addition, all configuration and deployment parameters are available via <<appContext,AppContext>> class methods.
+
+Some application blocks define JMX interfaces for application properties access. In particular, Middleware, Web Client and Web Portal blocks contain <<configStorageMBean,ConfigStorageMBean>> JMX interface, which allows you to get and set the value of any property at runtime.
+
+[[app_properties_files]]
+===== Storing Properties in Files
+
+The properties, which determine configuration and deployment parameters, are specified in special properties files, named using `*-app.properties` pattern. Each application <<app_tiers,block>> contains a set of such files, including files from platform <<base_projects,base projects >> and the current application file. Properties files set is defined as follows:
+
+* For web applications blocks (*Middleware*, *Web Client*, *Web Portal*) properties files set should be specified in `web.xml` in `appPropertiesConfig` parameter.
+
+* For* Desktop Client* block the standard way to specify properties files set is to override getDefaultAppPropertiesConfig() method in `com.haulmont.cuba.desktop.App` descendant class.
+
+For example, properties files set of the *Middleware* block is specified in `web/WEB-INF/web.xml` file of the *core *module, and looks as follows:
+
+[source]
+----
+classpath:cuba-app.properties
+classpath:app.properties
+file:${catalina.home}/conf/app-core/local.app.properties
+----
+
+The `classpath:` prefix means that corresponding file can be found in Java classpath, while `file:` prefix means that it should be accessed using file system path. Java system properties can be used, in this example it is `catalina.home` – *Tomcat* root path.
+
+Files declaration order is important as the values, specified in each subsequent file override the values of the same named properties, specified in the preceding files. This allows you to override platform properties in application.
+
+The last file in the above set is `local.app.properties`. It can be used to override application properties upon deployment. If the file does not exist, it is ignored. However if application installation requires overriding of certain parameters (usually different URLs) you can create such file and place all overridden properties into it. It is easy to retain such file during further system updates. 
+
+For *Desktop Client* JVM command line arguments serve as an equivalent of `local.app.properties`. Properties loader of this block treats all the arguments containing "`=`" sign as a key/value pair and uses them to replace corresponding application properties specified in `app.properties` files.
+
+[TIP]
+====
+The rules for data definition in `*.properties` files:
+
+* File encoding – `UTF-8`.
+
+* The key can contain Latin letters, numbers, periods and underscores.
+
+* The value is entered after (`=`) sign.
+
+* Do not quote values using " or ' brackets.
+
+* Set file paths either in UNIX (`/opt/haulmont/`) or Windows (`c:\\haulmont\\`) format.
+
+* You can use `\n \t \r `codes. The sign `\` is a reserved code, use (`\\`) to insert it in value. See more in: link:$$http://docs.oracle.com/javase/tutorial/java/data/characters.html$$[http://docs.oracle.com/javase/tutorial/java/data/characters.html].
+
+* Use `\` sign at the end of each line to enter a multi-line value. 
+====
+
+[[app_properties_db]]
+===== Storing Properties in the Database
+
+Runtime parameters are stored in *SYS_CONFIG* table.
+
+Such properties have the following distinctive features:
+
+* As the property value is stored in the database, it is defined in a single location, regardless of the application blocks in which it is used.
+
+* The value can be changed and saved at runtime both using <<config_interfaces,configuration interface>>, containing this property, or <<configStorageMBean,ConfigStorageMBean>>.
+
+* Property value can be overridden for a particular application block in its `app.properties` files. Value search is always done in two stages – in `app.properties` first, then if not found – in the database.
+
+The properties kept in the database are cached on the *Middleware*. You can clean the cache via <<configStorageMBean,ConfigStorageMBean>> JMX interfaces using `clearCache()` method or via <<cachingFacadeMBean,CachingFacadeMBean>> using `clearConfigStorageCache()` method.
+
+It is important to mention, that retrieving DB-stored properties on the client side leads to *Middleware* requests. This is less efficient than retrieving local properties from `app.properties` files. To reduce the number of such requests the client caches all the properties, kept in the DB, for the lifetime of configuration interface implementation instance. Thus, if you need to access the properties of a configuration interface from some UI screen for several times, it is better to get the reference to this interface at screen initialization and save it to a screen controller field for further access.
+
+[[config_interfaces]]
+===== Configuration Interfaces
+
+The configuration interfaces mechanism allows working with application properties using Java interface methods, providing the following benefits: 
+
+* Typed access – application code works with actual data types (String, Boolean, Integer etc.) and not only with strings.
+* The application code uses interface methods instead of string property identifiers, so IDE can prompt their names.
+
+Example of transaction timeout value access in *Middleware* block:
+
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_1.java[]
+----
+
+If injection is impossible, the configuration interface reference can be obtained via <<configuration,Configuration>> infrastructure interface:
+
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_2.java[]
+----
+
+[WARNING]
+====
+Configuration interfaces are not regular Spring beans. They can only be obtained through explicit interface injection or via `Configuration.getConfig()` but not through `AppBeans.get()` .
+====
+
+====== Using Configuration Interfaces
+
+Do the following to create a configuration interface: 
+
+* Create an interface inherited from `com.haulmont.cuba.core.config.Config` (not to be confused with the entity class `com.haulmont.cuba.core.entity.Config`).
+
+* Add `@Source` annotation to the interface in order to identify the source (storing method) for parameters: 
+
+** `SourceType.SYSTEM` – the property value will be taken from the system properties of the given JVM, using ` System.getProperty()` method.
+
+** `SourceType.APP` – the property value will be taken from `app.properties` files.
+
+** `SourceType.DATABASE` – the property value will be taken from *SYS_CONFIG* table.
+
+* Create property access methods (getters / setters). If the property value is not expected to be changed at runtime, setter is not needed. Possible property types are described below.
+
+* Add `@Property` annotation defining the property name to getter.
+
+* You can optionally set `@Source` annotation for a particular property of the interface if its source differs from the interface source.
+
+Example:
+
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_3.java[]
+----
+
+There is no need to create implementation class for the configuration interface as required proxy will be automatically created.
+
+====== Property Types 
+
+The following property types are supported without any additional efforts: 
+
+* `String`, primitive types or their object wrappers (`boolean`, `Boolean`, `int`, `Integer`, etc.)
+* `enum`. The property value is stored in a file or in the database as the value name of the enumeration.
+* Persistent <<data_model,entity>> classes. When accessing a property of the entity type, the instance defined by the property value is loaded from the database.
+
+To support arbitrary types use `TypeStringify` and `TypeFactory` classes to convert the value to/from a string and specify these classes for property with `@Stringify` and `@Factory` annotations.
+
+Let us consider this process using `UUID` type as example.
+
+* Create class `com.haulmont.cuba.core.config.type.UuidTypeFactory` inherited from `com.haulmont.cuba.core.config.type.TypeFactory` and implement the following method in it:
++
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_4.java[]
+----
+
+* There is no need to create `TypeStringify` as `toString()` method is sufficient in this case. 
+
+* Annotate the property in the configuration interface:
++
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_5.java[]
+----
+
+The platform provides `TypeFactory` implementations for the following types:
+
+* `UUID` – `UuidTypeFactory`, as described above.
+
+* `java.util.Date` – `DateFactory`. Date value must be specified in `yyyy-MM-dd HH:mm:ss.SSS` format, for example:
++
+----
+cuba.test.dateProp = 2013-12-12 00:00:00.000
+----
+
+* `List&lt;Integer&gt;` (integer numbers list) – `IntegerListTypeFactory`. The property value must be specified in the form of numbers list, separated by spaces, for example:
++
+----
+cuba.test.integerListProp = 1 2 3
+----
+
+* `List&lt;String&gt;` (list of strings) – `StringListTypeFactory`. The property value must be specified as a list of strings separated by "|" sign, for example:
++
+----
+cuba.test.stringListProp = aaa|bbb|ccc
+----
+
+====== Default Values
+
+You can specify default values for configuration interfaces properties. These values will be returned instead of `null` if the property is not defined in the storage location – DB or `app.properties`.
+
+The default value can be specified as a string using `@Default` annotation, or as a specific type using other annotations from `com.haulmont.cuba.core.config.defaults` package:
+
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_6.java[]
+----
+
+Default value for entities is a string of `++{entity_name}-{id}-{optional_view_name}++` type, for example:
+
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_7.java[]
+----
+
+[[localization]]
+==== Messages Localization
+
+Applications based on CUBA platform support messages localization, which means that all user interface elements can be displayed in the language, selected by user.
+
+Language selection options are determined by the combination of <<cuba.localeSelectVisible,cuba.localeSelectVisible>> and <<cuba.availableLocales,cuba.availableLocales>> application properties.
+
+This section describes the localization mechanism and rules of localized messages creation. For information about obtaining messages see <<getting_messages>>. 
+
+[[message_packs]]
+===== Message Packs
+
+A message pack is a set of properties files with the names in format of `++messages{_XX}.properties++`located in a single Java package. `XX` suffix indicates the language of the messages in this file and corresponds to the language code in `Locale.getLanguage()`. It is also possible to use other `Locale` attributes, for example, `country`. In this case the pack file will look like `++messages{_XX_YY}.properties++`. One of the files in the pack can have no language suffix – it is the _default file_. The name of the message pack corresponds to the name of the Java package, which contains the pack files.
+
+Let us consider the following example:
+[source]
+----
+/com/abc/sales/gui/customer/messages.properties
+/com/abc/sales/gui/customer/messages_fr.properties
+/com/abc/sales/gui/customer/messages_ru.properties
+----
+
+This pack consists of 3 files – one for the Russian language, one for the French and a default file. The name of the pack is `com.abc.sales.gui.customer`.
+
+Message files contain key/value pairs, where the key is the message identifier referenced by the application code, and the value is the message itself in the language of the file. The rules for matching pairs are similar to those of `java.util.Properties` properties files with the following specifics:
+
+* File encoding – `UTF-8` only.
+
+* Including other message packs is supported using `@include` key. Several packs can be included using comma-separated enumeration. In this case, if some message key is found in both the current and the included pack, the message from the current pack will be used. Example of including packs:
++
+----
+@include=com.haulmont.cuba.web, com.abc.sales.web
+
+someMessage=Some Message
+...
+----
+
+Messages are retrieved from the packs using <<messages,Messages>> interface methods according to the following rules: 
+
+* At first step search is performed in the application <<conf_dir,configuration directory>>.
+
+** `++messages_XX.properties++` file is searched in the directory specified by the message pack name, where `XX` is the code of the required language.
+
+** If there is no such file, default `messages.properties` file is searched in the same directory.
+
+** If either the required language file or the default file is found, it is loaded together with all `@include` files, and the key message is searched in it.
+
+** If the file is not found or it does not contain the proper key, the directory is changed to the parent one and the search procedure is repeated. The search continues until the root of the configuration directory is reached.
+
+* If the message is not found in the configuration directory, the search is performed in classpath according to the same algorithm.
+
+* On client <<app_tiers,tier>>, if the message is not found after the previous steps, the query is made to *Middleware*, and the message is searched there in the similar way.
+
+* If the message is found, it is cached and returned. If not, the fact that the message is not present is cached as well and the key which was passed for search is returned. Thus, the complex search procedure is only performed once and further on the result is loaded from the local cache of the application block. 
+
+[TIP]
+====
+It is recommended to organize message packs as follows:
+
+* If the application is not intended for internationalization, you can include message strings directly into the application code instead of using packs or use `messages.properties` default files to separate resources from code.
+
+* If the application is international, it is reasonable to use default files for the language of the application primary audience or for the English language, so that the messages from these default files are displayed to the user if the messages in the required language are not found.
+====
+
+[[main_message_pack]]
+===== Main Message Pack
+
+Each standard application <<app_tiers,block>> should have its own _main_ message pack. For Client tier blocks the main message pack contains main menu entries and common UI elements names (for example, names of *OK* and *Cancel* buttons). The main pack also determines <<datatype,Datatype>> transformation formats for all application blocks, including *Middleware*.
+
+<<cuba.mainMessagePack,cuba.mainMessagePack>> application property is used to specify the main message pack. The property value can be either a single pack or list of packs separated by spaces. For example: 
+[source]
+----
+cuba.mainMessagePack=com.haulmont.cuba.web com.abc.sales.web
+----
+
+In this case the messages in the second pack of the list will override those from the first pack. Thus, the messages defined in the <<base_projects,base projects>> packs can be overridden in the application project.
+
+[[entity_localization]]
+===== Entity and Attributes Names Localization
+
+To display localized names of the entities and attributes in UI, create special message packs in the Java packages containing the entities. Use the following format in message files: 
+
+* Key of the entity name – simple class name (without package).
+
+* Key of the attribute name – simple class name, then the name of the attribute separated by period.
+
+The example of default English localization of `com.abc.sales.entity.Customer` entity – `/com/abc/sales/entity/messages.properties` file:
+
+[source, xml]
+----
+Customer=Customer
+Customer.name=Name
+Customer.email=Email
+
+Order=Order
+Order.customer=Customer
+Order.date=Date
+Order.amount=Amount
+----
+
+Such message packs are usually used implicitly by the framework, for example, by <<gui_Table,Table>> and <<gui_FieldGroup,FieldGroup>> visual components. Besides, you can obtain the names of the entities and attributes using the following methods:
+
+* Programmatically – by <<messageTools,MessageTools>> `getEntityCaption()`, `getPropertyCaption()` methods;
+
+* In XML screen descriptor – by reference to the message according to <<messageTools.loadString,MessageTools.loadString()>> rules: `++msg://{entity_package}/{key}++`, for example:
++
+[source, xml]
+----
+caption="msg://com.abc.sales.entity/Customer.name"
+----
+
+[[enum_localization]]
+===== Enum Localization
+
+To localize the enumeration names and values, add messages with the following keys to the message pack located in the Java package of the enumeration class:
+
+* Enumeration name key – simple class name (without package);
+* Value key – simple class name, then the value name separated by period.
+
+For example, for enum
+
+[source, java]
+----
+include::{sourcesdir}/common/enumlocale_1.java[]
+----
+
+default English localization file `/com/abc/sales/messages.properties` should contain the following lines:
+
+[source]
+----
+CustomerGrade=Customer Grade
+CustomerGrade.PREMIUM=Premium
+CustomerGrade.HIGH=High
+CustomerGrade.STANDARD=Standard
+----
+
+Localized enum values are automatically used by different visual components such as <<gui_LookupField,LookupField>>. You can obtain localized enum value programmatically: use `getMessage()` method of the <<messages,Messages>> interface and simply pass the `enum` instance to it.
+
+[[authentication]]
+==== User Authentication
+
+This section describes some access control aspects from developer's point of view. For complete information on configuring user data access restrictions, see <<chapter_security>>.
+
+[[userSession]]
+===== UserSession
+
+User Session is the main element of access control subsystem of the CUBA-application. It is represented by `UserSession` object, associated with the currently authenticated user in the system; it contains information about user rights to access data. The object of the current session can be obtained in any application <<app_tiers,block>> using <<userSessionSource,UserSessionSource>> infrastructure interface.
+
+The user session is created on *Middleware* during `LoginService.login()` method execution after the user is authenticated using the provided name and password. `UserSession` object is then cached in this Middleware block and is returned to the Client tier. When running in cluster, session object is replicated to all cluster members. The client tier also stores the session object after receiving it, associating it with the active user in one way or another (for example, in HTTP session). Further on all Middleware invocations on behalf of this user are followed by passing the session identifier (of `UUID` type). This process does not need any special support in the application code, as the session identifier is passed automatically, regardless of the signature of invoked methods. Client invocations processing in the Middleware starts from retrieving session from cache using the obtained identifier. Then the session is assigned to the execution thread. The session object is deleted from cache when `LoginService.logout()` method is called or when the timeout defined by <<cuba.userSessionExpirationTimeoutSec,cuba.userSessionExpirationTimeoutSec>> application property expires.
+
+Thus the session identifier created when the user logs into the system is used for user authentication during each Middleware invocation.
+
+`UserSession` object also contains methods for current user _authorization_ – validation of the rights to access system objects: `isScreenPermitted()`, `isEntityOpPermitted()`, `isEntityAttrPermitted()`, `isSpecificPermitted()`.
+
+`UserSession` object can contain named attributes of arbitrary serializable type. The attributes are set by `setAttribute()` method and returned by `getAttribute()` method. The latter is also able to return the following session parameters, as if they were attributes:
+
+* `userId` – ID of the currently registered or substituted user;
+* `userLogin` – login of the currently registered or substituted user in lowercase.
+
+The attributes are replicated within the Middleware cluster, same as the rest session data. 
+
+[[login]]
+===== Login
+
+Standard user login process: 
+
+* The user enters his username and password.
+
+* Application client block hashes the password using `getPlainHash()` method of `PasswordEncryption` bean and invokes `LoginService.login()` Middleware method passing the user login and password hash to it.
+
+* `LoginService` delegates execution to the `LoginWorker` bean, which loads `User` object by the entered login, hashes the obtained password hash again using user identifier as salt and compares the obtained hash to the password hash stored in the DB. In case of mismatch, `LoginException` is thrown.
+
+* If the authentication is successful, all the access parameters of the user (roles list, rights, restrictions and session attributes) are loaded to the created <<userSession,UserSession>> instance. 
+
+Password hashing algorithm is implemented by the `EncryptionModule` type bean and is specified in <<cuba.passwordEncryptionModule,cuba.passwordEncryptionModule>> application property. SHA-1 is used by default.
+
+It is possible that the user password (actually, password hash) is not stored in the database, but is verified by external means, for example, by means of integration with *ActiveDirectory*. In this case the authentication is in fact performed by the Client block, while the Middleware &ldquo;trusts&rdquo; the client by creating the session based on user login only, without the password, using `LoginService.loginTrusted()` method. This method requires satisfying the following conditions:
+
+* The client block has to pass the so-called trusted password, specified in <<cuba.trustedClientPassword,cuba.trustedClientPassword>> Middleware and Client block application property.
+
+* IP address of the client block has to match the mask, specified in <<cuba.trustedClientPermittedIpMask,cuba.trustedClientPermittedIpMask>> application property.
+
+Login to the system is also required for scheduled automatic processes as well as for connecting to the Middleware beans using JMX interface. Formally, these actions are considered administrative and they do not require authentication as long as no entities are changed in the database. When an entity is persisted to the database, the process requires login of the user who is making the change so that the login of the user responsible for the changes is stored.
+
+An additional benefit from login to the system for an automatic process or for JMX call is that the server log output is displayed with the current user login if the user session is set to the execution thread. This simplifies searching messages created by specific process during log parsing.
+
+System access for the processes within Middleware is done using `LoginWorker.loginSystem()` call passing the login (without password) of the user on whose behalf the process will be executed. As result, <<userSession,UserSession>> object will be created and cached in the corresponding Middleware block but it will not be replicated in the cluster.
+
+See more about processes authentication inside Middleware in <<system_authentication>>.
+
+[[securityContext]]
+===== SecurityContext
+
+`SecurityContext` class instance stores information about the user session for the current execution thread. It is created and passed to `AppContext.setSecurityContext()` method in the following moments:
+
+* For *Web Client* and *Web Portal* blocks – at the beginning of processing of each HTTP request from the user browser.
+* For *Middleware* block – at the beginning of processing of each request from the Client tier.
+* For *Desktop Client* block – once after the user login, as the desktop application is running in single user mode.
+
+In the first two cases, `SecurityContext` is removed from the execution thread when the request execution is finished.
+
+If you create a new execution thread from the application code, pass the current `SecurityContext` instance to it as in the example below:
+
+[source, java]
+----
+include::{sourcesdir}/common/securitycontext_1.java[]
+----
+
+[[exception_handling]]
+==== Exceptions Handling
+
+This section describes various aspects of working with exceptions in CUBA applications. 
+
+[[exception_classes]]
+===== Exception Classes
+
+The following rules should be followed when creating your own exception classes:
+
+* If the exception is part of business logic and requires some non-trivial actions to handle it, the exception class should be made checked (inherited from `Exception`). Such exceptions are handled by the invoking code.
+
+* If the exception indicates an error and assumes interruption of execution and a simple action like displaying the error information to the user, its class should be unchecked (inherited from `RuntimeException`). Such exceptions are processed by special <<exceptionHandlers,handler classes>> registered in Client blocks of the application.
+
+* If the exception is thrown and processed in the same <<app_tiers,block>>, its class should be declared in corresponding <<app_modules,module>>. If the exception is thrown on Middleware and processed on the Client tier, the exception class should be declared in the *global* module.
+
+The platform contains a special unchecked exception class `SilentException`. It can be used to interrupt execution without showing any messages to the user or writing them to the log. `SilentException` is declared in the global module, and therefore is accessible both in Middleware and Client blocks.
+
+[[remoteException]]
+===== Passing Middleware Exceptions
+
+If an exception is thrown on Middleware as result of handling a client request, the execution terminates and the exception object is returned to the Client. The object usually includes the chain of underlying exceptions. This chain can contain classes which are inaccessible for Client tier (for example, JDBC driver exceptions). For this reason, instead of sending this chain to the Client we send its presentation inside specially created `RemoteException` object.
+
+The information about the causing exceptions is stored as a list of `RemoteException.Cause` objects. Each `Cause` object always contains an exception class name and its message. Moreover, if the exception class is &ldquo;supported by client&rdquo;, `Cause` stores the exception object as well. This allows passing information to the Client in the exception fields.
+
+Exception class should be annotated by `@SupportedByClient `if its objects should be passed to the Client tier as Java objects. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/mwexception_1.java[]
+----
+
+Thus, when an exception is thrown on Middleware and it is not annotated by `@SupportedByClient` the calling Client code will receive `RemoteException` containing original exception information in a string form. If the source exception is annotated by `@SupportedByClient`, the caller will receive it directly. This enables handling the exceptions declared by Middleware <<services,services>> in the application code in the traditional way – using `try...catch` blocks.
+
+Bear in mind that if you need the exception supported by client to be passed on the client as an object, it should not contain any unsupported exceptions in its `getCause()` chain. Therefore, if you create an exception instance on Middleware and want to pass it to the client, specify cause parameter only if you are sure that it contains the exceptions known to the client. 
+
+`ServiceInterceptor` class is a <<services,service>> interceptor which packs the exception objects before passing them to the client tier. Besides, it performs exceptions logging. All information about the exception including full stack trace is output to the log by default. If it is not desirable, add `@Logging` annotation to the exception class and specify the logging level: 
+
+* `FULL` – full information, including stacktrace (default).
+* `BRIEF` – exception class name and message only.
+* `NONE` – no output.
+
+For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/mwexception_2.java[]
+----
+
+[[exceptionHandlers]]
+===== Client-Level Exception Handlers
+
+Unhandled exceptions in Web Client and Desktop Client <<app_tiers,blocks>> thrown on the client tier or passed from Middleware, are passed to the special handlers mechanism. This mechanism is implemented in GUI <<app_modules,module>> and available for both blocks.
+
+The handler should be a <<managed_beans,managed bean>> implementing the `GenericExceptionHandler` interface, handle processing in its `handle()` method and return `true`, or immediately return `false`, if this handler is not able to handle the passed exception. This behaviour enables creating a &ldquo;chain of responsibility&rdquo; for handlers.
+
+It is recommended to inherit your handlers from the `AbstractGenericExceptionHandler` base class, which is able to disassemble the exceptions chain (including ones packed inside `RemoteException`) and handle specific exception types. Exceptions types supported by this handler are defined by passing strings array to the base constructor from the handler constructor. Each string of the array should contain one full class name of the handled exception, for example:
+
+[source, java]
+----
+include::{sourcesdir}/common/exceptionHandlers_1.java[]
+----
+
+If the exception class is not accessible on the client side, specify its name with the string literal:
+
+[source, java]
+----
+include::{sourcesdir}/common/exceptionHandlers_2.java[]
+----
+
+In the case of using `AbstractGenericExceptionHandler` as a base class, the processing logic is located in `doHandle()` method and looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/common/exceptionHandlers_3.java[]
+----
+
+If the name of the exception class is insufficient to make a decision whether this handler can be applied to the exception, `canHandle()` method should be defined. Above all, this method accepts the text of the exception. If the handler is applicable for this exception, the method must return `true`. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/exceptionHandlers_4.java[]
+----
