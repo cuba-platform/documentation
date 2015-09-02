@@ -73,7 +73,7 @@ Fast deployment is performed using the <<build.gradle_deploy,deploy>> task that 
 
 As result of fast deployment, the following structure is created in the directory that is specified by the `ext.tomcatDir` property of the build.gradle script (only important directories and files are listed below):
 
-[source]
+[source, plain]
 ----
 bin/
     setenv.bat, setenv.sh
@@ -133,7 +133,7 @@ To start the server in the current console window, use the following commands in
 
 ** catalina.properties – the Tomcat properties. To load shared libraries from the shared/lib directory (see below), this file should contain the following line:
 +
-[source]
+[source, properties]
 ----
 shared.loader=${catalina.home}/shared/lib/*.jar
 ----
@@ -177,7 +177,7 @@ First set up a server host name.
 
 If you are not going to change the port (8080) or the web context name (`app`), set the following properties in both `tomcat/conf/app/local.app.properties` and `tomcat/conf/app-core/local.app.properties` files: 
 
-[source]
+[source, properties]
 ----
 
 cuba.webHostName = myserver
@@ -186,7 +186,7 @@ cuba.webAppUrl = http://myserver:8080/app
 
 If the port differs from 8080, specify also the `cuba.webPort` property: 
 
-[source]
+[source, properties]
 ----
 
 cuba.webPort = 7070
@@ -198,7 +198,7 @@ If you want to change the web context (e.g. to `sales`), do the following:
 
 * Rename the web applications and `conf` subdirectories: 
 +
-[source]
+[source, plain]
 ----
 
 tomcat/
@@ -214,21 +214,21 @@ tomcat/
 
 * Open `tomcat/webapps/sales-core/WEB-INF/web.xml` and change the last line in the `appPropertiesConfig` context parameter value to the following: 
 +
-[source]
+[source, properties]
 ----
 file:${catalina.home}/conf/sales-core/local.app.properties
 ---- 
 
 * Open `tomcat/webapps/sales/WEB-INF/web.xml` and change the last line in the `appPropertiesConfig` context parameter value to the following: 
 +
-[source]
+[source, plain]
 ----
 file:${catalina.home}/conf/sales/local.app.properties
 ---- 
 
 * Add the following to `tomcat/conf/sales-core/local.app.properties`: 
 +
-[source]
+[source, properties]
 ----
 
 cuba.webContextName = sales-core
@@ -239,7 +239,7 @@ cuba.webAppUrl = http://myserver:7070/sales
 
 * Add the following to `tomcat/conf/sales/local.app.properties`: 
 +
-[source]
+[source, properties]
 ----
 
 cuba.connectionUrlList = http://localhost:7070/sales-core
@@ -253,7 +253,7 @@ The <<cuba.connectionUrlList,cuba.connectionUrlList>> property is used when tran
 
 If you want to use the root context for the web client (`http://myserver:8080`), rename `sales` directories to `ROOT` 
 
-[source]
+[source, plain]
 ----
 
 tomcat/
@@ -269,9 +269,8 @@ tomcat/
 
  and use `/` as the web context name in `tomcat/conf/ROOT/local.app.properties`: 
 
-[source]
+[source, properties]
 ----
-
 cuba.webContextName = /
 ---- 
 
@@ -282,7 +281,7 @@ JavaEE standard application deployment into WAR files is performed using the <<b
 
 . Add tasks to build WAR for the *core* and *web* modules to <<build.gradle,build.gradle>>:
 +
-[source]
+[source, groovy]
 ----
 configure(coreModule) {
     ...
@@ -303,7 +302,7 @@ configure(webModule) {
 
 . Add the task to build a distribution to build.gradle:
 +
-[source]
+[source, groovy]
 ----
 task createWarDistr(dependsOn: [coreModule.buildWar, webModule.buildWar], type: CubaWarDistribution) {
     appHome = '${app.home}'
@@ -441,7 +440,7 @@ Let us consider the installation of a load balancer based on *Apache HTTP Server
 
 . Replace the contents of the /etc/libapache2-mod-jk/workers.properties file with the following:
 +
-[source]
+[source, properties]
 ----
 workers.tomcat_home=
 workers.java_home=
@@ -469,7 +468,7 @@ worker.jkstatus.type=status
 
 . Add the lines listed below to `/etc/apache2/sites-available/000-default.conf`:
 +
-[source]
+[source, xml]
 ----
 <VirtualHost *:80>
 ...
@@ -497,7 +496,7 @@ On the Tomcat 1 and Tomcat 2 servers, the following settings should be applied:
 
 . In `tomcat/conf/server.xml`, add the `jvmRoute` parameter equivalent to the name of the worker specified in the load balancer settings for `tomcat1` and `tomcat2`:
 +
-[source]
+[source, xml]
 ----
 <Server port="8005" shutdown="SHUTDOWN">
   ...
@@ -512,7 +511,7 @@ On the Tomcat 1 and Tomcat 2 servers, the following settings should be applied:
 
 . Set the following application properties in tomcat/conf/app/local.app.properties:
 +
-[source]
+[source, properties]
 ----
 cuba.useLocalServiceInvocation = false
 cuba.connectionUrlList = http://host3:8080/app-core
@@ -538,7 +537,7 @@ Servers `host1` and `host2` host Tomcat instances with the `app` web-app impleme
 
 In order for the client blocks to be able to work with multiple Middleware servers, the list of URLs should be specified to these servers in the <<cuba.connectionUrlList,cuba.connectionUrl>> application property. For the Web Client, this can be done in tomcat/conf/app/local.app.properties:
 
-[source]
+[source, properties]
 ----
 cuba.useLocalServiceInvocation = false
 cuba.connectionUrlList = http://host3:8080/app-core,http://host4:8080/app-core
@@ -555,7 +554,7 @@ The order of servers in `cuba.connectionUrl` defines priority and order for the 
 
 Middleware servers can maintain shared lists of <<userSession,user sessions>> and other objects and coordinate invalidation of caches. <<cuba.cluster.enabled,cuba.cluster.enabled>> property should be enabled on each server to achieve this. Example of the tomcat/conf/app-core/local.app.properties file is shown below:
 
-[source]
+[source, properties]
 ----
 cuba.cluster.enabled = true
 
@@ -575,12 +574,12 @@ Interaction mechanism is based on JGroups. It is possible to fine-tune the inter
 
 _Server ID_ is used for reliable identification of servers in a *Middleware* cluster. The identifier is formatted as `host:port/context`:
 
-[source]
+[source, plain]
 ----
 tezis.haulmont.com:80/app-core
 ----
 
-[source]
+[source, plain]
 ----
 192.168.44.55:8080/app-core
 ----
@@ -619,7 +618,7 @@ This section describes *Tomcat* startup configuration required for a remote conn
 
 * Edit bin/setenv.bat in the following way:
 +
-[source]
+[source, properties]
 ----
 set CATALINA_OPTS=%CATALINA_OPTS% ^
 -Dcom.sun.management.jmxremote ^
@@ -635,14 +634,14 @@ Here, the `java.rmi.server.hostname` parameter should contain the actual IP addr
 
 * Edit the conf/jmxremote.access file. It should contain user names that will be connecting to the JMX and their access level. For example:
 +
-[source]
+[source, plain]
 ----
 admin readwrite
 ----
 
 * Edit the conf/jmxremote.password file. It should contain passwords for the JMX users, for example:
 +
-[source]
+[source, plain]
 ----
 admin admin
 ----
@@ -663,7 +662,7 @@ where `++domain_name\user_name++` is the user's domain and name
 
 * Edit bin/setenv.sh the following way:
 +
-[source]
+[source, properties]
 ----
 CATALINA_OPTS="$CATALINA_OPTS -Dcom.sun.management.jmxremote \
 -Djava.rmi.server.hostname=192.168.10.10 \
@@ -678,14 +677,14 @@ Here, the `java.rmi.server.hostname` parameter should contain the real IP addres
 
 * Edit conf/jmxremote.access file. It should contain user names that will be connecting to the JMX and their access level. For example:
 +
-[source]
+[source, plain]
 ----
 admin readwrite
 ----
 
 * Edit the conf/jmxremote.password file. It should contain passwords for the JMX users, for example:
 +
-[source]
+[source, plain]
 ----
 admin admin
 ----
@@ -712,7 +711,7 @@ The following actions should be completed to initialize a new database:
 
 * Enable the <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property by adding the following line to the <<app_properties_files,local.app.properties>> file:
 +
-[source]
+[source, properties]
 ----
 cuba.automaticDatabaseUpdate = true
 ----
@@ -817,7 +816,7 @@ If you have purchased a commercial license, you can use it in the application by
 
 . If you are going to use the application within one organization, or you have an embedded license, include the license file into your application distribution. Add the license file into the *core* module source code folder. The file name or path should be different from `/cuba.license`:
 +
-[source]
+[source, plain]
 ----
 modules/core/src/
   myapp-cuba.license
@@ -826,14 +825,14 @@ modules/core/src/
 +
 Configure the `cuba.licensePath` application property in the app.properties file of the *core* module:
 +
-[source]
+[source, properties]
 ----
 cuba.licensePath = /myapp-cuba.license
 ---- 
 
 . If you are going to use the application in different organizations, you have to obtain a separate file for each of them. In this case you can place the license files into <<conf_dir,configuration directories>> of the installed applications:
 +
-[source]
+[source, plain]
 ----
 tomcat/conf/app-core/
   myapp-cuba.license
@@ -842,7 +841,7 @@ tomcat/conf/app-core/
 +
 Set the `cuba.licensePath` application property in the local.app.properties file:
 +
-[source]
+[source, properties]
 ----
 cuba.licensePath = /myapp-cuba.license
 ----  
