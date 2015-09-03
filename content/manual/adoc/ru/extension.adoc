@@ -1,0 +1,244 @@
+[[extension]]
+=== Расширение функциональности
+
+Платформа позволяет расширять и переопределять свою функциональность в приложениях в следующих аспектах:
+
+* расширение набора атрибутов сущностей
+
+* расширение функциональности экранов
+
+* расширение и переопределение бизнес-логики, сосредоточенной в бинах *Spring* 
+
+Рассмотрим две первые задачи на примере добавления поля "Адрес" в сущность `User` подсистемы безопасности платформы. 
+
+[[entity_extension]]
+==== Расширение сущности
+
+Создадим в проекте приложения класс сущности, унаследованный от `com.haulmont.cuba.security.entity.User` и добавим в него требуемый атрибут с соответствующими методами доступа: 
+
+[source, java]
+----
+@Entity(name = "sales$User")
+@Extends(User.class)
+public class ExtUser extends User {
+
+  @Column(name = "ADDRESS", length = 100)
+  private String address;
+
+  public String getAddress() {
+      return address;
+  }
+
+  public void setAddress(String address) {
+      this.address = address;
+  }
+}
+----
+
+В аннотации `
+        <<entity_annotation,@Entity>>
+      ` должно быть указано новое имя сущности. Так как базовая сущность не объявляет <<inheritance_annotation,стратегию наследования>>, то по умолчанию это `++SINGLE_TABLE++`. Это означает, что унаследованная сущность будет храниться в той же таблице, что и базовая, и аннотация `
+        <<table_annotation,@Table>>
+      ` не требуется. Другие аннотации базовой сущности - `
+        <<namePattern,@NamePattern>>
+      `, `
+        <<listeners_annotation,@Listeners>>
+      ` и прочие - автоматически применяются к расширяющей сущности, но могут быть переопределены в ее классе. 
+
+Важным элементом класса новой сущности является аннотация `@Extends` с базовым классом в качестве параметра. Она позволяет сформировать реестр расширяющих сущностей, и заставить механизмы платформы использовать их повсеместно вместо базовых. Реестр реализуется классом `ExtendedEntities`, который является бином *Spring* с именем `++cuba_ExtendedEntities++`, и доступен также через интерфейс `
+        <<metadata,Metadata>>
+      `.
+
+Добавим локализованное название нового атрибута в <<message_packs,пакет>> `com.sample.sales.entity`:
+
+`messages.properties`
+
+[source]
+----
+ExtUser.address=Address
+----
+
+`messages_ru.properties`
+
+[source]
+----
+ExtUser.address=Адрес
+----
+
+Зарегистрируем новую сущность в файле `
+        <<persistence.xml,persistence.xml>>
+      ` проекта:
+
+[source, xml]
+----
+<class>com.sample.sales.entity.ExtUser</class>
+----
+
+Добавим в <<db_scripts,скрипты создания и обновления базы данных>> команду модификации соответствующей таблицы:
+
+[source]
+----
+alter table SEC_USER add ADDRESS varchar(100)
+----
+
+[[screen_extension]]
+==== Расширение экранов
+
+Платформа позволяет создавать новые <<screen_xml,XML-дескрипторы>> экранов путем наследования от существующих.
+
+Наследование XML выполняется путем указания в корневом элементе `window` атрибута `extends`, содержащего путь к базовому дескриптору.
+
+Правила переопределения элементов XML экрана:
+
+* Если в расширяющем дескрипторе указан некоторый элемент, в базовом дескрипторе будет произведен поиск соответствующего элемента по следующему алгоритму:
+
+** Если переопределяющий элемент - `view`, то ищется соответствующий элемент по атрибутам `name`, `class`, `entity`.
+
+** Если переопределяющий элемент - `property`, то ищется соответствующий элемент по атрибуту `name`.
+
+** В других случаях, если в переопределяющем элементе указан атрибут `id`, ищется соответствующий элемент с таким же `id`. 
+
+** Если поиск дал результат, то найденный элемент *переопределяется*.
+
+** Если поиск не дал результата, то определяется, сколько в базовом дескрипторе элементов по данному пути и с данным именем. Если ровно один - он *переопределяется*.
+
+** Если поиск не дал результата, и в базовом дескрипторе по данному пути с данным именем нет элементов, либо их больше одного, *добавляется* новый элемент.
+
+* В переопределяемом либо добавляемом элементе устанавливается текст из расширяющего элемента. 
+
+* В переопределяемый либо добавляемый элемент копируются все атрибуты из расширяющего элемента. При совпадении имени атрибута значение берется из расширяющего элемента.
+
+* Добавление нового элемента по умолчанию производится в конец списка соседних элементов. Чтобы добавить новый элемент в начало или с произвольным индексом, необходимо выполнить следующее: 
+
+** определить в расширяющем дескрипторе дополнительный namespace: `xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"`
+
+** добавить в расширяющий элемент атрибут `ext:index` с желаемым индексом, например: `ext:index="0".`
+
+Для отладки преобразования дескрипторов можно включить вывод в журнал сервера результирующего XML. Делается это путем указания уровня `TRACE` для логгера `com.haulmont.cuba.gui.xml.XmlInheritanceProcessor` в файле конфигурации *Log4j*:
+
+[source, xml]
+----
+<appender name="FILE" ...
+      <param name="Threshold" value="TRACE"/>
+...
+<category name="com.haulmont.cuba.gui.xml.XmlInheritanceProcessor">
+  <priority value="TRACE"/>
+</category>
+----
+
+Пример XML-дескриптора экрана браузера сущностей `ExtUser`:
+
+[source, xml]
+----
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
+      extends="/com/haulmont/cuba/gui/app/security/user/browse/user-browse.xml">
+  <layout>
+      <groupTable id="usersTable">
+          <columns>
+              <column id="address" ext:index="2"/>
+          </columns>
+      </groupTable>
+  </layout>
+</window>
+----
+
+В данном примере дескриптор унаследован от стандартного браузера сущностей `User` платформы, и в таблицу добавлена колонка `address` с индексом `2`, т.е. отображающаяся после `login` и `name`.
+
+Зарегистрируем новый экран в `
+        <<screens.xml,screens.xml>>
+      ` с теми же идентификаторами, которые использовались для базового экрана. После этого новый экран будет повсеместно вызываться взамен старого.
+
+[source, xml]
+----
+<screen id="sec$User.browse"
+      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
+<screen id="sec$User.lookup"
+      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
+----
+
+Аналогично создаем экран редактирования:
+
+[source, xml]
+----
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
+      extends="/com/haulmont/cuba/gui/app/security/user/edit/user-edit.xml">
+  <layout>
+      <fieldGroup id="fieldGroup">
+          <column id="fieldGroupColumn2">
+              <field id="address" ext:index="4"/>
+          </column>
+      </fieldGroup>
+  </layout>
+</window>
+----
+
+Регистрируем его в `screens.xml` с идентификатором базового экрана:
+
+[source, xml]
+----
+<screen id="sec$User.edit"
+      template="com/sample/sales/gui/extuser/extuser-edit.xml"/>
+----
+
+После выполнения описанных выше действий в приложении вместо платформенной сущности `User` будет использоваться `ExtUser` с соответствующими экранами.
+
+Контроллер экрана может быть расширен путем создания нового класса, унаследованного от контроллера базового экрана. Имя класса указывается в атрибуте `class` корневого элемента расширяющего XML дескриптора, при этом выполняются обычные правила наследования XML, описанные выше. 
+
+[[bean_extension]]
+==== Расширение бизнес-логики
+
+Основная часть бизнес-логики платформы сосредоточена в бинах *Spring*, что позволяет легко расширить или переопределить ее в приложении.
+
+Для подмены реализации бина достаточно создать свой класс, реализующий интерфейс или расширяющий базовый класс платформы, и зарегистрировать его в <<spring.xml,
+        spring.xml
+      >> приложения. Аннотацию `@ManagedBean` в расширяющем классе применять нельзя, переопределение бинов возможно только с помощью конфигурации в XML.
+
+Рассмотрим пример добавления метода в бин <<persistenceTools,
+        PersistenceTools
+      >>.
+
+Создаем класс с нужным методом:
+
+[source, java]
+----
+public class ExtPersistenceTools extends PersistenceTools {
+
+  public Entity reloadInSeparateTransaction(final Entity entity, final String... viewNames) {
+      Entity result = persistence.createTransaction().execute(new Transaction.Callable<Entity>() {
+          @Override
+          public Entity call(EntityManager em) {
+              return em.reload(entity, viewNames);
+          }
+      });
+      return result;
+  }
+}
+----
+
+Регистрируем класс в `spring.xml` модуля *core* проекта с тем же идентификатором, что и бин платформы:
+
+[source, xml]
+----
+<bean id="cuba_PersistenceTools" class="com.sample.sales.core.ExtPersistenceTools"/>
+----
+
+После этого контекст *Spring* вместо экземпляра базового класса `PersistenceTools` будет всегда возвращать `ExtPersistenceTools`, например:
+
+[source, java]
+----
+Persistence persistence;
+PersistenceTools tools;
+
+persistence = AppBeans.get(Persistence.class);
+tools = persistence.getTools();
+assertTrue(tools instanceof ExtPersistenceTools);
+
+tools = AppBeans.get(PersistenceTools.class);
+assertTrue(tools instanceof ExtPersistenceTools);
+
+tools = AppBeans.get(PersistenceTools.NAME);
+assertTrue(tools instanceof ExtPersistenceTools);
+----
+

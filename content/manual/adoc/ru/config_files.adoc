@@ -1,0 +1,763 @@
+[appendix]
+== Конфигурационные файлы
+
+В данном приложении описаны основные конфигурационные файлы, входящие в состав CUBA-приложений.
+
+[[context.xml]]
+=== context.xml
+
+Файл `context.xml` является дескриптором развертывания приложения на сервере *Apache Tomcat*. В развернутом приложении этот файл располагается в подкаталоге `META-INF` каталога веб-приложения или WAR-файла, например, `tomcat/webapps/app-core/META-INF/context.xml`. В проекте файлы данного типа находятся в каталогах `/web/META-INF` модулей *core*, *web*, *portal*.
+
+Основное предназначение файла для блока *Middleware* - определить источник данных и поместить его в JNDI под именем, заданным свойством приложения `
+        <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>>
+      `.
+
+Пример определения источника данных для *PostgreSQL*:
+
+[source, xml]
+----
+<Resource
+  name="jdbc/CubaDS"
+  type="javax.sql.DataSource"
+  maxActive="100"
+  maxIdle="2"
+  maxWait="5000"
+  driverClassName="org.postgresql.Driver"
+  username="cuba"
+  password="cuba"
+  url="jdbc:postgresql://localhost/sales"/>
+----
+
+Пример определения источника данных для *Microsoft SQL Server*:
+
+[source, xml]
+----
+<Resource
+  name="jdbc/CubaDS"
+  type="javax.sql.DataSource"
+  maxActive="100"
+  maxIdle="2"
+  maxWait="5000"
+  driverClassName="net.sourceforge.jtds.jdbc.Driver"
+  username="sa"
+  password="saPass1"
+  url="jdbc:jtds:sqlserver://localhost/sales"/>
+----
+
+Пример определения источника данных для *Oracle*:
+
+[source, xml]
+----
+<Resource
+name="jdbc/CubaDS"
+type="javax.sql.DataSource"
+maxActive="100"
+maxIdle="2"
+maxWait="5000"
+driverClassName="oracle.jdbc.OracleDriver"
+username="sales"
+password="sales"
+url="jdbc:oracle:thin:@//localhost:1521/orcl"/>
+----
+
+Для всех <<app_tiers,блоков>>, являющихся веб-приложениями, данный файл может содержать код, отключающий сериализацию HTTP-сессий:
+
+[source, xml]
+----
+<Manager className="org.apache.catalina.session.PersistentManager" debug="0" distributable="false"
+       saveOnRestart="false">
+  <Store className="org.apache.catalina.session.FileStore"/>
+</Manager>
+----
+
+[[datatypes.xml]]
+=== datatypes.xml
+
+Файл `datatypes.xml` определяет доступные типы данных атрибутов сущностей, см. <<datatype,>>
+
+Файл по умолчанию расположен в пакете `com.haulmont.chile.core.datatypes` <<base_projects,базового проекта>> *cuba*. Если в прикладном проекте в <<app_modules,модуле>> *global* создать аналогичный файл в корне CLASSPATH, то типы данных будут загружены из него.
+
+
+[WARNING]
+====
+Механизм загрузки не поддерживает расширение, т.е. все типы данных загружаются из одного файла - либо из корня CLASSPATH, либо из пакета `com.haulmont.chile.core.datatypes`.
+====
+
+Доступные типы данных описываются в элементах `datatype`. Обязательным атрибутом является только class, в котором указывается класс типа данных, реализующий интерфейс `Datatype`. Набор остальных атрибутов зависит от класса, объекту которого при создании передается соответствующий XML элемент, и разбор атрибутов происходит в этом классе.
+
+Типичные атрибуты:
+
+* `format` - формат преобразования в строку без учета локали
+
+* `groupingSeparator` - символ-разделитель групп разрядов числа при форматировании без учета локали
+
+* `decimalSeparator` - символ-разделитель целой и дробной части числа при форматировании без учета локали
+
+Пример:
+
+[source, xml]
+----
+<datatypes>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.BooleanDatatype"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.IntegerDatatype"
+            format="0" groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.LongDatatype"
+            format="0" groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.DoubleDatatype"
+            format="0.###" decimalSeparator="." groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.BigDecimalDatatype"
+            format="0.####" decimalSeparator="." groupingSeparator=""/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.StringDatatype"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.DateTimeDatatype"
+            format="yyyy-MM-dd'T'HH:mm:ss.SSS"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.DateDatatype"
+            format="yyyy-MM-dd"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.TimeDatatype"
+            format="HH:mm:ss"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.UUIDDatatype"/>
+
+  <datatype class="com.haulmont.chile.core.datatypes.impl.ByteArrayDatatype"/>
+
+</datatypes>
+----
+
+[[dispatcher-spring.xml]]
+=== dispatcher-spring.xml
+
+Файлы данного типа определяют конфигурацию дополнительного контейнера *Spring Framework* для клиентских блоков, содержащих контроллеры *Spring MVC*. 
+
+Набор файлов `dispatcher-spring.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.dispatcherSpringContextConfig,cuba.dispatcherSpringContextConfig>>
+      `. Последовательность перечисления файлов важна, так как каждый последующий файл может переопределять конфигурацию бинов, заданную в предыдущих файлах.
+
+Контейнер контроллеров Spring MVC создается таким образом, что основной контейнер (конфигурируемый файлами `
+        <<spring.xml,spring.xml>>
+      `) является родительским по отношению к нему. Это означает, что бины контейнера контроллеров могут обращаться к бинам основного контейнера, а бины основного контейнера "не видят" контейнер контроллеров.
+
+[[menu.xml]]
+=== menu.xml
+
+Файлы данного типа используются в <<app_tiers,блоках>> *Web Client* и *Desktop Client*, реализующих <<gui_framework,универсальный пользовательский интерфейс>>, для описания структуры главного меню приложения.
+
+Схема XML доступна по адресу link:$$http://schemas.haulmont.com/cuba/5.6/menu.xsd$$[http://schemas.haulmont.com/cuba/5.6/menu.xsd]
+
+Набор файлов `menu.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.menuConfig,cuba.menuConfig>>
+      `. 
+
+Рассмотрим структуру файла.
+
+`menu-config` - корневой элемент
+
+Элементы `menu-config`, образующие древовидную структуру:
+
+* `menu` - раскрывающееся меню, содержащее пункты и другие раскрывающиеся меню
++
+Атрибуты menu:
+
+** `id` - идентификатор элемента, использующийся для формирования локализованного названия (см. ниже)
+
+** `insertBefore`, `insertAfter` - идентификатор элемента или пункта меню, перед которым или после которого нужно вставить данный элемент. Используется в прикладном проекте для вставки элемента в нужное место меню, определенного в аналогичных файлах базовых проектов. Разумеется, использование одного из этих атрибутов для конкретного элемента исключает возможность использования второго атрибута для данного элемента.
++
+Атрибуты `insertBefore`, `insertAfter` в Studio поддерживаются только для элементов `menu` верхнего уровня. Поэтому если вы задали эти атрибуты вручную для других элементов, не открывайте дизайнер меню Studio, иначе они будут удалены.
++
+Элементы menu:
+
+** `menu`
+
+** `item` - пункт меню, см. далее
+
+** `separator` - разделитель
+
+* `item` - пункт меню
++
+Атрибуты `item`:
+
+** `id` - идентификатор элемента, использующийся для формирования локализованного названия (см. ниже), и для связи с элементом файла `
+                    <<screens.xml,screens.xml>>
+                  `, в котором зарегистрированы экраны UI. При выборе пункта меню в главном окне приложения будет открыт соответствующий экран.
+
+** `shortcut` - горячая клавиша для вызова данного пункта меню. Возможные модификаторы - `ALT`, `CTRL`, `SHIFT` - отделяются символом "`-`". Например:
++
+[source]
+----
+shortcut="ALT-C"
+shortcut="ALT-CTRL-C"
+shortcut="ALT-CTRL-SHIFT-C"
+----
++
+Горячие клавиши можно также задавать в <<app_properties,свойствах приложения>> и использовать в `menu.xml` следующим образом:
++
+[source]
+----
+shortcut="${sales.menu.customer}"
+----
+
+** `openType` - тип открытия экрана, возможные значения соответствуют перечислению `WindowManager.OpenType`: `++NEW_TAB++`, `++THIS_TAB++`, `DIALOG`, `++NEW_WINDOW++`.
++
+По умолчанию - `++NEW_TAB++`. 
++
+Значение `++NEW_WINDOW++` поддерживается только в *Desktop Client*, в *Web Client* оно эквивалентно `++NEW_TAB++`.
+
+** `insertBefore`, `insertAfter` - идентификатор элемента или пункта меню, перед которым или после которого нужно вставить данный элемент. 
++
+Атрибуты `insertBefore`, `insertAfter` для элемента `item` не поддерживаются в Studio. Поэтому если вы задали эти атрибуты вручную, не открывайте дизайнер меню Studio, иначе они будут удалены.
+
+** `resizable` - актуально для типа открытия экрана `DIALOG` - задает окну возможность изменения размера. Возможные значения: `true`, `false`.
++
+По умолчанию главное меню не влияет на возможность изменения размера диалоговых окон.
++
+Элементы `item`:
+
+** `param` - задает параметр экрана, передаваемый в мэп метода `init()` <<screen_controller,контроллера>>. Параметры, заданные в `menu.xml`, переопределяют одноименные параметры, заданные в <<screens.xml,
+                    screens.xml
+                  >>.
++
+Атрибуты `param`:
+
+*** `name` - имя параметра
+
+*** `value` - значение параметра. Строковое значение может преобразовываться в некоторый объект по следующим правилам:
+
+**** Если строка представляет собой идентификатор сущности, записанный по правилам класса `EntityLoadInfo`, то загружается указанный экземпляр сущности.
+
+**** Если строка имеет вид `++${some_name}++`, то значением параметра будет свойство приложения `some_name`.
+
+**** Строки `true` и `false` преобразуются в соответствующие значения типа `Boolean`.
+
+**** Если ничего из вышеперечисленного не подходит, значением параметра становится сама строка.
+
+** `permissions` - элемент, позволяющий задать набор разрешений текущего пользователя, при которых данный пункт меню доступен. Данный механизм имеет смысл использовать только если необходимо привязать доступность пункта к специфическим разрешениям, или не к одному, а к нескольким разрешениям сразу. В большинстве случаев достаточно стандартной возможности подсистемы безопасности управлять доступностью пунктов меню по идентификаторам экранов.
++
+Данный элемент должен содержать вложенные элементы `permission`, каждый из которых описывает одно требуемое разрешение. Пункт меню доступен только при наличии всех требуемых разрешений.
++
+Атрибуты `permission`:
+
+*** `type` - тип требуемого разрешения, задаваемый значением перечисления `PermissionType`: `SCREEN`, `++ENTITY_OP++`, `++ENTITY_ATTR++`, `SPECIFIC`, `UI`.
+
+*** `target` - объект, на который проверяется наличие разрешения. Зависит от типа разрешения:
+
+**** `SCREEN` - идентификатор экрана, например `sales$Customer.lookup`.
+
+**** `++ENTITY_OP++` - строка вида `++{entity_name}:{op}++`, где `{op}` - `read`, `create`, `update`, `delete`. Например: `sales$Customer:create`.
+
+**** `++ENTITY_ATTR++` - строка вида `++{entity_name}:{attribute}++`, например `sales$Customer:name`.
+
+**** `SPECIFIC` - идентификатор специфического разрешения, например `sales.runInvoicing`.
+
+**** `UI` - путь к визуальному компоненту экрана.
+
+Пример файла меню:
+
+[source, xml]
+----
+<menu-config xmlns="http://schemas.haulmont.com/cuba/menu.xsd">
+
+  <menu id="sales" insertBefore="administration">
+      <item id="sales$Customer.lookup"/>
+      <separator/>
+      <item id="sales$Order.lookup"/>
+  </menu>
+
+</menu-config>
+----
+
+Локализованное название элемента меню формируется следующим образом: к идентификатору элемента добавляется префикс `menu-config` с точкой на конце, и полученная строка используется как ключ в <<main_message_pack,главном пакете сообщений>>. Например:
+
+[source]
+----
+menu-config.sales=Sales
+menu-config.sales$Customer.lookup=Customers
+----
+
+[[metadata.xml]]
+=== metadata.xml
+
+Файлы данного типа используются для регистрации неперсистентных сущностей и присвоения <<meta_annotations,мета-аннотаций>>, см. <<metadata_framework,>>
+
+Схема XML доступна по адресу link:$$http://schemas.haulmont.com/cuba/5.6/metadata.xsd$$[http://schemas.haulmont.com/cuba/5.6/metadata.xsd]
+
+Набор файлов `metadata.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.metadataConfig,cuba.metadataConfig>>
+      `. 
+
+Рассмотрим структуру файла.
+
+`metadata` - корневой элемент.
+
+Элементы `metadata`:
+
+* `metadata-model` - описатель метамодели проекта.
++
+Атрибут `
+              `metadata-model`
+            `: 
+
+** `root-package` - корневой пакет проекта.
++
+Элементы `metadata-model`:
+
+** `class` - класс неперсистентной сущности.
+
+* `annotations` - корень элементов присвоения <<meta_annotations,мета-аннотаций>> сущностей.
++
+Элементы `annotations`:
+
+** `entity` - элемент сущности, которой присваиваются мета-аннотации.
++
+Атрибуты `entity`:
+
+*** `class` - класс сущности.
++
+Элементы `entity`:
+
+*** `annotation` - элемент мета-аннотации.
++
+Атрибуты `annotation`:
+
+**** `name` - имя мета-аннотации.
+
+**** `value` - значение мета-аннотации.
+
+Пример:
+
+[source, xml]
+----
+<metadata xmlns="http://schemas.haulmont.com/cuba/metadata.xsd">
+
+  <metadata-model root-package="com.sample.sales">
+      <class>com.sample.sales.entity.SomeTransientEntity</class>
+      <class>com.sample.sales.entity.OtherTransientEntity</class>
+  </metadata-model>
+
+  <annotations>
+      <entity class="com.haulmont.cuba.security.entity.User">
+          <annotation name="com.haulmont.cuba.core.entity.annotation.TrackEditScreenHistory"
+                      value="true"/>
+          <annotation name="com.haulmont.cuba.core.entity.annotation.EnableRestore"
+                      value="true"/>
+      </entity>
+  </annotations>
+
+</metadata>
+----
+
+[[permissions.xml]]
+=== permissions.xml
+
+Файлы данного типа используются в блоках *Web Client* и *Desktop Client* для регистрации специфических <<permissions,разрешений>> пользователей. 
+
+Набор файлов `permissions.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.permissionConfig,cuba.permissionConfig>>
+      `. 
+
+Схема XML доступна по адресу link:$$http://schemas.haulmont.com/cuba/5.6/permissions.xsd$$[http://schemas.haulmont.com/cuba/5.6/permissions.xsd].
+
+Рассмотрим структуру файла.
+
+`permission-config` - корневой элемент.
+
+Элементы `permission-config`:
+
+
+
+* `specific` - описатель специфических разрешений.
++
+Элементы `specific`:
+
+** `category` - категория разрешений, используется для группировки в экране управления разрешениями <<roles,роли>>. Атрибут `id` используется как ключ для получения локализованного названия категории.
+
+** `permission` - именованное разрешение. Атрибут `id` используется для получения значения разрешения методом `Security.isSpecificPermitted()`, а также как ключ для получения локализованного названия разрешения для отображения в экране управления разрешениями <<roles,роли>>.
+
+Пример:
+
+[source, xml]
+----
+<permission-config xmlns="http://schemas.haulmont.com/cuba/permissions.xsd">
+  <specific>
+      <category id="app">
+          <permission id="app.doSomething"/>
+          <permission id="app.doSomethingOther"/>
+      </category>
+  </specific>
+</permission-config>
+---- 
+
+[[persistence.xml]]
+=== persistence.xml
+
+Файлы данного типа являются стандартными для JPA и используются для регистрации персистентных сущностей и задания параметров функционирования фреймворка <<orm,ORM>>.
+
+Набор файлов `persistence.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.persistenceConfig,cuba.persistenceConfig>>
+      `. 
+
+На старте блока *Middleware* из заданных файлов собирается один `persistence.xml` и сохраняется в <<work_dir,рабочем каталоге>> приложения. Параметры ORM могут переопределяться каждым следующим файлом списка, поэтому порядок указания файлов важен. Существует несколько параметров, жестко определяемых типом используемой СУБД (заданным в `
+        <<cuba.dbmsType,cuba.dbmsType>>
+      `), которые невозможно переопределить в `persistence.xml`, это:
+
+* `openjpa.jdbc.DBDictionary`
+
+* `openjpa.jdbc.MappingDefaults`
+
+Кроме того, при выключенном свойстве приложения `
+        <<cuba.disableOrmXmlGeneration,cuba.disableOrmXmlGeneration>>
+      ` и наличии <<extension,расширенных сущностей>> на старте приложения в рабочем каталоге создается файл `orm.xml` и путь к нему записывается в параметр `openjpa.MetaDataFactory`. В этом случае параметр `openjpa.MetaDataFactory` также нельзя задать в `persistence.xml` заранее. 
+
+Пример файла:
+
+[source, xml]
+----
+<persistence xmlns="http://java.sun.com/xml/ns/persistence" version="1.0">
+  <persistence-unit name="sales" transaction-type="RESOURCE_LOCAL">
+      <class>com.sample.sales.entity.Customer</class>
+      <class>com.sample.sales.entity.Order</class>
+  </persistence-unit>
+</persistence>
+----
+
+[[remoting-spring.xml]]
+=== remoting-spring.xml
+
+Файлы данного типа определяют конфигурацию дополнительного контейнера *Spring Framework* для блока *Middleware*, который предназначен для экспорта сервисов и других компонентов среднего слоя, доступных клиентскому уровню (далее _контейнер удаленного доступа_). 
+
+Набор файлов `remoting-spring.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.remotingSpringContextConfig,cuba.remotingSpringContextConfig>>
+      `. Последовательность перечисления файлов важна, так как каждый последующий файл может переопределять конфигурацию бинов, заданную в предыдущих файлах.
+
+Контейнер удаленного доступа создается таким образом, что основной контейнер (конфигурируемый файлами `
+        <<spring.xml,spring.xml>>
+      `) является родительским по отношению к нему. Это означает, что бины контейнера удаленного доступа могут обращаться к бинам основного контейнера, а бины основного контейнера "не видят" контейнер удаленного доступа.
+
+Основная задача контейнера удаленного доступа - сделать сервисы *Middleware* доступными клиентскому уровню с помощью механизма *Spring HttpInvoker*. Для этого в `cuba-remoting-spring.xml` базового проекта *cuba* определяется бин `servicesExporter` типа `RemoteServicesBeanCreator`, который получает из основного контейнера все классы сервисов и экспортирует их. В дополнение к обычным аннотированным сервисам контейнер удаленного доступа экспортирует некоторые специфические бины, такие как `LoginService`.
+
+Кроме того, `cuba-remoting-spring.xml` определяет базовый пакет, начиная с которого производится поиск аннотированных классов контроллеров *Spring MVC*, используемых для загрузки-выгрузки файлов.
+
+В прикладном проекте определять файл типа `remoting-spring.xml` необходимо только в том случае, если создаются специфические контроллеры *Spring MVC*. Сервисы прикладного проекта в любом случае будут импортированы стандартным бином `servicesExporter`, определенным в базовом проекте *cuba*.
+
+[[screens.xml]]
+=== screens.xml
+
+Файлы данного типа используются в <<app_tiers,блоках>> *Web Client* и *Desktop Client*, реализующих <<gui_framework,универсальный пользовательский интерфейс>>, для регистрации <<screen_xml,XML-дескрипторов>> экранов.
+
+Схема XML доступна по адресу link:$$http://schemas.haulmont.com/cuba/5.6/screens.xsd$$[http://schemas.haulmont.com/cuba/5.6/screens.xsd]
+
+Набор файлов `screens.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.windowConfig,cuba.windowConfig>>
+      `. 
+
+Рассмотрим структуру файла.
+
+`screen-config` - корневой элемент
+
+Элементы `screen-config`:
+
+* `screen` - описатель экрана
++
+Атрибуты `screen`:
+
+** `id` - идентификатор экрана, по которому он доступен в программном коде (например, в методах `IFrame.openWindow()` и т.п.) и в `
+                    <<menu.xml,menu.xml>>
+                  `.
+
+** `template` - путь к файлу <<screen_xml,XML-дескриптора>> экрана. Загрузка производится по правилам интерфейса `
+                    <<resources,Resources>>
+                  `.
+
+** `class` - если атрибут `template` не указан, в данном атрибуте нужно указать имя класса, реализующего либо `Callable`, либо `Runnable`. 
++
+В случае `Callable` метод `call()` должен возвращать экземпляр созданного `Window`, который будет возвращен вызывающему коду как результат `WindowManager.openWindow()`. Класс может содержать конструктор с параметрами для передачи ему строковых значений, заданных вложенным элементом `param` (см. ниже). 
+
+** `multipleOpen` - опциональный атрибут, задающий возможность многократного открытия экрана. Если равен `false` или не задан, и в главном окне уже открыт экран с данным идентификатором, то вместо открытия нового экземпляра экрана отобразится имеющийся. Значение `true` позволяет открывать произвольное количество одинаковых экранов.
++
+Элементы `screen`:
+
+** `param` - задает параметр экрана, передаваемый в мэп метода `init()` <<screen_controller,контроллера>>. Параметры, передаваемые из вызывающего кода в методы `openWindow()`, переопределяют одноименные параметры, заданные в `screens.xml`.
++
+Атрибуты `param`:
+
+*** `name` - имя параметра
+
+*** `value` - значение параметра. Строки `true` и `false` автоматически преобразуются в значения типа `Boolean`.
+
+* `include` - включение другого файла типа `screens.xml`
++
+Атрибуты `include`:
+
+** `file` - путь к файлу по правилам интерфейса `
+                      <<resources,Resources>>
+                    `
+
+Пример файла `screens.xml`:
+
+[source, xml]
+----
+<screen-config xmlns="http://schemas.haulmont.com/cuba/screens.xsd">
+
+  <screen id="sales$Customer.lookup" template="/com/sample/sales/gui/customer/customer-browse.xml"/>
+  <screen id="sales$Customer.edit" template="/com/sample/sales/gui/customer/customer-edit.xml"/>
+
+  <screen id="sales$Order.lookup" template="/com/sample/sales/gui/order/order-browse.xml"/>
+  <screen id="sales$Order.edit" template="/com/sample/sales/gui/order/order-edit.xml"/>
+
+</screen-config>
+----
+
+[[spring.xml]]
+=== spring.xml
+
+Файлы данного типа определяют конфигурацию основного контейнера *Spring Framework* для каждого <<app_tiers,блока приложения>>. 
+
+Набор файлов `spring.xml`, включая определенные в <<base_projects,базовых проектах>>, задается в свойстве приложения `
+        <<cuba.springContextConfig,cuba.springContextConfig>>
+      `. Последовательность перечисления файлов важна, так как каждый последующий файл может переопределять конфигурацию бинов, заданную в предыдущих файлах.
+
+Основная часть конфигурирования контейнера возложена на аннотации бинов (такие как `@ManagedBean`, `@Servic`e, `@Inject` и др.), поэтому обязательной частью `spring.xml` в прикладном проекте является только элемент `context:component-scan`, в котором задается базовый пакет Java, с которого начинается поиск аннотированных классов. Например:
+
+[source, xml]
+----
+<context:component-scan base-package="com.sample.sales"/>
+----
+
+Остальное содержимое зависит от того, для какого блока приложения конфигурируется контейнер: например, для *Middleware* это регистрация <<jmx_beans,JMX-бинов>>, для блоков клиентского уровня - <<service_import,импорт сервисов>>.
+
+[[views.xml]]
+=== views.xml
+
+Файлы данного типа используются для описания представлений, см. <<views,>>
+
+Схема XML доступна по адресу link:$$http://schemas.haulmont.com/cuba/5.6/view.xsd$$[http://schemas.haulmont.com/cuba/5.6/view.xsd]
+
+`views` - корневой элемент
+
+Элементы `views`:
+
+* `view` - описатель `View`
++
+Атрибуты `view`:
+
+** `class` - класс сущности.
+
+** `entity` - имя сущности, например `sales$Order`. Может быть использован _вместо_ атрибута `class`. 
+
+** `name` - имя представления, должно быть уникальным в пределах сущности.
+
+** `systemProperties` - признак включения системных атрибутов сущности (входящих в состав <<base_entity_classes,базовых интерфейсов>> персистентных сущностей `BaseEntity` и `Updatable`). Необязательный атрибут, по умолчанию `false`.
+
+** `overwrite` - признак того, что данный описатель должен переопределить представление с таким же классом и именем, уже развернутое в репозитории. Необязательный атрибут, по умолчанию `false`.
+
+** `extends` - указывает имя представления той же сущности, от которого нужно унаследовать атрибуты. Порядок следования описателей в файле при этом не важен. Например, при указании `++extends="_local"++` в текущее представление будут включены все <<local_attribute,локальные атрибуты>> сущности. Необязательный атрибут.
++
+Элементы `view`:
+
+** `property` - описатель `ViewProperty`.
++
+Атрибуты `property`:
+
+*** `name` - имя атрибута сущности.
+
+*** `view` - для ссылочного атрибута указывает имя представления, с которым должна загружаться ассоциированная сущность. Порядок следования описателей в файле при этом не важен.
+
+*** `lazy` - для ссылочных атрибутов признак того, что данный атрибут нужно не включать в Fetch Plan, а загружать отдельным SQL запросом, инициированным обращением к атрибуту. Необязательный атрибут, по умолчанию `false`.
++
+Рекомендуется использовать `lazy` для атрибутов-коллекций, если таких атрибутов больше одного для данного графа представлений. Т.е. устанавливайте `lazy = "true"` для всех коллекций, кроме одной.
++
+Элементы `property`:
+
+*** `property` - описатель атрибута связанной сущности. Таким способом можно определить неименованное представление для связанной сущности прямо внутри текущего описателя (inline). 
+
+* `include` - включение другого файла типа views.xml
++
+Атрибуты `include`:
+
+** `file` - путь к файлу по правилам интерфейса `
+                    <<resources,Resources>>
+                  `
+
+Пример:
+
+[source, xml]
+----
+<views xmlns="http://schemas.haulmont.com/cuba/view.xsd">
+
+  <view class="com.sample.sales.entity.Order"
+        name="orderWithCustomer"
+        extends="_local">
+      <property name="customer" view="_minimal"/>
+  </view>
+
+  <view class="com.sample.sales.entity.Item"
+        name="itemsInOrder">
+      <property name="quantity"/>
+      <property name="product" view="_minimal"/>
+  </view>
+
+  <view class="com.sample.sales.entity.Order"
+        name="orderWithCustomerDefinedInline"
+        extends="_local">
+      <property name="customer">
+          <property name="name"/>
+          <property name="email"/>
+      </property>
+  </view>
+
+</views>
+----
+
+См. также свойство приложения `
+        <<cuba.viewsConfig,cuba.viewsConfig>>
+      `
+
+[[web.xml]]
+=== web.xml
+
+Файл `web.xml` является стандартным дескриптором веб-приложения *Java EE*, и должен быть создан для блоков *Middleware*, *Web Client* и *Web Portal*.
+
+В проекте приложения файлы `web.xml` располагаются в каталогах `web/WEB-INF` соответствующих <<app_modules,модулей>>.
+
+Рассмотрим содержимое `web.xml` блока *Middleware* (модуль *core* проекта):
+
+[source, xml]
+----
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+         version="2.5">
+
+  <!-- Application properties config files -->
+  <context-param>
+      <param-name>appPropertiesConfig</param-name>
+      <param-value>
+          classpath:cuba-app.properties
+          classpath:app.properties
+          file:${catalina.home}/conf/app-core/local.app.properties
+      </param-value>
+  </context-param>
+
+  <listener>
+      <listener-class>com.haulmont.cuba.core.sys.AppContextLoader</listener-class>
+  </listener>
+
+  <servlet>
+      <servlet-name>remoting</servlet-name>
+      <servlet-class>com.haulmont.cuba.core.sys.remoting.RemotingServlet</servlet-class>
+      <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+      <servlet-name>remoting</servlet-name>
+      <url-pattern>/remoting/*</url-pattern>
+  </servlet-mapping>
+
+  <servlet>
+      <servlet-name>restapi</servlet-name>
+      <servlet-class>com.haulmont.cuba.core.sys.restapi.RestApiServlet</servlet-class>
+      <load-on-startup>1</load-on-startup>
+  </servlet>
+
+  <servlet-mapping>
+      <servlet-name>restapi</servlet-name>
+      <url-pattern>/api/*</url-pattern>
+  </servlet-mapping>
+</web-app>
+----
+
+В элементах `context-param` задаются инициализирующие параметры объекта `ServletContext` данного веб-приложения. Здесь определен параметр `appPropertiesConfig`, значением которого является список <<app_properties_files,файлов свойств приложения>>.
+
+В элементе `listener` задается класс слушателя, реализующего интерфейс `ServletContextListener`. В блоке *Middleware* CUBA-приложения в качестве слушателя должен использоваться класс `AppContextLoader`, выполняющий инициализацию `
+        <<appContext,AppContext>>
+      `.
+
+Далее следуют определения сервлетов, среди которых обязательным для *Middleware* является класс `RemotingServlet`, связанный с контейнером удаленного доступа (см. <<remoting-spring.xml,>>). Данный сервлет отображен на URL `++/remoting/*++`.
+
+Рассмотрим содержимое `web.xml` блока *Web Client* (модуль *web* проекта):
+
+[source, xml]
+----
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+         http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+         version="2.5">
+
+  <context-param>
+      <description>Vaadin production mode</description>
+      <param-name>productionMode</param-name>
+      <param-value>false</param-value>
+  </context-param>
+
+  <context-param>
+      <param-name>appPropertiesConfig</param-name>
+      <param-value>
+          classpath:cuba-web-app.properties
+          classpath:web-app.properties
+          file:${catalina.home}/conf/app/local.app.properties
+      </param-value>
+  </context-param>
+
+  <listener>
+      <listener-class>com.haulmont.cuba.web.sys.WebAppContextLoader</listener-class>
+  </listener>
+
+  <servlet>
+      <servlet-name>app_servlet</servlet-name>
+      <servlet-class>com.haulmont.cuba.web.sys.CubaApplicationServlet</servlet-class>
+      <init-param>
+          <param-name>application</param-name>
+          <param-value>com.haulmont.sales.web.App</param-value>
+      </init-param>
+      <init-param>
+          <param-name>widgetset</param-name>
+          <param-value>com.haulmont.cuba.web.toolkit.ui.WidgetSet</param-value>
+      </init-param>
+      <init-param>
+          <param-name>UI</param-name>
+          <param-value>com.haulmont.cuba.web.AppUI</param-value>
+      </init-param>
+      <init-param>
+          <param-name>UIProvider</param-name>
+          <param-value>com.haulmont.cuba.web.sys.CubaUIProvider</param-value>
+      </init-param>
+  </servlet>
+
+  <servlet-mapping>
+      <servlet-name>app_servlet</servlet-name>
+      <url-pattern>/*</url-pattern>
+  </servlet-mapping>
+
+  <filter>
+      <filter-name>cuba_filter</filter-name>
+      <filter-class>com.haulmont.cuba.web.sys.CubaHttpFilter</filter-class>
+  </filter>
+
+  <filter-mapping>
+      <filter-name>cuba_filter</filter-name>
+      <url-pattern>/*</url-pattern>
+  </filter-mapping>
+
+</web-app>
+----
+
+В данном файле определены два параметра: `appPropertiesConfig`, значением которого является список <<app_properties_files,файлов свойств приложения>>, и `productionMode`, отключающий режим отладки фреймворка *Vaadin*.
+
+В качестве `ServletContextListener` в блоке *Web Client* используется класс `WebAppContextLoader`.
+
+Далее определяется сервлет `CubaApplicationServlet`, входящий в состав основанной на фреймворке *Vaadin* реализации <<gui_framework,универсального пользовательского интерфейса>>. Сервлет имеет несколько параметров, в том числе:
+
+* `application` - задает специфический для проекта класс клиентского приложения, который должен быть наследником `com.haulmont.cuba.web.App`
+
+* `widgetset` - задает набор *GWT* компонентов, используемых на стороне веб-браузера
+
+После определения сервлетов подключается фильтр `CubaHttpFilter`, необходимый для функционирования блока *Web Client*.
+

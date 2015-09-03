@@ -1,0 +1,936 @@
+[[ch2_quick_start]]
+== Быстрый старт
+
+В данной главе мы рассмотрим применение подсистемы Workflow в приложении-примере Библиотека, который может быть загружен с помощью CUBA Studio.
+
+Задача - добавить в приложение возможность создавать и учитывать электронные версии изданий книг, имеющихся в библиотеке. При этом процесс создания электронной версии должен быть следующим: 
+
+* 
+        Произвольный пользователь системы создает объект `EBook` и указывает в нем издание книги, для которого нужно нужно создать электронную версию, а затем стартует процесс оцифровки.
+      
+
+* 
+        Пользователь с ролью `*Manager*` получает назначение, которое предписывает ему одобрить или запретить оцифровку данной книги. Если менеджер одобрил оцифровку, то процесс продолжается, иначе - завершается.
+      
+
+* 
+        После одобрения менеджером для данного `EBook` создается назначение пользователю с ролью `*Operator*`. Оператор выполняет оцифровку, и в случае успеха прикладывает к `EBook` файл с электронной версией книги.
+      
+
+* 
+        По завершении процесса объект `EBook` может находиться в одном из трех состояний:
+
+** 
+              `*Done*` - оцифровка выполнена успешно, и объект содержит вложенный файл с электронной версией.
+            
+
+** 
+              `*Failed*` - оцифровка не удалась.
+            
+
+** 
+              `*Disapproved*` - оцифровка не одобрена менеджером.
+            
+      
+
+=== Настройка проекта
+
+. 
+        Запустите *CUBA Studio*, перейдите в окно *Open project &gt; Samples* и загрузите проект Library.
+      
+        Запустите *CUBA Studio*, перейдите в окно *Open project &gt; Samples* и загрузите проект Library.
+      
+
+. 
+        Откройте проект Library в Studio.
+      
+        Откройте проект Library в Studio.
+      
+
+. 
+        Откройте окно свойств проекта *Project properties* -&gt; *Edit* и в списке *Base projects* включите проект *workflow*, затем сохраните изменения. Studio предложит пересоздать скрипты Gradle. Согласитесь.
+      
+        Откройте окно свойств проекта *Project properties* -&gt; *Edit* и в списке *Base projects* включите проект *workflow*, затем сохраните изменения. Studio предложит пересоздать скрипты Gradle. Согласитесь.
+      
+
+. 
+        Запустите *Run* -&gt; *Deploy*. На этом этапе будет произведена сборка приложения и оно будет развернуто на сервере Tomcat в подкаталоге `build/tomcat`.
+      
+        Запустите *Run* -&gt; *Deploy*. На этом этапе будет произведена сборка приложения и оно будет развернуто на сервере Tomcat в подкаталоге `build/tomcat`.
+      
+
+. 
+        Создайте базу данных приложения: *Run* -&gt; *Create database*.
+      
+        Создайте базу данных приложения: *Run* -&gt; *Create database*.
+      
+
+. 
+        Запустите сервер приложения: *Run* -&gt; *Start application server*. 
+      
+        Запустите сервер приложения: *Run* -&gt; *Start application server*. 
+      
+
+. 
+        Откройте веб-интерфейс приложения по адресу link:$$http://localhost:8080/app$$[http://localhost:8080/app]. Войдите в систему с именем `*admin*` и паролем `*admin*`. В главном меню среди прочих должен быть доступен пункт *Workflow*, предоставляющий доступ к экранам управления подсистемой Workflow.
+      
+        Откройте веб-интерфейс приложения по адресу link:$$http://localhost:8080/app$$[http://localhost:8080/app]. Войдите в систему с именем `*admin*` и паролем `*admin*`. В главном меню среди прочих должен быть доступен пункт *Workflow*, предоставляющий доступ к экранам управления подсистемой Workflow.
+      
+
+. 
+        В Studio выполните *Build* -&gt; *Create IDEA project files*, затем откройте проект `c:\work\library\library.ipr` в IntelliJ IDEA.
+      
+        В Studio выполните *Build* -&gt; *Create IDEA project files*, затем откройте проект `c:\work\library\library.ipr` в IntelliJ IDEA.
+      
+
+=== Создание модели данных
+
+Создадим класс сущности `EBook`, представляющий собой электронную версию издания книги. Класс `EBook` должен быть унаследован от `Card` (карточки процесса), чтобы управлять состоянием `EBook` в соответствии с требуемым бизнес-процессом.
+
+Перейдите на вкладку *Entities* панели навигатора Studio, выберите пакет `com.sample.library.entity` и нажмите *New entity*. Введите следующие значения свойств сущности:
+
+* 
+          *Class name* - `EBook`
+        
+
+* 
+          *Table* - `++LIBRARY_EBOOK++`
+        
+
+* 
+          *Parent class* - `Card [wf$Card]`. Для класса `Card` определена стратегия наследования `InheritanceType.JOINED`, поэтому `EBook` будет храниться в отдельной таблице и его первичный ключ будет одновременно внешним ключом, сылающимся на первичный ключ `Card`.
+        
+
+* 
+          *Discriminator* - `10`. Дискриминатор - это значение поля базового типа, которое будет установлено в базе данных для всех экземпляров конкретного типа. В данном случае для базового класса `Card` определены аннотации: 
++
+[source, java]
+----
+@DiscriminatorColumn(name = "CARD_TYPE", discriminatorType = DiscriminatorType.INTEGER)
+@DiscriminatorValue("0")
+----
+
+ Это означает, что в поле *CARD_TYPE* должно храниться значение целого типа, и для экземпляров базового типа это будет значение `0`. Поэтому для типа `EBook` можно задать любое значение, отличное от `0`.
+        
+
+* 
+          В поле *Primary key join column* Studio автоматически сформирует имя *CARD_ID* для первичного ключа создаваемой сущности.
+        
+
+* 
+          В поле *Referenced primary key column* Studio выберет первичный ключ таблицы *WF_CARD*, хранящей базовую сущность `Card`, то есть *ID*.
+        
+
+Далее, создадим атрибут сущности, содержащий ссылку на издание книги.
+
+Нажмите *New* под списком атрибутов и в окне *Create attribute* задайте следующие свойства:
+
+* 
+          *Name* - `publication`
+        
+
+* 
+          *Attribute type* - `ASSOCIATION`
+        
+
+* 
+          *Type* - `BookPublication [library$BookPublication]`
+        
+
+* 
+          *Mandatory* - `on`. Атрибут будет обязательным для заполнения.
+        
+
+* 
+          *Cardinality* - `++MANY_TO_ONE++`. Это означает, что несколько экземпляров `EBook` могут быть созданы для одного экземпляра `BookPublication`.
+        
+
+* 
+          В поле *Column* будет предложено подходящее имя колонки - *PUBLICATION_ID*.
+        
+
+.Редактор сущности
+image::qs_entity_designer.png[align="center"]
+
+Сохраните изменения. В результате будет создан следующий класс сущности:
+
+[source, java]
+----
+package com.sample.library.entity;
+
+import javax.persistence.*;
+
+import com.haulmont.workflow.core.entity.Card;
+
+@PrimaryKeyJoinColumn(name = "CARD_ID", referencedColumnName = "ID")
+@DiscriminatorValue("10")
+@Table(name = "LIBRARY_EBOOK")
+@Entity(name = "library$EBook")
+public class EBook extends Card {
+    private static final long serialVersionUID = -7326357893869004530L;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "PUBLICATION_ID")
+    protected BookPublication publication;
+
+    public void setPublication(BookPublication publication) {
+        this.publication = publication;
+    }
+
+    public BookPublication getPublication() {
+        return publication;
+    }
+}
+----
+
+После создания класса сущности Studio сообщит о том, что модель данных изменена по сравнению с текущей схемой базы данных. Требуется сгенерировать скрипты и запустить создание или обновление БД. 
+
+Нажмите *Generate DB scripts* в секции *Entites* на панели навигатора. Studio сгенерирует скрипты обновления и инициализации БД, включающие в себя создание таблицы *LIBRARY_EBOOK* и ее внешних ключей. Так как в нашей БД еще нет никаких данных, и мы можем безболезненно пересоздать ее, скрипты на вкладке *Update scripts* можно сразу удалить. После этого сохраните изменения.
+
+Остановите сервер приложения командой *Run* -&gt; *Stop application server*. Через несколько секунд станет доступным пункт меню *Run* -&gt; *Create database*, который и нужно выполнить.
+
+=== Создание стандартных экранов
+
+Создадим стандартные экраны просмотра списка и редактирования сущности `EBook`. Для этого сначала определим представления (views) для этих экранов.
+
+Выберите `EBook` в секции *Entities* на панели навигатора и нажмите *New view*. Задайте имя представления в поле *Name* - `eBook.browse`. В панели *Attributes* по умолчанию выбраны все локальные (не ссылочные) атрибуты сущности. Отключите их все и включите единственный интересующий нас на данном этапе атрибут `publication`. Так как этот атрибут представляет собой ссылку на сущность `BookPublication`, в дереве отобразятся атрибуты этой сущности. Выберите атрибут `book` и в правой панели параметров задайте для него представление `++_minimal++`. Сохраните изменения. .Редактор представления
+image::qs_view_designer.png[align="center"]
+
+
+
+Теперь, если открыть файл с представлениями в IDE, в нем можно найти следующий описатель:
+
+[source, xml]
+----
+
+        <view class="com.sample.library.entity.EBook"
+                  name="eBook.browse">
+              <property name="publication">
+                        <property name="book"
+                                     view="_minimal"/>
+              </property>
+        </view>
+----
+
+Аналогочно создадим представление `eBook.edit` для экрана редактирования. На данном этапе это представление идентично `eBook.browse`, однако в будущем они станут различными.
+
+После создания представлений снова выберите `EBook` в секции *Entities* панели навигатора и нажмите *Create standard screens*. В появившемся окне выберите `eBook.browse` для *Browse view*, ` eBook.edit` для *Edit view*, и нажмите *Create*. Studio откроет секцию Screens панели навигатора и покажет созданные экраны.
+
+Добавим в главное меню элемент для доступа к списку `EBook`.
+
+Откройте секцию *Main menu* панели навигатора и нажмите *Edit* для *web-menu.xml*. Выделите элемент `library` и нажмите *New*. В появившемся окне выберите `library$EBook.lookup` в поле *Id*. Задайте заголовок пункта меню, нажав *edit* в поле *Caption*. Сохраните изменения. .Редактор меню
+image::qs_menu_designer.png[align="center"]
+
+
+
+После создания стандартных экранов и регистрации в главном меню можно запустить сервер (*Run* -&gt; *Start application server*), войти в приложение и убедиться в работоспособности сущности `EBook`.
+
+=== Создание процесса
+
+Перейдем к основной части примера - описанию бизнес-процесса и реализации обработки объектов `EBook` в соответствии с ним. В данном разделе мы создадим дизайн процесса и затем развернем его для выполнения.
+
+==== Дизайн процесса
+
+В веб-интерфейсе запущенного приложения откройте экран *Workflow* -&gt; *Processes Design* и нажмите *Create*. Введите имя дизайна процесса, например, `*Book scanning*`, и нажмите *OK*. Откроется новое окно браузера *CUBA Workflow Designer*.
+
+Перетащите на рабочую панель узел *Start*, а затем узел *Assignment*. Соедините выход *Start* со входом *Assignment*. В узле *Assignment* задайте имя `*Approval*` и роль `*Manager*`. Нажмите кнопку *+* внутри узла *Assignment* для создания выхода и дайте ему имя `*Approve*`. Затем добавьте еще один выход - `*Deny*`. В результате во время выполнения процесса при переходе в состояние `*Approval*` пользователю с ролью `*Manager*` будет создано назначение. Процесс остановит выполнение и продолжит его, когда пользователь выберет один из выходов - `*Approve*` или `*Deny*`.
+
+В случае отказа менеджера процесс должен перейти в состояние `*Disapproved*` и завершиться. Для регистрации этого состояния добавьте узел *State* с именем `*Disapproved*` и соедините его вход с выходом `*Deny*` узла `*Approval*`. Затем добавьте узел *End* и соедините его с выходом узла `*Disapproved*`. При выполнении процесс запишет состояние `*Disapproved*` в карточку (объект `EBook`) и, не останавливаясь, завершит выполнение.
+
+На данном этапе должна получиться следующая схема:
+
+image::qs_process_design_1.png[align="center"]
+
+
+
+Нажмите *Save* для сохранения промежуточных результатов редактирования.
+
+Добавьте еще один узел *Assignment* и задайте для него имя `*Scanning*` и роль `*Operator*`. Добавьте выходы `*Success*` и `*Fail*`. Соедините вход `*Scanning*` с выходом `*Approve*` узла `*Approval*`. В результате во время выполнения при одобрении менеджером процесс перейдет в состояние `*Scanning*`, остановится и выдаст назначение пользователю с ролью `*Operator*`. Выполнение продолжится, когда пользователь завершит назначение, выбрав один из выходов.
+
+Для регистрации финального состояния процесса добавьте два узла *State* с именами `*Done*` и `*Failed*` и соедините их с соответствующими выходами узла `*Scanning*`. Затем добавьте еще один узел *End* и соедините с ним выходы узлов `*Done*` и `*Failed*`.
+
+В итоге схема должна приобрести следующий вид:
+
+image::qs_process_design_2.png[align="center"]
+
+
+
+При успешном выполнении оцифровки оператор должен приложить к объекту файл с электронной версией. Для реализации этого добавим в процесс форму взаимодействия с пользователем.
+
+Выберите узел `*Scanning*`, в правой панели дизайнера раскройте секцию *Forms* и нажмите *Add*. Установите следующие атрибуты:
+
+* 
+            *Transition* - имя выхода, при котором будет показана данная форма. Выберите значение `*Success*`. 
+          
+
+* 
+            *Form* - тип формы. Выберите значение `Transition`.
+          
+
+* 
+            *Hide Attachments* - скрыть элементы выбора вложений. Оставьте в выключенном состоянии.
+          
+
+Вид правой панели дизайнера с параметрами формы:
+
+image::qs_process_design_3.png[align="center"]
+
+
+
+Таким образом, при завершении назначения в направлении `*Success*` перед оператором возникнет диалоговая форма, в которой он сможет добавить вложения - файлы с с электронной версией книги.
+
+Сохраните дизайн процесса и закройте окно браузера *CUBA Workflow Designer*.
+
+==== Развертывание процесса
+
+Созданный дизайн процесса необходимо скомпилировать, то есть создать на основе схемы исполняемый код процесса. Выберите строку с дизайном в окне *Processes Design* и нажмите *Compile*. В случае успешной компиляции в колонке *Compilation date *появится текущее время. 
+
+Следующий этап - развертывание процесса. Выберите строку со скомпилированным дизайном и нажмите *Deploy*. В диалоговом окне оставьте отмеченным флажок *Create new process* и нажмите *Deploy*. В результате происходит следующее:
+
+* 
+            В базе данных приложения создается новый объект `Proc` и соответствующие имеющимся в дизайне ролям объекты `ProcRole`.
+          
+
+* 
+            В подкаталоге `process` конфигурационного каталога среднего слоя приложения создается каталог с именем вида `proc_&lt;date_time&gt;`, где `++date_time++` - момент времени развертывания процесса. Данный каталог содержит файлы, необходимые для исполнения процесса: jPDL, описатель форм, пакет локализованных сообщений.
+          
+
+* 
+            Файл jPDL отправляется в механизм исполнения jBPM, который создает соответствующие записи в таблицах *JBPM4_DEPLOYMENT* и *JBPM4_DEPLOYPROP*. Идентификатором процесса jBPM становится строка, идентичная имени каталога развертывания (`++proc_&lt;date_time&gt;++`). Данный идентификатор записывается также в атрибут `jbpmProcessKey` объекта `Proc`.
+          
+
+Процесс готов к запуску, однако для целей нашего примера выполним еще одно подготовительное действие - назначим исполнителей по умолчанию для ролей в процессе.
+
+Откройте экран *Workflow* -&gt; *Processes*, выберите созданный процесс и откройте его на редактирование. В списке ролей процесса выберите поочередно роли `*Manager*` и `*Operator*` и в списке *Default participants* добавьте для них исполнителей - предварительно созданных пользователей системы `*manager*` и `*operator*` соответственно. Экран редактирования процесса примет следующий вид: 
+
+image::qs_process_edit.png[align="center"]
+
+
+
+Кроме явно указанных в дизайне ролей система создала роль `*CARD_CREATOR*` с признаком *Assign to creator*. Эту роль можно использовать для того, чтобы пользователь, создавший карточку, автоматически становился участником процесса. В описываемом примере данная роль не используется.
+
+Атрибут *Code* процесса желательно установить в некоторое осмысленное уникальное значение, так как в программном коде по этому атрибуту удобно находить процесс для запуска. В данном случае задаем значение `*book_scanning*`.
+
+Как правило, дизайн процесса разрабатывается итеративно, поэтому система предоставляет возможность неоднократно развертывать один и тот же изменяющийся дизайн, обновляя имеющийся процесс. Фактически при развертывании дизайна в существующий процесс происходит следующее:
+
+* 
+            Производится проверка возможности миграции незавершенных экземпляров процесса (другими словами, _активных карточек_) на новую схему процесса. 
+          
+
+* 
+            Создается новый каталог `proc_&lt;date_time&gt;`, где `++date_time++` - текущий момент времени развертывания процесса.
+          
+
+* 
+            В механизме исполнения jBPM создается новое описание процесса с новым идентификатором, эквивалентным имени каталога развертывания. Этот новый идентификатор устанавливается в атрибуте `jbpmProcessKey` объекта `Proc`.
+          
+
+* 
+            Производится миграция активных карточек.
+          
+
+Для обновления процесса в соответствии с измененным дизайном достаточно при развертывании последнего снять флажок *Create new process* и в выпадающем списке *Existing process* указать процесс, который необходимо обновить.
+
+=== Адаптация экранов к процессу
+
+В данном разделе мы изменим экраны просмотра списка и редактирования сущности `EBook` так, чтобы пользователи могли работать с ними в соответствии с бизнес-процессом.
+
+==== Экран редактирования
+
+Основная логика, связанная с процессом, реализуется в экране редактирования `EBook`.
+
+Начнем с доработки представления (view), с которым в экран загружается экземпляр `EBook`. Вернитесь в Studio, найдите в секции *Entities* на панели навигатора представление `eBook.edit` и откройте его на редактирование.
+
+Выберите для поля *Extends* значение `++_local++`, что означает, что текущее представление будет включать все нессылочные атрибуты сущности. Дополнительно включите атрибут `proc` и установите для него в поле *View* значение `start-process`. .Редактор представления eBook.edit для работы с процессом
+image::qs_view_edit.png[align="center"]
+
+
+
+===== Компоновка экрана редактирования
+
+Перейдем собственно к экрану. Найдите в секции *Screens* на панели навигатора экран `ebook-edit.xml` и откройте его на редактирование. Перейдите на вкладку *XML* и полностью замените ее содержимое на следующий код: 
+
+[source, xml]
+----
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+        caption="msg://editCaption"
+        class="com.sample.library.gui.ebook.EBookEdit"
+        datasource="eBookDs"
+        focusComponent="fieldGroup"
+        messagesPack="com.sample.library.gui.ebook">
+    <dsContext>
+        <datasource id="eBookDs"
+                    class="com.sample.library.entity.EBook"
+                    view="eBook.edit"/>
+        <collectionDatasource id="attachmentsDs"
+                              class="com.haulmont.workflow.core.entity.CardAttachment"
+                              view="card-edit">
+            <query>
+                <![CDATA[select a from wf$CardAttachment a where a.card.id = :ds$eBookDs order by a.createTs]]>
+            </query>
+        </collectionDatasource>
+    </dsContext>
+    <layout expand="windowActions"
+            spacing="true">
+        <hbox spacing="true">
+            <fieldGroup id="fieldGroup"
+                        datasource="eBookDs"
+                        width="400px">
+                <field id="publication"
+                       width="100%"/>
+                <field id="description"
+                       width="100%"/>
+            </fieldGroup>
+        </hbox>
+        <groupBox caption="Process"
+                  orientation="horizontal"
+                  spacing="true"
+                  width="400px">
+            <label id="stateLabel"
+                   align="MIDDLE_LEFT"/>
+            <hbox id="actionsBox"
+                  align="MIDDLE_RIGHT"
+                  spacing="true"/>
+        </groupBox>
+        <groupBox caption="Attachments"
+                  width="400px">
+            <table id="attachmentsTable"
+                   height="100px"
+                   width="100%">
+                <rows datasource="attachmentsDs"/>
+                <columns>
+                    <column id="file"/>
+                    <column id="file.size"/>
+                    <column id="createTs"/>
+                </columns>
+            </table>
+        </groupBox>
+        <iframe id="windowActions"
+                height="100%"
+                screen="editWindowActions"/>
+    </layout>
+</window>
+----
+
+Перейдите на вкладку *Layout*. Компоновка экрана станет следующей: 
+
+image::qs_edit_layout.png[align="center"]
+
+ 
+
+Рассмотрим добавленные элементы экрана.
+
+* 
+              Поле `description` компонента `fieldGroup` отображает значение атрибута `description` карточки.
+            
+
+* 
+              `groupBox` с заголовком `*Process*` содержит следующие элементы:
+
+** 
+                    `label` с идентификатором `stateLabel` предназначен для отображения текущего состояния карточки.
+                  
+
+** 
+                    Внутри контейнера `hbox` с идентификатором `actionsBox` мы будем программно создавать кнопки, позволяющие пользователю выбрать выход из назначения, другими словами - действия по процессу.
+                  
+
+** 
+                    Таблица `attachmentsTable` предназначена для отображения вложений, созданных оператором на этапе `*Scanning*` процесса. Таблица соединена с источником данных `attachmentsDs`.
+                  
+            
+
+===== Контроллер экрана редактирования
+
+Перейдите на вкладку *Controller* и замените ее содержимое на следующий код: 
+
+[source, java]
+----
+package com.sample.library.gui.ebook;
+
+import com.haulmont.cuba.core.entity.Entity;
+import com.haulmont.cuba.core.global.CommitContext;
+import com.haulmont.cuba.core.global.LoadContext;
+import com.haulmont.cuba.core.global.PersistenceHelper;
+import com.haulmont.cuba.gui.components.*;
+import com.haulmont.cuba.gui.data.DataSupplier;
+import com.haulmont.cuba.gui.data.DsContext;
+import com.haulmont.cuba.gui.export.ExportDisplay;
+import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
+import com.haulmont.workflow.core.app.WfService;
+import com.haulmont.workflow.core.entity.*;
+import com.haulmont.workflow.core.global.AssignmentInfo;
+import com.haulmont.workflow.core.global.WfConstants;
+import com.haulmont.workflow.gui.base.action.ProcessAction;
+import com.sample.library.entity.EBook;
+
+import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+public class EBookEdit extends AbstractEditor<EBook> {
+
+    @Inject
+    protected WfService wfService;
+    @Inject
+    protected ComponentsFactory componentsFactory;
+    @Inject
+    protected BoxLayout actionsBox;
+    @Inject
+    protected DataSupplier dataSupplier;
+    @Inject
+    protected Label stateLabel;
+    @Inject
+    protected FieldGroup fieldGroup;
+    @Inject
+    protected Table attachmentsTable;
+    @Inject
+    protected ExportDisplay exportDisplay;
+
+    @Override
+    public void init(Map<String, Object> params) {
+    }
+
+    @Override
+    protected void postInit() {
+        EBook eBook = getItem();
+
+        if (PersistenceHelper.isNew(eBook)) {
+            initProcess(eBook);
+        }
+
+        if (eBook.getState() == null) {
+            stateLabel.setValue("State: not started");
+        } else {
+            stateLabel.setValue("State: " + eBook.getLocState());
+            fieldGroup.setEditable(false);
+        }
+
+        initProcessActions(eBook);
+
+        initAttachmentsTable();
+    }
+
+    private void initProcess(final EBook eBook) {
+        LoadContext loadContext = new LoadContext(Proc.class);
+        loadContext.setQueryString("select p from wf$Proc p where p.code = :code")
+                .setParameter("code", "book_scanning");
+        loadContext.setView("start-process");
+        Proc proc = dataSupplier.load(loadContext);
+        if (proc != null)
+            eBook.setProc(proc);
+        else
+            throw new IllegalStateException("Process not found");
+
+        eBook.setRoles(new ArrayList<CardRole>());
+
+        for (ProcRole procRole : proc.getRoles()) {
+            if (procRole.getAssignToCreator())
+                continue;
+            CardRole cardRole = new CardRole();
+            cardRole.setCard(eBook);
+            cardRole.setProcRole(procRole);
+            List<DefaultProcActor> defaultProcActors = procRole.getDefaultProcActors();
+            if (defaultProcActors.isEmpty())
+                throw new IllegalStateException("Default actor is not assigned for role " + procRole.getName());
+            cardRole.setUser(defaultProcActors.get(0).getUser());
+            eBook.getRoles().add(cardRole);
+        }
+
+        getDsContext().addListener(new DsContext.CommitListener() {
+            @Override
+            public void beforeCommit(CommitContext context) {
+                context.getCommitInstances().addAll(eBook.getRoles());
+            }
+
+            @Override
+            public void afterCommit(CommitContext context, Set<Entity> result) {
+            }
+        });
+    }
+
+    private void initProcessActions(EBook eBook) {
+        AssignmentInfo assignmentInfo = wfService.getAssignmentInfo(eBook);
+        if (eBook.getJbpmProcessId() == null && eBook.getState() == null) {
+            addProcessAction(WfConstants.ACTION_START, assignmentInfo);
+        } else if (assignmentInfo != null) {
+            for (String actionName : assignmentInfo.getActions()) {
+                addProcessAction(actionName, assignmentInfo);
+            }
+        }
+    }
+
+    private void addProcessAction(String actionName, AssignmentInfo assignmentInfo) {
+        ProcessAction action = new ProcessAction(getItem(), actionName, assignmentInfo, this);
+        Button button = componentsFactory.createComponent(Button.NAME);
+        button.setAction(action);
+        button.setAlignment(Alignment.MIDDLE_RIGHT);
+        actionsBox.add(button);
+    }
+
+    private void initAttachmentsTable() {
+        attachmentsTable.addGeneratedColumn("file", new Table.ColumnGenerator<CardAttachment>() {
+            @Override
+            public Component generateCell(final CardAttachment attachment) {
+                LinkButton link = componentsFactory.createComponent(LinkButton.NAME);
+                link.setCaption(attachment.getFile().getName());
+                link.setAction(new AbstractAction("") {
+                    @Override
+                    public void actionPerform(Component component) {
+                        exportDisplay.show(attachment.getFile());
+                    }
+                });
+                return link;
+            }
+        });
+    }
+}
+----
+
+Рассмотрим фрагменты кода контроллера.
+
+Метод `postInit()` вызывается после инициализации экрана и загрузки экземпляра `EBook` с представлением, указанным в XML-дескрипторе (в данном случае - `eBook.edit`). 
+
+После получения установленного в экране экземпляра `EBook` производится проверка, новый ли это экземпляр, или загруженный из БД. В первом случае управление передается методу `initProcess()`, который осуществляет подготовку карточки и экрана к старту нового экземпляра процесса:
+
+[source, java]
+----
+    protected void postInit() {
+        EBook eBook = getItem();
+
+        if (PersistenceHelper.isNew(eBook)) {
+            initProcess(eBook);
+        }
+----
+
+Далее в зависимости от состояния карточки производится инициализация компонентов - `stateLabel` отображает текущее состояние, а для `fieldGroup` запрещается редактирование, если процесс уже стартовал:
+
+[source, java]
+----
+    protected void postInit() {
+    ...
+        if (eBook.getState() == null) {
+            stateLabel.setValue("State: not started");
+        } else {
+            stateLabel.setValue("State: " + eBook.getLocState());
+            fieldGroup.setEditable(false);
+        }
+----
+
+Далее вызываются методы, производящие инициализацию возможных действий пользователя и таблицы вложений:
+
+[source, java]
+----
+    protected void postInit() {
+    ...
+        initProcessActions(eBook);
+
+        initAttachmentsTable();
+    }
+----
+
+Рассмотрим метод `initProcess()`.
+
+В начале метода производится загрузка из базы данных экземпляра объекта `Proc` с кодом `*book_scanning*`, то есть созданного нами процесса. Если загрузка прошла успешно, то экземпляр `Proc` устанавливается в карточке `EBook`:
+
+[source, java]
+----
+    private void initProcess(final EBook eBook) {
+        LoadContext loadContext = new LoadContext(Proc.class);
+        loadContext.setQueryString("select p from wf$Proc p where p.code = :code")
+                .setParameter("code", "book_scanning");
+        loadContext.setView("start-process");
+        Proc proc = dataSupplier.load(loadContext);
+        if (proc != null)
+            eBook.setProc(proc);
+        else
+            throw new IllegalStateException("Process not found");
+----
+
+Далее производится инициализация объектов `CardRole` - исполнителей ролей для данной карточки. Инициализировать роли можно различными способами, в том числе интерактивно - например, позволяя создателю карточки самому выбрать исполнителей. Главное, чтобы на момент перехода процесса в какое-либо состояние типа *Assignment* роль, требуемая для этого этапа, была назначена. Для целей нашего примера исполнители заданы в объектах `DefaultProcActor` на этапе настройки процесса, поэтому мы возьмем их оттуда и перенесем в объекты `CardRole`:
+
+[source, java]
+----
+    private void initProcess(final EBook eBook) {
+    ...
+        eBook.setRoles(new ArrayList<CardRole>());
+
+        for (ProcRole procRole : proc.getRoles()) {
+            if (procRole.getAssignToCreator())
+                continue;
+            CardRole cardRole = new CardRole();
+            cardRole.setCard(eBook);
+            cardRole.setProcRole(procRole);
+            List<DefaultProcActor> defaultProcActors = procRole.getDefaultProcActors();
+            if (defaultProcActors.isEmpty())
+                throw new IllegalStateException("Default actor is not assigned for role " + procRole.getName());
+            cardRole.setUser(defaultProcActors.get(0).getUser());
+            eBook.getRoles().add(cardRole);
+        }
+----
+
+В следующем фрагменте производится добавление всех созданных объектов `CardRole` в `CommitContext` перед коммитом экрана. Дело в том, что между `Card` и `CardRole` нет отношений каскадности сохранения, и если явно не сохранить созданные объекты `CardRole` в той же транзакции, что и ссылающийся на них объект `Card`, на Middleware возникнет ошибка. Обычно за включением в `CommitContext` всех измененных экземпляров следят источники данных (datasources), однако в данном случае мы создаем и связываем объекты вручную, поэтому данный код необходим:
+
+[source, java]
+----
+    private void initProcess(final EBook eBook) {
+    ...
+        getDsContext().addListener(new DsContext.CommitListener() {
+            @Override
+            public void beforeCommit(CommitContext context) {
+                context.getCommitInstances().addAll(eBook.getRoles());
+            }
+
+            @Override
+            public void afterCommit(CommitContext context, Set<Entity> result) {
+            }
+        });
+    }
+----
+
+Теперь рассмотрим методы инициализации кнопок, соответствующих возможным действиям пользователя по процессу, и таблицы вложений.
+
+В методе `initProcessActions()` для данной карточки загружаются данные о текущем назначении, и если таковое имеется для текущего пользователя, в методе `addProcessAction()` создаются соответствующие кнопки:
+
+[source, java]
+----
+    private void initProcessActions(EBook eBook) {
+        AssignmentInfo assignmentInfo = wfService.getAssignmentInfo(eBook);
+        if (eBook.getJbpmProcessId() == null && eBook.getState() == null) {
+            addProcessAction(WfConstants.ACTION_START, assignmentInfo);
+        } else if (assignmentInfo != null) {
+            for (String actionName : assignmentInfo.getActions()) {
+                addProcessAction(actionName, assignmentInfo);
+            }
+        }
+    }
+
+    private void addProcessAction(String actionName, AssignmentInfo assignmentInfo) {
+        ProcessAction action = new ProcessAction(getItem(), actionName, assignmentInfo, this);
+        Button button = componentsFactory.createComponent(Button.NAME);
+        button.setAction(action);
+        button.setAlignment(Alignment.MIDDLE_RIGHT);
+        actionsBox.add(button);
+    }
+----
+
+Таблица вложений представляет собой обычный компонент `Table`, связанный с источником данных `attachmentsDs`, извлекающим экземпляры `CardAttachment` данной карточки. Для загрузки файла вложения щелчком по имени файла в таблице создается генерируемая колонка для атрибута `file`. В результате ячейки данной колонки отображают компонент `LinkButton`, который по щелчку вызывает выгрузку соответствующего файла через интерфейс `ExportDisplay`. 
+
+[source, java]
+----
+    private void initAttachmentsTable() {
+        attachmentsTable.addGeneratedColumn("file", new Table.ColumnGenerator<CardAttachment>() {
+            @Override
+            public Component generateCell(final CardAttachment attachment) {
+                LinkButton link = componentsFactory.createComponent(LinkButton.NAME);
+                link.setCaption(attachment.getFile().getName());
+                link.setAction(new AbstractAction("") {
+                    @Override
+                    public void actionPerform(Component component) {
+                        exportDisplay.show(attachment.getFile());
+                    }
+                });
+                return link;
+            }
+        });
+    }
+----
+
+==== Экран просмотра списка
+
+Доработаем представления (view), с которым в экран загружается список экземпляров `EBook`. Найдите в секции *Entities* на панели навигатора представление `eBook.browse` и откройте его на редактирование. Включите атрибуты `proc`, `state` и `description`. Для атрибута `proc` установите в поле *View* значение `++_local++`..Редактор представления eBook.browse для работы с процессом
+image::qs_view_browse.png[align="center"]
+
+. 
+
+===== Компоновка экрана списка
+
+Найдите в секции *Screens* панели навигатора экран `ebook-browse.xml` и откройте его на редактирование. Перейдите на вкладку *XML* и полностью замените ее содержимое на следующий код: 
+
+[source, xml]
+----
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+        caption="msg://browseCaption"
+        class="com.sample.library.gui.ebook.EBookBrowse"
+        lookupComponent="eBookTable"
+        messagesPack="com.sample.library.gui.ebook">
+    <dsContext>
+        <collectionDatasource id="eBookDs"
+                              class="com.sample.library.entity.EBook"
+                              view="eBook.browse">
+            <query>
+                <![CDATA[select e from library$EBook e order by e.createTs]]>
+            </query>
+        </collectionDatasource>
+    </dsContext>
+    <layout expand="eBookTable"
+            spacing="true">
+        <filter id="filter"
+                datasource="eBookDs">
+            <properties include=".*"/>
+        </filter>
+        <table id="eBookTable"
+               height="100%"
+               width="100%">
+            <rows datasource="eBookDs"/>
+            <columns>
+                <column id="publication"/>
+                <column id="description"/>
+                <column id="locState"/>
+            </columns>
+            <rowsCount/>
+            <actions>
+                <action id="remove"/>
+            </actions>
+            <buttonsPanel id="buttonsPanel"
+                          alwaysVisible="true">
+                <button id="createBtn"
+                        action="eBookTable.create"/>
+                <button id="editBtn"
+                        action="eBookTable.edit"/>
+                <button id="removeBtn"
+                        action="eBookTable.remove"/>
+            </buttonsPanel>
+        </table>
+    </layout>
+</window>
+
+----
+
+Отличия от стандартного экрана списка здесь следующие:
+
+* 
+              В список колонок таблицы `eBookTable` добавлены `description` и `locState` - описание карточки и локализованное название текущего состояния.
+            
+
+* 
+              Из списка декларативно создаваемых `actions` таблицы `eBookTable` исключены `create` и `edit`. При этом соответствующие кнопки на панели `buttonsPanel` оставлены, потому что эти `actions` мы создадим программно в коде контроллера.
+            
+
+Перейдите на вкладку *Layout*. Компоновка экрана станет следующей:
+
+image::qs_browse_layout.png[align="center"]
+
+
+
+===== Контроллер экрана списка
+
+Перейдите на вкладку *Controller* и замените ее содержимое на следующий код:
+
+[source, java]
+----
+package com.sample.library.gui.ebook;
+
+import java.util.Map;
+
+import com.haulmont.cuba.core.entity.Entity;
+import com.haulmont.cuba.gui.components.AbstractLookup;
+import com.haulmont.cuba.gui.components.Table;
+import com.haulmont.cuba.gui.components.actions.CreateAction;
+import com.haulmont.cuba.gui.components.actions.EditAction;
+
+import javax.inject.Inject;
+
+public class EBookBrowse extends AbstractLookup {
+
+    @Inject
+    protected Table eBookTable;
+
+    @Override
+    public void init(Map<String, Object> params) {
+        eBookTable.addAction(new CreateAction(eBookTable) {
+            @Override
+            protected void afterCommit(Entity entity) {
+                eBookTable.getDatasource().refresh();
+            }
+        });
+        eBookTable.addAction(new EditAction(eBookTable) {
+            @Override
+            protected void afterCommit(Entity entity) {
+                eBookTable.getDatasource().refresh();
+            }
+        });
+    }
+}
+----
+
+Здесь в методе `init()` в таблицу `eBookTable` добавляются стандартные действия `CreateAction` и `EditAction`, но с переопределенным методом `afterCommit()`, в котором производится перезагрузка источника данных таблицы. Это делается для того, чтобы отобразить в таблице измененное состояние карточки сразу после ее сохранения и передвижения по процессу.
+
+Стандартные действия `CreateAction` и `EditAction` не производят перезагрузки источника данных после коммита открываемого экрана редактирования. Вместо этого они получают сохраненный экземпляр сущности с Middleware и просто устанавливают его в источнике данных вместо исходного. 
+
+В нашем же случае перезагрузка из БД необходима потому, что после сохранения редактируемой сущности `EBook` запуск процесса производится в отдельной транзакции, и состояние карточки меняется как раз в этот момент. То есть после коммита экрана редактирования в источник данных возвращается экземпляр `EBook`, в котором еще нет изменений, внесенных процессом. Для отображения этих изменений необходимо перечитать сущности из базы данных. 
+
+=== Запуск приложения
+
+Запустите сервер *Run* -&gt; *Start application server* и войдите в приложение как пользователь `*admin*`.
+
+Откройте экран *Library* -&gt; *E-books* и создайте новую запись. Выберите издание книги и введите полное описание в поле *Description*. На данном этапе экран редактирования выглядит следующим образом:
+
+image::qs_run_create_card.png[align="center"]
+
+
+
+Теперь можно либо просто сохранить карточку, нажав *OK*, либо сразу начать процесс нажатием на кнопку *Start process*. После старта процесса окно редактирования закроется, и в таблице в колонке *State (loc.)* отобразится значение `*Approval*`. Это означает, что карточка перешла в состояние ожидания одобрения менеджером.
+
+image::qs_run_browse_1.png[align="center"]
+
+
+
+Если теперь открыть карточку на редактирование, вы увидите, что все поля ввода запрещены, и никаких действий по процессу не доступно.
+
+Выйдите из системы и войдите снова пользователем `*manager*`. Откройте экран *Workflow* -&gt; *Assignments*. Вы увидите поступившее вам назначение:
+
+image::qs_run_assignment_1.png[align="center"]
+
+
+
+Нажав *Open*, вы увидите экран редактирования карточки с возможностью одобрить или запретить сканирование книги:
+
+image::qs_run_edit_card_1.png[align="center"]
+
+
+
+В этот же экран можно попасть обычным образом, выбрав строку в таблице экрана просмотра списка и нажав *Edit*.
+
+Нажмите *Approve*. Если вы открывали экран редактирования из списка назначений, то этот список теперь пуст - у пользователя `*manager*` на данный момент больше нет назначений. Если же вы открывали экран редактирования из экрана списка `EBook`, то вы увидите изменившееся состояние карточки:
+
+image::qs_run_browse_2.png[align="center"]
+
+
+
+Открыв карточку на редактирование вы опять не увидите возможности что-либо изменить или продолжить процесс, так как следующее действие должен выполнять пользователь `*operator*`.
+
+Выйдите из системы и войдите пользвателем `*operator*`. Откройте экран *Workflow* -&gt; *Assignments*. Вы увидите поступившее вам назначение:
+
+image::qs_run_assignment_2.png[align="center"]
+
+
+
+Нажмите *Open* в этом экране, либо перейдите в экран *Library* -&gt; *E-books* и откройте карточку на редактирование там. Вы увидите доступные действия по процессу: `*Success*` и `*Fail*`.
+
+image::qs_run_edit_card_2.png[align="center"]
+
+
+
+Предположим, вы как оператор выполнили сканирование книги. Нажмите *Success*. Перед вами появится форма перехода, заданная в процессе:
+
+image::qs_run_transition_form.png[align="center"]
+
+
+
+Нажмите *Add* и добавьте один или несколько файлов вложений. Затем нажмите *OK*. Форма закроется, назначение исчезнет, а карточка перейдет в состояние `*Done*`:
+
+image::qs_run_browse_3.png[align="center"]
+
+
+
+Открыв карточку на редактирование, можно увидеть состояние процесса и список вложений, добавленных оператором:
+
+image::qs_run_edit_card_3.png[align="center"]
+
+
+
