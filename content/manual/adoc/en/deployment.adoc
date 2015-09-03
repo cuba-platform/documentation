@@ -66,10 +66,14 @@ The DB scripts directory location is determined by <<cuba.dbDir,cuba.dbDir>> app
 [[deployment_variants]]
 === Deployment Options
 
+This section describes different ways to deploy CUBA applications.
+
 [[fast_deployment]]
 ==== Fast Deployment in Tomcat
 
-Fast deployment is performed using the <<build.gradle_deploy,deploy>> task that is declared for *core* and *web* modules in the build.gradle file. Before the first execution of `deploy`, a local Tomcat server should be set up and initialized using the <<build.gradle_setupTomcat,setupTomcat>> task. 
+Fast deployment is used by default when developing an application, as it provides minimum time for building, installation and starting the application. This option is also convenient when using the application in production.
+
+Fast deployment is performed using the <<build.gradle_deploy,deploy>> task that is declared for *core* and *web* modules in the build.gradle file. Before the first execution of `deploy`, a local Tomcat server should be set up and initialized using the <<build.gradle_setupTomcat,setupTomcat>> task.
 
 As result of fast deployment, the following structure is created in the directory that is specified by the `ext.tomcatDir` property of the build.gradle script (only important directories and files are listed below):
 
@@ -171,7 +175,7 @@ Server level deployment descriptor should have the application name and the.xml 
 [[tomcat_in_prod]]
 ===== Using Tomcat in Production
 
-The fast deployment procedure creates `app` and `app-core` web applications running on port 8080 of a local Tomcat instance. It means that the web client is available at `http://localhost:8080/app`. You can use this server instance in production, but you need to change some application properties to conform to the production environment.
+The fast deployment procedure creates `app` and `app-core` web applications running on port 8080 of a local Tomcat instance. It means that the web client is available at `++http://localhost:8080/app++`. You can use this server instance in production, but you need to change some application properties to conform to the production environment.
 
 First set up a server host name.
 
@@ -267,7 +271,7 @@ tomcat/
         sales-core/
 ----
 
- and use `/` as the web context name in `tomcat/conf/ROOT/local.app.properties`: 
+and use `/` as the web context name in `tomcat/conf/ROOT/local.app.properties`:
 
 [source, properties]
 ----
@@ -309,7 +313,9 @@ task createWarDistr(dependsOn: [coreModule.buildWar, webModule.buildWar], type: 
 }
 ----
 
-. Start build process:`gradlew createWarDistr`
+. Start build process:
++
+`gradlew createWarDistr`
 +
 As a result, the home directory named ${app.home} and the app-core.war and app.war files are created in the build/war project subdirectory. Name of the home directory does not matter here, as the actual name will be set for the server using a Java system variable.
 
@@ -327,7 +333,7 @@ As a result, the home directory named ${app.home} and the app-core.war and app.w
 
 . Go to `http://localhost:4848` and do the following steps in the server management console:
 
-. Create a *JDBC Connection Pool* to connect to our database, for example:
+.. Create a *JDBC Connection Pool* to connect to our database, for example:
 
 * Pool Name: AppDB 
 
@@ -343,13 +349,13 @@ As a result, the home directory named ${app.home} and the app-core.war and app.w
 
 * Password: cuba
 
-. Create a *JDBC Resource*:
+.. Create a *JDBC Resource*:
 
 * JNDI Name: jdbc/CubaDS
 
 * Pool Name: AppDB
 
-. In the *server (Admin Server)* -> *Properties* -> *System Properties* screen, set the following Java system variables:
+.. In the *server (Admin Server)* -> *Properties* -> *System Properties* screen, set the following Java system variables:
 
 * `++app.home = /home/user/app_home++` – application home directory.
 
@@ -359,11 +365,11 @@ As a result, the home directory named ${app.home} and the app-core.war and app.w
 +
 `$ ./asadmin start-domain`
 
-. Open the server console at `http://localhost:4848` and, in the *Applications* screen, perform deployment of the app-core.war and app.war files located in the distribution folder created in Step 3. 
+. Open the server console at `++http://localhost:4848++` and, in the *Applications* screen, perform deployment of the app-core.war and app.war files located in the distribution folder created in Step 3.
 
 . The application has now been started:
 
-* Web interface is available at `http://localhost:8080/app`
+* Web interface is available at `++http://localhost:8080/app++`
 
 * Log files are created in the /home/user/app_home/logs
 
@@ -372,17 +378,17 @@ As a result, the home directory named ${app.home} and the app-core.war and app.w
 
 This section describes ways to scale a CUBA application that consists of the *Middleware* and the *Web Client* for increased load and stronger fault tolerance requirements.
 
-[cols="2", frame="all", width="70"]
+[cols="2", frame="all", width="70%"]
 |===
 
-| *Stage 1. Both blocks are deployed on the same application server.* 
+a| *Stage 1. Both blocks are deployed on the same application server.*
 
 This is the simplest option implemented by the standard <<fast_deployment,fast deployment>> procedure.
 
-In this case, maximum data transfer performance between the *Web Client *and the *Middleware* is provided, because when the <<cuba.useLocalServiceInvocation,cuba.useLocalServiceInvocation>> application property is enabled, the Middleware services are invoked bypassing the network stack.
+In this case, maximum data transfer performance between the *Web Client* and the *Middleware* is provided, because when the <<cuba.useLocalServiceInvocation,cuba.useLocalServiceInvocation>> application property is enabled, the Middleware services are invoked bypassing the network stack.
 | image:scaling_1.png[align="center"]
 
-| *Stage 2. The Middleware and the Web Client blocks are deployed on separate application servers.*
+a| *Stage 2. The Middleware and the Web Client blocks are deployed on separate application servers.*
 
 This option allows you to distribute load between two application servers and use server resources better. Furthermore, in this case the load coming from web users has smaller effect on the other processes execution. Here, the other processes mean handling other client types (for example, Desktop), running <<scheduled_tasks,scheduled tasks>> and, potentially, integration tasks which are performed by the middle layer.
 
@@ -427,7 +433,7 @@ This section describes the following deployment configuration:
 
 image::cluster_webclient.png[align="center"]
 
-Servers `host1` and `host2` host Tomcat instances with the `app` web-app implementing the Web Client block. Users access the load balancer at `http://host0/app`, which redirects their requests to the servers. Server `host3` hosts a Tomcat instance with the `app-core` web-app that implements the Middleware block.
+Servers `host1` and `host2` host Tomcat instances with the `app` web-app implementing the Web Client block. Users access the load balancer at `++http://host0/app++`, which redirects their requests to the servers. Server `host3` hosts a Tomcat instance with the `app-core` web-app that implements the Middleware block.
 
 [[cluster_webclient_lb]]
 ===== Installing and Setting up a Load Balancer
@@ -607,7 +613,11 @@ JMX console can also work with the JMX objects of a remote JVM. This is useful w
 To connect to a remote JVM, a previously created connection should be selected in the *JMX Connection* field of the console, or a new connection can be created:
 
 .Editing a JMX Connection
-To get a connection, JMX host, port, login and password should be specified. There is also the *Host name* field, which is populated automatically, if any CUBA-application block is detected at the specified address. In this case, the value of this field is defined as the combination of <<cuba.webHostName,cuba.webHostName>> and <<cuba.webPort,cuba.webPort>> properties of this block, which allows identifying the server that contains it. If the connection is done to a 3rd party JMX interface, then the *Host name* field will have the "Unknown JMX interface" value. However it can be changed arbitrarily. 
+image::jmx-connection-edit.png[align="center"]
+
+To get a connection, JMX host, port, login and password should be specified. There is also the *Host name* field, which is populated automatically, if any CUBA-application block is detected at the specified address. In this case, the value of this field is defined as the combination of <<cuba.webHostName,cuba.webHostName>> and <<cuba.webPort,cuba.webPort>> properties of this block, which allows identifying the server that contains it. If the connection is done to a 3rd party JMX interface, then the *Host name* field will have the "Unknown JMX interface" value. However it can be changed arbitrarily.
+
+In order to allow a remote JVM connection, the JVM should be configured properly (see below).
 
 [[jmx_remote_access]]
 ==== Setting up a Remote JMX Connection
