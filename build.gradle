@@ -1,10 +1,3 @@
-ext.docSrcDir = file('content')
-ext.docToolsDir = file('tools')
-ext.docCssDir = new File(docToolsDir, 'css')
-ext.docJsDir = new File(docToolsDir, 'js')
-ext.docDstDir = new File("$buildDir/doc")
-ext.docTmpDir = new File("$buildDir/tmp/doc")
-
 repositories {
     mavenLocal()
     maven {
@@ -18,114 +11,27 @@ repositories {
 
 apply(plugin: 'idea')
 
-configurations {
-    prepareStyleSheets
-    buildDoc
-    docFonts
-    webHelpXslt
-    webHelpIndexer
-}
-
-dependencies {
-    buildDoc 'xalan:xalan:2.7.1'
-    buildDoc 'xerces:xercesImpl:2.9.1'
-    buildDoc module('com.haulmont.thirdparty:xhtmlrenderer:R8rc1') {
-        dependency 'com.haulmont.thirdparty:itext:2.0.8@jar'
-    }
-    buildDoc 'com.haulmont.thirdparty:xslthl:2.0.1@jar'
-    prepareStyleSheets 'com.haulmont.thirdparty:docbook-xsl:1.78.1.20130911@zip'
-    docFonts 'com.haulmont.thirdparty:doc-fonts:1.0@zip'
-    webHelpXslt 'com.haulmont.thirdparty:saxon:6.5.5'
-    webHelpIndexer "com.haulmont.thirdparty:webhelpindexer:1.0.1-pre@jar"
-}
-
 task clean(type: Delete) {
     delete 'build', 'buildSrc/build'
 }
-
-task prepareStyleSheets(type: Copy) {
-    File xslDir = file('tools/xsl')
-    into new File(project.buildDir, 'xsl')
-    from(xslDir) {
-        include '*.xsl'
-    }
-    from(project.zipTree(project.configurations.prepareStyleSheets.singleFile)) {
-        // Remove the prefix
-        eachFile { fcd -> fcd.path = fcd.path.replaceFirst('^docbook-xsl-[0-9\\.]+/', '') }
-    }
-}
-
-def commonXslParameters = [
-        'toc.section.depth': '5',
-        'chunk.section.depth': '5',
-        'section.autolabel': '1',
-        'chapter.autolabel': '1',
-        'appendix.autolabel': 'A',
-        'admon.textlabel': 0
-    ]
-
-/* ============= CSS theme =================*/
 
 task buildCubaTheme(type: BuildAsciidoctorTheme) {
     themeName = 'cuba'
 }
 
 /* ============= Manual =================*/
-task buildManual(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+
+task generateManualHtmlEn(type: Asciidoc2Html) {
     docName = 'manual'
     docLang = 'en'
 }
 
-task buildManualRu(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+task generateManualHtmlRu(type: Asciidoc2Html) {
     docName = 'manual'
     docLang = 'ru'
 }
 
-task buildManualWebHelp(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'manual'
-    docLang = 'en'
-    xslParameters = commonXslParameters
-}
-
-task buildManualWebHelpRu(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'manual'
-    docLang = 'ru'
-    xslParameters = commonXslParameters
-}
-
-task buildManualHtmlFromAsciidoc(type: Asciidoc2Html) {
-    docName = 'manual'
-    docLang = 'en'
-}
-
-task buildManualHtmlFromAsciidocRu(type: Asciidoc2Html) {
-    docName = 'manual'
-    docLang = 'ru'
-}
-
-task buildManualDocbook(type: Asciidoc2Docbook) {
-    docName = 'manual'
-    docLang = 'en'
-}
-
-task buildManualDocbookRu(type: Asciidoc2Docbook) {
-    docName = 'manual'
-    docLang = 'ru'
-}
-
-task buildManualHtmlFromDocbook(type: Docbook2Xhtml, dependsOn: [buildManualDocbook, prepareStyleSheets]) {
-    docName = 'manual'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task buildManualHtmlFromDocbookRu(type: Docbook2Xhtml, dependsOn: [buildManualDocbookRu, prepareStyleSheets]) {
-    docName = 'manual'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task postProcessManual(type: PostProcessDocHtml) {
+task postProcessManualEn(type: PostProcessDocHtml) {
     docName = 'manual'
     docLang = 'en'
 }
@@ -135,64 +41,24 @@ task postProcessManualRu(type: PostProcessDocHtml) {
     docLang = 'ru'
 }
 
+task buildManualEn(dependsOn: [generateManualHtmlEn, postProcessManualEn])
+
+task buildManualRu(dependsOn: [generateManualHtmlRu, postProcessManualRu])
+
+
 /* ============= Reporting =================*/
-task buildReporting(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+
+task generateReportingHtmlEn(type: Asciidoc2Html) {
     docName = 'reporting'
     docLang = 'en'
 }
 
-task buildReportingRu(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+task generateReportingHtmlRu(type: Asciidoc2Html) {
     docName = 'reporting'
     docLang = 'ru'
 }
 
-task buildReportingDocbook(type: Asciidoc2Docbook) {
-    docName = 'reporting'
-    docLang = 'en'
-}
-
-task buildReportingDocbookRu(type: Asciidoc2Docbook) {
-    docName = 'reporting'
-    docLang = 'ru'
-}
-
-task buildReportingWebHelp(type: DocBook2WebHelp, dependsOn: [buildReportingDocbook, prepareStyleSheets]) {
-    docName = 'reporting'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-    xslParameters = commonXslParameters
-}
-
-task buildReportingWebHelpRu(type: DocBook2WebHelp, dependsOn: [buildReportingDocbookRu, prepareStyleSheets]) {
-    docName = 'reporting'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-    xslParameters = commonXslParameters
-}
-
-task buildReporingHtmlFromAsciidoc(type: Asciidoc2Html) {
-    docName = 'reporting'
-    docLang = 'en'
-}
-
-task buildReporingHtmlFromAsciidocRu(type: Asciidoc2Html) {
-    docName = 'reporting'
-    docLang = 'ru'
-}
-
-task buildReportingHtmlFromDocbook(type: Docbook2Xhtml, dependsOn: [buildReportingDocbook, prepareStyleSheets]) {
-    docName = 'reporting'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task buildReportingHtmlFromDocbookRu(type: Docbook2Xhtml, dependsOn: [buildReportingDocbookRu, prepareStyleSheets]) {
-    docName = 'reporting'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task postProcessReporting(type: PostProcessDocHtml) {
+task postProcessReportingEn(type: PostProcessDocHtml) {
     docName = 'reporting'
     docLang = 'en'
 }
@@ -202,62 +68,26 @@ task postProcessReportingRu(type: PostProcessDocHtml) {
     docLang = 'ru'
 }
 
+task buildReportingEn(dependsOn: [generateReportingHtmlEn, postProcessReportingEn])
+
+task buildReportingRu(dependsOn: [generateReportingHtmlRu, postProcessReportingRu])
+
 /* ============= Workflow =================*/
-task buildWorkflow(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+
+task generateWorkflowHtmlEn(type: Asciidoc2Html) {
     docName = 'workflow'
     docLang = 'en'
+    doLast {
+        postProcessWorkflowEn();
+    }
 }
 
-task buildWorkflowRu(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+task generateWorkflowHtmlRu(type: Asciidoc2Html) {
     docName = 'workflow'
     docLang = 'ru'
 }
 
-task buildWorkflowWebHelp(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'workflow'
-    docLang = 'en'
-    xslParameters = commonXslParameters
-}
-
-task buildWorkflowWebHelpRu(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'workflow'
-    docLang = 'ru'
-    xslParameters = commonXslParameters
-}
-
-task buildWorkflowHtmlFromAsciidoc(type: Asciidoc2Html) {
-    docName = 'workflow'
-    docLang = 'en'
-}
-
-task buildWorkflowHtmlFromAsciidocRu(type: Asciidoc2Html) {
-    docName = 'workflow'
-    docLang = 'ru'
-}
-
-task buildWorkflowDocbook(type: Asciidoc2Docbook) {
-    docName = 'workflow'
-    docLang = 'en'
-}
-
-task buildWorkflowDocbookRu(type: Asciidoc2Docbook) {
-    docName = 'workflow'
-    docLang = 'ru'
-}
-
-task buildWorkflowHtmlFromDocbook(type: Docbook2Xhtml, dependsOn: [buildWorkflowDocbook, prepareStyleSheets]) {
-    docName = 'workflow'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task buildWorkflowHtmlFromDocbookRu(type: Docbook2Xhtml, dependsOn: [buildWorkflowDocbookRu, prepareStyleSheets]) {
-    docName = 'workflow'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task postProcessWorkflow(type: PostProcessDocHtml) {
+task postProcessWorkflowEn(type: PostProcessDocHtml) {
     docName = 'workflow'
     docLang = 'en'
 }
@@ -267,62 +97,23 @@ task postProcessWorkflowRu(type: PostProcessDocHtml) {
     docLang = 'ru'
 }
 
+task buildWorkflowEn(dependsOn: [generateWorkflowHtmlEn, postProcessWorkflowEn])
+
+task buildWorkflowRu(dependsOn: [generateWorkflowHtmlRu, postProcessWorkflowRu])
+
 /* ============= Charts =================*/
-task buildCharts(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+
+task generateChartsHtmlEn(type: Asciidoc2Html) {
     docName = 'charts'
     docLang = 'en'
 }
 
-task buildChartsRu(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+task generateChartsHtmlRu(type: Asciidoc2Html) {
     docName = 'charts'
     docLang = 'ru'
 }
 
-task buildChartsWebHelp(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'charts'
-    docLang = 'en'
-    xslParameters = commonXslParameters
-}
-
-task buildChartsWebHelpRu(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'charts'
-    docLang = 'ru'
-    xslParameters = commonXslParameters
-}
-
-task buildChartsHtmlFromAsciidoc(type: Asciidoc2Html) {
-    docName = 'charts'
-    docLang = 'en'
-}
-
-task buildChartsHtmlFromAsciidocRu(type: Asciidoc2Html) {
-    docName = 'charts'
-    docLang = 'ru'
-}
-
-task buildChartsDocbook(type: Asciidoc2Docbook) {
-    docName = 'charts'
-    docLang = 'en'
-}
-
-task buildChartsDocbookRu(type: Asciidoc2Docbook) {
-    docName = 'charts'
-    docLang = 'ru'
-}
-
-task buildChartsHtmlFromDocbook(type: Docbook2Xhtml, dependsOn: [buildChartsDocbook, prepareStyleSheets]) {
-    docName = 'charts'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task buildChartsHtmlFromDocbookRu(type: Docbook2Xhtml, dependsOn: [buildChartsDocbookRu, prepareStyleSheets]) {
-    docName = 'charts'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task postProcessCharts(type: PostProcessDocHtml) {
+task postProcessChartsEn(type: PostProcessDocHtml) {
     docName = 'charts'
     docLang = 'en'
 }
@@ -332,62 +123,22 @@ task postProcessChartsRu(type: PostProcessDocHtml) {
     docLang = 'ru'
 }
 
+task buildChartsEn(dependsOn: [generateChartsHtmlEn, postProcessChartsEn])
+
+task buildChartsRu(dependsOn: [generateChartsHtmlRu, postProcessChartsRu])
+
 /* ============= FTS =================*/
-task buildFts(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+task generateFtsHtmlEn(type: Asciidoc2Html) {
     docName = 'fts'
     docLang = 'en'
 }
 
-task buildFtsRu(type: Docbook2Xhtml, dependsOn: prepareStyleSheets) {
+task generateFtsHtmlRu(type: Asciidoc2Html) {
     docName = 'fts'
     docLang = 'ru'
 }
 
-task buildFtsWebHelp(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'fts'
-    docLang = 'en'
-    xslParameters = commonXslParameters
-}
-
-task buildFtsWebHelpRu(type: DocBook2WebHelp, dependsOn: prepareStyleSheets) {
-    docName = 'fts'
-    docLang = 'ru'
-    xslParameters = commonXslParameters
-}
-
-task buildFtsHtmlFromAsciidoc(type: Asciidoc2Html) {
-    docName = 'fts'
-    docLang = 'en'
-}
-
-task buildFtsHtmlFromAsciidocRu(type: Asciidoc2Html) {
-    docName = 'fts'
-    docLang = 'ru'
-}
-
-task buildFtsDocbook(type: Asciidoc2Docbook) {
-    docName = 'fts'
-    docLang = 'en'
-}
-
-task buildFtsDocbookRu(type: Asciidoc2Docbook) {
-    docName = 'fts'
-    docLang = 'ru'
-}
-
-task buildFtsHtmlFromDocbook(type: Docbook2Xhtml, dependsOn: [buildFtsDocbook, prepareStyleSheets]) {
-    docName = 'fts'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task buildFtsHtmlFromDocbookRu(type: Docbook2Xhtml, dependsOn: [buildFtsDocbookRu, prepareStyleSheets]) {
-    docName = 'fts'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task postProcessFts(type: PostProcessDocHtml) {
+task postProcessFtsEn(type: PostProcessDocHtml) {
     docName = 'fts'
     docLang = 'en'
 }
@@ -397,54 +148,24 @@ task postProcessFtsRu(type: PostProcessDocHtml) {
     docLang = 'ru'
 }
 
+task buildFtsEn(dependsOn: [generateFtsHtmlEn, postProcessFtsEn])
+
+task buildFtsRu(dependsOn: [generateFtsHtmlRu, postProcessFtsRu])
+
+
 /* ============= BPM =================*/
-task buildBpmDocbook(type: Asciidoc2Docbook) {
+
+task generateBpmHtmlEn(type: Asciidoc2Html) {
     docName = 'bpm'
     docLang = 'en'
 }
 
-task buildBpmWebHelp(type: DocBook2WebHelp, dependsOn: [buildBpmDocbook, prepareStyleSheets]) {
-    docName = 'bpm'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-    xslParameters = commonXslParameters
-}
-
-task buildBpmHtmlFromDocbook(type: Docbook2Xhtml, dependsOn: [buildBpmDocbook, prepareStyleSheets]) {
-    docName = 'bpm'
-    docLang = 'en'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task buildBpmHtmlFromAsciidoc(type: Asciidoc2Html) {
-    docName = 'bpm'
-    docLang = 'en'
-}
-
-task buildBpmHtmlFromAsciidocRu(type: Asciidoc2Html) {
+task generateBpmHtmlRu(type: Asciidoc2Html) {
     docName = 'bpm'
     docLang = 'ru'
 }
 
-task buildBpmDocbookRu(type: Asciidoc2Docbook) {
-    docName = 'bpm'
-    docLang = 'ru'
-}
-
-task buildBpmWebHelpRu(type: DocBook2WebHelp, dependsOn: [buildBpmDocbookRu, prepareStyleSheets]) {
-    docName = 'bpm'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-    xslParameters = commonXslParameters
-}
-
-task buildBpmHtmlFromDocbookRu(type: Docbook2Xhtml, dependsOn: [buildBpmDocbookRu, prepareStyleSheets]) {
-    docName = 'bpm'
-    docLang = 'ru'
-    sourceFile = new File("$project.buildDir/$docName/$docLang/docbook/${docName}.xml")
-}
-
-task postProcessBpm(type: PostProcessDocHtml) {
+task postProcessBpmEn(type: PostProcessDocHtml) {
     docName = 'bpm'
     docLang = 'en'
 }
@@ -454,16 +175,20 @@ task postProcessBpmRu(type: PostProcessDocHtml) {
     docLang = 'ru'
 }
 
+task buildBpmEn(dependsOn: [generateBpmHtmlEn, postProcessBpmEn])
+
+task buildBpmRu(dependsOn: [generateBpmHtmlRu, postProcessBpmRu])
+
 /* ============= Build all =================*/
 
-task buildManualAll(dependsOn: [buildManual, buildManualWebHelp, buildManualRu, buildManualWebHelpRu])
+task buildManualAll(dependsOn: [buildManualEn, buildManualRu])
 
-task buildReportingAll(dependsOn: [buildReportingHtmlFromDocbook, buildReportingWebHelp, buildReportingHtmlFromDocbookRu, buildReportingWebHelpRu])
+task buildReportingAll(dependsOn: [buildReportingEn, buildReportingRu])
 
-task buildWorkflowAll(dependsOn: [buildWorkflow, buildWorkflowWebHelp, buildWorkflowRu, buildWorkflowWebHelpRu])
+task buildWorkflowAll(dependsOn: [buildWorkflowEn, buildWorkflowRu])
 
-task buildChartsAll(dependsOn: [buildCharts, buildChartsWebHelp, buildChartsRu, buildChartsWebHelpRu])
+task buildChartsAll(dependsOn: [buildChartsEn, buildChartsRu])
 
-task buildFtsAll(dependsOn: [buildFts, buildFtsWebHelp, buildFtsRu, buildFtsWebHelpRu])
+task buildFtsAll(dependsOn: [buildFtsEn, buildFtsRu])
 
-task buildBpmAll(dependsOn: [buildBpmHtmlFromDocbook, buildBpmWebHelp, buildBpmHtmlFromDocbookRu, buildBpmWebHelpRu])
+task buildBpmAll(dependsOn: [buildBpmEn, buildBpmRu])
