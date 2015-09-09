@@ -6,12 +6,11 @@
 
 
 import org.gradle.api.DefaultTask
-import org.gradle.api.InvalidUserDataException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.file.FileCollection
-import org.gradle.api.file.FileVisitDetails
 import org.gradle.api.tasks.*
+import org.jsoup.Jsoup
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -58,20 +57,108 @@ class Asciidoc2Html extends DefaultTask {
 
     @TaskAction
     def transform() {
+        def dstDocDir = "$project.buildDir/$docName/$docLang/html-single"
+
         project.exec {
             workingDir "content/$docName/adoc/$docLang"
+
+
             if (System.getProperty('os.name').toLowerCase().contains('windows')) {
                 commandLine 'cmd', '/c'
-                args 'asciidoctor', "${docName}.adoc", '-D', "$project.buildDir/$docName/$docLang/html-single"
+
+                args 'asciidoctor', "${docName}.adoc", '-D', dstDocDir
             } else {
                 commandLine 'sh'
-                args '-c', "asciidoctor ${docName}.adoc -D $project.buildDir/$docName/$docLang/html-single"
+                args '-c', "asciidoctor ${docName}.adoc -D $dstDocDir"
             }
         }
 
         project.copy {
             from "content/$docName/img"
-            into "$project.buildDir/$docName/$docLang/html-single/img"
+            into "$dstDocDir/img"
+        }
+
+        project.copy {
+            from "styles"
+            into "$dstDocDir/styles"
+        }
+
+        project.copy {
+            from "js"
+            into "$dstDocDir/js"
+        }
+    }
+
+    def postProcessHtml() {
+        Jsoup.parse
+    }
+}
+
+class PostProcessDocHtml extends DefaultTask {
+
+    String docName
+    String docLang
+
+    @TaskAction
+    def postProcess() {
+        def filePath = "$project.buildDir/$docName/$docLang/html-single/${docName}.html"
+        def file = new File(filePath);
+
+        def doc = Jsoup.parse(file, 'utf-8', '')
+        def toc = doc.select("div[id=toc]").first()
+
+        toc.select("a").each {
+            def text = it.text()
+            text = text.replaceAll("^[\\d\\.]+", '')
+            it.text(text)
+        }
+
+        def expandCaption = docLang == 'ru' ? 'Развернуть все' : 'Expand all';
+        def collapseCaption = docLang == 'ru' ? 'Свернуть все' : 'Collapse all';
+        def hideCaption = docLang == 'ru' ? 'Скрыть панель' : 'Hide panel';
+
+        def treeControl = toc.prependElement("div")
+        treeControl.attr("id", "treecontrol")
+
+        treeControl.html("<a href=\"#\"> $collapseCaption </a>\n" +
+                "<span class=\"separator-link\"> | </span>\n" +
+                "<a href=\"#\"> $expandCaption </a>\n" +
+                "<span class=\"separator-link\"> | </span>\n" +
+                "<a href=\"#\" id=\"close-panel\" style=\"white-space: pre;\"> $hideCaption </a>")
+
+        doc.body().append("<script type=\"text/javascript\" src=\"js/jquery-1.11.1.min.js\"/>\n" +
+                "<script type=\"text/javascript\" src=\"js/jquery.treeview.js\"/>\n" +
+                "<script type=\"text/javascript\" src=\"js/jquery.nearest.min.js\"/>\n" +
+                "<script type=\"text/javascript\" src=\"js/toc-controller.js\"/>\n")
+
+        doc.body().append("<a href=\"#\" id=\"toc-position-marker\">. . .</a>");
+
+        doc.head().prepend("<link rel=\"stylesheet\" href=\"styles/jquery.treeview.css\"/>")
+
+        file.write(doc.toString(), 'utf-8')
+    }
+}
+
+class BuildAsciidoctorTheme extends DefaultTask {
+
+    String themeName
+
+    @TaskAction
+    def generateTheme() {
+        project.exec {
+            workingDir "tools/asciidoctor-stylesheet-factory"
+            if (System.getProperty('os.name').toLowerCase().contains('windows')) {
+                commandLine 'cmd', '/c'
+                args 'compass', "compile"
+            } else {
+                commandLine 'sh'
+                args '-c', "compass compile"
+            }
+        }
+
+        project.copy {
+            from "tools/asciidoctor-stylesheet-factory/stylesheets/${themeName}.css"
+            into "styles"
         }
     }
 }
