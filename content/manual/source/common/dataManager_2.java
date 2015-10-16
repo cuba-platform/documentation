@@ -9,8 +9,7 @@ private void saveBookInstances(List<BookInstance> toSave, List<BookInstance> toD
 private Set<Entity> saveAndReturnBookInstances(List<BookInstance> toSave, View view) {
     CommitContext commitContext = new CommitContext();
     for (BookInstance bookInstance : toSave) {
-        commitContext.getCommitInstances().add(bookInstance);
-        commitContext.getViews().put(bookInstance, view);
+        commitContext.addInstanceToCommit(bookInstance, view);
     }
     return dataManager.commit(commitContext);
 }

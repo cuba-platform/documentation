@@ -4,11 +4,11 @@ import com.haulmont.cuba.core.*;
 import com.haulmont.cuba.core.app.*;
 import com.sample.sales.entity.Order;
 import org.apache.commons.lang.exception.ExceptionUtils;
-import javax.annotation.ManagedBean;
+import org.springframework.stereotype.Component;
 import javax.inject.Inject;
 import java.util.UUID;
 
-@ManagedBean("sales_OrdersMBean")
+@Component("sales_OrdersMBean")
 public class Orders implements OrdersMBean {
 
     @Inject
@@ -19,15 +19,13 @@ public class Orders implements OrdersMBean {
 
     @Authenticated
     @Override
-    public String calculateTotals(final String orderId) {
+    public String calculateTotals(String orderId) {
         try {
-            persistence.createTransaction().execute(new Transaction.Runnable() {
-                @Override
-                public void run(EntityManager em) {
-                    Order entity = em.find(Order.class, UUID.fromString(orderId));
-                    orderWorker.calculateTotals(entity);
-                }
-            });
+            try (Transaction tx = persistence.createTransaction()) {
+                Order entity = persistence.getEntityManager().find(Order.class, UUID.fromString(orderId));
+                orderWorker.calculateTotals(entity);
+                tx.commit();
+            };
             return "Done";
         } catch (Throwable e) {
             return ExceptionUtils.getStackTrace(e);

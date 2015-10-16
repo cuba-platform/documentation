@@ -1,9 +1,9 @@
 package com.sample.sales.core;
 
 import com.sample.sales.entity.Order;
-import javax.annotation.ManagedBean;
+import org.springframework.stereotype.Component;
 
-@ManagedBean(OrderWorker.NAME)
+@Component(OrderWorker.NAME)
 public class OrderWorker {
     public static final String NAME = "sales_OrderWorker";
 

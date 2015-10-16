@@ -2,15 +2,15 @@
 private DataManager dataManager;
 
 private Book loadBookById(UUID bookId) {
-    LoadContext loadContext = new LoadContext(Book.class)
+    LoadContext loadContext = LoadContext.create(Book.class)
             .setId(bookId).setView("book.edit");
     return dataManager.load(loadContext);
 }
 
 private List<BookPublication> loadBookPublications(UUID bookId) {
-    LoadContext loadContext = new LoadContext(BookPublication.class)
+    LoadContext loadContext = LoadContext.create(BookPublication.class)
+            .setQuery(LoadContext.createQuery("select p from library$BookPublication p where p.book.id = :bookId")
+                .setParameter("bookId", bookId))
             .setView("bookPublication.full");
-    loadContext.setQueryString("select p from library$BookPublication p where p.book.id = :bookId")
-            .setParameter("bookId", bookId);
     return dataManager.loadList(loadContext);
 }
