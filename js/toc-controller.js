@@ -30,36 +30,36 @@ if (isPc()) {
 
         var book = $(".book");
         var tocPanel = $("#toc");
-        var contentPanel = $("#content");
 
         closePanel.bind('click', function(e) {
             e.preventDefault();
             isShowPanel = false;
-            var linkLocation;
 
-            tocPanel.css('display', 'none');
-            book.css('padding-left', '2.5em');
-            tocMarker.css('display', 'block');
+            tocPanel.addClass('toc-collapsed');
+            book.addClass('toc-collapsed');
+            tocMarker.addClass('toc-collapsed');
         });
 
         tocMarker.bind('click', function (e) {
             e.preventDefault();
-            tocPanel.css('display', 'block');
-            book.css('padding-left', '25em');
-             tocMarker.css('display', 'none');
+            tocPanel.removeClass('toc-collapsed');
+            book.removeClass('toc-collapsed');
+            tocMarker.removeClass('toc-collapsed');
         });
 
+        var highlightEnabled = true;
+
+        $(window).resize(function() {
+            highlightEnabled = $(window).width() > 1024;
+        });
 
         $(window).scroll(function() {
+            if (!highlightEnabled) return;
             clearTimeout($.data(this, 'scrollTimer'));
             $.data(this, 'scrollTimer', setTimeout(function() {
-                var object = $(tocMarker).closest("h2, h3, h4, h5, h6")
-
                 var markerOffset = tocMarker.offset();
                 var nearestLink = $.nearest({x: markerOffset.left, y: markerOffset.top}, 'h2 > a, h3 > a, h4 > a, h5 > a, h6 > a')[0];
-                
                 highlightTocLink(nearestLink);
-
             }, 500));
         });
 
