@@ -13,52 +13,56 @@ function isPc() {
     return true;
 }
 
-if (isPc()) {
+$(document).ready(function () {
+    $(".book").append('<div id="smallDeviceIndicator" style="display: none">');
 
-    $(document).ready(function () {
-        $('#toc .sectlevel1').treeview ({
-             collapsed: true,
-             animated: "medium",
-            persist: "location",
-            unique: false,
-            control: "#treecontrol"
-        });
+    $('#toc .sectlevel1').treeview({
+        collapsed: true,
+        animated: "medium",
+        persist: "location",
+        unique: false,
+        control: "#treecontrol"
+    });
 
-        var closePanel = $("#close-panel");
-        var tocMarker = $("#toc-position-marker");
+    var closePanel = $("#close-panel");
+    var tocMarker = $("#toc-position-marker");
+
+    var book = $(".book");
+    var tocPanel = $("#toc");
+
+    closePanel.bind('click', function (e) {
+        e.preventDefault();
+        tocPanel.addClass('toc-collapsed');
+        book.addClass('toc-collapsed');
+        tocMarker.addClass('toc-collapsed');
+    });
+
+    tocMarker.bind('click', function (e) {
+        e.preventDefault();
+        tocPanel.removeClass('toc-collapsed');
+        book.removeClass('toc-collapsed');
+        tocMarker.removeClass('toc-collapsed');
+    });
+
+    if (isPc()) {
         var highlightedTocLink;
-
-        var book = $(".book");
-        var tocPanel = $("#toc");
-
-        closePanel.bind('click', function(e) {
-            e.preventDefault();
-            isShowPanel = false;
-
-            tocPanel.addClass('toc-collapsed');
-            book.addClass('toc-collapsed');
-            tocMarker.addClass('toc-collapsed');
-        });
-
-        tocMarker.bind('click', function (e) {
-            e.preventDefault();
-            tocPanel.removeClass('toc-collapsed');
-            book.removeClass('toc-collapsed');
-            tocMarker.removeClass('toc-collapsed');
-        });
-
         var highlightEnabled = true;
 
-        $(window).resize(function() {
-            highlightEnabled = $(window).width() > 1024;
+        $(window).resize(function () {
+            //css media query will set #smallDeviceIndicator float to "left" for small screens
+            //we had to do this because of browser width measurement issues.
+            highlightEnabled = $("#smallDeviceIndicator").css("float") == "right";
         });
 
-        $(window).scroll(function() {
+        $(window).scroll(function () {
             if (!highlightEnabled) return;
             clearTimeout($.data(this, 'scrollTimer'));
-            $.data(this, 'scrollTimer', setTimeout(function() {
+            $.data(this, 'scrollTimer', setTimeout(function () {
                 var markerOffset = tocMarker.offset();
-                var nearestLink = $.nearest({x: markerOffset.left, y: markerOffset.top}, 'h2 > a, h3 > a, h4 > a, h5 > a, h6 > a')[0];
+                var nearestLink = $.nearest({
+                    x: markerOffset.left,
+                    y: markerOffset.top
+                }, 'h2 > a, h3 > a, h4 > a, h5 > a, h6 > a')[0];
                 highlightTocLink(nearestLink);
             }, 500));
         });
@@ -105,5 +109,5 @@ if (isPc()) {
                 }
             });
         }
-    });
-}
+    }
+});
