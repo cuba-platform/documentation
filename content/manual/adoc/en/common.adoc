@@ -6,12 +6,12 @@ This chapter covers platform components, which are common for all <<app_tiers,ti
 [[data_model]]
 ==== Data Model
 
-Entities are divided into two categories:
+Data model entities are divided into two categories:
 
 * Persistent – instances of such entities are stored in the database tables.
 * Non-persistent – instances exist only in memory.
 
-The entities are characterized by their attributes. An attribute corresponds to a field and a pair of access methods (get / set) of the field. To make an attribute immutable (read only), it is enough to omit the "set" method.
+The entities are characterized by their attributes. An attribute corresponds to a field and a pair of access methods (get / set) of the field. If the setter is omitted, the attribute becomes read only.
 
 Persistent entities may include attributes that are not stored in the database. For non-persistent attribute the field is optional, creation of access methods will be sufficent.
 
@@ -41,7 +41,7 @@ The following attribute types of entities are supported:
 * `enum`
 * `entity`
 
-Base entity classes (see below) override `equals()` and `hashCode()` methods to provide entity instance equivalence by comparing their identifiers. I.e., instances are considered equal, if their identifiers are equal. An identifier of the UUID type is assigned to an instance right after its creation in memory, which is why new instances can also be compared and added to collections.
+Base entity classes (see below) override `equals()` and `hashCode()` methods to check entity instances equivalence by comparing their identifiers. I.e., instances are considered equal, if their identifiers are equal. An identifier of the UUID type is assigned to an instance right after its creation in memory, which is why new instances can also be compared and added to collections.
 
 [[base_entity_classes]]
 ===== Base Entity Classes
@@ -101,7 +101,7 @@ When creating entity classes it is recommended to choose a base class according 
 
 * If an entity is embedded, inherit it from `EmbeddableEntity`.
 
-* If an entity is only created in DB, never changes and needs no soft deletion, inherit it from `BaseUuidEntity`.
+* If an entity is only created in DB, never changes and does not need soft deletion, inherit it from `BaseUuidEntity`.
 
 * If an entity behaves in a standard way: changes in the database, requires optimistic locking and soft deletion − inherit it from `StandardEntity`.
 
@@ -114,9 +114,9 @@ When creating entity classes it is recommended to choose a base class according 
 
 This section describes all annotations of entity classes and attributes supported by the platform.
 
-Annotations of the `javax.persistence` package are needed for <<jpa, JPA>>, annotations of `com.haulmont.*` packages are designed for <<metadata_framework,metadata>> management and control of other mechanisms in the platform.
+Annotations from the `javax.persistence` package are required for <<jpa, JPA>>, annotations from `com.haulmont.*` packages are designed for <<metadata_framework,metadata>> management and other mechanisms of the platform.
 
-In this manual, if an annotation is identified by a simple class name, it refers to a platform class, located in one of `com.haulmont.*` packages. 
+In this manual, if an annotation is identified by a simple class name, it refers to a platform class, located in one of the `com.haulmont.*` packages.
 
 [[entity_class_annotations]]
 ====== Class Annotations
@@ -291,7 +291,7 @@ Example:
 
 `@SystemLevel`:: Indicates that the entity is system only and should not be available for selection in various lists of entities, such as <<gui_Filter,generic filter>> parameter types or <<dynamic_attributes,dynamic attribute>> type.
 
-`@EnableRestore`:: Indicates that the entity instances are available for recovery after <<soft_deletion,soft deletion>> on a special screen `core$Entity.restore`. 
+`@EnableRestore`:: Indicates that the entity instances are available for recovery after <<soft_deletion,soft deletion>> on the `core$Entity.restore` screen available through the *Administration > Data Recovery* main menu item.
 
 `@TrackEditScreenHistory`:: Indicates that <<screen_edit, editor screens>> opening history will be recorded with the ability to display it on the `sec$ScreenHistory.browse` screen available through the *Help > History* main menu item.
 
@@ -682,7 +682,7 @@ Makes the platform to ignore the user's <<timeZone,time zone>> (if it is set for
 [[enum_attributes]]
 ===== Enum Attributes
 
-The standard use of <<jpa, JPA>> for `enum` attributes, involves an integer database field containing a value obtained from the `ordinal()` method. This approach may lead to the following issues with extending a system in production:
+The standard use of <<jpa, JPA>> for `enum` attributes involves an integer database field containing a value obtained from the `ordinal()` method. This approach may lead to the following issues with extending a system in production:
 
 * An entity instance cannot be loaded, if the value of the enum in the database does not equal to any `ordinal` value.
 
@@ -704,7 +704,7 @@ In this case, the enumeration class can look like this:
 include::{sourcesdir}/common/enum_2.java[]
 ----
 
-For correct reflection in <<metadata_framework,metadata>> the enumeration class must implement `EnumClass` interface.
+For correct reflection in <<metadata_framework,metadata>>, the enumeration class must implement the `EnumClass` interface.
 
 As the examples show, `grade` attribute corresponds to the `Integer` type value stored in the database, which is specified by the `id` field of `CustomerGrade` enumeration, namely `10`, `20` or `30`. At the same time, the application code and metadata framework use `CustomerGrade` enum through access methods, which perform the actual conversion.
 
@@ -723,9 +723,9 @@ Soft deletion mode offers the following benefits:
 
 * Significantly reduces the risk of data loss caused by incorrect user actions.
 
-* Allows to make certain records inaccessible instantly even if there are references to them. 
+* Enables making certain records inaccessible instantly even if there are references to them.
 +
-Using Orders-Customers data model as an example, let's assume that a certain customer has made several orders but we need to make him inaccessible. This is impossible with traditional hard deletion, as deletion of a customer requires either deletion of all his orders or setting to null all references to the customer (meaning data loss). After soft deletion, the customer becomes unavailable for search and modification; however, a user can see the name of the customer in the order editor, as deletion attribute is purposely ignored when the related entities are fetched.
+Using Orders-Customers data model as an example, let's assume that a certain customer has made several orders but we need to make the customer instance inaccessible for users. This is impossible with traditional hard deletion, as deletion of a customer instance requires either deletion of all related orders or setting to null all references to the customer (meaning data loss). After soft deletion, the customer instance becomes unavailable for search and modification; however, a user can see the name of the customer in the order editor, as deletion attribute is purposely ignored when the related entities are fetched.
 +
 The standard behavior above can be modified with <<delete_policy,related entities processing policy>>.
 
@@ -735,9 +735,9 @@ The negative impact of soft deletion is increase in database size and likely nee
 
 To support soft deletion, the entity class should implement `SoftDelete` interface, and the corresponding database table should contain the following columns:
 
-* *DELETE_TS* – when the record was deleted.
+* `DELETE_TS` – when the record was deleted.
 
-* *DELETED_BY* – the login of the user who deleted the record.
+* `DELETED_BY` – the login of the user who deleted the record.
 
 The default behavior for instances implementing `SoftDelete` interface, is that soft deleted entities are not returned by queries or search by id. If required, this behavior can by dynamically turned off using the following methods:
 
@@ -747,7 +747,7 @@ The default behavior for instances implementing `SoftDelete` interface, is that 
 
 * On the <<datasources,datasource>> level – calling `CollectionDatasource.setSoftDeletion(false)` or setting `softDeletion="false"` attribute of `collectionDatasource` element in the screen's <<screen_xml,XML-descriptor>>.
 
-In soft deletion mode, the platform automatically filters out the deleted instances when loading by identifier and when using <<jpql, JPQL queries>>, as well as the deleted elements of the related entities in collection attributes. However, related entities in single-value attributes are loaded, regardless of whether the related instance was deleted or not.
+In soft deletion mode, the platform automatically filters out the deleted instances when loading by identifier and when using <<jpql, JPQL queries>>, as well as the deleted elements of the related entities in collection attributes. However, related entities in single-value (*ToOne) attributes are loaded, regardless of whether the related instance was deleted or not.
 
 [[delete_policy]]
 ====== Related Entities Processing Policy
@@ -1247,7 +1247,7 @@ The view is determined by `View` class instance, where:
 
 ** `JOIN` - fetching in the same select by joining with referenced table.
 
-** `BATCH` - fetching by one separate select for all referenced entities.
+** `BATCH` - queries of related objects will be optimized in batches. See more link:$$http://java-persistence-performance.blogspot.ru/2010/08/batch-fetching-optimizing-object-graph.html$$[here].
 --
 +
 If the `fetch` attribute is not specified, the `AUTO` mode is applied.
@@ -1414,9 +1414,9 @@ Lets overview the implementation of the `calculateTotals()` method.
 
 ** The method has the `@Authenticated` annotation, i.e., <<system_authentication,system authentication>> is performed on method entry in the absence of the <<userSession,user session>>.
 
-** The method's body is wrapped in the `try/catch` block, so that, if successful, the method returns "Done", and in case of error – the stack trace of the exception as string.
+** The method's body is wrapped in the try/catch block, so that, if successful, the method returns "Done", and in case of error – the stack trace of the exception as string.
 +
-It should be kept in mind that, in this case, all exceptions are handled and therefore do not get logged automatically, because they never fall through to `MBeanInterceptor`. If logging of exceptions is required, the call of the logger should be added in the `catch` section.
+In this case, all exceptions are handled and therefore do not get logged automatically, because they never fall through to `MBeanInterceptor`. If logging of exceptions is required, the call of the logger should be added in the `catch` section.
 
 ** The method starts the transaction, loads the `Order` entity instance by identifier, and passes control to the `OrderWorker` bean for processing.
 
@@ -1444,9 +1444,9 @@ JMX ObjectName: `app-core.cuba:type=CachingFacade` and `app.cuba:type=CachingFac
 [[configStorageMBean]]
 ====== ConfigStorageMBean
 
-`ConfigStorageMBean` allows viewing and setting values of the <<app_properties,application properties>> in the Middleware, Web Client and Web Portal blocks.
+`ConfigStorageMBean` enables viewing and setting values of the <<app_properties,application properties>> in the Middleware, Web Client and Web Portal blocks.
 
-This interface has separate sets of methods for working with parameters of configuration and deployment (`AppProperties`) and with runtime parameters (`DbProperties`). This is due to the difference in mechanisms of storing these categories of properties.
+This interface has separate sets of methods for working with parameters of configuration and deployment (`*AppProperties`) and with runtime parameters (`*DbProperties`). This is due to the difference in mechanisms of storing these categories of properties.
 
 [WARNING]
 ====
@@ -1462,7 +1462,7 @@ JMX ObjectName: `app-core.cuba:type=ConfigStorage`, `app.cuba:type=ConfigStorage
 [[emailerMBean]]
 ====== EmailerMBean
 
-`EmailerMBean` allows viewing the current values of the <<email_sending,email sending>> parameters, and to send test messages.
+`EmailerMBean` enables viewing the current values of the <<email_sending,email sending>> parameters, and sending test messages.
 
 JMX ObjectName: `app-core.cuba:type=Emailer`
 
@@ -1921,10 +1921,10 @@ include::{sourcesdir}/common/sequentialqueries_1.xml[]
 
 When the application is started, `AppContext` is initialized using loader classes, specific for each application <<app_tiers,block>>:
 
-* *Middleware* loader – `AppContextLoader`
-* *Web Client* loader – `WebAppContextLoader`
-* *Web Portal* loader – `PortalAppContextLoader`
-* *Desktop Client* loader – `DesktopAppContextLoader`
+* Middleware loader – `AppContextLoader`
+* Web Client loader – `WebAppContextLoader`
+* Web Portal loader – `PortalAppContextLoader`
+* Desktop Client loader – `DesktopAppContextLoader`
 
 `AppContext` can be used in the application code for the following tasks:
 
@@ -1977,7 +1977,7 @@ For example: <<cuba.connectionUrlList,cuba.connectionUrlList>>, <<cuba.dbmsType,
 +
 For example: `cuba.security.EntityLog.enabled`, `cuba.email.smtpHost`.
 
-Typically, a property belongs to one or several application <<app_tiers,blocks>>. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is only intended for *Middleware*, <<cuba.web.useLightHeader,cuba.web.useLightHeader>> belongs to *Web Client*, while <<cuba.springContextConfig,cuba.springContextConfig>> is used in all blocks.
+Typically, a property belongs to one or several application <<app_tiers,blocks>>. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is only intended for Middleware, <<cuba.web.useLightHeader,cuba.web.useLightHeader>> belongs to Web Client, while <<cuba.springContextConfig,cuba.springContextConfig>> is used in all blocks.
 
 Belonging to a block means that if you need to set some value to a property, you should do it __in all blocks__, used in the application, to which this property belongs.
 
@@ -2034,7 +2034,7 @@ The rules for data definition in `*.properties` files:
 
 * Set file paths either in UNIX (`/opt/haulmont/`) or Windows (`c:\\haulmont\\`) format.
 
-* You can use `\n \t \r` codes. The `\` sign is a reserved code, use (`\\`) to insert it in value. See more in: link:$$http://docs.oracle.com/javase/tutorial/java/data/characters.html$$[http://docs.oracle.com/javase/tutorial/java/data/characters.html].
+* You can use `\n \t \r` codes. The `\` sign is a reserved code, use (`\\`) to insert it in value. See more at: link:$$http://docs.oracle.com/javase/tutorial/java/data/characters.html$$[http://docs.oracle.com/javase/tutorial/java/data/characters.html].
 
 * Use `\` sign at the end of each line to enter a multi-line value. 
 ====
@@ -2114,10 +2114,20 @@ There is no need to create implementation class for the configuration interface 
 
 ====== Property Types
 
-The following property types are supported without any additional efforts: 
+The following property types are supported out-of-the-box:
 
 * `String`, primitive types or their object wrappers (`boolean`, `Boolean`, `int`, `Integer`, etc.)
+
 * `enum`. The property value is stored in a file or in the database as the value name of the enumeration.
++
+
+If an enum implements the `EnumClass` and has the static `fromId()` method for getting a value by an identifier, you can specify that the enum identifier should be stored instead of value with the `@EnumStore` annotation. For example:
++
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_8.java[]
+----
+
 * Persistent <<data_model,entity>> classes. When accessing a property of the entity type, the instance defined by the property value is loaded from the database.
 
 To support arbitrary types use `TypeStringify` and `TypeFactory` classes to convert the value to/from a string and specify these classes for property with `@Stringify` and `@Factory` annotations.
@@ -2413,22 +2423,22 @@ The platform contains a special unchecked exception class `SilentException`. It 
 [[remoteException]]
 ===== Passing Middleware Exceptions
 
-If an exception is thrown on Middleware as result of handling a client request, the execution terminates and the exception object is returned to the Client. The object usually includes the chain of underlying exceptions. This chain can contain classes which are inaccessible for Client tier (for example, JDBC driver exceptions). For this reason, instead of sending this chain to the Client we send its presentation inside specially created `RemoteException` object.
+If an exception is thrown on Middleware as a result of handling a client request, the execution terminates and the exception object is returned to the client. The object usually includes the chain of underlying exceptions. This chain can contain classes which are inaccessible for the client tier (for example, JDBC driver exceptions). For this reason, instead of sending this chain to the client we send its representation inside a specially created `RemoteException` object.
 
-The information about the causing exceptions is stored as a list of `RemoteException.Cause` objects. Each `Cause` object always contains an exception class name and its message. Moreover, if the exception class is "supported by client", `Cause` stores the exception object as well. This allows passing information to the Client in the exception fields.
+The information about the causing exceptions is stored as a list of `RemoteException.Cause` objects. Each `Cause` object always contains an exception class name and its message. Moreover, if the exception class is "supported by client", `Cause` stores the exception object as well. This allows passing information to the client in the exception fields.
 
-Exception class should be annotated by `@SupportedByClient `if its objects should be passed to the Client tier as Java objects. For example:
+Exception class should be annotated by `@SupportedByClient` if its objects should be passed to the client tier as Java objects. For example:
 
 [source, java]
 ----
 include::{sourcesdir}/common/mwexception_1.java[]
 ----
 
-Thus, when an exception is thrown on Middleware and it is not annotated by `@SupportedByClient` the calling Client code will receive `RemoteException` containing original exception information in a string form. If the source exception is annotated by `@SupportedByClient`, the caller will receive it directly. This enables handling the exceptions declared by Middleware <<services,services>> in the application code in the traditional way – using `try...catch` blocks.
+Thus, when an exception is thrown on Middleware and it is not annotated by `@SupportedByClient` the calling client code will receive `RemoteException` containing original exception information in a string form. If the source exception is annotated by `@SupportedByClient`, the caller will receive it directly. This enables handling the exceptions declared by Middleware <<services,services>> in the application code in the traditional way – using try/catch blocks.
 
 Bear in mind that if you need the exception supported by client to be passed on the client as an object, it should not contain any unsupported exceptions in its `getCause()` chain. Therefore, if you create an exception instance on Middleware and want to pass it to the client, specify cause parameter only if you are sure that it contains the exceptions known to the client. 
 
-`ServiceInterceptor` class is a <<services,service>> interceptor which packs the exception objects before passing them to the client tier. Besides, it performs exceptions logging. All information about the exception including full stack trace is output to the log by default. If it is not desirable, add `@Logging` annotation to the exception class and specify the logging level: 
+`ServiceInterceptor` class is a <<services,service>> interceptor which packs the exception objects before passing them to the client tier. Besides, it performs exceptions logging. All information about the exception including full stack trace is logged by default. If it is not desirable, add `@Logging` annotation to the exception class and specify the logging level:
 
 * `FULL` – full information, including stacktrace (default).
 * `BRIEF` – exception class name and message only.
@@ -2444,11 +2454,11 @@ include::{sourcesdir}/common/mwexception_2.java[]
 [[exceptionHandlers]]
 ===== Client-Level Exception Handlers
 
-Unhandled exceptions in Web Client and Desktop Client <<app_tiers,blocks>> thrown on the client tier or passed from Middleware, are passed to the special handlers mechanism. This mechanism is implemented in GUI <<app_modules,module>> and available for both blocks.
+Unhandled exceptions in Web Client and Desktop Client <<app_tiers,blocks>> thrown on the client tier or passed from Middleware, are passed to the special handlers mechanism. This mechanism is implemented in the *gui* <<app_modules,module>> and available for both blocks.
 
 The handler should be a <<managed_beans,managed bean>> implementing the `GenericExceptionHandler` interface, handle processing in its `handle()` method and return `true`, or immediately return `false`, if this handler is not able to handle the passed exception. This behaviour enables creating a "chain of responsibility" for handlers.
 
-It is recommended to inherit your handlers from the `AbstractGenericExceptionHandler` base class, which is able to disassemble the exceptions chain (including ones packed inside `RemoteException`) and handle specific exception types. Exceptions types supported by this handler are defined by passing strings array to the base constructor from the handler constructor. Each string of the array should contain one full class name of the handled exception, for example:
+It is recommended to inherit your handlers from the `AbstractGenericExceptionHandler` base class, which is able to disassemble the exceptions chain (including ones packed inside `RemoteException`) and handle specific exception types. Exception types supported by this handler are defined by passing strings array to the base constructor from the handler constructor. Each string of the array should contain one full class name of the handled exception, for example:
 
 [source, java]
 ----
@@ -2469,7 +2479,7 @@ In the case of using `AbstractGenericExceptionHandler` as a base class, the proc
 include::{sourcesdir}/common/exceptionHandlers_3.java[]
 ----
 
-If the name of the exception class is insufficient to make a decision whether this handler can be applied to the exception, `canHandle()` method should be defined. Above all, this method accepts the text of the exception. If the handler is applicable for this exception, the method must return `true`. For example:
+If the name of the exception class is insufficient to make a decision whether this handler can be applied to the exception, `canHandle()` method should be defined. This method accepts also the text of the exception. If the handler is applicable for this exception, the method must return `true`. For example:
 
 [source, java]
 ----

@@ -1,4 +1,4 @@
-@ManagedBean("cuba_EntityAccessExceptionHandler")
+@Component("cuba_EntityAccessExceptionHandler")
 public class EntityAccessExceptionHandler extends AbstractGenericExceptionHandler {
 
     public EntityAccessExceptionHandler() {
