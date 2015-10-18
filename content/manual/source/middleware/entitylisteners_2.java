@@ -1,4 +1,4 @@
-@ManagedBean
+@Component
 public class MyBean implements AppContext.Listener {
 
     @Inject

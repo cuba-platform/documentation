@@ -1,4 +1,4 @@
-@ManagedBean("cuba_MyEntityListener")
+@Component("cuba_MyEntityListener")
 public class MyEntityListener implements
         BeforeInsertEntityListener<MyEntity>,
         BeforeUpdateEntityListener<MyEntity> {
