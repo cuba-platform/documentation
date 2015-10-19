@@ -598,22 +598,13 @@ Due to the distribution policy of Oracle JDBC driver, it can only be downloaded 
 [[logging]]
 === Logging
 
-The platform uses *Apache Log4j* version 1.2 for logging.
+The platform uses *Logback* framework for logging.
 
-We recommend using logging via the *Commons Logging* API and getting a logger based on the current class name. Example of creating a logger and writing to it:
+To output to the log, use *SLF4J* API: get a logger for the current class and invoke one of its methods, for example:
 
 [source, java]
 ----
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-public class ...
-
-    private Log log = LogFactory.getLog(getClass()); // create logger
-
-    private void someMethod() {
-        log.debug("someMethod invoked"); // output message with DEBUG level
-    }
+include::{sourcesdir}/development/logging_1.java[]
 ----
 
 Logs for the Middleware, Web Client and Web Portal <<app_tiers,blocks>> are configured at the application server level; in <<fast_deployment,fast deployment>> mode the server is Tomcat. Logs for the Desktop Client block are configured separately.
@@ -621,63 +612,56 @@ Logs for the Middleware, Web Client and Web Portal <<app_tiers,blocks>> are conf
 [[logging_setup_tomcat]]
 ==== Setting up Logging in Tomcat
 
-Running Gradle <<build.gradle_setupTomcat,setupTomcat>> task installs the Tomcat server into the project directory and performs its additional configuration. Particularly, `setenv.bat` and `setenv.sh` files are created in the `tomcat/bin` subfolder, and `log4j.xml` is created in the `tomcat/conf` subfolder.
+Running Gradle <<build.gradle_setupTomcat,setupTomcat>> task installs the Tomcat server into the project directory and performs its additional configuration. Particularly, `setenv.bat` and `setenv.sh` files are created in the `tomcat/bin` subfolder, and `logback.xml` is created in the `tomcat/conf` subfolder.
 
-Among other things, the setenv.* files define loading parameters for the log4j.xml configuration file using the `++CATALINA_OPTS++` variable.
+Among other things, the `setenv.*` files define loading parameters for the `logback.xml` configuration file using the `CATALINA_OPTS` variable.
 
-`log4j.xml` defines logging configuration. The file has the following structure:
+`logback.xml` defines logging configuration. The file has the following structure:
 
-* `appender` elements define the "output device" for the log. The main appenders are `FILE` and `CONSOLE`. The `Threshold` parameter of the appender defines the message threshold. By default, it is `DEBUG` for a file and `INFO` for console. It means that `ERROR`, `WARN`, `INFO` and `DEBUG` messages are written to a file, while `ERROR`, `WARN` and `INFO` are written to console.
+* `appender` elements define the "output device" for the log. The main appenders are `FILE` and `CONSOLE`. The `level` parameter of `ThresholdFilter` defines the message threshold. By default, it is `DEBUG` for a file and `INFO` for console. It means that `ERROR`, `WARN`, `INFO` and `DEBUG` messages are written to a file, while `ERROR`, `WARN` and `INFO` are written to console.
 +
-The path to the log file for the file appender is defined in the `File` parameter; `Append` flag defines if the file should be flushed or appended to at server restart. The default settings are tomcat/logs/app.log and flush at restart. When an application is in production, we recommend setting `Append` to `true`.
+The path to the log file for the file appender is defined in the `file` parameter. The default is `tomcat/logs/app.log`.
+
+* `logger` elements define the logger parameters that are used to print messages from the program code. Logger names are hierarchical, i.e. the settings of the `com.company.sample` logger have effect on the `com.company.sample.core.CustomerServiceBean` and `com.company.sample.web.CustomerBrowse` loggers, if the loggers do not explicitly override the settings with their own.
 +
-By default, the file appender is implemented by the `org.apache.log4j.DailyRollingFileAppender` class, which renames the log file to a previous date and starts a new file daily at 00:00:00. This helps avoiding excessively large log files.
+Minimum logging level is defined by the `level` attribute. For example, if the category is `INFO`, then `DEBUG` and `TRACE` messages will not be logged. It should be kept in mind that message logging is also affected by the level threshold set in the appender.
 
-* `category` elements define the logger parameters that are used to send messages from the program code. Category names are hierarchical, i.e. the settings of the `com.company.sample` category have effect on the `com.company.sample.core.CustomerServiceBean` and `com.company.sample.web.CustomerBrowse` loggers, if the loggers do not explicitly override the settings with their own.
-+
-Minimum logging level is defined by the `priority` element. For example, if the category is `INFO`, then `DEBUG` and `TRACE` messages will not be logged. It should be kept in mind that message logging is also affected by the level threshold set in the appender.
+You can quickly change logger levels and appender thresholds for a running server using the * Administration* > *Server log* screen available in the web client. Any changes to the logging settings are effective only during server runtime and are not saved to a file. The screen also enables viewing and loading log files from the server <<log_dir,logs folder>> (tomcat/logs).
 
-You can quickly change category levels and appender thresholds for a running server using the * Administration* > *Server log* screen available in the web client. Any changes to the logging settings are effective only during server runtime and are not saved to a file. The screen also enables viewing and loading log files from the server <<log_dir,logs folder>> (tomcat/logs).
+The platform automatically adds the following information to the messages written to the file log:
 
-The platform automatically adds the following information to the messages written to a log:
+* _application_ – the name of the web application that has logged the message. This information enables identifying messages from different application blocks (Middleware, Web Client), since they are written into the same file.
 
-* `*[application]*` – the name of the Tomcat-deployed web application whose code has logged the message. This information enables identifying messages from different application blocks (Middleware, Web Client), since they are written into the same file.
+* _user_ – the login name of the user who invoked the code logging the message. This helps to track activity of a certain user in the log. If the code that logged a message was not invoked within a specific user session, the user information is not added.
 
-* `*[user]*` – login name of the user who invoked the code logging the message. This helps to track activity of a certain user in the common log. If the code that logged a message was not invoked within a specific user session, the user information is not added.
-
-For example, the following message has been written to the log by the code of the Middleware block (`*app-core*`), running under the admin user:
+For example, the following message has been written to the log by the code of the Middleware block (`app-core`), running under the `admin` user:
 
 [source, log]
 ----
-2013-12-19 18:48:17,282 DEBUG [com.haulmont.cuba.core.app.DataManagerBean] [app-core] [admin] loadList: metaClass=sec$User, view=com.haulmont.cuba.security.entity.User/user.browse, query=select u from sec$User u, max=100
+16:12:20.498 DEBUG [http-nio-8080-exec-7/app-core/admin] com.haulmont.cuba.core.app.DataManagerBean - loadList: ...
 ----
 
 [[logging_setup_desktop]]
 ==== Setting up Logging in The Desktop Client
 
-For the desktop client, the log4j.xml file should be located in the source files directory of the project's *desktop* module. When an application is built, it is packed into the corresponding JAR file and is accessible in CLASSPATH.
+For the desktop client, the logback.xml file should be located in the source files directory of the project's *desktop* module. When an application is built, it is packed into the corresponding JAR file and is accessible in CLASSPATH.
 
 Make the following steps to set up logging for your project:
 
-* Create a new file, for example `sample-log4j.xml`, in the src directory of the *desktop* module, and copy the contents of cuba-log4j.xml to this new file. cuba-log4j.xml file is located in one of the platform's JAR files and can be easily found using search in the IDE, given that the base projects are configured properly.
+* Create a new file, for example `sample-logback.xml`, in the `src` directory of the *desktop* module, and copy the contents of `cuba-logback.xml` to this new file. `cuba-logback.xml` file is located in one of the platform's JAR files and can be easily found using search in the IDE, given that the base projects are configured properly.
 
-* Define path to a log file in the `File` parameter of the `FILE` appender.
+* Define path to a log file in the `file` parameter of the `FILE` appender.
 
-* Add settings for category loggers in your project.
+* Add settings for loggers of your project.
 
-* In the <<gui_desktop,inheritor class>> of `com.haulmont.cuba.desktop.App` of your project, for example `SampleApp`, override the `getDefaultLog4jConfig()` method and use it to return the path to your log file relative to the CLASSPATH root. For example:
+* In the <<gui_desktop,inheritor class>> of `com.haulmont.cuba.desktop.App` of your project, for example `SampleApp`, override the `getDefaultLogConfig()` method and use it to return the path to your log file relative to the CLASSPATH root. For example:
 +
 [source, java]
 ----
-public class SampleApp extends App {
-...
-    @Override
-    protected String getDefaultLog4jConfig() {
-        return "sample-log4j.xml";
-    }
+include::{sourcesdir}/development/logging_2.java[]
 ----
 
-* If necessary, you can override the location of the configuration file at application start using <<log4j.configuration,log4j.configuration>> system property.
+* If necessary, you can override the location of the configuration file at the application start using <<logback.configurationFile,logback.configurationFile>> system property.
 
 [[debug_and_testing]]
 === Debugging and Testing
