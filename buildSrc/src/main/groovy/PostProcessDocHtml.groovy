@@ -21,18 +21,12 @@ class PostProcessDocHtml extends DefaultTask {
             it.text(text)
         }
 
-        def expandCaption = docLang == 'ru' ? 'Развернуть все' : 'Expand all';
-        def collapseCaption = docLang == 'ru' ? 'Свернуть все' : 'Collapse all';
         def hideCaption = docLang == 'ru' ? 'Скрыть панель' : 'Hide panel';
 
         def treeControl = toc.prependElement("div")
         treeControl.attr("id", "treecontrol")
 
-        treeControl.html("<a href=\"#\"> $collapseCaption </a>\n" +
-                "<span class=\"separator-link\"> | </span>\n" +
-                "<a href=\"#\"> $expandCaption </a>\n" +
-                "<span class=\"separator-link\"> | </span>\n" +
-                "<a href=\"#\" id=\"close-panel\" style=\"white-space: pre;\"> $hideCaption </a>")
+        treeControl.html("<a href=\"#\" id=\"close-panel\" style=\"white-space: pre;\">$hideCaption</a>")
 
         doc.body().append("<script type=\"text/javascript\" src=\"js/jquery-1.11.1.min.js\"/>\n" +
                 "<script type=\"text/javascript\" src=\"js/jquery.treeview.js\"/>\n" +
