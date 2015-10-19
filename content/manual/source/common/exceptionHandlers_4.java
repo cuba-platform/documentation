@@ -1,8 +1,8 @@
-@ManagedBean("cuba_NumericOverflowExceptionHandler")
+@Component("cuba_NumericOverflowExceptionHandler")
 public class NumericOverflowExceptionHandler extends AbstractGenericExceptionHandler {
 
     public NumericOverflowExceptionHandler() {
-        super(ReportingSQLException.class.getName());
+        super(EclipseLinkException.class.getName());
     }
 
     @Override

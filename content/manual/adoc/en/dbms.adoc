@@ -137,6 +137,11 @@ In a deployed application, the scripts to create and update the database are loc
 
 Create and update SQL scripts are text files with a set of DDL and DML commands separated by the "^" character. The "^" character is used, so that the ";" separator can be applied as part of complex commands; for example, when creating functions or triggers. The script execution mechanism splits the input file into separate commands using the "^" separator and executes each command in a separate transaction. This means that, if necessary, it is possible to group several single statements (e.g., `insert`), separated by semicolons and ensure that they execute in a single transaction.
 
+[TIP]
+====
+The "^" delimiter can be escaped by doubling it. For example, if you want to pass `^[0-9\s]+$` to a statement, the script should contain `^^[0-9\s]+$`.
+====
+
 An example of the update SQL script:
 
 [source, sql]
@@ -196,9 +201,9 @@ To run scripts to __update__ the database, the `updateDb` task is used. In Studi
 
 . The execution mechanism checks, whether all base projects have required tables in the database. If the database is not initialized for use of some base project, its creation scripts are executed.
 
-. A search is performed in `++modules/core/build/db/update/**++` directories, for update scripts, which are not registered in the *SYS_DB_CHANGELOG* table, i.e., not previously executed.
+. A search is performed in `++modules/core/build/db/update/**++` directories, for update scripts, which are not registered in the `SYS_DB_CHANGELOG` table, i.e., not previously executed.
 
-. All scripts found in the previous step are executed sequentially in the alphabetical order, and their names along with the path relative to the `db` directory are registered in the *SYS_DB_CHANGELOG* table.
+. All scripts found in the previous step are executed sequentially in the alphabetical order, and their names along with the path relative to the `db` directory are registered in the `SYS_DB_CHANGELOG` table.
 
 [[db_update_server]]
 ==== The Execution of Database Scripts by the Server
@@ -211,11 +216,11 @@ The mechanism to execute scripts by the server works as follows:
 
 * The scripts are extracted from the <<db_dir,database scripts directory>>, defined by the <<cuba.dbDir,cuba.dbDir>> application property, which by default is set to `tomcat/webapps/app-core/WEB-INF/db`.
 
-* If the DB does not have the *SEC_USER* table, the database is considered empty and the full initialization is run using the create scripts. After executing the initialization scripts, their names are stored in the *SYS_DB_CHANGELOG* table. The names of all available update scripts are stored in the same table, __without their execution__.
+* If the DB does not have the *SEC_USER* table, the database is considered empty and the full initialization is run using the create scripts. After executing the initialization scripts, their names are stored in the `SYS_DB_CHANGELOG` table. The names of all available update scripts are stored in the same table, __without their execution__.
 
-* If the DB has the *SEC_USER* table but does not have the *SYS_DB_CHANGELOG* table (this is the case when the described mechanism is launched for the first time on the existing production DB),__no scripts are executed__. Instead, the *SYS_DB_CHANGELOG* table is created and the names of all currently available create and update scripts are stored.
+* If the DB has the *SEC_USER* table but does not have the `SYS_DB_CHANGELOG` table (this is the case when the described mechanism is launched for the first time on the existing production DB),__no scripts are executed__. Instead, the `SYS_DB_CHANGELOG` table is created and the names of all currently available create and update scripts are stored.
 
-* If the DB has both the *SEC_USER* and *SYS_DB_CHANGELOG* tables, the update scripts whose names were not previously stored in the *SYS_DB_CHANGELOG* table are executed and their names are stored in the *SYS_DB_CHANGELOG* table. The sequence of scripts execution is determined by two factors: the priority of the base project (see <<db_dir,database scripts directory>>: `10-cuba`, `20-workflow`, ...) and the name of the script file (taking into account the subdirectories of the `update` directory) in the alphabetical order.
+* If the DB has both the *SEC_USER* and `SYS_DB_CHANGELOG` tables, the update scripts whose names were not previously stored in the `SYS_DB_CHANGELOG` table are executed and their names are stored in the `SYS_DB_CHANGELOG` table. The sequence of scripts execution is determined by two factors: the priority of the base project (see <<db_dir,database scripts directory>>: `10-cuba`, `20-workflow`, ...) and the name of the script file (taking into account the subdirectories of the `update` directory) in the alphabetical order.
 +
 Before the execution of update scripts, the check is performed, whether all base projects have required tables in the database. If the database is not initialized for use of some base project, its creation scripts are executed.
 

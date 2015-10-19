@@ -1,13 +1,21 @@
 @Inject
+private Metadata metadata;
+@Inject
 private Persistence persistence;
 ...
+// try-with-resources style
+try (Transaction tx = persistence.createTransaction()) {
+    Customer customer = metadata.create(Customer.class);
+    customer.setName("John Smith");
+    persistence.getEntityManager().persist(customer);
+    tx.commit();
+}
+// plain style
 Transaction tx = persistence.createTransaction();
 try {
-    EntityManager em = persistence.getEntityManager();
-    Customer customer = new Customer();
+    Customer customer = metadata.create(Customer.class);
     customer.setName("John Smith");
-    em.persist(customer);
-
+    persistence.getEntityManager().persist(customer);
     tx.commit();
 } finally {
     tx.end();

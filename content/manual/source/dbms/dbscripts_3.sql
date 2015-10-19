@@ -2,9 +2,7 @@ create table LIBRARY_COUNTRY (
   ID varchar(36) not null,
   CREATE_TS time,
   CREATED_BY varchar(50),
-  --
   NAME varchar(100) not null,
-  --
   primary key (ID)
 )^
 
