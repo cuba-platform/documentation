@@ -21,7 +21,6 @@ $(document).ready(function () {
         animated: "medium",
         persist: "location",
         unique: false,
-        control: "#treecontrol"
     });
 
     var closePanel = $("#close-panel");
