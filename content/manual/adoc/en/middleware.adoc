@@ -550,12 +550,7 @@ Entity Listener can be created in two ways:
 +
 [source, java]
 ----
-@Entity(...)
-@Table(...)
-@Listeners("cuba_MyEntityListener")
-public class MyEntity extends StandardEntity {
-    ...
-}
+include::{sourcesdir}/middleware/entitylisteners_2.java[]
 ----
 
 * Dynamically – entity and listener classes are passed to `addListener()` method of the `EntityListenerManager` bean. See example in this section: <<app_start_recipe>>.
@@ -577,36 +572,34 @@ This section covers various aspects of transaction management in CUBA applicatio
 
 Programmatic transaction management is done using `com.haulmont.cuba.core.Transaction` interface, a reference to which may be obtained via the `createTransaction()` or `getTransaction()` methods of the <<persistence,Persistence>> infrastructure interface.
 
-The `createTransaction()` method creates a new transaction and returns the `Transaction` interface. Subsequent calls of `commit()`, `commitRetaining()`, `end()` methods of this interface control the created transaction. If at the moment of creation there was another transaction, it will be paused and resumed after the completion of the newly created one.
+The `createTransaction()` method creates a new transaction and returns the `Transaction` interface. Subsequent calls of `commit()`, `commitRetaining()`, `end()` methods of this interface control the created transaction. If at the moment of creation there was another transaction, it will be suspended and resumed after the completion of the newly created one.
 
 The `getTransaction()` method either creates a new transaction or attaches to an existing one. If at the moment of the call there is an active transaction, then the method completes successfully, but subsequent calls of `commit()`, `commitRetaining()`, `end()` have no influence on the existing transaction. However calling `end()` without a prior call to `commit()` will mark current transaction as `RollbackOnly`.
 
-An example of programmatic transaction management: 
+Examples of programmatic transaction management:
 
 [source, java]
 ----
 include::{sourcesdir}/middleware/transactions_1.java[]
 ----
 
-`Transaction` interface also has the `execute()` method accepting an action class as input. This class defines an action which should be performed in this transaction. This allows organizing transaction management in functional style, for example: 
+`Transaction` interface has also the `execute()` method accepting an action class or a lambda expression. The action will be performed in the transaction. This enables organizing transaction management in functional style, for example:
 
 [source, java]
 ----
 include::{sourcesdir}/middleware/transactions_2.java[]
 ----
 
-If the transactional block is expected to return a result, the action class should implement `Transaction.Callable` interface. If the result is not required as in the example above, it is recommended to inherit the action class from the abstract class `Transaction.Runnable`.
-
-Keep in mind that `execute()` method of a given instance of `Transaction` may be called only once because the transaction ends after the action class code is executed.
+Keep in mind that `execute()` method of a given instance of `Transaction` may be called only once because the transaction ends after the action code is executed.
 
 [[transactions_decl]]
 ===== Declarative Transaction Management
 
-Any method of the Middleware <<managed_beans,managed bean>> may be marked with the annotation `@org.springframework.transaction.annotation.Transactional`, which will automatically create a transaction when the method is called. Such method does not require invoking `Persistence.createTransaction()`, you can immediately get `EntityManager` and work with it.
+Any method of the Middleware <<managed_beans,managed bean>> may be annotated with `@org.springframework.transaction.annotation.Transactional`, which will automatically create a transaction when the method is called. Such method does not require invoking `Persistence.createTransaction()`, you can immediately get `EntityManager` and work with it.
 
-`@Transactional` annotation supports a number of parameters. The main parameter is transaction creation mode – `Propagation`. The value `REQUIRED` corresponds to `getTransaction()`, the value `++REQUIRES_NEW++` – to `createTransaction()`. The default value is `REQUIRED`.
+`@Transactional` annotation supports a number of parameters. The main parameter is the transaction creation mode – `Propagation`. The `REQUIRED` value corresponds to `getTransaction()`, the `REQUIRES_NEW` value – to `createTransaction()`. The default value is `REQUIRED`.
 
-Declarative transaction management allows you to reduce the amount of http://en.wikipedia.org/wiki/Boilerplate_code[boilerplate code], but it has the following drawback: transactions are committed outside of the application code, which often complicates debugging because it conceals the moment when changes are sent to the DB and the entities become <<entity_states,Detached>>. Additionally, keep in mind that declarative markup will only work if the method is called by the container, i.e. calling a transaction method from another method of the same object will not start a transaction.
+Declarative transaction management allows you to reduce the amount of http://en.wikipedia.org/wiki/Boilerplate_code[boilerplate code], but it has the following drawback: transactions are committed outside of the application code, which often complicates debugging because it conceals the moment when changes are sent to the database and the entities become <<entity_states,Detached>>. Additionally, keep in mind that declarative markup will only work if the method is called by the container, i.e. calling a transaction method from another method of the same object will not start a transaction.
 
 With this in mind, we recommend using declarative transaction management only for simple cases like a <<services,service>> method reading a certain object and returning it to the client. 
 
@@ -640,42 +633,25 @@ Now, let us have a look at the same example with an independent nested transacti
 include::{sourcesdir}/middleware/transactions_5.java[]
 ----
 
-In the last example, the exception at point (8) will only occur if the entity supports optimistic blocking, i.e. if it implements `Versioned` interface.
+In the last example, the exception at point (8) will only occur if the entity supports optimistic locking, i.e. if it implements `Versioned` interface.
 
 [[transaction_timeout]]
 ===== Transaction Timeout
 
-You can set timeout in seconds for created transaction. When the timeout is exceeded, transaction will be interrupted and rolled back. Transaction timeout effectively limits the maximum duration of a database request.
+You can set a timeout in seconds for created transaction. When the timeout is exceeded, the transaction is interrupted and rolled back. Transaction timeout effectively limits the maximum duration of a database request.
 
-When transactions are managed programmatically, the timeout is specified by passing `TransactionParams` object to the `Persistence.createTransaction()`. method. For example: 
+When transactions are managed programmatically, the timeout is specified by passing `TransactionParams` object to the `Persistence.createTransaction()` method. For example:
 
 [source, java]
 ----
 include::{sourcesdir}/middleware/transactions_6.java[]
 ----
 
-In case of declarative transactions management, `timeout` parameter of the ` @Transactional` annotation can be used, for example:
+In the case of declarative transactions management, `timeout` parameter of the `@Transactional` annotation can be used, for example:
 
 [source, java]
 ----
 include::{sourcesdir}/middleware/transactions_7.java[]
 ----
 
-The default timeout can be defined using <<cuba.defaultQueryTimeoutSec,cuba.defaultQueryTimeoutSec>> application property.
-
-====== Implementation Specifics for Different DBMS
-
-*PostgreSQL*
-
-Unfortunately, JDBC driver for *PostgreSQL* does not support the `setQueryTimeout()` method of the `java.sql.Statement` interface. For this reason an extra command `++set local statement_timeout to {value}++` is executed in DB at the beginning of each transaction, for which timeout has been set using any approach, including a non-zero value of <<cuba.defaultQueryTimeoutSec,cuba.defaultQueryTimeoutSec>>. In this case, the DB server will interrupt the request itself if the timeout is exceeded. 
-
-We recommend the following to decrease the load generated by these extra operators: 
-
-* Default timeout should be set not on Middleware using `cuba.defaultQueryTimeoutSec` property, but on *PostgreSQL* server in the file `postgresql.conf`. For example, `++statement_timeout = 3000++` (in milliseconds).
-
-* For methods which need a longer timeout (reports and similar) the timeout should be specified explicitly in transaction parameters.
-
-*Microsoft SQL Server*
-
-JTDS driver supports the `setQueryTimeout()` method of the `java.sql.Statement` interface, so you can just set the standard `EntityManager` property `javax.persistence.query.timeout`, which will automatically apply to JDBC queries. 
-
+The default timeout can be defined using the <<cuba.defaultQueryTimeoutSec,cuba.defaultQueryTimeoutSec>> application property.
