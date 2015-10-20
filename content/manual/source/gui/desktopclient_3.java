@@ -1,4 +1,4 @@
 @Override
-protected String getDefaultLog4jConfig() {
-    return "sales-log4j.xml";
+protected String getDefaultLogConfig() {
+    return "sales-logback.xml";
 }
