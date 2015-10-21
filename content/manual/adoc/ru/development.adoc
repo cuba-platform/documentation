@@ -570,17 +570,7 @@ image::dev_idea_setStringtype.png[align="center"]
 
 *Microsoft SQL Server* использует кластерные индексы для таблиц.
 
-По умолчанию кластерный индекс создается по первичному ключу таблицы, однако используемые в CUBA-приложении ключи типа `UUID` плохо подходят для кластерного индекса. Поэтому необходимо для каждой таблицы правильно выбрать и создать кластерный индекс. Поле для кластерного индекса должно быть небольшим и монотонно возрастающим, поэтому ориентировочные правила следующие:
-
-* Для большинства таблиц подходит поле *CREATE_TS*. При этом записи будут физически располагаться в порядке их создания. 
-
-* Для композитных сущностей, если чтение превалирует над записью, имеет смысл использовать ссылку на владельца. При этом записи будут сгруппированы по владельцам, и их извлечение вместе с владельцем будет происходить быстрее. 
-
-* Для небольших (< 100 записей) редко изменяемых таблиц тип кластерного индекса не важен, можно оставить *ID*.
-
-* Для таблиц сущностей, унаследованных по стратегии `JOINED`, в которых нет поля *CREATE_TS*, нужно создать его искусственно с параметром `++default current_timestamp++`. 
-
-Пример:
+По умолчанию кластерный индекс создается по первичному ключу таблицы, однако используемые в CUBA-приложении ключи типа `UUID` плохо подходят для кластерного индекса. Мы рекомендуем создавать первичные ключи типа UUID с модификатором `nonclustered`:
 
 [source, sql]
 ----
@@ -590,48 +580,12 @@ create table SALES_CUSTOMER (
     ...
     primary key nonclustered (ID)
 )^
-
-create clustered index IDX_SALES_CUSTOMER_CREATE_TS on SALES_CUSTOMER (CREATE_TS)^
-----
-
-Пример композитной сущности: 
-
-[source, sql]
-----
-create table SALES_ITEM (
-    ID uniqueidentifier not null,
-    CREATE_TS datetime,
-    ...
-    ORDER_ID uniqueidentifier,
-    ...
-    primary key nonclustered (ID),
-    constraint FK_SALES_ITEM_ORDER foreign key (ORDER_ID) references SALES_ORDER(ID)
-)^
-
-create clustered index IDX_SALES_ITEM_ORDER on SALES_ITEM (ORDER_ID)^
-----
-
-Пример унаследованной сущности: 
-
-[source, sql]
-----
-create table SALES_DOC (
-    CARD_ID uniqueidentifier,
-    CREATE_TS datetime default current_timestamp,
-    NUMBER varchar(50),
-    primary key nonclustered (CARD_ID),
-    constraint FK_SALES_DOC_CARD foreign key (CARD_ID) references WF_CARD (ID)
-)^
-
-create clustered index IDX_SALES_DOC_CREATE_TS on SALES_DOC (CREATE_TS)^
-
-create index IDX_SALES_DOC_CARD on SALES_DOC (CARD_ID)^
 ----
 
 [[db_oracle_features]]
 ==== Особенности Oracle Database
 
-В связи с политикой распространения JDBC драйвера Oracle его можно скачать только вручную с сайта link:$$http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html$$[http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html]. После скачивания скопируйте JAR с драйвером `ojdbc6.jar` в подкаталог `lib` *Studio* и подкаталог `lib` установленного сервера *Tomcat*. После этого необходимо остановить Studio, остановить демона Gradle, выполнив в командной строке `gradle --stop`, а затем снова запустить Studio.
+В связи с политикой распространения JDBC драйвера Oracle его можно скачать только вручную с сайта link:$$http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html$$[http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html]. После скачивания скопируйте JAR с драйвером `ojdbc6.jar` в подкаталог `lib` Studio и подкаталог `lib` установленного сервера Tomcat. После этого необходимо остановить Studio, остановить демона Gradle, выполнив в командной строке `gradle --stop`, а затем снова запустить Studio.
 
 [[logging]]
 === Логгирование

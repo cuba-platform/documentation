@@ -569,17 +569,7 @@ To create a PostgreSQL database on an Ubuntu-like system, you should install the
 
 *Microsoft SQL Server* uses cluster indexes for tables.
 
-By default, a cluster index is based on the table's primary key, however `UUID`-type keys used by CUBA-applications are poorly suited for clustered index. That is why you should correctly select and create a clustered index for each table. The clustered index field should be relatively small and strictly ascending, following the general rules:
-
-* For most tables, you can use the *CREATE_TS* field. With this field, the records will be physically stored according to their creation order.
-
-* For composite entities, if reading prevails over writing, it makes sense to use an owner key. In this case, the records will be grouped by owner and their loading together with an owner will be faster.
-
-* For small (< 100 records) and rarely changing tables, the type of clustered index is not important and you can keep using *ID*.
-
-* For tables of the entities, inherited via `JOINED` strategy, that do not have the *CREATE_TS* field, you can create it manually with the `++current_timestamp++` parameter.
-
-Example:
+By default, a cluster index is based on the table's primary key, however keys of the `UUID` type used by CUBA-applications are poorly suited for clustered index. We recommend creating UUID primary keys with the `nonclustered` modificator:
 
 [source, sql]
 ----
@@ -589,48 +579,12 @@ create table SALES_CUSTOMER (
     ...
     primary key nonclustered (ID)
 )^
-
-create clustered index IDX_SALES_CUSTOMER_CREATE_TS on SALES_CUSTOMER (CREATE_TS)^
-----
-
-Example of a composite entity:
-
-[source, sql]
-----
-create table SALES_ITEM (
-    ID uniqueidentifier not null,
-    CREATE_TS datetime,
-    ...
-    ORDER_ID uniqueidentifier,
-    ...
-    primary key nonclustered (ID),
-    constraint FK_SALES_ITEM_ORDER foreign key (ORDER_ID) references SALES_ORDER(ID)
-)^
-
-create clustered index IDX_SALES_ITEM_ORDER on SALES_ITEM (ORDER_ID)^
-----
-
-Example of an inherited entity:
-
-[source, sql]
-----
-create table SALES_DOC (
-    CARD_ID uniqueidentifier,
-    CREATE_TS datetime default current_timestamp,
-    NUMBER varchar(50),
-    primary key nonclustered (CARD_ID),
-    constraint FK_SALES_DOC_CARD foreign key (CARD_ID) references WF_CARD (ID)
-)^
-
-create clustered index IDX_SALES_DOC_CREATE_TS on SALES_DOC (CREATE_TS)^
-
-create index IDX_SALES_DOC_CARD on SALES_DOC (CARD_ID)^
 ----
 
 [[db_oracle_features]]
 ==== Oracle Database Specifics
 
-Due to the distribution policy of Oracle JDBC driver, it can only be downloaded manually from http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html. After downloading, copy `ojdbc6.jar` file into the lib subfolder in *Studio* and the lib subfolder of the installed *Tomcat* server. Then you need to stop Studio, stop Gradle daemon by executing `gradle --stop` in the command line, then start Studio again.
+Due to the distribution policy of Oracle JDBC driver, it can only be downloaded manually from http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html. After downloading, copy `ojdbc6.jar` file into the lib subfolder in Studio and the lib subfolder of the installed Tomcat server. Then you need to stop Studio, stop Gradle daemon by executing `gradle --stop` in the command line, then start Studio again.
 
 [[logging]]
 === Logging

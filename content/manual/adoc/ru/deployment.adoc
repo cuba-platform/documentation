@@ -284,35 +284,18 @@ file:${catalina.home}/conf/sales/local.app.properties
 [[war_deployment]]
 ==== Развертывание в WAR
 
-Стандартное для JavaEE развертывание приложений в WAR-файлы осуществляется с помощью задач сборки <<build.gradle_buildWar,buildWar>> и <<build.gradle_createWarDistr,createWarDistr>>. Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Glassfish 4*.
+Стандартное для JavaEE развертывание приложений в WAR-файлы осуществляется с помощью задачи сборки <<build.gradle_buildWar,buildWar>>. Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Glassfish 4*.
 
-. Добавляем в <<build.gradle,build.gradle>> задачи сборки WAR для модулей *core* и *web*:
+. Добавляем в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
 +
 [source, java]
 ----
-configure(coreModule) {
-    ...
-    task buildWar(dependsOn: assemble, type: CubaWarBuilding) {
-        appName = 'app-core'
-        appHome = '${app.home}'
-    }
-}
-
-configure(webModule) {
-    ...
-    task buildWar(dependsOn: assemble, type: CubaWarBuilding) {
-        appName = 'app'
-        appHome = '${app.home}'
-    }
-}
-----
-
-. Добавляем в `build.gradle` задачу сборки дистрибутива:
-+
-[source, java]
-----
-task createWarDistr(dependsOn: [coreModule.buildWar, webModule.buildWar], type: CubaWarDistribution) {
+task buildWar(type: CubaWarBuilding) {
+    coreProject = project(':app-core')
+    webProject = project(':app-web')
+    appName = 'app'
     appHome = '${app.home}'
+    singleWar = false
 }
 ----
 
@@ -320,13 +303,15 @@ task createWarDistr(dependsOn: [coreModule.buildWar, webModule.buildWar], type: 
 +
 `gradlew createWarDistr`
 +
-В результате в подкаталоге `build/war` проекта создаются домашний каталог с именем `${app.home}` и файлы `app-core.war` и `app.war`. Имя домашнего каталога здесь роли не играет, так как реальное имя будет задаваться для сервера с помощью системной переменной Java.
+В результате в подкаталоге `build/distributions/war` проекта создаются файлы `app-core.war` и `app.war`.
 
-. Копируем содержимое `build/war/${app.home}` на сервер, например в каталог `/home/user/app_home`.
+. Создаем домашний каталог приложения на сервере, например, `/home/user/app_home`.
 
 . Устанавливаем сервер *Glassfish 4*, например в каталог `/home/user/glassfish4`.
 
 . Копируем JDBC-драйвер используемой базы данных в каталог `/home/user/glassfish4/glassfish/domains/domain1/lib`. Файл драйвера можно взять из каталога `lib` Studio, либо из каталога `build/tomcat/lib` проекта (если перед этим выполнялось <<fast_deployment,быстрое развертывание>> в Tomcat).
+
+. Создаем файл конфигурации <<logging, Logback>> на основе файла `build/tomcat/conf/logback.xml`, заменяя переменную ${catalina.home} на ${app.home}. Копируем файл на сервер в домашний каталог приложения.
 
 . Запускаем сервер:
 +
@@ -366,7 +351,7 @@ task createWarDistr(dependsOn: [coreModule.buildWar, webModule.buildWar], type: 
 
 * `++app.home = /home/user/app_home++` - домашний каталог приложения.
 
-* `++logback.configurationFile = file:///home/user/app_home/logback.xml++` - файл конфигурации <<logging,логгирования>> приложения.
+* `++logback.configurationFile = file:///home/user/app_home/logback.xml++` - файл конфигурации <<logging,логгирования>>, созданнный на шаге выше.
 
 . Перезапускаем сервер:
 +

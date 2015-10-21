@@ -280,49 +280,34 @@ cuba.webContextName = /
 [[war_deployment]]
 ==== Deployment in WAR
 
-JavaEE standard application deployment into WAR files is performed using the <<build.gradle_buildWar,buildWar>> and <<build.gradle_createWarDistr,createWarDistr>> build tasks. An example of building WAR files and their deployment on the *Glassfish 4* server is provided below.
+JavaEE standard application deployment into WAR files is performed using the <<build.gradle_buildWar,buildWar>> build task. An example of building WAR files and their deployment on the *Glassfish 4* server is provided below.
 
-. Add tasks to build WAR for the *core* and *web* modules to <<build.gradle,build.gradle>>:
+. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>:
 +
 [source, groovy]
 ----
-configure(coreModule) {
-    ...
-    task buildWar(dependsOn: assemble, type: CubaWarBuilding) {
-        appName = 'app-core'
-        appHome = '${app.home}'
-    }
-}
-
-configure(webModule) {
-    ...
-    task buildWar(dependsOn: assemble, type: CubaWarBuilding) {
-        appName = 'app'
-        appHome = '${app.home}'
-    }
-}
-----
-
-. Add the task to build a distribution to `build.gradle`:
-+
-[source, groovy]
-----
-task createWarDistr(dependsOn: [coreModule.buildWar, webModule.buildWar], type: CubaWarDistribution) {
+task buildWar(type: CubaWarBuilding) {
+    coreProject = project(':app-core')
+    webProject = project(':app-web')
+    appName = 'app'
     appHome = '${app.home}'
+    singleWar = false
 }
 ----
 
 . Start build process:
 +
-`gradlew createWarDistr`
+`gradlew buildWar`
 +
-As a result, the home directory named `${app.home}` and the app-core.war and app.war files are created in the build/war project subdirectory. Name of the home directory does not matter here, as the actual name will be set for the server using a Java system variable.
+As a result, the `app-core.war` and `app.war` files are created in the `build/distributions/war` project subdirectory.
 
-. Copy the content of `build/war/${app.home}` to the server, for example, to the `/home/user/app_home` directory.
+. Create an application home directory on the server, for example, `/home/user/app_home`.
 
 . Install the *Glassfish 4* server, for example, into the `/home/user/glassfish4` directory.
 
-. Copy the JDBC driver of the database to the `/home/user/glassfish4/glassfish/domains/domain1/lib` directory. You can take the driver file from the lib directory in Studio, or from the `build/tomcat/lib` project directory (if <<fast_deployment,fast deployment>> in Tomcat has been performed before).
+. Copy the JDBC driver of the database to the `/home/user/glassfish4/glassfish/domains/domain1/lib` directory. You can take the driver file from the `lib` directory in Studio, or from the `build/tomcat/lib` project directory (if <<fast_deployment,fast deployment>> in Tomcat has been performed before).
+
+. Create a <<logging, Logback>> configuration file on the basis of `build/tomcat/conf/logback.xml` replacing the ${catalina.home} variable to ${app.home}. Place the file into the application home directory.
 
 . Start the server:
 +
@@ -358,9 +343,11 @@ As a result, the home directory named `${app.home}` and the app-core.war and app
 
 * `++app.home = /home/user/app_home++` – application home directory.
 
-* `++logback.configurationFile = file:///home/user/app_home/logback.xml++` – application <<logging,logging>> configuration file.
+* `++logback.configurationFile = file:///home/user/app_home/logback.xml++` – the Logback configuration file created in the step above.
 
-. Restart the server:`$ ./asadmin stop-domain`
+. Restart the server:
++
+`$ ./asadmin stop-domain`
 +
 `$ ./asadmin start-domain`
 
