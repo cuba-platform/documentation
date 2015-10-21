@@ -106,7 +106,7 @@ The *web* module contains the following directories:
 * `web` – directory with configuration files of the web application built from the *Web Client*: <<context.xml,context.xml>> and <<web.xml,web.xml>>.
 
 [[build_scripts]]
-=== Build Scripts Overview
+=== Build Scripts
 
 Platform based projects are built using *Gradle* build system. Build scripts are two files in the project root directory:
 
@@ -119,72 +119,106 @@ This section describes the structure of the scripts and the purpose and paramete
 [[build.gradle]]
 ==== The Structure of build.gradle
 
-The `allprojects` section defines the group and version of the project <<artifact,artifacts>> being built. Artifact names are based on module names specified in `settings.gradle`. If the `ext.isSnapshot` property is `true`, artifact names will have the `SNAPSHOT` suffix. The `ext.tomcatDir` property sets the location of the Tomcat <<build.gradle_setupTomcat,installation>> directory. Furthermore, the `allprojects` section may have the following optional properties:
+[[build.gradle_parameters]]
+===== Configuration Parameters
 
-* `ext.copyright` – the copyright notice text that is inserted by *IntelliJ IDEA* into the source text files.
+The `buildscript` section defines the following:
 
-* `ext.vcs` – type of VCS used in the project. If this property is specified, IntelliJ IDEA's generated project files will have a VCS integration parameter for this VCS. Possible values: `svn`, `git`.
+* The base projects version.
 
-* `ext.uploadUrl` – URL of the <<artifact_repository,repository>> where assembled project artifacts will be uploaded to upon completion of the `uploadArchives` task. Haulmont repository is used by default.
-
-* `ext.uploadUser` – name of the repository user that will be used to upload assembled project artifacts. `++HAULMONT_REPOSITORY_USER++` environment variable value is used by default.
-
-* `ext.uploadPassword` repository user password that will be used to upload assembled project artifacts. `++HAULMONT_REPOSITORY_PASSWORD++` environment variable value is used by default. 
-
-* `ext.tomcatPort`, `ext.tomcatShutdownPort` and `ext.tomcatDebugPort` properties affect the `setupTomcat` task (see below) and can be used to install Tomcat with non-standard ports.
-
-[TIP]
-====
-Instead of setting project properties in `build.gradle` itself, you can do it by passing a command-line argument with the `-P` prefix, for example:
-
-`gradlew uploadArchives -PuploadUser=myuser -PuploadPassword=mypassword`
-====
-
-In the `buildscript` section, the following actions are executed:
-
-* The base projects version is specified.
-
-* The set of repositories for loading project dependencies is specified. Values of `repoUser` and `repoPass` project properties or standard values explicitly set in the build script are used as credentials to access the repository. Similar to other project properties, you can pass `repoUser` and `repoPass` in the command line arguments with `-P` prefix.
-
-* Dependency from the *cuba-plugin* is declared; the plugin contains the project's build specifics and is connected to the module build configuration using the following method:
+* The set of <<artifact_repository, repositories>> for loading project dependencies. Values of `repoUser` and `repoPass` project properties or default values explicitly set in the build script are used as credentials to access the repository. If you build the project outside Studio, you can pass `repoUser` and `repoPass` in the command line arguments with `-P` prefix:
 +
+[source]
+--
+gradlew assemble -PrepoUser=me -PrepoPass=mypassword
+--
+
+Below the `buildscript` section, a few variables are defined.
+
+CUBA-specific build logic is incapsulated in *cuba* Gradle plugin. It is included in the root of the script and in the `configure` section of all modules by the following statement:
+
 [source, groovy]
 ----
 apply(plugin: 'cuba')
 ----
 
-Then, application modules building parameters are defined in the `configure` section.
+The settings of the *cuba* plugin are defined in `cuba` section:
+
+[source, groovy]
+----
+include::{sourcesdir}/development/build_gradle_1.groovy[]
+----
+
+Let us consider the available options:
+
+* `artifact` - this section defines the group and version of the project <<artifact, artifacts>> being built. Artifact names are based on module names specified in `settings.gradle`.
+
+** `group` - artifact group.
+** `version` - artifact version.
+** `isSnapshot` - if `true`, artifact names will have the `SNAPSHOT` suffix.
+
+* `tomcat` - this section defines the settings of the Tomcat server which is used for <<fast_deployment, fast deployment>>.
+
+** `dir` - location of the Tomcat <<build.gradle_setupTomcat, installation>> directory.
+** `port` - listening port; 8080 by default.
+** `debugPort` - Java debug listening port; 8787 by default.
+** `shutdownPort` - port listening to the `SHUTDOWN` command; 8005 by default.
+
+* `ide` - this section contains instructions for Studio and IDE.
+
+** `vcs` - a version control system for the project. Only `Git` and `svn` are currently supported.
+** `copyright` - copyright text to be inserted into beginning of each source file.
+** `classComment` - comment text to be placed above class declarations in Java source files.
+
+* `uploadRepository` - this section defines the settings of the <<artifact_repository, repository>> where assembled project artifacts will be uploaded to upon completion of the `uploadArchives` task.
++
+** `url` - the repository URL. If not specified, Haulmont's repository is used.
+** `user` - the repository user.
+** `password` - the repository password.
++
+You can pass the upload repository parameters from the command line with the following arguments:
++
+[source]
+--
+gradlew uploadArchives -PuploadUrl=http://myrepo.com/content/repositories/snapshots -PuploadUser=me -PuploadPassword=mypassword
+--
+
+[[build.gradle_tasks]]
+===== Tasks
 
 _Tasks_ are executable units in Gradle. They are defined both in the plugins and in the build script itself. Below are CUBA-specific tasks; their parameters can be configured in `build.gradle`.
 
-* `enhance` – the `CubaEnhancing`-type task that executes bytecode enhancement of persistent entity classes. It is declared in the *global* <<app_modules,module>>. The path to the <<persistence.xml,persistence.xml>> project file is specified in the `persistenceXml` task parameter.
-+
+[[build.gradle_enhance]]
+====== enhance
+
+`enhance` – the task of the `CubaEnhancing` type which performs bytecode enhancement (weaving) of entity classes. It is declared in the *global* <<app_modules,module>>.
+
 For example:
-+
+
 [source, groovy]
 ----
-task enhance(type: CubaEnhancing) {
-    persistenceXml = "${globalModule.projectDir}/src/persistence.xml"
-}
+task enhance(type: CubaEnhancing)
 ----
 
-* `enhanceTransient` – the `CubaEnhanceTransient`-type task that executes bytecode enhancement of non-persistent entity classes. The path to the <<metadata.xml,metadata.xml>> project file is specified in the `metadataXml` task parameter.
-+
-For example:
-+
-[source, groovy]
-----
-include::{sourcesdir}/development/build_gradle_enhanceTransient_1.groovy[]
-----
+Optional parameters:
 
-* `setupTomcat` – the `CubaSetupTomcat`-type task that performs installation and initialization of the local Tomcat server for subsequent <<fast_deployment,fast deployment>> of the application. This task is automatically added to the project when you connect the *cuba* build plugin, so you don't need to declare it in `build.gradle`. Tomcat installation directory is specified by the `ext.tomcatDir` property in the `allprojects` section. By default, it is the project's build/tomcat subfolder.
+* `persistenceConfig` - allows you to specify the set of <<persistence.xml, persistence.xml>> files explicitly. If not set, the task will enhance all persistent entities listed in the `*persistence.xml` files located in the CLASSPATH.
 
-* `deploy` – the `CubaDeployment`-type task that performs <<fast_deployment,fast deployment>> of a module to Tomcat. It is declared in the *core*, *web* and *portal* modules. Parameters:
-+
---
-** `appName` – name of the web application that will be created from the module. In fact, it is the name of a subdirectory inside `tomcat/webapps`.
+* `metadataXml` - allows you to specify the <<metadata.xml, metadata.xml>> project file explicitly. If not set, the task will enhance all non-persistent entities listed in the `*metadata.xml` files located in the module source tree.
 
-** `jarNames` – the list of JAR file names (without versions) produced as a result of building a module and intended to be placed into the `WEB-INF/lib` catalog of the web application. All other module artifacts and dependencies will be copied to tomcat/shared/lib.
+[[build.gradle_setupTomcat]]
+====== setupTomcat
+
+`setupTomcat` – the task of the `CubaSetupTomcat` type which performs installation and initialization of the local Tomcat server for subsequent <<fast_deployment,fast deployment>> of the application. This task is automatically added to the project when you apply the *cuba* Gradle plugin, so you don't need to declare it in `build.gradle`. Tomcat installation directory is specified by the `tomcat.dir` property of the `cuba` section. By default, it is the project's `build/tomcat` subdirectory.
+
+[[build.gradle_deploy]]
+====== deploy
+
+`deploy` – the task of the `CubaDeployment` which performs <<fast_deployment,fast deployment>> of a module to Tomcat. It is declared in the *core*, *web* and *portal* modules. Parameters:
+
+* `appName` – name of the web application that will be created from the module. In fact, it is the name of a subdirectory inside `tomcat/webapps`.
+
+* `jarNames` – the list of JAR file names (without versions) produced as a result of building a module and intended to be placed into the `WEB-INF/lib` catalog of the web application. All other module artifacts and dependencies will be copied to `tomcat/shared/lib`.
 
 For example:
 
@@ -195,83 +229,65 @@ task deploy(dependsOn: assemble, type: CubaDeployment) {
     jarNames = ['cuba-global', 'cuba-core', 'app-global', 'app-core']
 }
 ----
---
 
-* `buildWar` – the `CubaWarBuilding`-type task that builds a module into a WAR file. It can be declared in the *core*, *web* and *portal* modules, if <<war_deployment,application deployment to WAR>> is required. The built WAR files are located in the build/distributions module subdirectories.
-+
-Task parameters:
-+
---
-** `appName` – the name of the resulting WAR file.
+[[build.gradle_buildWar]]
+====== buildWar
 
-** `appHome` – the path to the application home directory. The home directory contains the <<logging,logging>> configuration file, the <<db_dir,database scripts directory>>, and the <<conf_dir,configuration>>, <<temp_dir,temporary>> and <<work_dir,work>> directories of the application.
-+
-In the `appHome` parameter, you can specify either an absolute path to the home directory or a system variable, which should be set at server start. For example: `++appHome = '/work/sales_home'++` or `++appHome = '${app.home}'++`.
+`buildWar` – the task of the `CubaWarBuilding` type which builds a <<war_deployment, WAR file>> from the application code and its dependencies. It should be declared in the root of `build.gradle`. The resulting WAR file(s) are located in the `build/distributions` project subdirectory.
 
-** `appProperties` – the map of the properties that will be written to the WEB-INF/local.app.properties file in addition to those defined in the task itself. By default, the `buildWar` task creates this file and defines properties `cuba.logDir`, `cuba.confDir`, `cuba.tempDir`, `cuba.dataDir` in it, in order to work with the application home directory mentioned above. Additionally, the following parameter is set for the middleware:
-+
-[source, properties]
-----
-cuba.dataSourceJndiName = jdbc/CubaDS
-----
-+
-and for the web client:
-+
-[source, properties]
-----
-cuba.connectionUrl = http://localhost:8080/${appName}-core
-cuba.useLocalServiceInvocation = false
-----
-
-An example of a task in the *web* module: 
-
+To create a single WAR file comprises both Middleware and Web Client blocks, use the following task configuration:
 [source, groovy]
 ----
 include::{sourcesdir}/development/build_gradle_buildWar_1.groovy[]
----- 
---
+----
 
-* `createWarDistr` – the `CubaWarDistribution`-type task that prepares the distribution that includes application <<war_deployment,WAR files>> and their home directory. The task must depend on the tasks of the `buildWar` module and have the following parameters:
-+
---
-** `appHome` – the path to the home directory of the application (see `buildWar` task description for details).
-
-** `distrDir` – target folder for the distribution content. It is an optional parameter; by default, the `build/war` project subdirectory is used.
-
-Below is a sample task description:
-
+To create separate WAR files for Middleware and Web Client, use the following task configuration:
 [source, groovy]
 ----
-task createWarDistr(dependsOn: [coreModule.buildWar, webModule.buildWar], type: CubaWarDistribution) {
-    appHome = '${app.home}'
-}
+include::{sourcesdir}/development/build_gradle_buildWar_2.groovy[]
 ----
---
 
-* `createDb` – the `CubaDbCreation`-type task that creates application database by executing the corresponding <<db_scripts,scripts>>. It is declared in the *core* module. Parameters:
+Task parameters:
 
-** `dbms` – the DBMS type; specified as string (`hsql`, `postgres`, `mssql`, or `oracle`).
+* `coreProject` - the Gradle project representing the *core* module (Middleware).
 
-** `dbName` – the database name.
+* `webProject` - the Gradle project representing the *web* module (Web Client).
 
-** `dbUser` – the DBMS username.
+* `appName` – the name of the resulting WAR file. In case of separate WAR-files, the `-core` suffix will be added for the Middleware WAR.
 
-** `dbPassword` – the DBMS user password.
-
-** `host` – the DBMS host and port (optional) in the `host[:port]` format. If not specified, `localhost` is used. 
-
-** `masterUrl` – the URL used to connect when creating the database. If not specified, the default value that depends on the DBMS type and the `host` parameter is used.
-
-** `dropDbSql` – the SQL command to delete the database. If not specified, the default value that depends on the DBMS type is used.
-
-** `createDbSql` – the SQL command to create a database. If not specified, the default value that depends on the DBMS type is used.
-
-** `driverClasspath` – the list of JAR files containing the JDBC driver. The items in the list are separated by ":" on Linux and by ";" on Windows. If not specified, the system uses the dependencies that are part of the current module's `jdbc` configuration. Explicit definition of `driverClasspath` is necessary when using Oracle, because its JDBC driver is not available in the dependencies.
-
-** `oracleSystemPassword` – the SYSTEM user password for Oracle.
+* `appHome` – the path to the application home directory. The home directory contains the <<logging,logging>> configuration file, the <<db_dir,database scripts directory>>, and the <<conf_dir,configuration>>, <<temp_dir,temporary>> and <<work_dir,work>> directories of the application.
 +
+In the `appHome` parameter, you can specify an absolute or relative path to the home directory, or a system variable, which should be set at server start. For example: `++appHome = '/work/sales_home'++` or `++appHome = '${app.home}'++`.
+
+* `webXml` - the path to the special `web.xml` file for the single WAR, because it is different from the ones created for <<fast_deployment, fast deployment>> by default.
+
+[[build.gradle_createDb]]
+====== createDb
+
+`createDb` – the `CubaDbCreation`-type task that creates application database by executing the corresponding <<db_scripts,scripts>>. It is declared in the *core* module. Parameters:
+
+* `dbms` – the <<dbms_types, DBMS type>>, specified as the string `hsql`, `postgres`, `mssql`, or `oracle`.
+
+* `dbName` – the database name.
+
+* `dbUser` – the DBMS username.
+
+* `dbPassword` – the DBMS user password.
+
+* `host` – the DBMS host and port (optional) in the `host[:port]` format. If not specified, `localhost` is used.
+
+* `masterUrl` – the URL used to connect when creating the database. If not specified, the default value that depends on the DBMS type and the `host` parameter is used.
+
+* `dropDbSql` – the SQL command to delete the database. If not specified, the default value that depends on the DBMS type is used.
+
+* `createDbSql` – the SQL command to create a database. If not specified, the default value that depends on the DBMS type is used.
+
+* `driverClasspath` – the list of JAR files containing the JDBC driver. The items in the list are separated by ":" on Linux and by ";" on Windows. If not specified, the system uses the dependencies that are part of the current module's `jdbc` configuration. Explicit definition of `driverClasspath` is necessary when using Oracle, because its JDBC driver is not available in the dependencies.
+
+* `oracleSystemPassword` – the SYSTEM user password for Oracle.
+
 Example for PostgreSQL:
-+
+
 [source, groovy]
 ----
 task createDb(dependsOn: assemble, description: 'Creates local database', type: CubaDbCreation) {
@@ -281,9 +297,9 @@ task createDb(dependsOn: assemble, description: 'Creates local database', type: 
     dbPassword = 'cuba'
 }
 ----
-+
+
 Example for MS SQL Server:
-+
+
 [source, groovy]
 ----
 task createDb(dependsOn: assemble, description: 'Creates local database', type: CubaDbCreation) {
@@ -293,9 +309,9 @@ task createDb(dependsOn: assemble, description: 'Creates local database', type: 
     dbPassword = 'saPass1'
 }
 ----
-+
+
 Example for Oracle:
-+
+
 [source, groovy]
 ----
 task createDb(dependsOn: assemble, description: 'Creates database', type: CubaDbCreation) {
@@ -309,47 +325,68 @@ task createDb(dependsOn: assemble, description: 'Creates database', type: CubaDb
 }
 ----
 
-* `updateDb` – the `CubaDbUpdate`-type task that updates the database by executing the corresponding <<db_scripts,scripts>>. It is similar to the `createDb` task, except that the `dropDbSql` and `createDbSql` parameters are omitted.
+[[build.gradle_updateDb]]
+====== updateDb
 
-* `startDb` – the `CubaHsqlStart`-type task that starts the local HSQLDB server. Parameters:
+`updateDb` – the `CubaDbUpdate`-type task that updates the database by executing the corresponding <<db_scripts,scripts>>. It is similar to the `createDb` task, except that the `dropDbSql` and `createDbSql` parameters are omitted.
 
-** `dbName` – database name, default is `cubadb`.
+[[build.gradle_startDb]]
+====== startDb
 
-** `dbDataDir` – database directory, default is the `data` subfolder of the project.
+`startDb` – the `CubaHsqlStart`-type task that starts the local HSQLDB server. Parameters:
 
-** `dbPort` – server port, default is 9001.
-+
+* `dbName` – database name, default is `cubadb`.
+
+* `dbDataDir` – database directory, default is the `data` subfolder of the project.
+
+* `dbPort` – server port, default is 9001.
+
 For example: 
-+
+
 [source, groovy]
 ----
 include::{sourcesdir}/development/build_gradle_startDb_1.groovy[]
 ---- 
 
-* `stopDb` – the `CubaHsqlStop`-type task that stops the local HSQLDB server. The parameters are similar to `startDb`.
+[[build.gradle_stopDb]]
+====== stopDb
 
-* `start` – the `CubaStartTomcat`-type task that starts the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you add the *cuba* plugin, so you don't need to declare it in `build.gradle`.
+`stopDb` – the `CubaHsqlStop`-type task that stops the local HSQLDB server. The parameters are similar to `startDb`.
 
-* `stop` – the `CubaStopTomcat` type task that stops the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you include the *cuba* plugin, so you don't need to declare it in `build.gradle`.
+[[build.gradle_start]]
+====== start
 
-* `restart` – the task that stops the local Tomcat server, runs <<fast_deployment,fast deployment>>, and starts the server once again.
+`start` – the `CubaStartTomcat`-type task that starts the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you add the *cuba* plugin, so you don't need to declare it in `build.gradle`.
 
-* `debugWidgetSet` - the `CubaWidgetSetDebug` type task that launches GWT Code Server for debugging widgets in the browser.
-+
+[[build.gradle_stop]]
+====== stop
+
+`stop` – the `CubaStopTomcat` type task that stops the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you include the *cuba* plugin, so you don't need to declare it in `build.gradle`.
+
+[[build.gradle_restart]]
+====== restart
+
+`restart` – the task that stops the local Tomcat server, runs <<fast_deployment,fast deployment>>, and starts the server once again.
+
+[[build.gradle_debugWidgetSet]]
+====== debugWidgetSet
+
+`debugWidgetSet` - the `CubaWidgetSetDebug` type task that launches GWT Code Server for debugging widgets in the browser.
+
 Example usage: 
-+
+
 [source, groovy]
 ----
 include::{sourcesdir}/development/build_gradle_debugWidgetSet_1.groovy[]
 ---- 
-+
+
 Ensure that the `web-toolkit` module has a dependency on Servlet API library in the `runtime` configuration: 
-+
+
 [source, groovy]
 ----
 include::{sourcesdir}/development/build_gradle_debugWidgetSet_2.groovy[]
 ---- 
-+
+
 See <<debug_widgets>> for information on how to debug code in the browser.
 
 [[build_task_start]]
