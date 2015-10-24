@@ -712,155 +712,65 @@ image::debugWidgetSet_chrome_console.png[align="center"]
 
 [source, java]
 ----
-public class OrderEditor extends AbstractEditor {
-
-    @Named("itemsTable.add")
-    protected AddAction addAction;
-
-    @Override
-    public void init(Map<String, Object> params) {
-        addAction.setWindowId("sales$Product.lookup");
-        addAction.setHandler(new Lookup.Handler() {
-            @Override
-            public void handleLookup(Collection items) {
-                // some code
-            }
-        });
-    }
-}
+include::{sourcesdir}/development/logging_1.java[]
 ----
 
 Тогда можно написать следующий тест, проверяющий работу метода `init()`:
 
 [source, java]
 ----
-public class OrderEditorTest {
-
-    OrderEditor editor;
-
-    @Mocked
-    Window.Editor frame;
-
-    @Mocked
-    AddAction addAction;
-
-    @Before
-    public void setUp() throws Exception {
-        editor = new OrderEditor();
-        editor.setWrappedFrame(frame);
-        editor.addAction = addAction;
-    }
-
-    @Test
-    public void testInit() {
-        editor.init(Collections.<String, Object>emptyMap());
-        editor.setItem(new Order());
-
-        new Verifications() {
-            {
-                addAction.setWindowId("sales$Product.lookup");
-                addAction.setHandler(withInstanceOf(Window.Lookup.Handler.class));
-            }
-        };
-    }
-}
+include::{sourcesdir}/development/testing_2.java[]
 ----
 
 [[integration_tests_mw]]
 ===== Интеграционные тесты Middleware
 
-На уровне *Middleware* можно создавать интеграционные тесты, которые выполняются в полнофункциональном контейнере *Spring* с подключением к базе данных. В тестах такого типа можно выполнять код любого слоя внутри *Middleware* - от сервисов до ORM. 
+На уровне *Middleware* можно создавать интеграционные тесты, которые выполняются в полнофункциональном контейнере Spring с подключением к базе данных. В тестах такого типа можно выполнять код любого слоя внутри Middleware - от сервисов до ORM.
 
-Для создания интеграционных тестов в модуле *core* проекта приложения должен быть создан базовый класс - наследник `CubaTestCase`. В этом классе должны быть переопределены методы инициализации доступа к данным и получения списка файлов конфигурации. Например: 
-
-[source, java]
-----
-public class SalesTestCase extends CubaTestCase {
-
-    @Override
-    protected void initDataSources() throws Exception {
-        Class.forName("org.postgresql.Driver");
-        TestDataSource ds = new TestDataSource("jdbc:postgresql://localhost/sales_test", "cuba", "cuba");
-        TestContext.getInstance().bind("java:comp/env/jdbc/CubaDS", ds);
-    }
-
-    @Override
-    protected List<String> getTestAppProperties() {
-        String[] files = {
-                "cuba-app.properties",
-                "app.properties",
-                "test-app.properties",
-        };
-        return Arrays.asList(files);
-    }
-}
-----
-
-В качестве базы данных рекомендуется использовать отдельную тестовую БД, которую можно создавать, например, следующей задачей в `build.gradle`: 
+Платформа содержит класс `TestContainer`, который может быть использован в качестве базового для тестовых контейнеров приложения. Создайте наследника этого класса в модуле *core* своего проекта и в его конструкторе переопределите параметры загрузки <<app_properties_files, свойств приложения>> и подключения к БД. Например:
 
 [source, java]
 ----
-configure(coreModule) {
-...
-    task createTestDb(dependsOn: assemble, description: 'Creates local Postgres database for tests', type: CubaDbCreation) {
-        dbms = 'postgres'
-        dbName = 'sales_test'
-        dbUser = 'cuba'
-        dbPassword = 'cuba'
-    }
+include::{sourcesdir}/development/testing_3.java[]
 ----
 
-Класс `CubaTestCase` содержит следующие поля и методы, которые можно использовать в коде тестов:
+В качестве базы данных рекомендуется использовать отдельную тестовую БД, которую можно создавать, например, следующей <<build.gradle_createDb, задачей>> в `build.gradle`:
 
-* `persistence` - ссылка на интерфейс `<<persistence,Persistence>>`
+[source, groovy]
+----
+include::{sourcesdir}/development/testing_4.java[]
+----
 
-* `metadata` - ссылка на интерфейс `<<metadata,Metadata>>`
-
-* `deleteRecord()` - метод, который удобно использовать в `tearDown()` для удаления тестовых объектов из БД.
-
-Пример теста, проверяющего чтение сущностей из базы данных:
+Тестовый контейнер используется в классах тестов в качестве JUnit rule, указанного с помощью аннотации `@ClassRule`:
 
 [source, java]
 ----
-public class CustomerLoadTest extends SalesTestCase {
-
-    private UUID customerId;
-
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        persistence.createTransaction().execute(new Transaction.Runnable() {
-            @Override
-            public void run(EntityManager em) {
-                Customer customer = new Customer();
-                customerId = customer.getId();
-                customer.setName("testCustomer");
-                em.persist(customer);
-            }
-        });
-    }
-
-    @Override
-    public void tearDown() throws Exception {
-        deleteRecord("SALES_CUSTOMER", customerId);
-        super.tearDown();
-    }
-
-    public void test() {
-        Transaction tx = persistence.createTransaction();
-        try {
-            EntityManager em = persistence.getEntityManager();
-            TypedQuery<Customer> query = em.createQuery(
-                "select c from sales$Customer c", Customer.class);
-            List<Customer> list = query.getResultList();
-            tx.commit();
-            assertTrue(list.size() > 0);
-        } finally {
-            tx.end();
-        }
-    }
-}
+include::{sourcesdir}/development/testing_5.java[]
 ----
+
+В данном примере тестовый контейнер инициализируется один раз для всех тестовых методов класса, и уничтожается после того, как все они выполнены.
+
+Так как запуск контейнера занимает некоторое время, имеет смысл инициализировать контейнер один раз для тестов из нескольких (или всех) классов. Для этого создайте общий синглтон-экземпляр тестового контейнера, например:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_6.java[]
+----
+
+И используйте его в тестовых классах:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_7.java[]
+----
+
+Класс `TestContainer` содержит следующие методы, которые можно использовать в коде тестов (см. пример `CustomerLoadTest` выше):
+
+* `persistence()` - возвращает ссылку на интерфейс `<<persistence,Persistence>>`.
+
+* `metadata()` - возвращает ссылку на интерфейс `<<metadata,Metadata>>`.
+
+* `deleteRecord()` - этот набор перегруженных методов предназначен для использования в `@After` методах для удаления тестовых объектов из БД.
 
 [[integration_tests_client]]
 ===== Интеграционные тесты клиентского уровня

@@ -214,7 +214,7 @@ Optional parameters:
 [[build.gradle_deploy]]
 ====== deploy
 
-`deploy` – the task of the `CubaDeployment` which performs <<fast_deployment,fast deployment>> of a module to Tomcat. It is declared in the *core*, *web* and *portal* modules. Parameters:
+`deploy` – the task of the `CubaDeployment` type which performs <<fast_deployment,fast deployment>> of a module to Tomcat. It is declared in the *core*, *web* and *portal* modules. Parameters:
 
 * `appName` – name of the web application that will be created from the module. In fact, it is the name of a subdirectory inside `tomcat/webapps`.
 
@@ -264,7 +264,7 @@ In the `appHome` parameter, you can specify an absolute or relative path to the 
 [[build.gradle_createDb]]
 ====== createDb
 
-`createDb` – the `CubaDbCreation`-type task that creates application database by executing the corresponding <<db_scripts,scripts>>. It is declared in the *core* module. Parameters:
+`createDb` – the task of the `CubaDbCreation` type which creates application database by executing the corresponding <<db_scripts,scripts>>. It is declared in the *core* module. Parameters:
 
 * `dbms` – the <<dbms_types, DBMS type>>, specified as the string `hsql`, `postgres`, `mssql`, or `oracle`.
 
@@ -328,12 +328,12 @@ task createDb(dependsOn: assemble, description: 'Creates database', type: CubaDb
 [[build.gradle_updateDb]]
 ====== updateDb
 
-`updateDb` – the `CubaDbUpdate`-type task that updates the database by executing the corresponding <<db_scripts,scripts>>. It is similar to the `createDb` task, except that the `dropDbSql` and `createDbSql` parameters are omitted.
+`updateDb` – the task of the `CubaDbUpdate` type which updates the database by executing the corresponding <<db_scripts,scripts>>. It is similar to the `createDb` task, except that the `dropDbSql` and `createDbSql` parameters are omitted.
 
 [[build.gradle_startDb]]
 ====== startDb
 
-`startDb` – the `CubaHsqlStart`-type task that starts the local HSQLDB server. Parameters:
+`startDb` – the task of the `CubaHsqlStart` type which starts the local HSQLDB server. Parameters:
 
 * `dbName` – database name, default is `cubadb`.
 
@@ -351,17 +351,17 @@ include::{sourcesdir}/development/build_gradle_startDb_1.groovy[]
 [[build.gradle_stopDb]]
 ====== stopDb
 
-`stopDb` – the `CubaHsqlStop`-type task that stops the local HSQLDB server. The parameters are similar to `startDb`.
+`stopDb` – the task of the `CubaHsqlStop` type which stops the local HSQLDB server. The parameters are similar to `startDb`.
 
 [[build.gradle_start]]
 ====== start
 
-`start` – the `CubaStartTomcat`-type task that starts the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you add the *cuba* plugin, so you don't need to declare it in `build.gradle`.
+`start` – the task of the `CubaStartTomcat` type which starts the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you add the *cuba* plugin, so you don't need to declare it in `build.gradle`.
 
 [[build.gradle_stop]]
 ====== stop
 
-`stop` – the `CubaStopTomcat` type task that stops the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you include the *cuba* plugin, so you don't need to declare it in `build.gradle`.
+`stop` – the task of `CubaStopTomcat` type which stops the local Tomcat server installed by the <<build.gradle_setupTomcat,setupTomcat>> task. This task is automatically added to the project when you include the *cuba* plugin, so you don't need to declare it in `build.gradle`.
 
 [[build.gradle_restart]]
 ====== restart
@@ -371,7 +371,7 @@ include::{sourcesdir}/development/build_gradle_startDb_1.groovy[]
 [[build.gradle_debugWidgetSet]]
 ====== debugWidgetSet
 
-`debugWidgetSet` - the `CubaWidgetSetDebug` type task that launches GWT Code Server for debugging widgets in the browser.
+`debugWidgetSet` - the task of the `CubaWidgetSetDebug` type which launches GWT Code Server for debugging widgets in the browser.
 
 Example usage: 
 
@@ -698,7 +698,7 @@ image::debugWidgetSet_chrome_console.png[align="center"]
 [[testing]]
 ==== Testing
 
-This section covers various means of testing CUBA applications on different layers.
+This section covers the ways of testing CUBA applications on different layers.
 
 [[unit_tests]]
 ===== Unit Tests
@@ -709,155 +709,65 @@ Let us assume you have the following screen controller:
 
 [source, java]
 ----
-public class OrderEditor extends AbstractEditor {
-
-    @Named("itemsTable.add")
-    protected AddAction addAction;
-
-    @Override
-    public void init(Map<String, Object> params) {
-        addAction.setWindowId("sales$Product.lookup");
-        addAction.setHandler(new Lookup.Handler() {
-            @Override
-            public void handleLookup(Collection items) {
-                // some code
-            }
-        });
-    }
-}
+include::{sourcesdir}/development/testing_1.java[]
 ----
 
 You can write the following test checking the `init()` method:
 
 [source, java]
 ----
-public class OrderEditorTest {
-
-    OrderEditor editor;
-
-    @Mocked
-    Window.Editor frame;
-
-    @Mocked
-    AddAction addAction;
-
-    @Before
-    public void setUp() throws Exception {
-        editor = new OrderEditor();
-        editor.setWrappedFrame(frame);
-        editor.addAction = addAction;
-    }
-
-    @Test
-    public void testInit() {
-        editor.init(Collections.<String, Object>emptyMap());
-        editor.setItem(new Order());
-
-        new Verifications() {
-            {
-                addAction.setWindowId("sales$Product.lookup");
-                addAction.setHandler(withInstanceOf(Window.Lookup.Handler.class));
-            }
-        };
-    }
-}
+include::{sourcesdir}/development/testing_2.java[]
 ----
 
 [[integration_tests_mw]]
 ===== Middleware Integration Tests
 
-At the middle tier, you can create integration tests which are run in a fully functional *Spring* container connected to the database. In such tests you can run code from any layer of the Middleware, from services to ORM.
+In the middle tier, you can create integration tests which run in a fully functional Spring container connected to the database. In such tests you can run code from any layer of the Middleware, from services to ORM.
 
-To create integration tests, the application's *core* module should contain a base class derived from `CubaTestCase`. This class should override the methods for data access initialization and configuration files list retrieval. For example:
+The platform contains the `TestContainer` class which can be used as a base class for the test container in the application project. Create a subclass in the *core* module of your project and redefine parameters for loading <<app_properties_files, application properties>> and connecting to the test database in the constructor. For example:
 
 [source, java]
 ----
-public class SalesTestCase extends CubaTestCase {
-
-    @Override
-    protected void initDataSources() throws Exception {
-        Class.forName("org.postgresql.Driver");
-        TestDataSource ds = new TestDataSource("jdbc:postgresql://localhost/sales_test", "cuba", "cuba");
-        TestContext.getInstance().bind("java:comp/env/jdbc/CubaDS", ds);
-    }
-
-    @Override
-    protected List<String> getTestAppProperties() {
-        String[] files = {
-                "cuba-app.properties",
-                "app.properties",
-                "test-app.properties",
-        };
-        return Arrays.asList(files);
-    }
-}
+include::{sourcesdir}/development/testing_3.java[]
 ----
 
-We recommend using a separate test DB, which can be created, for example, with the help of the following task in `build.gradle`:
+We recommend using a separate test database, which can be created, for example, by the following Gradle <<build.gradle_createDb, task>> defined in `build.gradle`:
 
 [source, groovy]
 ----
-configure(coreModule) {
-...
-    task createTestDb(dependsOn: assemble, description: 'Creates local Postgres database for tests', type: CubaDbCreation) {
-        dbms = 'postgres'
-        dbName = 'sales_test'
-        dbUser = 'cuba'
-        dbPassword = 'cuba'
-    }
+include::{sourcesdir}/development/testing_4.java[]
 ----
 
-`CubaTestCase` class contains the following fields and methods that can be used in the test code:
-
-* `persistence` – a reference to the <<persistence,Persistence>> interface.
-
-* `metadata` – a reference to the <<metadata,Metadata>> interface.
-
-* `deleteRecord()` – a method that can be conveniently used in `tearDown()` to delete test objects from DB.
-
-An example of a test that checks loading entities from the database:
+The test container should be used in test classes as a JUnit rule specified by the `@ClassRule` annotation:
 
 [source, java]
 ----
-public class CustomerLoadTest extends SalesTestCase {
-
-    private UUID customerId;
-
-    @Override
-    public void setUp() throws Exception {
-        super.setUp();
-        persistence.createTransaction().execute(new Transaction.Runnable() {
-            @Override
-            public void run(EntityManager em) {
-                Customer customer = new Customer();
-                customerId = customer.getId();
-                customer.setName("testCustomer");
-                em.persist(customer);
-            }
-        });
-    }
-
-    @Override
-    public void tearDown() throws Exception {
-        deleteRecord("SALES_CUSTOMER", customerId);
-        super.tearDown();
-    }
-
-    public void test() {
-        Transaction tx = persistence.createTransaction();
-        try {
-            EntityManager em = persistence.getEntityManager();
-            TypedQuery<Customer> query = em.createQuery(
-                "select c from sales$Customer c", Customer.class);
-            List<Customer> list = query.getResultList();
-            tx.commit();
-            assertTrue(list.size() > 0);
-        } finally {
-            tx.end();
-        }
-    }
-}
+include::{sourcesdir}/development/testing_5.java[]
 ----
+
+In the example above, the test container is initialized once for all test methods of this class, and disposed after all of them finished.
+
+As the container startup takes some time, you may want to initialize the container once for all tests contained in several test classes. In this case, create a common singleton instance of your test container:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_6.java[]
+----
+
+And use it in your test classes:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_7.java[]
+----
+
+The `TestContainer` class contains the following methods that can be used in the test code (see the `CustomerLoadTest` example above):
+
+* `persistence()` – returns the reference to the <<persistence,Persistence>> interface.
+
+* `metadata()` – returns the reference to the <<metadata,Metadata>> interface.
+
+* `deleteRecord()` – this set of overloaded methods is aimed to be used in `@After` methods to clean up the database after tests.
 
 [[integration_tests_client]]
 ===== Client Tier Integration Tests
