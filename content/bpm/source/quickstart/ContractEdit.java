@@ -109,7 +109,7 @@ public class ContractEdit extends AbstractEditor<Contract> {
         LoadContext ctx = new LoadContext(ProcDefinition.class);
         ctx.setQueryString("select pd from bpm$ProcDefinition pd where pd.code = :code")
                 .setParameter("code", PROCESS_CODE);
-        return dataManager.load(ctx);
+        return (ProcDefinition) dataManager.load(ctx);
     }
 
     @Nullable
@@ -118,6 +118,6 @@ public class ContractEdit extends AbstractEditor<Contract> {
         ctx.setQueryString("select pi from bpm$ProcInstance pi where pi.procDefinition.id = :procDefinition and pi.entityId = :entityId")
                 .setParameter("procDefinition", procDefinition)
                 .setParameter("entityId", getItem());
-        return dataManager.load(ctx);
+        return (ProcDefinition) dataManager.load(ctx);
     }
 }

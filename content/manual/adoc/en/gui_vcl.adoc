@@ -935,6 +935,7 @@ With the `paramWhere` clause, you can introduce dependencies between parameters.
 {E}.manufacturer.id = :component$filter.model_manufacturer90062
 ---- 
 
+[[filter_component_name_img]]
 The parameter references a component which displays Manufacturer parameter. You can see the name of the component showing condition parameter by opening context menu on a condition table row in the filter editor:
 
 image::gui_filter_component_name.png[align="center"]
@@ -1038,6 +1039,12 @@ image::gui_filter_apply_to.png[align="center"]
 [[gui_attr_filter_columnsQty]]
 * `columnsQty` - defines the number of columns for conditions on the filter panel. Default value is 3.
 
+[[gui_attr_filter_defaultMode]]
+* `defaultMode` - defines the filter default mode. Possible values are `generic` and `fts`. When `fts` value is set then the filter will be opened in the full text search mode (if the entity is indexed). The default value is `generic`.
+
+[[gui_attr_filter_modeSwitchVisible]]
+* `modeSwitchVisible` - defines the visibility of the checkbox that switches the filter to the full text search mode. If full text search is unavailable then the checkbox will be invisible despite of the defined value. Possible values are `true` and `false` (`true` by default).
+
 All `filter` attributes:
 
 [cols="4", frame="none", grid="none"]
@@ -1049,7 +1056,7 @@ All `filter` attributes:
 
 | <<gui_attr_filter_columnsQty,columnsQty>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_filter_manualApplyRequired,manualApplyRequired>>| <<gui_attr_basic_stylename,stylename>>
 
-| <<gui_attr_filter_useMaxResults,useMaxResults>>| <<gui_attr_basic_visible,visible>>| |
+| <<gui_attr_filter_useMaxResults,useMaxResults>>| <<gui_attr_basic_visible,visible>>| <<gui_attr_filter_defaultMode,defaultMode>>| <<gui_attr_filter_modeSwitchVisible,modeSwitchVisible>>
 
 |===
 
@@ -1115,8 +1122,9 @@ For specific permissions configuration information, see <<chapter_security>>.
 [[gui_Filter_ext_params]]
 *External Filter Control Parameters*
 
-*System-wide parameters*
-
+* *System-wide parameters*
++
+--
 The following application properties affect filter behavior:
 
 * <<cuba.gui.genericFilterManualApplyRequired,cuba.gui.genericFilterManualApplyRequired>> − disables automatic applying of the filter (i.e., data loading) when the screen is opened.
@@ -1132,9 +1140,11 @@ The following application properties affect filter behavior:
 * <<cuba.gui.genericFilterConditionsLocation,cuba.gui.genericFilterConditionsLocation>> - defines the location of the conditions panel.
 
 * <<cuba.gui.genericFilterPopupListSize,cuba.gui.genericFilterPopupListSize>> - defines the maximum number of items displayed in the popup list of the *Search* button.
+--
 
-*Screen invocation parameters *
-
+* *Screen invocation parameters*
++
+--
 It is possible to specify the filter and parameters which should be applied when the screen is opened. For this purpose, the filter should be created in advance, stored in the database, and a corresponding entry in the *SEC_FILTER* table should have the *CODE* field set.
 
 To specify a filter code, pass to the screen a parameter with the same name as filter component identifier in this screen . Parameter value should be the code of the filter, which should be set and applied.
@@ -1153,6 +1163,7 @@ It should be noted that that a filter with a defined *CODE* field has some speci
 * It cannot be edited by users.
 
 * This filter name can be displayed in several languages. To achieve this, specify a string with key equal to the filter code in the application <<main_message_pack,main message pack>>.
+--
 
 [[sequential_filter]]
 *Applying Filters Sequentially*
@@ -1170,6 +1181,33 @@ Take the following steps to use sequential filters. First, choose and apply one 
 image::gui_filter_sequential.png[align="center"]
 
 The sequential filters implementation is based on the ability of <<dataManager,DataManager>> to run <<query_from_selected,sequential queries>>.
+
+[[filter_params_api]]
+*API for Working with Filter Parameters*
+
+The `Filter` interface provides methods for reading and writing of filter parameter values in a screen controller:
+
+* `setParamValue(String paramName, Object value)`
+* `getParamValue(String paramName)`
+
+`paramName` - filter parameter name. Parameter name is a part of component name that displays a parameter value. The procedure of getting a component name was described <<filter_component_name_img,above>>. Parameter name is placed after the last dot in a component name. For example, if the component name is `component$filter.model_manufacturer90062`, then the parameter name is `model_manufacturer90062`.
+
+Note that you cannot use these methods in the <<gui.adoc#abstractFrame,init()>> method of the screen controller, because the filter is not initialized at that moment. A good place to work with filter parameters is the <<gui.adoc#abstractWindow,ready()>> method.
+
+[[filter_fts]]
+*Full-Text Search Mode in Filter*
+
+If a filter datasource contains entities that are indexed by the full-text search subsystem (see link:{fts_man_url}[CUBA Platform. Full Text Search]), then a full-text search mode is available in the filter. Use the *Full-Text search* checkbox to switch to this mode.
+
+image::gui_filter_fts.png[align="center"]
+
+In the full-text search mode, the filter contains only one text field for search criteria, and the search is performed in entity fields indexed by the FTS subsystem.
+
+If a table is defined in the <<gui_attr_filter_applyTo, applyTo>> attribute, then placing the mouse cursor on the table row will display a tooltip with the information what entity attributes satisfy the search criteria.
+
+For hiding the filter mode checkbox, set `false` value to the <<gui_attr_filter_modeSwitchVisible, modeSwitchVisible>> filter attribute.
+
+If you want the filter to be opened in the full-text search mode by default, set `fts` value to the <<gui_attr_filter_defaultMode, defaultMode>> filter attribute.
 
 [[gui_GroupTable]]
 ====== GroupTable
@@ -2280,10 +2318,14 @@ include::{sourcesdir}/gui_vcl/tableId_1.xml[]
 [[gui_attr_table_column_width]]
 ** `width` − an optional attribute controlling default column width.
 
+[[gui_attr_table_column_align]]
 ** `align` − an optional attribute that sets text align for column cells. Possible values: `LEFT`, `RIGHT`, `CENTER`. Default is `LEFT`.
 
 [[gui_attr_table_column_editable]]
 ** `editable` − an optional attribute allowing / prohibiting editing of the corresponding column in the table. In order for a column to be editable, the `editable` attribute of the entire table (see below) should be set to `true` as well.
+
+[[gui_attr_table_column_sortable]]
+** `sortable` − an optional attribute to disable sorting of the column. Takes effect if the whole table has <<gui_attr_table_sortable,sortable>> attribute set to `true` (which is by default).
 
 [[gui_attr_table_column_maxTextLength]]
 ** `maxTextLength` – an optional attribute allowing to limit the number of characters in a cell. If the difference between the actual and the maximum allowed number of characters does not exceed the 10 character threshold, the "extra" characters remain unhidden. To see the entire record, users need to click on its visible part. An example of a column with a 5 character limitation:
@@ -2325,7 +2367,7 @@ include::{sourcesdir}/gui_vcl/tableFormatter_1.xml[]
 * `multiselect` attribute enables setting multiple selection mode for table rows. If `multiselect` is `true`, users can select multiple rows in the table using keyboard or mouse holding Ctrl or Shift keys. By default, multiple selection mode is switched off.
 
 [[gui_attr_table_sortable]]
-* `sortable` attribute enables sorting data in the table. By default, it is set to `true`. If sorting is allowed, clicking a column header will show a image:gui_sortable_down.png[]/image:gui_sortable_up.png[] icon to the right of the column name.
+* `sortable` attribute enables sorting data in the table. By default, it is set to `true`. If sorting is allowed, clicking a column header will show a image:gui_sortable_down.png[]/image:gui_sortable_up.png[] icon to the right of the column name. You can disable sorting for a particular column by using its <<gui_attr_table_column_sortable, sortable>> attribute.
 +
 Table sorting can be performed differently depending on whether all the records can be placed on one page or not. If they can, sorting is performed in memory without database queries. If there is more than one page, sorting is performed in the database by sending a new query with the corresponding `ORDER BY` condition.
 +
@@ -2526,16 +2568,13 @@ If such action is found, and has ` enabled = true` property, the action is execu
 
 <<gui_element_table_columns,column>> attributes:
 
-[cols="4", frame="none", grid="none"]
+[cols="5", frame="none", grid="none"]
 |===
 
-| <<gui_attr_table_column_caption,caption>>| <<gui_attr_dateField_dateFormat,dateFormat>>| <<gui_attr_table_column_linkInvoke,linkInvoke>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>
-
-| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_table_column_editable,editable>>| <<gui_attr_table_column_linkScreen,linkScreen>>| <<gui_attr_dateField_resolution,resolution>>
-
-| <<gui_attr_basic_clickAction,clickAction>>| <<gui_attr_table_column_id,id>>| <<gui_attr_table_column_linkScreenOpenType,linkScreenOpenType>>| <<gui_attr_basic_visible,visible>>
-
-| <<gui_attr_table_column_collapsed,collapsed>>| <<gui_attr_table_column_link,link>>| <<gui_attr_table_column_maxTextLength,maxTextLength>>| <<gui_attr_table_column_width,width>>
+| <<gui_attr_table_column_align,align>> | <<gui_attr_table_column_collapsed,collapsed>> | <<gui_attr_table_column_link,link>> | <<gui_attr_table_column_maxTextLength,maxTextLength>> | <<gui_attr_basic_visible,visible>>
+| <<gui_attr_table_column_caption,caption>> | <<gui_attr_dateField_dateFormat,dateFormat>> | <<gui_attr_table_column_linkInvoke,linkInvoke>> | <<gui_attr_basic_optionsDatasource,optionsDatasource>> | <<gui_attr_table_column_width,width>>
+| <<gui_attr_basic_captionProperty,captionProperty>> | <<gui_attr_table_column_editable,editable>> | <<gui_attr_table_column_linkScreen,linkScreen>> | <<gui_attr_dateField_resolution,resolution>> |
+| <<gui_attr_basic_clickAction,clickAction>> | <<gui_attr_table_column_id,id>> | <<gui_attr_table_column_linkScreenOpenType,linkScreenOpenType>> | <<gui_attr_table_column_sortable,sortable>> |
 
 |===
 
@@ -3110,7 +3149,7 @@ The list of component options can be specified arbitrarily using `setOptionsList
 
 <<gui_ButtonsPanel,ButtonsPanel>>
 
-<<gui_IFrame,IFrame>>
+<<gui_Frame,Frame>>
 
 <<gui_GridLayout,GridLayout>>
 
@@ -3187,10 +3226,10 @@ include::{sourcesdir}/gui_vcl/buttonspanel_1.xml[]
 
 `buttonsPanel` element can be located either inside a `table`, or in any other place of a screen. 
 
-If the `buttonsPanel` is located in a `table`, it is combined with the table's <<gui_attr_table_rowsCount,rowsCount>> component thus using vertical space more effectively. Additionally, if a lookup screen is opened using `IFrame.openLookup()` (for example, from the <<gui_PickerField,PickerField>> component) the buttons panel becomes hidden.
+If the `buttonsPanel` is located in a `table`, it is combined with the table's <<gui_attr_table_rowsCount,rowsCount>> component thus using vertical space more effectively. Additionally, if a lookup screen is opened using `Frame.openLookup()` (for example, from the <<gui_PickerField,PickerField>> component) the buttons panel becomes hidden.
 
 [[gui_attr_buttonsPanel_alwaysVisible]]
-`alwaysVisible` attribute disables panel hiding in a lookup screen when it is opened by `IFrame.openLookup()`. If the attribute value is `true`, the buttons panel is not hidden. By default, the attribute value is f `false`.
+`alwaysVisible` attribute disables panel hiding in a lookup screen when it is opened by `Frame.openLookup()`. If the attribute value is `true`, the buttons panel is not hidden. By default, the attribute value is f `false`.
 
 `buttonsPanel` attributes:
 
@@ -3367,10 +3406,10 @@ All `groupBox` attributes:
 
 |===
 
-[[gui_IFrame]]
-====== IFrame
+[[gui_Frame]]
+====== Frame
 
-`iframe` element is intended for including <<frame,frames>> into a screen.
+`frame` element is intended for including <<frame,frames>> into a screen.
 
 Attributes:
 
@@ -3380,7 +3419,7 @@ Attributes:
 
 One of these attributes should be defined. If both attributes are defined, frame will be loaded from the file explicitly set in `src`. 
 
-Other `iframe` attributes:
+Other `frame` attributes:
 
 [cols="2", frame="none", grid="none"]
 |===

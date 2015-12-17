@@ -913,7 +913,7 @@ image::gui_filter_conditions.png[align="center"]
 
 * *Properties (Атрибуты)* – атрибуты данной сущности и связанных с ней сущностей. Отображаются персистентные атрибуты, явно заданные в элементе `property` XML-описателя фильтра, либо соответствующие правилам, указанным в элементе `properties` (см. ниже).
 
-* *Custom conditions (Специальные условия) * – условия, заданные разработчиком в элементах `custom` XML-описателя фильтра.
+* *Custom conditions (Специальные условия)* – условия, заданные разработчиком в элементах `custom` XML-описателя фильтра.
 
 * *Create new (Создать новое)* – позволяет создать новое произвольное условие на JPQL. Данный пункт доступен пользователю, если у него есть специфическое <<permissions,разрешение>> `cuba.gui.filter.customConditions`.
 
@@ -1060,7 +1060,7 @@ include::{sourcesdir}/gui_vcl/filter_4.xml[]
 {E}.manufacturer.id = :component$filter.model_manufacturer90062
 ---- 
 +
-Здесь параметр ссылается на компонент, отображающий параметр Manufacturer. Имя компонента, отображающего параметр условия, можно узнать, вызвав контекстное меню на строке таблицы условий в редакторе фильтра:
+[[filter_component_name_img]]Здесь параметр ссылается на компонент, отображающий параметр Manufacturer. Имя компонента, отображающего параметр условия, можно узнать, вызвав контекстное меню на строке таблицы условий в редакторе фильтра:
 +
 image::gui_filter_component_name.png[align="center"]
 
@@ -1163,6 +1163,12 @@ image::gui_filter_apply_to.png[align="center"]
 [[gui_attr_filter_columnsQty]]
 * `columnsQty` - задает количество колонок с условиями для конкретного фильтра. Значение по умолчанию - 3.
 
+[[gui_attr_filter_defaultMode]]
+* `defaultMode` - задает режим фильтра при открытии экрана. Возможные значения: `generic` и `fts`. При указании значения `fts` фильтр будет открыт в режиме полнотекстового поиска (если сущность индексируется). Значение по умолчанию - `generic`.
+
+[[gui_attr_filter_modeSwitchVisible]]
+* `modeSwitchVisible` - определяет видимость чек-бокса для перевода фильтра в режим полнотекстового поиска. Если полнотекстовый поиск невозможен, то чек-бокс будет невидим независимо от указаного значения. Возможные значения атрибута: `true` и `false`.
+
 Все атрибуты `filter`:
 
 [cols="4", frame="none", grid="none"]
@@ -1174,7 +1180,7 @@ image::gui_filter_apply_to.png[align="center"]
 
 | <<gui_attr_filter_columnsQty,columnsQty>>| <<gui_attr_basic_enable,enable>>| <<gui_attr_filter_manualApplyRequired,manualApplyRequired>>| <<gui_attr_basic_stylename,stylename>>
 
-| <<gui_attr_filter_useMaxResults,useMaxResults>>| <<gui_attr_basic_visible,visible>>| |
+| <<gui_attr_filter_useMaxResults,useMaxResults>>| <<gui_attr_basic_visible,visible>>| <<gui_attr_filter_defaultMode,defaultMode>>| <<gui_attr_filter_modeSwitchVisible,modeSwitchVisible>>
 
 |===
 
@@ -1240,8 +1246,9 @@ image::gui_filter_apply_to.png[align="center"]
 [[gui_Filter_ext_params]]
 *Внешние параметры для управления фильтрами*
 
-*Общесистемные параметры*
-
+* *Общесистемные параметры*
++
+--
 Следующие свойства приложения влияют на поведение фильтров:
 
 * <<cuba.gui.genericFilterManualApplyRequired,cuba.gui.genericFilterManualApplyRequired>> − позволяет отключить автоматическое применение фильтра (то есть загрузку данных) сразу при открытии экрана.
@@ -1257,9 +1264,11 @@ image::gui_filter_apply_to.png[align="center"]
 * <<cuba.gui.genericFilterConditionsLocation,cuba.gui.genericFilterConditionsLocation>> - задает расположение панели условий.
 
 * <<cuba.gui.genericFilterPopupListSize,cuba.gui.genericFilterPopupListSize>> - задает количество позиций в выпадающем списке кнопки *Search*.
+--
 
-*Параметры вызова экрана*
-
+* *Параметры вызова экрана*
++
+--
 При вызове экрана можно указать, какой фильтр и с какими параметрами должен быть применен сразу после открытия экрана. Для этого фильтр должен быть заранее создан, сохранен в базе данных, и соответствующая запись в таблице *SEC_FILTER* должна иметь заполненное поле *CODE*.
 
 Для указания кода фильтра в экран следует передать параметр с именем, равным идентификатору компонента фильтра в данном экране. Значением параметра должен быть код фильтра, который нужно установить и применить.
@@ -1281,6 +1290,7 @@ image::gui_filter_apply_to.png[align="center"]
 * Его не могут редактировать пользователи.
 
 * Название такого фильтра можно отображать на нескольких языках. Для этого в <<main_message_pack,главном пакете сообщений>> приложения должна быть строка с ключом, равным коду фильтра.
+--
 
 [[sequential_filter]]
 *Последовательное наложение фильтров*
@@ -1298,6 +1308,33 @@ image::gui_filter_apply_to.png[align="center"]
 image::gui_filter_sequential.png[align="center"]
 
 Механизм последовательного наложения фильтров основан на возможности <<dataManager,DataManager>> выполнять <<query_from_selected,последовательные запросы>>.
+
+[[filter_params_api]]
+*API для работы с параметрами фильтра*
+
+Интерфейс `Filter` предоставляет методы для установки и чтения значений параметра фильтра из кода контроллера экрана:
+
+* `setParamValue(String paramName, Object value)`
+* `getParamValue(String paramName)`
+
+`paramName` - имя параметра фильтра. Имя параметра фильтра является составной частью имени компонента, отображающего значение параметра фильтра. Как получить имя компонента рассматривалось <<filter_component_name_img, выше>>. Имя параметра - это часть имени компонента, находящаяся после последней точки. Например, если имя компонента `component$filter.model_manufacturer90062`, то имя параметра фильтра `model_manufacturer90062`.
+
+Обратите внимание, что в методе <<gui.adoc#abstractFrame,init()>> контроллера экрана данные методы использовать нельзя, т.к. в этот момент фильтр еще не проинициализирован. Вы можете работать с параметрами фильтра в методе <<gui.adoc#abstractWindow,ready()>>.
+
+[[filter_fts]]
+*Режим полнотекстового поиска в фильтре*
+
+Если источник данных фильтра содержит сущности, индексируемые системой полнотекстового поиска (см. link:{fts_man_url}[Платформа CUBA. Полнотекстовый поиск]), то в фильтре становится доступным режим полнотекстового поиска. Чтобы переключиться в него, используйте флажок *Full-Text Search* ("Полнотекстовый поиск").
+
+image::gui_filter_fts.png[align="center"]
+
+В этом режиме фильтр имеет всего одно поле для задание критериев поиска, и поиск производится по индексируемым подсистемой FTS полям сущности.
+
+Если таблица указана в атрибуте <<gui_attr_filter_applyTo, applyTo>>, то при наведении указателя мыши на строку таблицы во всплывающем окне будет написано, в каких полях сущности было найдено условие поиска.
+
+Для скрытия переключателя режима фильтра установите значение `false` атрибуту фильтра <<gui_attr_filter_modeSwitchVisible, modeSwitchVisible>>.
+
+Если необходимо, чтобы фильтр по умолчанию открывался в режиме полнотекстового поиска, установите значение `fts` атрибуту <<gui_attr_filter_defaultMode, defaultMode>>.
 
 [[gui_GroupTable]]
 ====== GroupTable
@@ -2676,6 +2713,7 @@ include::{sourcesdir}/gui_vcl/tableIconProvider_1.java[]
 +
 Каждая колонка описывается во вложенном элементе `column` со следующими атрибутами:
 
+[[gui_attr_table_column_id]]
 ** `id` − обязательный атрибут, содержит название атрибута сущности, выводимого в колонке. Может быть как непосредственным атрибутом сущности, находящейся в источнике данных, так и атрибутом связанной сущности - переход по графу объектов обозначается точкой. Например: 
 +
 [source, xml]
@@ -2683,15 +2721,23 @@ include::{sourcesdir}/gui_vcl/tableIconProvider_1.java[]
 include::{sourcesdir}/gui_vcl/tableId_1.xml[]
 ---- 
 
+[[gui_attr_table_column_caption]]
 ** `caption` − необязательный атрибут, содержит заголовок колонки. Если не задан, будет отображено <<entity_localization,локализованное название атрибута>> сущности.
 
+[[gui_attr_table_column_collapsed]]
 ** `collapsed` − необязательный атрибут, при указании `true` колонка будет изначально скрыта. Пользователь может управлять отображением колонок с помощью меню, доступного по кнопке image:gui_table_columnControl.png[] в правой верхней части таблицы, если атрибут `columnControlVisible` таблицы не `false`. По умолчанию `collapsed` имеет значение `false`.
 
+[[gui_attr_table_column_width]]
 ** `width` − необязательный атрибут, отвечает за изначальную ширину колонки.
 
+[[gui_attr_table_column_align]]
 ** `align` - необязательный атрибут, устанавливает выравнивание текста в ячейках данной колонки. Возможные значения: `LEFT`, `RIGHT`, `CENTER`. По умолчанию `LEFT`.
 
+[[gui_attr_table_column_editable]]
 ** `editable` − необязательный атрибут, разрешает/запрещает редактирование данной колонки в редактируемой таблице. Чтобы колонка была редактируемой, атрибут `editable` всей таблицы (см. ниже) также должен быть установлен в `true`.
+
+[[gui_attr_table_column_sortable]]
+** `sortable` − необязательный атрибут, позволяющий запретить сортировку колонки. Вступает в действие, если атрибут <<gui_attr_table_sortable,sortable>> всей таблицы установлен в `true` (что имеет место по умолчанию).
 
 [[gui_attr_table_column_maxTextLength]]
 ** `maxTextLength` - необязательный атрибут, позволяет ограничивать количество символов в ячейке. При этом если разница между фактическим и допустимым количеством символов не превышает порог в 10 символов, "лишние" символы не скрываются. Для просмотра полной записи надо кликнуть на ее видимую часть. Пример колонки с ограничением в 5 символов:
@@ -2733,7 +2779,7 @@ include::{sourcesdir}/gui_vcl/tableFormatter_1.xml[]
 * Атрибут `multiselect` позволяет задать режим множественного выделения строк в таблице. Если `multiselect` равен `true`, то пользователь может выделить несколько строк с помощью клавиатуры или мыши, удерживая клавиши *Ctrl* или *Shift*. По умолчанию режим множественного выделения отключен.
 
 [[gui_attr_table_sortable]]
-* Атрибут `sortable` разрешает или запрещает сортировку в таблице. По умолчанию имеет значение `true`. Если сортировка разрешена, то при нажатии на название колонки справа от названия появляется значок image:gui_sortable_down.png[]/image:gui_sortable_up.png[].
+* Атрибут `sortable` разрешает или запрещает сортировку в таблице. По умолчанию имеет значение `true`. Если сортировка разрешена, то при нажатии на название колонки справа от названия появляется значок image:gui_sortable_down.png[]/image:gui_sortable_up.png[]. Сортировку некоторой отдельной колонки можно запретить с помощью атрибута <<gui_attr_table_column_sortable, sortable>> этой колонки.
 +
 При включенной с помощью элемента `rowsCount` (см. выше) страничной загрузке таблицы сортировка производится разными способами в зависимости от того, умещаются ли все записи на одной странице. Если умещаются, то сортировка производится в памяти, без обращений к БД. Если же страниц больше одной, то сортировка производится на базе данных путем отправки нового запроса с соответствующим `ORDER BY`.
 +
@@ -2745,7 +2791,7 @@ include::{sourcesdir}/gui_vcl/tableSortable_1.xml[]
 ----
 --
 В последнем случае, сортировка на базе данных производится по атрибутам, указанным в аннотации `@NamePattern` связанной сущности. Если у связанной сущности нет такой аннотации, то сортировка производится в памяти только в пределах текущей страницы.
-+
+
 Если колонка таблицы ссылается на неперсистентный атрибут, то сортировка на базе данных производится по атрибутам, указанным в параметре `related()` аннотации `@MetaProperty`. Если такой параметр не указан, то сортировка производится в памяти только в пределах текущей страницы.
 
 [[gui_attr_table_presentations]]
@@ -2932,16 +2978,13 @@ include::{sourcesdir}/gui_vcl/table_addPrintable_2.java[]
 
 Атрибуты <<gui_element_table_columns,column>>:
 
-[cols="4", frame="none", grid="none"]
+[cols="5", frame="none", grid="none"]
 |===
 
-| <<gui_attr_table_column_caption,caption>>| <<gui_attr_dateField_dateFormat,dateFormat>>| <<gui_attr_table_column_linkInvoke,linkInvoke>>| <<gui_attr_basic_optionsDatasource,optionsDatasource>>
-
-| <<gui_attr_basic_captionProperty,captionProperty>>| <<gui_attr_table_column_editable,editable>>| <<gui_attr_table_column_linkScreen,linkScreen>>| <<gui_attr_dateField_resolution,resolution>>
-
-| <<gui_attr_basic_clickAction,clickAction>>| <<gui_attr_table_column_id,id>>| <<gui_attr_table_column_linkScreenOpenType,linkScreenOpenType>>| <<gui_attr_basic_visible,visible>>
-
-| <<gui_attr_table_column_collapsed,collapsed>>| <<gui_attr_table_column_link,link>>| <<gui_attr_table_column_maxTextLength,maxTextLength>>| <<gui_attr_table_column_width,width>>
+| <<gui_attr_table_column_align,align>> | <<gui_attr_table_column_collapsed,collapsed>> | <<gui_attr_table_column_link,link>> | <<gui_attr_table_column_maxTextLength,maxTextLength>> | <<gui_attr_basic_visible,visible>>
+| <<gui_attr_table_column_caption,caption>> | <<gui_attr_dateField_dateFormat,dateFormat>> | <<gui_attr_table_column_linkInvoke,linkInvoke>> | <<gui_attr_basic_optionsDatasource,optionsDatasource>> | <<gui_attr_table_column_width,width>>
+| <<gui_attr_basic_captionProperty,captionProperty>> | <<gui_attr_table_column_editable,editable>> | <<gui_attr_table_column_linkScreen,linkScreen>> | <<gui_attr_dateField_resolution,resolution>> |
+| <<gui_attr_basic_clickAction,clickAction>> | <<gui_attr_table_column_id,id>> | <<gui_attr_table_column_linkScreenOpenType,linkScreenOpenType>> | <<gui_attr_table_column_sortable,sortable>> |
 
 |===
 
@@ -3560,7 +3603,7 @@ image::gui_TwinColumn_dia.png[align="center"]
 
 <<gui_ButtonsPanel,ButtonsPanel>>
 
-<<gui_IFrame,IFrame>>
+<<gui_Frame,Frame>>
 
 <<gui_GridLayout,GridLayout>>
 
@@ -3668,10 +3711,10 @@ XML-имя компонента: `buttonsPanel`.
 
 Элемент `buttonsPanel` можно разместить как внутри `table`, так и в произвольном месте экрана. 
 
-Если `buttonsPanel` находится внутри `table`, то она комбинируется с компонентом <<gui_attr_table_rowsCount,rowsCount>> таблицы, тем самым оптимально расходуя место по вертикали. Кроме того, в этом случае при открытии экрана выбора методом `IFrame.openLookup()` (например, из компонента <<gui_PickerField,PickerField>>) панель кнопок скрывается.
+Если `buttonsPanel` находится внутри `table`, то она комбинируется с компонентом <<gui_attr_table_rowsCount,rowsCount>> таблицы, тем самым оптимально расходуя место по вертикали. Кроме того, в этом случае при открытии экрана выбора методом `Frame.openLookup()` (например, из компонента <<gui_PickerField,PickerField>>) панель кнопок скрывается.
 
 [[gui_attr_buttonsPanel_alwaysVisible]]
-Атрибут `alwaysVisible` служит для отключения скрытия панели в экране выбора при его открытии методом `IFrame.openLookup()`. Если значение атрибута равно `true`, то панель с кнопками не скрывается. По умолчанию значение атрибута равно `false`.
+Атрибут `alwaysVisible` служит для отключения скрытия панели в экране выбора при его открытии методом `Frame.openLookup()`. Если значение атрибута равно `true`, то панель с кнопками не скрывается. По умолчанию значение атрибута равно `false`.
 
 Атрибуты `buttonsPanel`:
 
@@ -3898,10 +3941,10 @@ image::gui_groupBox_collapsed.png[align="center"]
 
 |===
 
-[[gui_IFrame]]
-====== IFrame
+[[gui_Frame]]
+====== Frame
 
-Элемент `iframe` предназначен для включения в экран <<frame,фрейма>>.
+Элемент `frame` предназначен для включения в экран <<frame,фрейма>>.
 
 Атрибуты:
 
@@ -3911,7 +3954,7 @@ image::gui_groupBox_collapsed.png[align="center"]
 
 Должен быть указан один из этих атрибутов. Если указано оба, фрейм будет загружен из явно указанного в `src` файла.
 
-Другие атрибуты `iframe`:
+Другие атрибуты `frame`:
 
 [cols="2", frame="none", grid="none"]
 |===
