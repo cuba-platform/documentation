@@ -1168,6 +1168,20 @@ public class Employee extends StandardEntity {
 }
 ----
 
+A <<views,view>> for loading an `Employee` together with `FileDescriptor` should include all local attributes of `FileDescriptor`:
+
+[source, xml]
+----
+<view class="com.company.sample.entity.Employee"
+      name="employee-edit">
+    <property name="name"/>
+    ...
+    <property name="imageFile"
+              view="_local">
+    </property>
+</view>
+----
+
 A fragment of the `Employee` edit screen XML descriptor:
 
 [source, xml]
@@ -1189,7 +1203,7 @@ A fragment of the `Employee` edit screen XML descriptor:
 </groupBox>
 ----
 
-Components used to display, upload and download images are contained within the <<gui_GroupBoxLayout,groupBox>> container. Its top part shows a picture using the <<gui_Embedded,Embedded>> component, while its bottom part from left to right contains an <<gui_FileUploadField,upload>> component and a <<gui_Button,buttons>> to download and clear the image. As a result, this part of the screen should look like this:
+Components used to display, upload and download images are contained within the <<gui_GroupBoxLayout,groupBox>> container. Its top part shows a picture using the <<gui_Embedded,embedded>> component, while its bottom part from left to right contains the <<gui_FileUploadField,upload>> component and <<gui_Button,buttons>> to download and clear the image. As a result, this part of the screen should look like this:
 
 image::images_recipe.png[align="center"]
 
@@ -1199,14 +1213,14 @@ Now, let us have a look at the <<abstractEditor,edit screen controller>>.
 ----
 public class EmployeeEdit extends AbstractEditor<Employee> {
 
-    private Log log = LogFactory.getLog(EmployeeEdit.class);
+    private Logger log = LoggerFactory.getLogger(getClass());
 
     @Inject
     private DataSupplier dataSupplier;
     @Inject
     private FileStorageService fileStorageService;
     @Inject
-    private FileUploadingAPI fileUploading;
+    private FileUploadingAPI fileUploadingAPI;
     @Inject
     private ExportDisplay exportDisplay;
 
@@ -1226,33 +1240,23 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
 
     @Override
     public void init(Map<String, Object> params) {
-        uploadField.addListener(new FileUploadField.ListenerAdapter() {
-            @Override
-            public void uploadSucceeded(Event event) {
-                FileDescriptor fd = uploadField.getFileDescriptor();
-                try {
-                    fileUploading.putFileIntoStorage(uploadField.getFileId(), fd);
-                } catch (FileStorageException e) {
-                    throw new RuntimeException(e);
-                }
-                getItem().setImageFile(dataSupplier.commit(fd, null));
-                displayImage();
+        uploadField.addFileUploadSucceedListener(event -> {
+            FileDescriptor fd = uploadField.getFileDescriptor();
+            try {
+                fileUploadingAPI.putFileIntoStorage(uploadField.getFileId(), fd);
+            } catch (FileStorageException e) {
+                throw new RuntimeException("Error saving file to FileStorage", e);
             }
-
-            @Override
-            public void uploadFailed(Event event) {
-                showNotification("Upload failed", NotificationType.HUMANIZED);
-            }
+            getItem().setImageFile(dataSupplier.commit(fd));
+            displayImage();
         });
 
-        employeeDs.addListener(new DsListenerAdapter<Employee>() {
-            @Override
-            public void valueChanged(Employee source, String property,
-                                     @Nullable Object prevValue, @Nullable Object value) {
-                if ("imageFile".equals(property)) {
-                    updateImageButtons(value != null);
-                }
-            }
+        uploadField.addFileUploadErrorListener(event ->
+                showNotification("File upload error", NotificationType.HUMANIZED));
+
+        employeeDs.addItemPropertyChangeListener(event -> {
+            if ("imageFile".equals(event.getProperty()))
+                updateImageButtons(event.getValue() != null);
         });
     }
 
@@ -1262,12 +1266,12 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
         updateImageButtons(getItem().getImageFile() != null);
     }
 
-    public void onDownloadImageBtnClick(Component source) {
+    public void onDownloadImageBtnClick() {
         if (getItem().getImageFile() != null)
             exportDisplay.show(getItem().getImageFile(), ExportFormat.OCTET_STREAM);
     }
 
-    public void onClearImageBtnClick(Component source) {
+    public void onClearImageBtnClick() {
         getItem().setImageFile(null);
         displayImage();
     }
@@ -1316,9 +1320,9 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
 }
 ----
 
-* The `init()` method first initializes the `uploadField` field component intended for new images upload. In case of a successful upload, a new `FileDescriptor` instance is retrieved from the component and the corresponding files are sent from the temporary storage to the persistent one by invoking `FileUploadingAPI.putFileIntoStorage()`. After that, the `FileDescriptor` is saved to the DB by invoking the <<dataSupplier,DataSupplier.commit()>>, and the saved instance is set as the value of the `imageFile` attribute of the edited `Employee` entity. Then, the controller's `displayImage()` method is invoked to display the uploaded image.
+* The `init()` method first initializes the `uploadField` component that is used for uploading new images. In the case of a successful upload, a new `FileDescriptor` instance is retrieved from the component and the corresponding files are sent from the temporary client storage to `FileStorage` by invoking `FileUploadingAPI.putFileIntoStorage()`. After that, the `FileDescriptor` is saved to the database by invoking  <<dataSupplier,DataSupplier.commit()>>, and the saved instance is assigned to the `imageFile` attribute of the edited `Employee` entity. Then, the controller's `displayImage()` method is invoked to display the uploaded image.
 +
-After that a listener is added in the `init()` method to the datasource containing an `Employee` instance. The listener enables or locks download and clear buttons, depending on the fact whether the file has been loaded or not.
+After that, a listener is added in the `init()` method to the datasource containing an `Employee` instance. The listener enables or disables download and clear buttons, depending on the fact whether the file has been loaded or not.
 
 * `postInit()` method performs file display and refreshes the button states, depending on the existence of a loaded file.
 
@@ -1328,7 +1332,7 @@ After that a listener is added in the `init()` method to the datasource containi
 
 * `displayImage()` loads the file from storage into a byte array, sets the content of the `embeddedImage` component and recalculates its size to preserve image height to width ratio.
 +
-It should be noted that loading files into byte arrays is acceptable for small files only. If the file size is not predictable, you should download it using <<file_download,ExportDisplay>>, which sends the file through input and output streams and never keeps the entire file in memory.
+It should be noted that loading files into byte arrays is acceptable for small files only. If the file size is not predictable, you should only download it using <<file_download,ExportDisplay>>, which sends the file through input and output streams and never keeps the entire file in memory.
 
 [[own_component_samples]]
 ==== Creating Custom Visual Components

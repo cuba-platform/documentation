@@ -1,32 +1,30 @@
 @Inject
-protected FileMultiUploadField multiUploadField;
-
+private FileMultiUploadField multiUploadField;
 @Inject
-protected FileUploadingAPI fileUploading;
-
+private FileUploadingAPI fileUploadingAPI;
 @Inject
-protected DataSupplier dataSupplier;
+private DataSupplier dataSupplier;
 
 @Override
 public void init(Map<String, Object> params) {
-    multiUploadField.addListener(new FileMultiUploadField.UploadListener() {
-        @Override
-        public void queueUploadComplete() {
-            Map<UUID, String> uploadMap = multiUploadField.getUploadsMap();
-            for (Map.Entry<UUID, String> entry : uploadMap.entrySet()) {
-                UUID fileId = entry.getKey();
-                String fileName = entry.getValue();
-                FileDescriptor fd = fileUploading.getFileDescriptor(fileId, fileName);
-                // save file to FileStorage
-                try {
-                    fileUploading.putFileIntoStorage(fileId, fd);
-                } catch (FileStorageException e) {
-                    new RuntimeException(e);
-                }
-                // save file descriptor to database
-                dataSupplier.commit(fd, null);
+    multiUploadField.addQueueUploadCompleteListener(() -> {
+        for (Map.Entry<UUID, String> entry : multiUploadField.getUploadsMap().entrySet()) {
+            UUID fileId = entry.getKey();
+            String fileName = entry.getValue();
+            FileDescriptor fd = fileUploadingAPI.getFileDescriptor(fileId, fileName);
+            // save file to FileStorage
+            try {
+                fileUploadingAPI.putFileIntoStorage(fileId, fd);
+            } catch (FileStorageException e) {
+                new RuntimeException("Error saving file to FileStorage", e);
             }
-            multiUploadField.getUploadsMap().clear();
+            // save file descriptor to database
+            dataSupplier.commit(fd);
         }
+        showNotification("Uploaded files: " + multiUploadField.getUploadsMap().values(), NotificationType.HUMANIZED);
+        multiUploadField.clearUploads();
     });
+
+    multiUploadField.addFileUploadErrorListener(event ->
+            showNotification("File upload error", NotificationType.HUMANIZED));
 }

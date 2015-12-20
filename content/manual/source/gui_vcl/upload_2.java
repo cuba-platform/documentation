@@ -1,33 +1,25 @@
 @Inject
-protected FileUploadField uploadField;
-
+private FileUploadField uploadField;
 @Inject
-protected FileUploadingAPI fileUploading;
-
+private FileUploadingAPI fileUploadingAPI;
 @Inject
-protected DataSupplier dataSupplier;
+private DataSupplier dataSupplier;
 
 @Override
 public void init(Map<String, Object> params) {
-        uploadField.addListener(new FileUploadField.ListenerAdapter() {
-            @Override
-            public void uploadSucceeded(Event event) {
-                FileDescriptor fd = uploadField.getFileDescriptor();
-                try {
-                    // save file to FileStorage
-                    fileUploading.putFileIntoStorage(uploadField.getFileId(), fd);
-                } catch (FileStorageException e) {
-                    throw new RuntimeException(e);
-                }
-                // save file descriptor to database
-                dataSupplier.commit(fd, null);
+    uploadField.addFileUploadSucceedListener(event -> {
+        FileDescriptor fd = uploadField.getFileDescriptor();
+        try {
+            // save file to FileStorage
+            fileUploadingAPI.putFileIntoStorage(uploadField.getFileId(), fd);
+        } catch (FileStorageException e) {
+            throw new RuntimeException("Error saving file to FileStorage", e);
+        }
+        // save file descriptor to database
+        dataSupplier.commit(fd);
+        showNotification("Uploaded file: " + uploadField.getFileName(), NotificationType.HUMANIZED);
+    });
 
-                showNotification("File uploaded: " + uploadField.getFileName(), NotificationType.HUMANIZED);
-            }
-
-            @Override
-            public void uploadFailed(Event event) {
-                showNotification("File upload error", NotificationType.HUMANIZED);
-            }
-        });
+    uploadField.addFileUploadErrorListener(event ->
+            showNotification("File upload error", NotificationType.HUMANIZED));
 }

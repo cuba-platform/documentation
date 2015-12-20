@@ -1168,6 +1168,21 @@ public class Employee extends StandardEntity {
 }
 ----
 
+<<views,Представление>> для загрузки `Employee` вместе с `FileDescriptor` должно содержать все локальные атрибуты `FileDescriptor`:
+
+[source, xml]
+----
+<view class="com.company.sample.entity.Employee"
+      name="employee-edit">
+    <property name="name"/>
+    ...
+    <property name="imageFile"
+              view="_local">
+    </property>
+</view>
+----
+
+
 Фрагмент XML-дескриптора экрана редактирования `Employee`:
 
 [source, xml]
@@ -1189,7 +1204,7 @@ public class Employee extends StandardEntity {
 </groupBox>
 ----
 
-Компоненты отображения и загрузки/выгрузки фотографии заключены внутрь контейнера <<gui_GroupBoxLayout,groupBox>>. В верхней его части с помощью компонента <<gui_Embedded,embedded>> выводится изображение, а в нижней слева направо расположены компонент <<gui_FileUploadField,Upload>> для загрузки файла и <<gui_Button,кнопки>> выгрузки и очистки изображения. В результате эта часть экрана должна выглядеть следующим образом:
+Компоненты отображения и загрузки/выгрузки фотографии заключены внутрь контейнера <<gui_GroupBoxLayout,groupBox>>. В верхней его части с помощью компонента <<gui_Embedded,embedded>> выводится изображение, а в нижней слева направо расположены компонент <<gui_FileUploadField,upload>> для загрузки файла и <<gui_Button,кнопки>> выгрузки и очистки изображения. В результате эта часть экрана должна выглядеть следующим образом:
 
 image::images_recipe.png[align="center"]
 
@@ -1199,14 +1214,14 @@ image::images_recipe.png[align="center"]
 ----
 public class EmployeeEdit extends AbstractEditor<Employee> {
 
-    private Log log = LogFactory.getLog(EmployeeEdit.class);
+    private Logger log = LoggerFactory.getLogger(getClass());
 
     @Inject
     private DataSupplier dataSupplier;
     @Inject
     private FileStorageService fileStorageService;
     @Inject
-    private FileUploadingAPI fileUploading;
+    private FileUploadingAPI fileUploadingAPI;
     @Inject
     private ExportDisplay exportDisplay;
 
@@ -1226,33 +1241,23 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
 
     @Override
     public void init(Map<String, Object> params) {
-        uploadField.addListener(new FileUploadField.ListenerAdapter() {
-            @Override
-            public void uploadSucceeded(Event event) {
-                FileDescriptor fd = uploadField.getFileDescriptor();
-                try {
-                    fileUploading.putFileIntoStorage(uploadField.getFileId(), fd);
-                } catch (FileStorageException e) {
-                    throw new RuntimeException(e);
-                }
-                getItem().setImageFile(dataSupplier.commit(fd, null));
-                displayImage();
+        uploadField.addFileUploadSucceedListener(event -> {
+            FileDescriptor fd = uploadField.getFileDescriptor();
+            try {
+                fileUploadingAPI.putFileIntoStorage(uploadField.getFileId(), fd);
+            } catch (FileStorageException e) {
+                throw new RuntimeException("Error saving file to FileStorage", e);
             }
-
-            @Override
-            public void uploadFailed(Event event) {
-                showNotification("Upload failed", NotificationType.HUMANIZED);
-            }
+            getItem().setImageFile(dataSupplier.commit(fd));
+            displayImage();
         });
 
-        employeeDs.addListener(new DsListenerAdapter<Employee>() {
-            @Override
-            public void valueChanged(Employee source, String property, 
-                                     @Nullable Object prevValue, @Nullable Object value) {
-                if ("imageFile".equals(property)) {
-                    updateImageButtons(value != null);
-                }
-            }
+        uploadField.addFileUploadErrorListener(event ->
+                showNotification("File upload error", NotificationType.HUMANIZED));
+
+        employeeDs.addItemPropertyChangeListener(event -> {
+            if ("imageFile".equals(event.getProperty()))
+                updateImageButtons(event.getValue() != null);
         });
     }
 
@@ -1262,12 +1267,12 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
         updateImageButtons(getItem().getImageFile() != null);
     }
 
-    public void onDownloadImageBtnClick(Component source) {
+    public void onDownloadImageBtnClick() {
         if (getItem().getImageFile() != null)
             exportDisplay.show(getItem().getImageFile(), ExportFormat.OCTET_STREAM);
     }
 
-    public void onClearImageBtnClick(Component source) {
+    public void onClearImageBtnClick() {
         getItem().setImageFile(null);
         displayImage();
     }

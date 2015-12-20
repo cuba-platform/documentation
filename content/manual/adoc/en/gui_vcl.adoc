@@ -666,7 +666,7 @@ All `field` attributes:
 [[gui_FileMultiUploadField]]
 ====== FileMultiUploadField
 
-The `FileMultiUploadField` component allows a user to upload files to a server. The component is a button; when it is clicked, the screen will show a standard OS file picker window where you can select multiple files for upload.
+The `FileMultiUploadField` component allows a user to upload files to the server. The component is a button; when it is clicked, a standard OS file picker window is shown, where the user can select multiple files for upload.
 
 image::gui_multipleUpload.png[align="center"]
 
@@ -674,7 +674,7 @@ XML name of the component: `multiUpload`.
 
 image::gui_FileMultiUploadField_dia.png[align="center"]
 
-The component is implemented for *Web Client* and *Desktop Client*. For the operation of component web version, a browser should support the Flash technology.
+The component is implemented for *Web Client* and *Desktop Client*.
 
 * Declare the component in an XML screen descriptor: 
 +
@@ -683,22 +683,24 @@ The component is implemented for *Web Client* and *Desktop Client*. For the oper
 include::{sourcesdir}/gui_vcl/multiupload_1.xml[]
 ---- 
 
-* In the screen controller, inject the component itself, and the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. Then, in `init()` add a listener to the component, which will react to successful upload events or errors: 
+* In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. In the `init()` method, add listeners which will react on successful uploads and errors:
 +
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/multiupload_2.java[]
 ---- 
 +
-The component will invoke `queueUploadComplete()` after uploading all selected files to a temporary storage of the client <<app_tiers,tier>>. At this point, by invoking `getUploadsMap()` you can get a map of temporary storage file identifiers to file names. Then, for each file, a corresponding `FileDescriptor` object is created based on this data. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
+The component uploads all selected files to the temporary storage of the client <<app_tiers,tier>> and invokes the listener added by the `addQueueUploadCompleteListener()` method. In this listener, the `FileMultiUploadField.getUploadsMap()` method is invoked to obtain a map of temporary storage file identifiers to file names. Then, corresponding `FileDescriptor` objects are created by calling `FileUploadingAPI.getFileDescriptor()` for each map entry. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
 +
-`FileUploadingAPI.putFileIntoStorage()` is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object. 
+`FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object.
 +
-After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in a database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. In this case, `FileDescriptor` is simply stored in the database and gives access to the file through the *Administration* -> *External Files* screen.
+After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in a database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration* -> *External Files* screen.
 +
-After processing, the list of files should be cleared via the `clearUploads()` method in order to prepare for further uploads. 
+After processing, the list of files should be cleared by calling the `clearUploads()` method in order to prepare for further uploads.
 
-* Maximum upload size is determined by the <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> application property and is equal to 20Mb by default. If a user selects a file of a larger size, a corresponding message will be displayed and the upload will be interrupted.
+* Maximum upload size is determined by the <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> application property and is  20MB by default. If a user selects a file of a larger size, a corresponding message will be displayed, and the upload will be interrupted.
+
+See <<images_recipe>> for more complex example of working with uploaded files.
 
 `multiUpload` attributes:
 
@@ -716,7 +718,7 @@ After processing, the list of files should be cleared via the `clearUploads()` m
 [[gui_FileUploadField]]
 ====== FileUploadField
 
-The `FileUploadField` component allows a user to upload files to a server. The component is a button; when it is clicked, the screen will show a standard OS file picker window where you can select one file. To allow a user to upload multiple files, use <<gui_FileMultiUploadField,FileMultiUploadField>>. 
+The `FileUploadField` component allows a user to upload files to the server. The component is a button; when it is clicked, a standard OS file picker window is shown, where the user can select a file. To allow the user to upload multiple files, use <<gui_FileMultiUploadField,FileMultiUploadField>>.
 
 image::gui_upload.png[align="center"]
 
@@ -733,22 +735,24 @@ The component is implemented for *Web Client* and *Desktop Client*.
 include::{sourcesdir}/gui_vcl/upload_1.xml[]
 ---- 
 
-* In the screen controller, inject the component itself, and the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. Then, in `init()` add a listener to the component, which will react on successful upload events or errors: 
+* In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. In the `init()` method, add listeners which will react on successful uploads and errors:
 +
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/upload_2.java[]
 ---- 
 +
-The component will invoke `uploadSucceeded()` after uploading the file to a temporary storage of the client <<app_tiers,tier>>. At this point, you can get component's `FileDescriptor` object, which corresponds to the uploaded file. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
+The component will upload the file to the temporary storage of the client <<app_tiers,tier>> and invoke the listener added by the `addFileUploadSucceedListener()` method. In this listener, a `FileDescriptor` object is requested from the component. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and is used to download the file from the system.
 +
-`FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client level storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object. Both of these parameters are provided by `FileUploadField`.
+`FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object. Both of these parameters are provided by `FileUploadField`.
 +
-After uploading the file to `FileStorage` the `FileDescriptor` instance is saved in a database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. In this case, `FileDescriptor` is simply stored in the database and gives access to the file through the *Administration* -> *External Files* screen.
+After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in the database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration* -> *External Files* screen.
 +
-`uploadFailed()` will be invoked by the `FileUploadField` component if an error occurs when uploading a file to the temporary storage of the client level.
+The listener added by the `addFileUploadErrorListener()` method will be invoked if an error occurs when uploading a file to the temporary storage of the client tier.
 
-* Maximum upload size is determined by the <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> application property and is equal to 20Mb by default. If a user selects a file of a larger size, a corresponding message will be displayed and the upload will be interrupted.
+* Maximum upload size is determined by the <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> application property and is  20MB by default. If a user selects a file of a larger size, a corresponding message will be displayed, and the upload will be interrupted.
+
+See <<images_recipe>> for more complex example of working with uploaded files.
 
 `upload` attributes:
 

@@ -733,7 +733,7 @@ XML-имя компонента: `multiUpload`.
 
 image::gui_FileMultiUploadField_dia.png[align="center"]
 
-Компонент реализован для блоков *Web Client* и *Desktop Client*. Для работы веб-версии компонента необходима поддержка браузером технологии Flash.
+Компонент реализован для блоков *Web Client* и *Desktop Client*.
 
 Рассмотрим пример использования компонента.
 
@@ -741,56 +741,27 @@ image::gui_FileMultiUploadField_dia.png[align="center"]
 +
 [source, xml]
 ----
-<multiUpload id="multiUploadField" caption="msg://upload"/>
+include::{sourcesdir}/gui_vcl/multiupload_1.xml[]
 ----
 
-* В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в методе `init()` добавляем компоненту слушатель, который будет реагировать на события успешной загрузки или ошибки:
+* В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в методе `init()` добавляем слушателей, которые будут реагировать на события успешной загрузки или ошибки:
 +
 [source, java]
 ----
-@Inject
-protected FileMultiUploadField multiUploadField;
-
-@Inject
-protected FileUploadingAPI fileUploading;
-
-@Inject
-protected DataSupplier dataSupplier;
-
-@Override
-public void init(Map<String, Object> params) {
-multiUploadField.addListener(new FileMultiUploadField.UploadListener() {
-    @Override
-    public void queueUploadComplete() {
-        Map<UUID, String> uploadMap = multiUploadField.getUploadsMap();
-        for (Map.Entry<UUID, String> entry : uploadMap.entrySet()) {
-            UUID fileId = entry.getKey();
-            String fileName = entry.getValue();
-            FileDescriptor fd = fileUploading.getFileDescriptor(fileId, fileName);
-            // save file to FileStorage
-            try {
-                fileUploading.putFileIntoStorage(fileId, fd);
-            } catch (FileStorageException e) {
-                new RuntimeException(e);
-            }
-            // save file descriptor to database
-            dataSupplier.commit(fd, null);
-        }
-        multiUploadField.clearUploads();
-    }
-});
-}
+include::{sourcesdir}/gui_vcl/multiupload_2.java[]
 ----
 +
-Метод `queueUploadComplete()` будет вызван компонентом после успешной загрузки всех выбранных файлов во временное хранилище клиентского <<app_tiers,уровня>>. В этот момент вызовом метода `getUploadsMap()` у компонента можно получить мэп идентификаторов файлов во временном хранилище на имена файлов. Далее по этим данным для каждого файла создается соответствующий объект `FileDescriptor`. Объект `com.haulmont.cuba.core.entity.FileDescriptor` (не путать с `java.io.FileDescriptor`) является персистентной сущностью, которая однозначно идентифицирует загруженный файл и впоследствии используется для выгрузки файла из системы.
+Компонент загружает выбранные файлы во временное хранилище клиентского <<app_tiers,уровня>> и вызывает листенер добавленный методом `addQueueUploadCompleteListener()`. В данном листенере вызовом метода `getUploadsMap()` у компонента можно получить мэп идентификаторов файлов во временном хранилище на имена файлов. Далее для каждого элемента мэп создается соответствующий объект `FileDescriptor` путем вызова `FileUploadingAPI.getFileDescriptor()`. Объект `com.haulmont.cuba.core.entity.FileDescriptor` (не путать с `java.io.FileDescriptor`) является персистентной сущностью, которая однозначно идентифицирует загруженный файл и впоследствии используется для выгрузки файла из системы.
 +
 Метод `FileUploadingAPI.putFileIntoStorage()` используется для перемещения загружаемого файла из временного хранилища клиентского уровня в <<file_storage,FileStorage>>. Параметрами этого метода являются идентификатор файла во временном хранилище и объект `FileDescriptor`. 
 +
-После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто хранится в системе и дает доступ к файлу через экран *Administration* → *External Files*.
+После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто сохраняется в базе данных. Соответствующий файл будет доступен через экран *Administration* → *External Files*.
 +
 После обработки файлов необходимо очистить список файлов вызовом `clearUploads()` на случай повторной загрузки.
 
-* Максимальный размер загружаемого файла определяется свойством приложения <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> и по умолчанию равен 20Мб. При выборе пользователем файла большего размера выдается соответствующее сообщение и загрузка прерывается.
+* Максимальный размер загружаемого файла определяется свойством приложения <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> и по умолчанию равен 20MB. При выборе пользователем файла большего размера выдается соответствующее сообщение и загрузка прерывается.
+
+В разделе <<images_recipe>> приведен более сложный пример работы с загруженными файлами.
 
 Атрибуты `multiUpload`:
 
@@ -824,57 +795,27 @@ image::gui_FileUploadField_dia.png[align="center"]
 +
 [source, xml]
 ----
-<upload id="uploadField" caption="msg://upload"/>
+include::{sourcesdir}/gui_vcl/upload_1.xml[]
 ----
 
-* В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в методе `init()` добавляем компоненту слушатель, который будет реагировать на события успешной загрузки или ошибки:
+* В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в методе `init()` добавляем  слушатели, которые будут реагировать на события успешной загрузки или ошибки:
 +
 [source, java]
 ----
-@Inject
-protected FileUploadField uploadField;
-
-@Inject
-protected FileUploadingAPI fileUploading;
-
-@Inject
-protected DataSupplier dataSupplier;
-
-@Override
-public void init(Map<String, Object> params) {
-uploadField.addListener(new FileUploadField.ListenerAdapter() {
-    @Override
-    public void uploadSucceeded(Event event) {
-        FileDescriptor fd = uploadField.getFileDescriptor();
-        try {
-            // save file to FileStorage
-            fileUploading.putFileIntoStorage(uploadField.getFileId(), fd);
-        } catch (FileStorageException e) {
-            throw new RuntimeException(e);
-        }
-        // save file descriptor to database
-        dataSupplier.commit(fd, null);
-
-        showNotification("File uploaded: " + uploadField.getFileName(), NotificationType.HUMANIZED);
-    }
-
-    @Override
-    public void uploadFailed(Event event) {
-        showNotification("File upload error", NotificationType.HUMANIZED);
-    }
-});
-}
+include::{sourcesdir}/gui_vcl/upload_2.java[]
 ----
 +
-Метод `uploadSucceeded()` будет вызван компонентом после успешной загрузки файла во временное хранилище клиентского <<app_tiers,уровня>>. В этот момент у компонента можно получить объект `FileDescriptor`, соответствующий загруженному файлу. Объект `com.haulmont.cuba.core.entity.FileDescriptor` (не путать с `java.io.FileDescriptor`) является персистентной сущностью, которая однозначно идентифицирует загруженный файл и впоследствии используется для выгрузки файла из системы.
+Компонент загружает файл во временное хранилище клиентского <<app_tiers,уровня>> и вызывает листенер, добавленный методом `addFileUploadSucceedListener()`. В этом листенере у компонента запрашивается объект `FileDescriptor`, соответствующий загруженному файлу. Объект `com.haulmont.cuba.core.entity.FileDescriptor` (не путать с `java.io.FileDescriptor`) является персистентной сущностью, которая однозначно идентифицирует загруженный файл и впоследствии используется для выгрузки файла из системы.
 +
 Метод `FileUploadingAPI.putFileIntoStorage()` используется для перемещения загружаемого файла из временного хранилища клиентского уровня в <<file_storage,FileStorage>>. Параметрами этого метода являются идентификатор файла во временном хранилище и объект `FileDescriptor`. Оба эти параметра предоставляет `FileUploadField`.
 +
-После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто хранится в системе и дает доступ к файлу через экран *Administration* → *External Files*.
+После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто сохраняется в базе данных. Соответствующий файл будет доступен через экран *Administration* → *External Files*.
 +
-Метод `uploadFailed()` вызывается компонентом `FileUploadField` в случае ошибки загрузки файла во временное хранилище клиентского уровня.
+Листенер, добавленный методом `addFileUploadErrorListener()` вызывается в случае ошибки загрузки файла во временное хранилище клиентского уровня.
 
-* Максимальный размер загружаемого файла определяется свойством приложения <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> и по умолчанию равен 20Мб. При выборе пользователем файла большего размера выдается соответствующее сообщение и загрузка прерывается.
+* Максимальный размер загружаемого файла определяется свойством приложения <<cuba.client.maxUploadSizeMb,cuba.client.maxUploadSizeMb>> и по умолчанию равен 20MB. При выборе пользователем файла большего размера выдается соответствующее сообщение и загрузка прерывается.
+
+В разделе <<images_recipe>> приведен более сложный пример работы с загруженными файлами.
 
 Атрибуты `upload`:
 
