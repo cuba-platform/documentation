@@ -223,18 +223,7 @@ image::Controllers.png[align="center"]
 +
 [source, java]
 ----
-@Inject
-private Table someTable;
-
-@Override
-public void init(Map<String, Object> params) {
-  someTable.addGeneratedColumn("someColumn", new Table.ColumnGenerator<Colour>() {
-      @Override
-      public Component generateCell(Colour entity) {
-          ...
-      }
-  });
-}
+include::{sourcesdir}/gui/abstractframe_1.java[]
 ----
 
 * `getMessage()`, `formatMessage()` - методы получения локализованных сообщений из <<message_packs,пакета>>, заданного для экрана в XML-дескрипторе. Представляют собой просто короткие варианты вызова одноименных методов интерфейса `<<messages,Messages>>`.
@@ -245,8 +234,7 @@ public void init(Map<String, Object> params) {
 +
 [source, java]
 ----
-getDialogParams().setWidth(400);
-openEditor("sales$Customer.edit", customer, WindowManager.OpenType.DIALOG);
+include::{sourcesdir}/gui/abstractframe_2.java[]
 ----
 +
 Если же сам текущий экран открывается в режиме модального диалога, то можно управлять параметрами его отображения, устанавливая параметры `DialogParams` в его методе `init()`. При этом установленные в `init()` параметры имеют приоритет над установленными в вызывающем коде.
@@ -255,31 +243,14 @@ openEditor("sales$Customer.edit", customer, WindowManager.OpenType.DIALOG);
 +
 [source, java]
 ----
-@Inject
-private BoxLayout container;
-
-@Override
-public void init(Map<String, Object> params) {
-  SomeFrame frame = openFrame(container, "someFrame");
-  frame.setHeight("100%");
-  frame.someInitMethod();
-}
+include::{sourcesdir}/gui/abstractframe_3.java[]
 ----
 +
 Контейнер не обязательно сразу передавать в метод `openFrame()`, вместо этого можно загрузить фрейм, а затем добавить его в нужный контейнер:
 +
 [source, java]
 ----
-@Inject
-private BoxLayout container;
-
-@Override
-public void init(Map<String, Object> params) {
-  SomeFrame frame = openFrame(null, "someFrame");
-  frame.setHeight("100%");
-  frame.someInitMethod();
-  container.add(frame);
-}
+include::{sourcesdir}/gui/abstractframe_4.java[]
 ----
 
 * `openWindow()`, `openLookup()`, `openEditor()` - открыть соответственно простой экран, экран выбора или редактирования. Методы возвращают контроллер созданного экрана.
@@ -288,13 +259,7 @@ public void init(Map<String, Object> params) {
 +
 [source, java]
 ----
-CustomerEdit editor = openEditor("sales$Customer.edit", customer, WindowManager.OpenType.THIS_TAB);
-editor.addListener(new CloseListener() {
-  @Override
-  public void windowClosed(String actionId) {
-      // do something
-  }
-});
+include::{sourcesdir}/gui/abstractframe_5.java[]
 ----
 
 * `showMessageDialog()` - отобразить диалоговое окно с сообщением.
@@ -305,17 +270,7 @@ editor.addListener(new CloseListener() {
 +
 [source, java]
 ----
-showOptionDialog("PLease confirm", "Are you sure?",
-      MessageType.CONFIRMATION,
-      new Action[] {
-              new DialogAction(DialogAction.Type.YES) {
-                  @Override
-                  public void actionPerform(Component component) {
-                      // do something
-                  }
-              },
-              new DialogAction(DialogAction.Type.NO);
-      });
+include::{sourcesdir}/gui/abstractframe_6.java[]
 ----
 
 * `showNotification()` - отобразить всплывающее окно с сообщением.
@@ -337,16 +292,7 @@ showOptionDialog("PLease confirm", "Are you sure?",
 +
 [source, java]
 ----
-private Pattern pattern = Pattern.compile("\\d");
-
-@Override
-protected void postValidate(ValidationErrors errors) {
-  if (getItem().getAddress().getCity() != null) {
-      if (pattern.matcher(getItem().getAddress().getCity()).find()) {
-          errors.add("City name can't contain digits");
-      }
-  }
-}
+include::{sourcesdir}/gui/abstractwindow_1.java[]
 ----
 
 * `close()` - закрыть данный экран. 
@@ -385,11 +331,7 @@ protected void postValidate(ValidationErrors errors) {
 
 [source, java]
 ----
-public class CustomerEdit extends AbstractEditor<Customer> {
-
-  @Override
-  protected void initItem(Customer item) {
-  ...
+include::{sourcesdir}/gui/abstracteditor_1.java[]
 ----
 
 `AbstractEditor` определяет следующие собственные методы:
@@ -408,11 +350,7 @@ public class CustomerEdit extends AbstractEditor<Customer> {
 
 [source, java]
 ----
-@Override
-public void init(Map<String, Object> params) {
-  Customer item = WindowParams.ITEM.getEntity(params);
-  // do something
-}
+include::{sourcesdir}/gui/abstracteditor_2.java[]
 ----
 
 В метод `initItem()` экземпляр передается явно и нужного типа.
@@ -435,14 +373,7 @@ public void init(Map<String, Object> params) {
 +
 [source, java]
 ----
-@Inject
-private UserSession userSession;
-
-@Override
-protected void initNewItem(Complaint item) {
-  item.setOpenedBy(userSession.getUser());
-  item.setStatus(ComplaintStatus.OPENED);
-}
+include::{sourcesdir}/gui/abstracteditor_3.java[]
 ----
 +
 Более сложный пример использования `initNewItem()` приведен в разделе <<init_values_in_initNewItem,рецептов разработки>>.
@@ -453,15 +384,7 @@ protected void initNewItem(Complaint item) {
 +
 [source, java]
 ----
-@Inject
-protected EntityDiffViewer diffFrame;
-
-@Override
-protected void postInit() {
-  if (!PersistenceHelper.isNew(getItem())) {
-      diffFrame.loadVersions(getItem());
-  }
-}
+include::{sourcesdir}/gui/abstracteditor_4.java[]
 ----
 
 * `commit()` - валидировать экран и отправить изменения через `<<dataSupplier,DataSupplier>>` на *Middleware*.
@@ -480,14 +403,7 @@ protected void postInit() {
 +
 [source, java]
 ----
-@Override
-protected boolean preCommit() {
-  if (somethingWentWrong) {
-      showNotification("Something went wrong", NotificationType.WARNING);
-      return false;
-  }
-  return true;
-}
+include::{sourcesdir}/gui/abstracteditor_5.java[]
 ----
 
 * `postCommit()` - шаблонный метод, вызываемый фреймворком на финальной стадии коммита изменений. Параметры метода:
@@ -502,18 +418,7 @@ protected boolean preCommit() {
 +
 [source, java]
 ----
-@Inject
-private Datasource<Driver> driverDs;
-@Inject
-private EntitySnapshotService entitySnapshotService;
-
-@Override
-protected boolean postCommit(boolean committed, boolean close) {
-  if (committed) {
-      entitySnapshotService.createSnapshot(driverDs.getItem(), driverDs.getView());
-  }
-  return super.postCommit(committed, close);
-}
+include::{sourcesdir}/gui/abstracteditor_6.java[]
 ----
 
 Далее приведены диаграммы последовательностей инициализации и различных вариантов коммита экрана редактирования.
@@ -577,8 +482,7 @@ image::ExtendedEditorCommitAndClose.png[align="center"]
 
 [source, java]
 ----
-@WindowParam(name = "job", required = true)
-protected Job job;
+include::{sourcesdir}/gui/cdi_1.java[]
 ----
 
 [[companions]]
