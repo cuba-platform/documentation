@@ -846,53 +846,41 @@ In this case, the parameter value taken from the `customerNameField` component w
 Please note that with this search, an index created in the DB by the `NAME` field, will not be used. 
 
 [[datasource_listeners]]
-===== Data Source Listeners
+===== Datasource Listeners
 
-With <<datasources,datasource listeners>> it's possible to receive notifications about changes in data source states and entity instances located inside them.
+<<datasources,Datasource>> listeners receive notifications of changes in the state of datasources and entities contained in them.
 
-To register listeners, the `Datasource.addListener()`, `Datasource.removeListener()` methods are used. Below is an example of registering a listener in a <<screen_controller,screen controller>>: 
+There are four types of listeners. Three of them: `ItemPropertyChangeListener`, `ItemChangeListener` and `StateChangeListener` are defined in the `Datasource` interface and can be used in any datasource. `CollectionChangeListener` is defined in `CollectionDatasource` and can be used only in datasources working with collections of entities.
+
+Example of using datasource listeners:
 
 [source, java]
 ----
 include::{sourcesdir}/gui/datasources_14.java[]
----- 
-
-There are two listener interfaces of datasources: `DatasourceListener` and `CollectionDatasourceListener`. The first can be used for registration in any of datasources, the second – only in those implementing `CollectionDatasource`. Typically, in practice, it's not necessary to receive all notifications from a listener. That's why it is convenient to use class-adapters, `DsListenerAdapter` and `CollectionDsListenerAdapter`, instead of implementation of listener interfaces, which contain empty implementations of all methods of corresponding interfaces.
-
-`DatasourceListener` methods are provided below:
-
-* `valueChanged()` – declaration of this method is inherited from the base interface, `ValueListener`. This listener method is invoked if an attribute value of some entity that is currently located in the source has changed. The modified instance itself, the name of changed attribute, old and new values are passed into the method.
-+
-`valueChanged()` notification can be used to respond to user changes in an entity from the UI, i.e., editing input fields. In the example below, a hypothetical method, `updateSettings()`, will be invoked when the value of the `active` attribute is changed, and a new attribute value will be passed into this method: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/datasources_15.java[]
----- 
-
-* `itemChanged()` – is invoked when a selected instance returned by the `getItem()` method is changed.
-+
-For `Datasource`, it happens when another instance (or `null`) is set with `setItem()` method.
-+
-For `CollectionDatasource`, this notification is invoked when a selected element is changed in a linked visual component. For example, it may be a selected table row, tree element or item in a drop-down list.
-+
-Below is an example of the `itemChanged()`notification to control the state of an action of the table:
-+
-[source, java]
-----
-include::{sourcesdir}/gui/datasources_16.java[]
 ----
 
-* `stateChanged()` – is invoked when a state of the data source is changed. The data source can be in one of three states corresponding to the `Datasource.State` enumeration:
+The listener interfaces are described below.
+
+* `ItemPropertyChangeListener` is added by the `Datasource.addItemPropertyChangeListener()` method. The listener is invoked when an attribute of an entity contained in the datasource is changed. The modified entity instance itself, the name of changed attribute, old and new values can be obtained from the event object passed to the listener.
++
+The `ItemPropertyChangeListener` can be used to react to changes made in an entity instance by UI components, i.e. when a user edits input fields.
+
+* `ItemChangeListener` is added by the `Datasource.addItemChangeListener()` method. The listener is invoked when a selected entity instance returned by the `Datasource.getItem()` method is changed.
++
+For `Datasource`, it happens when another instance (or `null`) is set to the datasource with `setItem()` method.
++
+For `CollectionDatasource`, this listener is invoked when a selected element is changed in a linked visual component. For example, it may be a selected table row, tree element or item in a drop-down list.
+
+* `StateChangeListener` is added by the `Datasource.addStateChangeListener()` method. The listener is invoked when a state of the datasource is changed. The data source can be in one of three states corresponding to the `Datasource.State` enumeration:
 +
 --
-** `++NOT_INITIALIZED++` – source has just been created.
+** `++NOT_INITIALIZED++` – datasource has just been created.
 
 ** `INVALID` – the whole <<dsContext,DsContext>>, which this source is related to, is created.
 
-** `VALID` – data source is in working state: `Datasource` contains an entity instance or null, `CollectionDatasource` – collection of instances or an empty collection.
+** `VALID` – datasource is ready: `Datasource` contains an entity instance or null, `CollectionDatasource` – collection of instances or an empty collection.
 
-Receiving a notification about changes in source state may be important for complex <<screen_edit,editors>>, which consist of several <<frame,frames>> where it is difficult to trace the moment of putting an edited entity into the source. In this case, `stateChanged()` notification for the delayed initialization of certain screen elements can be used: 
+Receiving a notification about changes in datasource state may be important for complex <<screen_edit,editors>>, which consist of several <<frame,frames>> where it is difficult to trace the moment of setting an edited entity into the datasource. In this case, `StateChangeListener` can be used for the delayed initialization of certain screen elements:
 
 [source, java]
 ----
@@ -900,41 +888,30 @@ include::{sourcesdir}/gui/datasources_17.java[]
 ---- 
 --
 
-The `CollectionDatasourceListener` interface adds one more method: 
-
-* `collectionChanged()` – is invoked when a entity collection, which is stored in the data source, is changed. One of the following type of changes is passed into the method: `REFRESH`, `CLEAR`, `ADD`, `REMOVE`, `UPDATE`.
-+
-Below is an example of a listener that invokes the recalculation of a journey cost in case of the address of a stop (the `Stop` entity) or the number of stops is changed: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/datasources_18.java[]
----- 
+* `CollectionChangeListener` is added by the `CollectionDatasource.addCollectionChangeListener()` method. The listener is invoked when a entity collection, which is stored in the datasource, is changed. The event object provides the `getOperation()` method returning value of type `CollectionDatasource.Operation`: `REFRESH`, `CLEAR`, `ADD`, `REMOVE`, `UPDATE`. It indicates the operation that caused the collection changes.
 
 [[dsContext]]
 ===== DsContext
 
-All datasources that are created declaratively are registered in the `DsContext` object of a screen. A reference to `DsContext` can be obtained using the `getDsContext()` method of a screen controller or with an injection into a class field.
+All datasources that are created declaratively are registered in the `DsContext` object which belongs to a screen. A reference to `DsContext` can be obtained using the `getDsContext()` method of a screen controller or via <<screen_controller_injection>>.
 
-`DsContext` solves the following tasks:
+`DsContext` is designed for the following tasks:
 
-. Organizes dependencies between datasources when with a navigation to one source (i.e. when changing a "current" instance with the `setItem()` method) a related source is updated. Using these dependencies it's quite easy to organize master-detail connections among visual components on screens.
+. Organizes dependencies between datasources when navigation through a record set in one datasource (i.e. changing a "current" instance with the `setItem()` method) causes a related datasource to be updated. These dependencies allow you to organize master-detail relationships between visual components on screens.
 +
-Dependencies between sources are organized using <<datasource_query,query parameters>> with the `ds$` prefix.
+Dependencies between datasources are organized using <<datasource_query,query parameters>> with the `ds$` prefix.
 
-. Collects all changed entity instances and sends them to *Middleware* in a single invocation of `DataManager.commit()`, i.e. to save them into a data base using a single transaction. 
+. Collects all changed entity instances and sends them to *Middleware* in a single invocation of `DataManager.commit()`, i.e. to save them into the database in a single transaction.
 +
-As an example, let's assume that some screen allows a user to edit an instance of the `Order` entity and a collection of `OrderLine` instances belonging to it. The `Order` instance is located in `Datasource`; the `OrderLine` collection – in nested `CollectionDatasource`, which is created using the `Order.lines` attribute. If user changes some attribute of `Order` and creates a new instance, `OrderLine`. Then, when a screen is committed to <<dataManager,DataManager>>, two instances – changed `Order` and new `OrderLine` – will be sent simultaneously. After that, they will together get into one <<entityManager,persistent context>> and will be saved into the DB with transaction commit. The `OrderLine` instance is also contained in the `Order.lines` collection, but if it's not passed into persistent context independently, the cascade saving between `Order` and `OrderLines` at the ORM level should be set. Tight cascade relations at the ORM level sometimes cause unwanted consequences in unexpected places, so it will be better to avoid them, as described in the `DsContext` mechanism.
+As an example, let's assume that some screen allows a user to edit an instance of the `Order` entity and a collection of `OrderLine` instances belonging to it. The `Order` instance is located in `Datasource`; the `OrderLine` collection – in nested `CollectionDatasource`, which is created using the `Order.lines` attribute. If user changes some attribute of `Order` and creates a new instance, `OrderLine`. Then, when a screen is committed to <<dataManager,DataManager>>, two instances – changed `Order` and new `OrderLine` – will be sent simultaneously. After that, they will together be merged into one <<entityManager,persistent context>> and saved into the database on the transaction commit. The `OrderLine` instance is also contained in the `Order.lines` collection, but if it's not passed into persistent context independently, the cascade merging between `Order` and `OrderLines` at the ORM level should be set. Tight cascade relations at the ORM level sometimes cause unwanted consequences in unexpected places, so it is better to avoid them, as described in the `DsContext` mechanism.
 +
-As a result of committing transaction, `DsContext` receives a set of saved instances from *Middleware* (in case of optimistic blocking they at least have an increased value of the `version` attribute), and sets these instances in datasources instead of outdated ones. This allows you to work with latest instances immediately after committing without an extra data source refresh that is related to queries to *Middleware* and the database.
+As a result of committing the transaction, `DsContext` receives a set of saved instances from *Middleware* (in the case of optimistic locking they, at least, have an increased value of the `version` attribute), and sets these instances in datasources replacing old ones. It allows you to work with the latest instances immediately after committing without an extra datasource refresh that produces queries to *Middleware* and the database.
 
-. Declares a listener, `DsContext.CommitListener`, which enables receiving notifications before and after committing modified instances. Before the commit it's possible to supplement a collection of instances sent to <<dataManager,DataManager>> at *Middleware* which will lead to saving arbitrary entities in the same transaction. A collection of saved instances that are returned from `DataManager` can be obtained after commit.
+. Declares two listeners: `BeforeCommitListener` and `AfterCommitListener`. They receive notifications before and after committing modified instances. `BeforeCommitListener` enables to supplement a collection of entities sent to <<dataManager,DataManager>> to save arbitrary entities in the same transaction. A collection of saved instances that are returned from `DataManager` can be obtained after commit in the `AfterCommitListener` listener.
 +
-This mechanism is required if some entities, with which a screen works, are not under control of datasources, but are created and changed directly in the controller code. For example, a visual component, <<gui_FileUploadField,FileUploadField>>, after uploading a file, creates a new entity instance, `FileDescriptor`, which can be saved together with other screen entities by adding to `CommitContext` in the `DsContext.CommitListener.beforeCommit()` method..
+This mechanism is required if some entities, with which a screen works, are not under control of datasources, but are created and changed directly in the controller code. For example, a visual component, <<gui_FileUploadField,FileUploadField>>, after uploading a file, creates a new entity instance, `FileDescriptor`, which can be saved together with other screen entities by adding to `CommitContext` in `BeforeCommitListener`.
 +
-`DsContext.CommitListener` has the `DsContext.CommitListenerAdapter` adapter, which is useful when it's needed to define only one method.
-+
-In the following example, a new instance, `Customer` will be sent to *Middleware* and saved to the DB together with other modified screen entities when it is committed: 
+In the following example, a new instance of `Customer` will be sent to Middleware and saved to the database together with other modified screen entities when the screen is committed:
 +
 [source, java]
 ----

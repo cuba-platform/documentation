@@ -1,17 +1,14 @@
 protected Customer customer;
 
 protected void createNewCustomer() {
-    customer = new Customer();
+    customer = metadata.create(Customer.class);
     customer.setName("John Doe");
 }
 
+@Override
 public void init(Map<String, Object> params) {
-    getDsContext().addListener(new DsContext.CommitListenerAdapter() {
-        @Override
-        public void beforeCommit(CommitContext context) {
-            if (customer != null){
-                context.getCommitInstances().add(customer);
-            }
-        }
-    });
+    getDsContext().addBeforeCommitListener(context -> {
+        if (customer != null)
+            context.getCommitInstances().add(customer);
+    }
 }

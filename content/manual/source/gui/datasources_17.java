@@ -1,12 +1,4 @@
-@Inject
-protected CollectionPropertyDatasourceImpl<CategoryAttribute, UUID> categoryAttrsDs;
-
-categoryAttrsDs.addListener(new DsListenerAdapter<CategoryAttribute>() {
-    @Override
-    public void stateChanged(Datasource ds, Datasource.State prevState, Datasource.State state) {
-        if (state != Datasource.State.VALID) return;
-
+employeesDs.addStateChangeListener(event -> {
+    if (event.getState() == Datasource.State.VALID)
         initDataTypeColumn();
-        initDefaultValueColumn();
-    }
 });

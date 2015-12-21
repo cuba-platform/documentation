@@ -1098,128 +1098,45 @@ select c from sales$Customer c where c.name like :(?i)component$customerNameFiel
 
 Слушатели <<datasources,источников данных>> (datasource listeners) позволяют получать оповещения об изменении состояния источников данных и экземпляров сущностей, в них находящихся.
 
-Для регистрации слушателей используются методы `Datasource.addListener()`, `Datasource.removeListener()`. Пример регистрации слушателя в <<screen_controller,контроллере экрана>>:
+Существует четыре типа слушателей. Три из них: `ItemPropertyChangeListener`, `ItemChangeListener` и `StateChangeListener` определены в интерфейсе `Datasource` и могут быть использованы в любых источниках данных. `CollectionChangeListener` определен в интерфейсе `CollectionDatasource` и может быть использован только в источниках данных, работающих с коллекциями сущностей.
+
+Пример использования слушателей источников данных:
 
 [source, java]
 ----
-@Inject
-private Datasource<Customer> customerDs;
-...
-public void init(Map<String, Object> params) {
-  ...
-  customerDs.addListener(new DatasourceListener<Customer>() {
-      // listener methods implementation
-  });
-}
+include::{sourcesdir}/gui/datasources_14.java[]
 ----
 
-Существует два интерфейса слушателей источников данных: `DatasourceListener` и `CollectionDatasourceListener`. Первый можно использовать для регистрации в любых источниках данных, второй - только в реализующих `CollectionDatasource`. Как правило, на практике требуется получать не все оповещения от слушателя, а только некоторые. Поэтому удобно вместо реализации самих интерфейсов слушателей использовать классы-адаптеры `DsListenerAdapter` и `CollectionDsListenerAdapter`, содержащие пустые реализации всех методов соответствующих интерфейсов.
+Интерфейсы слушателей описаны ниже.
 
-Рассмотрим методы `DatasourceListener`:
-
-* `valueChanged()` - объявление этого метода наследуется от базового интерфейса `ValueListener`. Данный метод слушателя вызывается, если изменилось значение какого-либо атрибута сущности, находящейся в данный момент в источнике. В метод передается сам измененный экземпляр, имя измененного атрибута, старое и новое значение.
+* `ItemPropertyChangeListener` добавляется с помощью метода `Datasource.addItemPropertyChangeListener()`. Слушатель вызывается, если изменилось значение какого-либо атрибута сущности, находящейся в данный момент в источнике. Через объект события можно получить сам измененный экземпляр, имя измененного атрибута, старое и новое значение.
 +
-Оповещение `valueChanged()` можно использовать для действий в ответ на изменение пользователем сущности из UI, то есть редактирования полей ввода. В следующем примере гипотетический метод `updateSettings()` будет вызван при изменении значения атрибута `active`, и в него будет передано новое значение этого атрибута:
-+
-[source, java]
-----
-@Inject
-private Datasource<Customer> customerDs;
+Слушатель `ItemPropertyChangeListener` можно использовать для действий в ответ на изменение пользователем сущности из UI, то есть редактирования полей ввода.
 
-public void init(Map<String, Object> params) {
-  ...
-  customerDs.addListener(new DsListenerAdapter<Customer>() {
-      @Override
-      public void valueChanged(Customer source, String property, Object prevValue, Object value) {
-          if ("active".equals(property)) {
-              boolean active = BooleanUtils.isTrue((Boolean) value); // converting null to false
-              updateSettings(active);
-          }
-      }
-  });
-}
-----
-
-* `itemChanged()` - вызывается при смене выбранного экземпляра, возвращаемого методом `getItem()`.
+* `ItemChangeListener` добавляется с помощью метода `Datasource.addItemChangeListener()`. Он вызывается при смене выбранного экземпляра, возвращаемого методом `getItem()`.
 +
 Для `Datasource` это происходит при установке другого экземпляра (или `null`) методом `setItem()`.
 +
-Для `CollectionDatasource` данное оповещение вызывается, когда в связанном визуальном компоненте меняется выделенный элемент. Например, это может быть выделенная строка таблицы, элемент дерева, или выделенный элемент выпадающего списка.
+Для `CollectionDatasource` данный слушатель вызывается, когда в связанном визуальном компоненте меняется выделенный элемент. Например, это может быть выделенная строка таблицы, элемент дерева, или выделенный элемент выпадающего списка.
 
-Пример использования оповещения `itemChanged()` для управления состоянием действия таблицы:
-
-[source, java]
-----
-@Inject
-protected CollectionDatasource<Customer, UUID> customersDs;
-
-@Named("customersTable.remove")
-protected RemoveAction removeAction;
-
-public void init(Map<String, Object> params) {
-  ...
-  customersDs.addListener(new DsListenerAdapter<Customer>() {
-      @Override
-      public void itemChanged(Datasource<Customer> ds, Customer prevItem, Customer item) {
-          removeAction.setEnabled(canCustomerBeDeleted(item));
-      }
-  });
-}
-----
-
-* `stateChanged()` - вызывается при изменении состояния источника данных. Источник данных может находиться в одном из трех состояний, соответствующих перечислению `Datasource.State`:
-
+* `StateChangeListener` добавляется с помощью метода `Datasource.addStateChangeListener()`. Он вызывается при изменении состояния источника данных. Источник данных может находиться в одном из трех состояний, соответствующих перечислению `Datasource.State`:
++
+--
 ** `++NOT_INITIALIZED++` - источник только что создан.
 
 ** `INVALID` - создан весь `<<dsContext,DsContext>>`, к которому относится данный источник.
 
 ** `VALID` - источник данных в рабочем состоянии: `Datasource` содержит экземпляр сущности или `null`, `CollectionDatasource` - коллекцию экземпляров или пустую коллекцию.
 +
-Получение оповещения об изменении состояния источника может быть актуально для сложных <<screen_edit,редакторов>>, состоящих из нескольких <<frame,фреймов>>, где сложно отследить момент проставления редактируемой сущности в источник. В этом случае можно использовать оповещение `stateChanged()` для отложенной инициализации некоторых элементов экрана: 
+Получение оповещения об изменении состояния источника может быть актуально для сложных <<screen_edit,редакторов>>, состоящих из нескольких <<frame,фреймов>>, где сложно отследить момент проставления редактируемой сущности в источник. В этом случае можно использовать слушатель `StateChangeListener` для отложенной инициализации некоторых элементов экрана:
 +
 [source, java]
 ----
-@Inject
-protected CollectionPropertyDatasourceImpl<CategoryAttribute, UUID> categoryAttrsDs;
-
-categoryAttrsDs.addListener(new DsListenerAdapter<CategoryAttribute>() {
-  @Override
-  public void stateChanged(Datasource ds, Datasource.State prevState, Datasource.State state) {
-      if (state != Datasource.State.VALID) return;
-      initDataTypeColumn();
-      initDefaultValueColumn();
-  }
-});
+include::{sourcesdir}/gui/datasources_17.java[]
 ----
+--
 
-Интерфейс `CollectionDatasourceListener` добавляет еще один метод: 
-
-* `collectionChanged()` - вызывается при изменении коллекции сущностей, хранящейся в источнике данных. В метод передается тип изменения: `REFRESH`,`CLEAR`,`ADD`,`REMOVE`,`UPDATE`.
-+
-Пример слушателя, вызывающего пересчет стоимости поездки при изменении адреса остановки (сущность `Stop`) или количества остановок:
-+
-[source, java]
-----
-protected class StopDsListener extends CollectionDsListenerAdapter<Stop> {
-  @Override
-  public void valueChanged(Stop source, String property, Object prevValue, Object value) {
-      // existing stop address changed
-      if ("address".equals(property)) {
-          fireRouteChanged();
-      }
-  }
-
-  @Override
-  public void collectionChanged(CollectionDatasource ds, Operation operation) {
-      // stop was added or removed
-      fireRouteChanged();
-  }
-
-  private void fireRouteChanged() {
-      // journey route has changed, need to recalculate price, journey time, pickup time delay etc.
-  }
-}
-----
+* `CollectionChangeListener` добавляется с помощью метода `CollectionDatasource.addCollectionChangeListener()`. Слушатель вызывается при изменении коллекции сущностей, хранящейся в источнике данных. Объект события имеет метод `getOperation()`, возвращающий значение типа `CollectionDatasource.Operation`: `REFRESH`, `CLEAR`, `ADD`, `REMOVE`, `UPDATE`. Этот тип указывает операцию, которая привела к изменению коллекции.
 
 [[dsContext]]
 ===== DsContext
@@ -1238,32 +1155,15 @@ protected class StopDsListener extends CollectionDsListenerAdapter<Stop> {
 +
 В результате коммита `DsContext` получает от *Middleware* набор сохраненных экземпляров (в случае оптимистической блокировки у них, как минимум, увеличено значение атрибута `version`), и устанавливает эти экземпляры в источниках данных взамен устаревших. Это позволяет сразу после коммита работать со свежими экземплярами без необходимости лишнего обновления источников данных, связанного с запросами к *Middleware* и базе данных.
 
-. Объявляет слушателя `DsContext.CommitListener`, позволяющего получать оповещения перед коммитом измененных экземпляров и после него. Перед коммитом можно дополнить коллекцию отправляемых в <<dataManager,DataManager>> на Middleware экземпляров, тем самым обеспечив сохранение в той же транзакции произвольных сущностей. После коммита можно получить коллекцию вернувшихся из `DataManager` сохраненных экземпляров.
+. Объявляет два слушателя: `BeforeCommitListener` и `AfterCommitListener`, позволяющие получать оповещения перед коммитом измененных экземпляров и после него. Перед коммитом можно дополнить коллекцию отправляемых в <<dataManager,DataManager>> на Middleware экземпляров, тем самым обеспечив сохранение в той же транзакции произвольных сущностей. После коммита можно получить коллекцию вернувшихся из `DataManager` сохраненных экземпляров.
 +
-Данный механизм необходим, если некоторые сущности, с которыми работает экран, находятся не под управлением источников данных, а создаются и изменяются непосредственно в коде контроллера. Например, визуальный компонент `<<gui_FileUploadField,FileUploadField>>` после загрузки файла создает новый экземпляр сущности `FileDescriptor`, который можно сохранить вместе с другими сущностями экрана именно таким способом - добавив в `CommitContext` в методе `DsContext.CommitListener.beforeCommit()`.
-+
-`DsContext.CommitListener` имеет адаптер `DsContext.CommitListenerAdapter`, который удобно использовать при необходимости определить только один метод.
+Данный механизм необходим, если некоторые сущности, с которыми работает экран, находятся не под управлением источников данных, а создаются и изменяются непосредственно в коде контроллера. Например, визуальный компонент `<<gui_FileUploadField,FileUploadField>>` после загрузки файла создает новый экземпляр сущности `FileDescriptor`, который можно сохранить вместе с другими сущностями экрана именно таким способом - добавив в `CommitContext` в слушателе `BeforeCommitListener`.
 +
 В следующем примере новый экземпляр `Customer` будет отправлен на *Middleware* и сохранен в БД вместе с остальными измененными сущностями экрана при его коммите:
 +
 [source, java]
 ----
-protected Customer customer;
-
-protected void createNewCustomer() {
-  customer = new Customer();
-  customer.setName("John Doe");
-}
-
-public void init(Map<String, Object> params) {
-  getDsContext().addListener(new DsContext.CommitListenerAdapter() {
-      @Override
-      public void beforeCommit(CommitContext context) {
-          if (customer != null)
-              context.getCommitInstances().add(customer);
-      }
-  });
-}
+include::{sourcesdir}/gui/dscontext_1.java[]
 ----
 
 [[dataSupplier]]

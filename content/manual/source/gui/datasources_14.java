@@ -1,10 +1,30 @@
-@Inject
-private Datasource<Customer> customerDs;
+public class EmployeeBrowse extends AbstractLookup {
 
-...
-public void init(Map<String, Object> params) {
-    ...
-    customerDs.addListener(new DatasourceListener<Customer>() {
-        // listener methods implementation
-    });
+    private Logger log = LoggerFactory.getLogger(getClass());
+
+    @Inject
+    private CollectionDatasource<Employee, UUID> employeesDs;
+
+    @Override
+    public void init(Map<String, Object> params) {
+        employeesDs.addItemPropertyChangeListener(event -> {
+            log.info("Property {} of {} has been changed from {} to {}",
+                    event.getProperty(), event.getItem(), event.getPrevValue(), event.getValue());
+        });
+
+        employeesDs.addStateChangeListener(event -> {
+            log.info("State of {} has been changed from {} to {}",
+                    event.getDs(), event.getPrevState(), event.getState());
+        });
+
+        employeesDs.addItemChangeListener(event -> {
+            log.info("Datasource {} item has been changed from {} to {}",
+                    event.getDs(), event.getPrevItem(), event.getItem());
+        });
+
+        employeesDs.addCollectionChangeListener(event -> {
+            log.info("Datasource {} content has been changed due to {}",
+                    event.getDs(), event.getOperation());
+        });
+    }
 }
