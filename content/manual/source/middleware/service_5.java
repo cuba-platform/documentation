@@ -1,4 +1,6 @@
 @Inject
-protected OrderService orderService;
-...
-orderService.calculateTotals(order);
+private OrderService orderService;
+
+public void calculateTotals() {
+    orderService.calculateTotals(order);
+}
