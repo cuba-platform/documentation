@@ -3,17 +3,14 @@ private Timer helloTimer;
 
 @Override
 public void init(Map<String, Object> params) {
-    helloTimer.addTimerListener(new Timer.TimerListener() {
-        @Override
-        public void onTimer(Timer timer) {
-            showNotification("Hello", NotificationType.HUMANIZED);
-        }
-
-        @Override
-        public void onStopTimer(Timer timer) {
-            showNotification("Timer is stopped", NotificationType.HUMANIZED);
-        }
+    // add execution handler
+    helloTimer.addActionListener(timer -> {
+        showNotification("Hello", NotificationType.HUMANIZED);
     });
-
+    // add stop listener
+    helloTimer.addStopListener(timer -> {
+        showNotification("Timer is stopped", NotificationType.HUMANIZED);
+    });
+    // start the timer
     helloTimer.start();
 }
