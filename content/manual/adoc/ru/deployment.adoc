@@ -178,107 +178,50 @@ shared.loader=${catalina.home}/shared/lib/*.jar
 [[tomcat_in_prod]]
 ===== Использование Tomcat при эксплуатации приложения
 
-Процедура быстрого развертывания создает веб приложения `app` и `app-core`, работающие на локальном инстансе Tomcat на порту 8080. Это означает, что веб клиент доступен по адресу `http://localhost:8080/app`. Вы можете использовать этот сервер для эксплуатации приложения, однако необходимо настроить некоторые его свойства.
+Процедура <<fast_deployment,быстрого развертывания>> по умолчанию создает веб приложения `app` и `app-core`, работающие на локальном инстансе Tomcat на порту 8080. Это означает, что веб клиент доступен по адресу `++http://localhost:8080/app++`.
 
-Сначала установите имя хоста сервера.
-
-Если изменения порта (8080) и веб контекста (`app`) не требуется, установите следующие свойства приложения в файлах `tomcat/conf/app/local.app.properties` и `tomcat/conf/app-core/local.app.properties`: 
+Вы можете использовать этот экземпляр Tomcat для эксплуатации приложения, просто скопировав его на сервер. После этого необходимо установить имя хоста сервера в файлах `conf/app/local.app.properties` и `conf/app-core/local.app.properties` (создайте файлы если они не существуют):
 
 [source, properties]
 ----
-
   cuba.webHostName = myserver
   cuba.webAppUrl = http://myserver:8080/app
 ---- 
 
-Если порт сервера отличается от 8080, установите также свойство `cuba.webPort`: 
+Кроме того, необходимо настроить подключение к production базе данных. Это можно сделать в файле <<context.xml>> веб-приложения (`webapps/app-core/META-INF/context.xml`), или скопировать этот файл в `conf/Catalina/localhost/app-core.xml` как описано в предыдущем разделе, чтобы разделить настройки соединения с БД для разработки и эксплуатации.
 
-[source, properties]
-----
+Базу данных для production можно создать из бэкапа той базы, которая использовалась при разработке, либо настроить автоматическое создание и обновление БД. См. <<db_update_in_prod>>.
 
-  cuba.webPort = 7070
-  cuba.webHostName = myserver
-  cuba.webAppUrl = http://myserver:7070/app
----- 
+Если вы хотите изменить порт Tomcat или веб-контекст (последнюю часть URL после `/`), используйте *Studio*:
 
-Если вы хотите изменить веб контекст (например на `sales`), выполните следующее: 
+* Откройте проект в Studio.
 
-* Переименуйте каталоги веб приложений и подкаталоги `conf`: 
-+
-[source, plain]
-----
+* Перейдите в *Project Properties* > *Edit* > *Advanced*.
 
-  tomcat/
-      conf/
-          sales/
-              local.app.properties
-          sales-core/
-              local.app.properties
-      webapps/
-          sales/
-          sales-core/
----- 
+* Чтобы изменить веб-контекст, отредактируйте поле *Modules prefix*.
 
-* Откройте файл `tomcat/webapps/sales-core/WEB-INF/web.xml` и измените последнюю строку в значении параметра `appPropertiesConfig`: 
-+
-[source, xml]
-----
-file:${catalina.home}/conf/sales-core/local.app.properties
----- 
+* Чтобы изменить порт Tomcat, отредактируйте поле *Tomcat ports* > *HTTP port*.
 
-* Откройте файл `tomcat/webapps/sales/WEB-INF/web.xml` и измените последнюю строку в значении параметра `appPropertiesConfig`: 
-+
-[source, xml]
-----
-file:${catalina.home}/conf/sales/local.app.properties
----- 
-
-* Добавьте в `tomcat/conf/sales-core/local.app.properties`: 
-+
-[source, properties]
-----
-
-  cuba.webContextName = sales-core
-  cuba.webPort = 7070
-  cuba.webHostName = myserver
-  cuba.webAppUrl = http://myserver:7070/sales
----- 
-
-* Добавьте в `tomcat/conf/sales/local.app.properties`: 
-+
-[source, properties]
-----
-
-  cuba.connectionUrlList = http://localhost:7070/sales-core
-  cuba.webContextName = sales
-  cuba.webPort = 7070
-  cuba.webHostName = myserver
-  cuba.webAppUrl = http://myserver:7070/sales
----- 
-+
-Свойство приложения <<cuba.connectionUrlList,cuba.connectionUrlList>> используется для перекачки файлов между веб клиентом и *Middleware* даже в случае <<cuba.useLocalServiceInvocation,local service invocations>>, поэтому оно всегда должно указывать на реальный URL веб приложения Middleware.
-
-Если для веб клиента вы хотите использовать корневой контекст (`http://myserver:8080`), переименуйте каталоги `sales` в `ROOT` 
+Если для веб клиента вы хотите использовать корневой контекст (`++http://myserver:8080++`), переименуйте каталоги `app` в `ROOT`
 
 [source, plain]
 ----
-
-  tomcat/
-      conf/
-          ROOT/
-              local.app.properties
-          sales-core/
-              local.app.properties
-      webapps/
-          ROOT/
-          sales-core/
+tomcat/
+  conf/
+      ROOT/
+          local.app.properties
+      app-core/
+          local.app.properties
+  webapps/
+      ROOT/
+      app-core/
 ----
 
-и используйте `/` в качестве веб контекста в файле `tomcat/conf/ROOT/local.app.properties`:
+и используйте `/` в качестве веб контекста в файле `conf/ROOT/local.app.properties`:
 
 [source, properties]
 ----
-  cuba.webContextName = /
+cuba.webContextName = /
 ---- 
 
 [[war_deployment]]

@@ -75,7 +75,7 @@ Fast deployment is used by default when developing an application, as it provide
 
 Fast deployment is performed using the <<build.gradle_deploy,deploy>> task that is declared for *core* and *web* modules in the `build.gradle` file. Before the first execution of `deploy`, a local Tomcat server should be set up and initialized using the <<build.gradle_setupTomcat,setupTomcat>> task.
 
-As result of fast deployment, the following structure is created in the directory that is specified by the `ext.tomcatDir` property of the `build.gradle` script (only important directories and files are listed below):
+As result of fast deployment, the following structure is created in the directory that is specified by the `cuba.tomcat.dir` property of the `build.gradle` script (only important directories and files are listed below):
 
 [source, plain]
 ----
@@ -121,7 +121,7 @@ work/
 
 ** `setenv.bat`, `setenv.sh` – the scripts that set environment variables. These scripts should be used for setting JVM memory parameters, specifying a configuration file for <<logging_setup_tomcat,logging>>, configuring <<jmx_remote_access,access to JMX>>, parameters to <<debug_setup,connect the debugger>>.
 
-** `startup.bat`, `startup.sh` – the scripts that start Tomcat. The server starts in a separate console window in *Windows* and in background in **nix*.
+** `startup.bat`, `startup.sh` – the scripts that start Tomcat. The server starts in a separate console window on *Windows* and in background on **nix*.
 +
 To start the server in the current console window, use the following commands instead of `++startup.*++`:
 +
@@ -135,142 +135,86 @@ To start the server in the current console window, use the following commands in
 
 * `conf` – the directory that contains configuration files of Tomcat and its deployed applications.
 
-** `catalina.properties` – the Tomcat properties. To load shared libraries from the shared/lib directory (see below), this file should contain the following line:
+** `catalina.properties` – the Tomcat properties. To load shared libraries from the `shared/lib` directory (see below), this file should contain the following line:
 +
 [source, properties]
 ----
 shared.loader=${catalina.home}/shared/lib/*.jar
 ----
 
-** `server.xml` – Tomcat configuration descriptor. Server ports can be changed in this file.
+** `server.xml` – Tomcat configuration descriptor.
 
 ** `logback.xml` – application <<logging_setup_tomcat,logging>> configuration descriptor.
 
 ** `logging.properties` – Tomcat server logging configuration descriptor.
 
-** `Catalina/localhost` – in this directory, <<context.xml,context.xml>> application deployment descriptors can be placed. Descriptors located in this directory take precedence over the descriptors in the META-INF application directories. This approach is often convenient for production environment. For example, with this descriptor, it is possible to specify the server-level database connection parameters that are different from those specified in the application itself.
+** `Catalina/localhost` – in this directory, <<context.xml,context.xml>> application deployment descriptors can be placed. Descriptors located in this directory take precedence over the descriptors in the `META-INF` directories of the application. This approach is often convenient for production environment. For example, with this descriptor, it is possible to specify the database connection parameters that are different from those specified in the application itself.
 +
-Server level deployment descriptor should have the application name and the.xml extension. So, to create this descriptor, for example, for the `app-core` application, the contents of the webapps/app-core/META-INF/context.xml file should be copied to conf/Catalina/localhost/app-core.xml file.
+Server-specific deployment descriptor should have the application name and the `.xml` extension. So, to create this descriptor, for example, for the `app-core` application, copy the contents of the `webapps/app-core/META-INF/context.xml` file to the `conf/Catalina/localhost/app-core.xml` file.
 
 ** `app` – web client application <<conf_dir,configuration directory>>.
 
 ** `app-core` – middleware application <<conf_dir,configuration directory>>.
 
-* `lib` – directory of the libraries that are loaded by the server's _common classloader_. These libraries are available for both the server and all web applications deployed in it. In particular, this directory should have JDBC drivers of the utilized databases (hsqldb-XYZ.jar, postgresql-XYZ.jar, etc.)
+* `lib` – directory of the libraries that are loaded by the server's _common classloader_. These libraries are available for both the server and all web applications deployed in it. In particular, this directory should have JDBC drivers of the utilized databases (`hsqldb-XYZ.jar`, `postgresql-XYZ.jar`, etc.)
 
-* `logs` – application and server <<logging,logs>> directory. The main log file of the application is app.log.
+* `logs` – application and server <<logging,logs>> directory. The main log file of the application is `app.log` (see <<logging_setup_tomcat>>).
 
-* `shared/lib` – directory of libraries that are available to all deployed applications. These libraries classes are loaded by the server's special _shared classloader_. Its usage is configured in the conf/catalina.properties file as described above.
+* `shared/lib` – directory of libraries that are available to all deployed applications. These libraries classes are loaded by the server's special _shared classloader_. Its usage is configured in the `conf/catalina.properties` file as described above.
 +
-<<build.gradle_deploy,Deploy>> tasks of the build file use this directory to store all libraries not listed in the `jarNames` parameter, i.e. not specific for the given application.
+The <<build.gradle_deploy,deploy>> task of the build script copies all libraries not listed in the `jarNames` parameter, i.e. not specific for the given application, into this directory.
 
 * `temp/app`, `temp/app-core` – web client and the middleware applications <<temp_dir,temporary directories>>.
 
 * `webapps` – web application directories. Each application is located in its own subdirectory in the _exploded WAR_ format.
 +
-<<build.gradle_deploy,Deploy>> tasks of the build file create application subdirectories with the names specified in the `appName` parameters and, among other things, copy the libraries mentioned in the `jarNames` parameter to the WEB-INF/lib subdirectory for each application.
+The <<build.gradle_deploy,deploy>> task of the build script create application subdirectories with the names specified in the `appName` parameters and, among other things, copy the libraries listed in the `jarNames` parameter to the `WEB-INF/lib` subdirectory for each application.
 
 * `work/app`, `work/app-core` – web client and the middleware applications <<work_dir,work directories>>.
 
 [[tomcat_in_prod]]
 ===== Using Tomcat in Production
 
-The fast deployment procedure creates `app` and `app-core` web applications running on port 8080 of a local Tomcat instance. It means that the web client is available at `++http://localhost:8080/app++`. You can use this server instance in production, but you need to change some application properties to conform to the production environment.
+By default, the <<fast_deployment,fast deployment>> procedure creates the `app` and `app-core` web applications running on port 8080 of the local Tomcat instance. It means that the web client is available at `++http://localhost:8080/app++`.
 
-First set up a server host name.
-
-If you are not going to change the port (8080) or the web context name (`app`), set the following properties in both `tomcat/conf/app/local.app.properties` and `tomcat/conf/app-core/local.app.properties` files: 
+You can use this Tomcat instance in production just by copying the `tomcat` directory to the server. All you have to do is to set up the server host name in both `conf/app/local.app.properties` and `conf/app-core/local.app.properties` files (create the files if they do not exist):
 
 [source, properties]
 ----
-
 cuba.webHostName = myserver
 cuba.webAppUrl = http://myserver:8080/app
 ---- 
 
-If the port differs from 8080, specify also the `cuba.webPort` property: 
+Besides, set up the connection to you production database. You can do it in the <<context.xml>> file of your web application (`webapps/app-core/META-INF/context.xml`), or copy this file to `conf/Catalina/localhost/app-core.xml` as described in the previous section to separate development and production settings.
 
-[source, properties]
-----
+You can create the production database from a development database backup, or set up the automatic creation and further updating of the database. See <<db_update_in_prod>>.
 
-cuba.webPort = 7070
-cuba.webHostName = myserver
-cuba.webAppUrl = http://myserver:7070/app
----- 
+If you want to change the Tomcat port or web context (the last part of the URL after `/`), use *Studio*:
 
-If you want to change the web context (e.g. to `sales`), do the following: 
+* Open the project in Studio.
 
-* Rename the web applications and `conf` subdirectories: 
-+
-[source, plain]
-----
+* Go to *Project Properties* > *Edit* > *Advanced*.
 
-tomcat/
-    conf/
-        sales/
-            local.app.properties
-        sales-core/
-            local.app.properties
-    webapps/
-        sales/
-        sales-core/
----- 
+* To change the web context, edit the *Modules prefix* field.
 
-* Open `tomcat/webapps/sales-core/WEB-INF/web.xml` and change the last line in the `appPropertiesConfig` context parameter value to the following: 
-+
-[source, properties]
-----
-file:${catalina.home}/conf/sales-core/local.app.properties
----- 
+* To change the Tomcat port, edit the *Tomcat ports* > *HTTP port* field.
 
-* Open `tomcat/webapps/sales/WEB-INF/web.xml` and change the last line in the `appPropertiesConfig` context parameter value to the following: 
-+
-[source, plain]
-----
-file:${catalina.home}/conf/sales/local.app.properties
----- 
-
-* Add the following to `tomcat/conf/sales-core/local.app.properties`: 
-+
-[source, properties]
-----
-
-cuba.webContextName = sales-core
-cuba.webPort = 7070
-cuba.webHostName = myserver
-cuba.webAppUrl = http://myserver:7070/sales
----- 
-
-* Add the following to `tomcat/conf/sales/local.app.properties`: 
-+
-[source, properties]
-----
-cuba.connectionUrlList = http://localhost:7070/sales-core
-cuba.webContextName = sales
-cuba.webPort = 7070
-cuba.webHostName = myserver
-cuba.webAppUrl = http://myserver:7070/sales
----- 
-+
-The <<cuba.connectionUrlList,cuba.connectionUrlList>> property is used when transferring uploaded files between web client and middleware even in case of <<cuba.useLocalServiceInvocation,local service invocations>>, so it should always point to a real URL of the middleware application.  
-
-If you want to use the root context for the web client (`http://myserver:8080`), rename `sales` directories to `ROOT` 
+If you want to use the root context for the web client (`++http://myserver:8080++`), rename `app` directories to `ROOT`
 
 [source, plain]
 ----
-
 tomcat/
     conf/
         ROOT/
             local.app.properties
-        sales-core/
+        app-core/
             local.app.properties
     webapps/
         ROOT/
-        sales-core/
+        app-core/
 ----
 
-and use `/` as the web context name in `tomcat/conf/ROOT/local.app.properties`:
+and use `/` as the web context name in `conf/ROOT/local.app.properties`:
 
 [source, properties]
 ----
