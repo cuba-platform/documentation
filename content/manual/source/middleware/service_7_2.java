@@ -7,7 +7,7 @@ public class SalesServiceBean implements SalesService {
 
     @Transactional
     @Override
-    public BigDecimal calculateSales(Object customerId) {
+    public BigDecimal calculateSales(UUID customerId) {
         return salesCalculator.calculateSales(customerId);
     }
 }

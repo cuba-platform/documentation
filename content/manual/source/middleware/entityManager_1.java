@@ -5,7 +5,7 @@ public class SalesServiceBean implements SalesService {
     private Persistence persistence;
 
     @Override
-    public BigDecimal calculateSales(Object customerId) {
+    public BigDecimal calculateSales(UUID customerId) {
         BigDecimal result;
         // start transaction
         try (Transaction tx = persistence.createTransaction()) {
