@@ -51,7 +51,7 @@ Save the task, select it in the table and click *Activate*. From now on, the sys
 
 [WARNING]
 ====
-Automatic indexing does not cover the entities created before its start. To index such entities, open the *JMX Console* screen and call sequentially the following methods of the `app-core.fts:type=FtsManager` JMX bean: `reindexAll()` and `processQueue()`.
+Automatic indexing does not cover the entities created before its start. To put such entities to the indexing queue use `reindexAll()` or `asyncReindexAll()` methods of the `app-core.fts:type=FtsManager` JMX bean. See <<reindex>>.
 ====
 
 === Setting up Configuration File
@@ -158,3 +158,14 @@ Search results for "rabbit" will look like this:
 
 image::SearchResults3.png[align="center"]
 
+[[reindex]]
+
+=== Running and configuring entities reindexing
+
+If full text search was added to the project when some data is already added to the database, then this data sould be indexed. You can add entities to the indexing queue with methods of `app-core.fts:type=FtsManager` JMX-bean. A convenient way to invoke JMX-bean method is *JMX Console* screen of *Administration* menu.
+
+JMX-bean `app-core.fts:type=FtsManager` provides two methods for adding entities to the indexing queue:
+
+ * `reindexAll()` - synchronously adds entities described in FTS config to the indexing queue. In case of large amounts of data this process can take a lot of time, so using the `asyncReindexAll()` is recommended.
+
+ * `asyncReindexAll()` - entities are added to the indexing queue asynchronously in batches with the `FtsManager.reindexNextBatch()` method. The batch size is defined by the <<chapter2.adoc#cuba.fts.reindexBatchSize,cuba.fts.reindexBatchSize>> configuration parameter. `FtsManager.reindexNextBatch()` method should be invoked by the scheduled tasks mechanism or by Spring scheduler. Indexing is not performed until indexing queue building is completed.
