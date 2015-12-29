@@ -586,6 +586,40 @@ create table SALES_CUSTOMER (
 
 Due to the distribution policy of Oracle JDBC driver, it can only be downloaded manually from http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html. After downloading, copy `ojdbc6.jar` file into the lib subfolder in Studio and the lib subfolder of the installed Tomcat server. Then you need to stop Studio, stop Gradle daemon by executing `gradle --stop` in the command line, then start Studio again.
 
+[[db_mysql_features]]
+==== MySQL Specifics
+
+Unique index may contain a column with the NULL value, e.g. TITLE and DELETE_TS where DELETE_TS is NULL by default. In this case MySQL will allow to store multiple records with the same TITLE value and NULLs in DELETE_TS. If you need a unique constraint for a table of entity that implements <<soft_deletion,SoftDeletе>> interface, then you have to do the following:
+
+. Create a DELETE_TS_NN column in a database table. This column is not null and is initialized by a default value:
++
+[source, sql]
+----
+create table LIB_BOOK (
+    ...
+    DELETE_TS_NN datetime(3) not null default '1000-01-01 00:00:00.000',
+    ...
+)^
+----
+
+. Create a trigger that will change DELETE_TS_NN value when DELETE_TS value is changed:
++
+[source, sql]
+----
+create trigger LIB_BOOK_DELETE_TS_NN_TRIGGER before update on LIB_BOOK
+for each row
+	if not(NEW.DELETE_TS <=> OLD.DELETE_TS) then
+		set NEW.DELETE_TS_NN = if (NEW.DELETE_TS is null, '1000-01-01 00:00:00.000', NEW.DELETE_TS);
+	end if^
+----
+
+. Create a unique constraint for columns that are included to the unique key and for DELETE_TS_NN:
++
+[source, sql]
+----
+create unique index IDX_LIB_BOOK_UNIQ_TITLE on LIB_BOOK (TITLE, DELETE_TS_NN)^
+----
+
 [[logging]]
 === Logging
 

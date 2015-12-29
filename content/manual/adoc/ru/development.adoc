@@ -587,6 +587,40 @@ create table SALES_CUSTOMER (
 
 В связи с политикой распространения JDBC драйвера Oracle его можно скачать только вручную с сайта link:$$http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html$$[http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html]. После скачивания скопируйте JAR с драйвером `ojdbc6.jar` в подкаталог `lib` Studio и подкаталог `lib` установленного сервера Tomcat. После этого необходимо остановить Studio, остановить демона Gradle, выполнив в командной строке `gradle --stop`, а затем снова запустить Studio.
 
+[[db_mysql_features]]
+==== Особенности MySQL
+
+Если уникальный индекс в MySQL содержит колонку, значение которой может быть NULL (например TITLE и DELETE_TS, где DELETE_TS изначально NULL), то MySQL позволит хранить несколько записей с одним и тем же значением TITLE и NULL в колонке DELETE_TS. Если необходимо иметь ограничение уникальности для таблицы сущности, реализующей интерфейс <<soft_deletion,SoftDeletе>>, то необходимо поступить следующим образом:
+
+. Создать в таблице БД колонку DELETE_TS_NN, которая всегда not null и инициализуруется определенным значением:
++
+[source, sql]
+----
+create table LIB_BOOK (
+    ...
+    DELETE_TS_NN datetime(3) not null default '1000-01-01 00:00:00.000',
+    ...
+)^
+----
+
+. Создать триггер для этой таблицы, который при изменении значения DELETE_TS будет обновлять DELETE_TS_NN:
++
+[source, sql]
+----
+create trigger LIB_BOOK_DELETE_TS_NN_TRIGGER before update on LIB_BOOK
+for each row
+	if not(NEW.DELETE_TS <=> OLD.DELETE_TS) then
+		set NEW.DELETE_TS_NN = if (NEW.DELETE_TS is null, '1000-01-01 00:00:00.000', NEW.DELETE_TS);
+	end if^
+----
+
+. Создать ограничение уникальности для полей, входящих в уникальный ключ, и DELETE_TS_NN:
++
+[source, sql]
+----
+create unique index IDX_LIB_BOOK_UNIQ_TITLE on LIB_BOOK (TITLE, DELETE_TS_NN)^
+----
+
 [[logging]]
 === Логгирование
 
