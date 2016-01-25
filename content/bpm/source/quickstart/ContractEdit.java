@@ -1,21 +1,19 @@
 package com.company.demo.gui.contract;
 
+import com.company.demo.entity.Contract;
 import com.haulmont.bpm.entity.ProcDefinition;
 import com.haulmont.bpm.entity.ProcInstance;
-import com.haulmont.bpm.gui.action.ProcAction;
 import com.haulmont.bpm.gui.procactions.ProcActionsFrame;
-import com.haulmont.cuba.core.global.*;
-import com.haulmont.cuba.gui.WindowManager;
+import com.haulmont.cuba.core.global.DataManager;
+import com.haulmont.cuba.core.global.LoadContext;
+import com.haulmont.cuba.core.global.Metadata;
+import com.haulmont.cuba.core.global.PersistenceHelper;
 import com.haulmont.cuba.gui.app.core.file.FileDownloadHelper;
-import com.haulmont.cuba.gui.components.*;
-import com.company.demo.entity.Contract;
-import com.haulmont.cuba.gui.components.actions.BaseAction;
-import com.haulmont.cuba.gui.data.DsContext;
-import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
+import com.haulmont.cuba.gui.components.AbstractEditor;
+import com.haulmont.cuba.gui.components.Table;
 
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import java.util.Map;
 
 public class ContractEdit extends AbstractEditor<Contract> {
 
@@ -30,12 +28,6 @@ public class ContractEdit extends AbstractEditor<Contract> {
 
     @Inject
     private ProcActionsFrame procActionsFrame;
-
-    @Inject
-    private GroupBoxLayout procActionsBox;
-
-    @Inject
-    private ComponentsFactory componentsFactory;
 
     @Inject
     private Table attachmentsTable;
@@ -57,47 +49,30 @@ public class ContractEdit extends AbstractEditor<Contract> {
             }
             initProcActionsFrame();
         }
-        getDsContext().addListener(new DsContext.CommitListenerAdapter() {
-            @Override
-            public void beforeCommit(CommitContext context) {
-                if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
-                    context.getCommitInstances().add(procInstance);
-                }
+        getDsContext().addBeforeCommitListener(context -> {
+            if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
+                context.getCommitInstances().add(procInstance);
             }
         });
         FileDownloadHelper.initGeneratedColumn(attachmentsTable, "file");
     }
 
     private void initProcActionsFrame() {
-        procActionsFrame.setBeforeStartProcessPredicate(new ProcAction.BeforeActionPredicate() {
-            @Override
-            public boolean evaluate() {
-                if (PersistenceHelper.isNew(getItem())) {
-                    showNotification(getMessage("saveContract"), NotificationType.WARNING);
-                    return false;
-                }
-                return true;
+        procActionsFrame.setBeforeStartProcessPredicate(() -> {
+            if (PersistenceHelper.isNew(getItem())) {
+                showNotification(getMessage("saveContract"), NotificationType.WARNING);
+                return false;
             }
+            return true;
         });
-        procActionsFrame.setAfterStartProcessListener(new ProcAction.AfterActionListener() {
-            @Override
-            public void actionCompleted() {
-                showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
-                close(COMMIT_ACTION_ID);
-            }
+        procActionsFrame.setAfterStartProcessListener(() -> {
+            showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
+            close(COMMIT_ACTION_ID);
         });
-        procActionsFrame.setBeforeCompleteTaskPredicate(new ProcAction.BeforeActionPredicate() {
-            @Override
-            public boolean evaluate() {
-                return commit();
-            }
-        });
-        procActionsFrame.setAfterCompleteTaskListener(new ProcAction.AfterActionListener() {
-            @Override
-            public void actionCompleted() {
-                showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
-                close(COMMIT_ACTION_ID);
-            }
+        procActionsFrame.setBeforeCompleteTaskPredicate(this::commit);
+        procActionsFrame.setAfterCompleteTaskListener(() -> {
+            showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
+            close(COMMIT_ACTION_ID);
         });
         procActionsFrame.setCancelProcessEnabled(false);
         procActionsFrame.init(procInstance);
@@ -106,7 +81,7 @@ public class ContractEdit extends AbstractEditor<Contract> {
 
     @Nullable
     private ProcDefinition findProcDefinition() {
-        LoadContext ctx = new LoadContext(ProcDefinition.class);
+        LoadContext ctx = LoadContext.create(ProcDefinition.class);
         ctx.setQueryString("select pd from bpm$ProcDefinition pd where pd.code = :code")
                 .setParameter("code", PROCESS_CODE);
         return (ProcDefinition) dataManager.load(ctx);
@@ -114,10 +89,10 @@ public class ContractEdit extends AbstractEditor<Contract> {
 
     @Nullable
     private ProcInstance findProcInstance() {
-        LoadContext ctx = new LoadContext(ProcInstance.class).setView("procInstance-start");
+        LoadContext ctx = LoadContext.create(ProcInstance.class).setView("procInstance-start");
         ctx.setQueryString("select pi from bpm$ProcInstance pi where pi.procDefinition.id = :procDefinition and pi.entityId = :entityId")
                 .setParameter("procDefinition", procDefinition)
                 .setParameter("entityId", getItem());
-        return (ProcDefinition) dataManager.load(ctx);
+        return (ProcInstance) dataManager.load(ctx);
     }
 }
