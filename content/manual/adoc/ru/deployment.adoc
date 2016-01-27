@@ -227,88 +227,65 @@ cuba.webContextName = /
 [[war_deployment]]
 ==== Развертывание в WAR
 
-Стандартное для JavaEE развертывание приложений в WAR-файлы осуществляется с помощью задачи сборки <<build.gradle_buildWar,buildWar>>. Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Glassfish 4*.
+CUBA-приложения можно разворачивать в файлы с помощью задачи сборки <<build.gradle_buildWar,buildWar>> и выполнять на любом контейнере сервлетов Java. Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Jetty*.
 
-. Добавляем в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
+. Добавьте в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
 +
-[source, java]
+[source, groovy]
 ----
-task buildWar(type: CubaWarBuilding) {
-    coreProject = project(':app-core')
-    webProject = project(':app-web')
-    appName = 'app'
-    appHome = '${app.home}'
-    singleWar = false
-}
+include::{sourcesdir}/deployment/warDeployment_1.groovy[]
 ----
 
-. Запускаем сборку:
+. Запустите сборку:
 +
-`gradlew createWarDistr`
+[source, plain]
+----
+gradlew buildWar
+----
 +
-В результате в подкаталоге `build/distributions/war` проекта создаются файлы `app-core.war` и `app.war`.
+В результате в подкаталоге `build\distributions\war` проекта будут созданы файлы `app-core.war` и `app.war`.
 
-. Создаем домашний каталог приложения на сервере, например, `/home/user/app_home`.
+. Создайте домашний каталог приложения на сервере, например, `c:\work\app_home`.
 
-. Устанавливаем сервер *Glassfish 4*, например в каталог `/home/user/glassfish4`.
+. Создаем файл конфигурации <<logging, Logback>>. Вы можете взять файл `build\tomcat\conf\logback.xml` после стандартного <<fast_deployment,быстрого развертывания>> в Tomcat. Замените переменную `${catalina.home}` на `${app.home}` в содержимом файла и скопируйте файл на сервер в домашний каталог приложения.
 
-. Копируем JDBC-драйвер используемой базы данных в каталог `/home/user/glassfish4/glassfish/domains/domain1/lib`. Файл драйвера можно взять из каталога `lib` Studio, либо из каталога `build/tomcat/lib` проекта (если перед этим выполнялось <<fast_deployment,быстрое развертывание>> в Tomcat).
+. Загрузите и установите сервер Jetty, например в каталог `c:\work\jetty-home`. Данный пример тестировался на версии `jetty-distribution-9.3.6.v20151106.zip`.
 
-. Создаем файл конфигурации <<logging, Logback>> на основе файла `build/tomcat/conf/logback.xml`, заменяя переменную ${catalina.home} на ${app.home}. Копируем файл на сервер в домашний каталог приложения.
-
-. Запускаем сервер:
+. Создайте каталог `c:\work\jetty-base`, откройте в нем командную строку и выполните:
 +
-`$ cd /home/user/glassfish4/bin`
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar --add-to-start=http,jndi,deploy,plus,ext,resources
+----
+
+. Создайте файл `c:\work\jetty-base\app-jetty.xml` следующего содержания (для БД PostgreSQL с именем `test`):
 +
-`$ ./asadmin start-domain`
+[source, xml]
+----
+include::{sourcesdir}/deployment/warDeployment_2.xml[]
+----
 
-. Переходим по адресу `http://localhost:4848` и в консоли управления сервером:
-
-.. Создаем *JDBC Connection Pool* для подключения к нашей базе данных, например:
-
-* Pool Name: AppDB
-
-* Resource Type: javax.sql.DataSource
-
-* Database Driver Vendor: Postgresql
-
-* Datasource Classname: org.postgresql.ds.PGSimpleDataSource 
-
-* User: cuba
-
-* DatabaseName: app_db
-
-* Password: cuba
-
-.. Создаем *JDBC Resource*:
-
-* JNDI Name: jdbc/CubaDS
-
-* Pool Name: AppDBСоздаем *JDBC Resource*:
-
-* JNDI Name: jdbc/CubaDS
-
-* Pool Name: AppDB
-
-.. В экране *server (Admin Server)* → *Properties* → *System Properties* задаем следующие системные переменные Java:
-
-* `++app.home = /home/user/app_home++` - домашний каталог приложения.
-
-* `++logback.configurationFile = file:///home/user/app_home/logback.xml++` - файл конфигурации <<logging,логгирования>>, созданнный на шаге выше.
-
-. Перезапускаем сервер:
+. Добавьте следующий текст в начало файла `c:\work\jetty-base\start.ini`:
 +
-`$ ./asadmin stop-domain`
+[source, plain]
+----
+include::{sourcesdir}/deployment/warDeployment_3.ini[]
+----
+
+. Скопируйте JDBC-драйвер используемой базы данных в каталог `c:\work\jetty-base\lib\ext`. Файл драйвера можно взять из каталога `lib` CUBA Studio, либо из каталога `build\tomcat\lib` проекта. В случае PostgreSQL это файл `postgresql-9.1-901.jdbc4.jar`.
+
+. Скопируйте файлы WAR в каталог `c:\work\jetty-base\webapps`.
+
+. Откройте командную строку в каталоге `c:\work\jetty-base` и выполните:
 +
-`$ ./asadmin start-domain`
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar
+----
 
-. Снова открываем консоль сервера по адресу `http://localhost:4848` и в экране *Applications* выполняем развертывание файлов `app-core.war` и `app.war`, находящихся в каталоге дистрибутива, созданного на шаге 3.
+. Откройте `++http://localhost:8080/app++` в веб-браузере.
 
-. Приложение запущено:
-
-* Веб-интерфейс доступен по адресу `http://localhost:8080/app`
-
-* Лог-файлы создаются в каталоге `/home/user/app_home/logs`
+. Лог-файлы создаются в каталоге `c:\work\app_home\logs`.
 
 [[scaling]]
 === Масштабирование приложения
