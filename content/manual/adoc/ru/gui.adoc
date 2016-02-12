@@ -29,6 +29,7 @@ image::ClientStructure.png[align="center"]
 
 Главное меню приложения формируется отдельно для *Web Client* и *Desktop Client* на основе файлов <<menu.xml,menu.xml>>, расположенных соответственно в модулях *web* и *desktop* проекта.
 
+[[screen_types]]
 ===== Типы экранов
 
 В данном разделе рассматриваются основные типы экранов:
@@ -597,10 +598,12 @@ image::Datasources.png[align="center"]
 
 Как правило, источники данных объявляются декларативно в секции `dsContext` <<screen_xml,дескриптора экрана>>.
 
+[[datasource_creation]]
 ===== Создание источников данных
 
 Объекты источников данных могут быть созданы как декларативно - путем объявления в XML-дескрипторе экрана, так и программно в контроллере. Обычно используются стандартные реализации интерфейсов источников, однако при необходимости можно создать собственный класс, унаследовав его от стандартного.
 
+[[datasource_decl_creation]]
 ====== Декларативное создание
 
 Как правило, источники данных объявляются декларативно в элементе `dsContext` дескриптора экрана. В зависимости от взаимного расположения элементов объявлений создаются источники двух разновидностей:
@@ -681,6 +684,7 @@ public void init(Map<String, Object> params) {
 
 Класс реализации источника выбирается неявно на основе имени элемента XML и, как было сказано выше, взаимного расположения элементов. Однако если необходимо применить нестандартный источник данных, его класс может быть явно указан в атрибуте `datasourceClass`. 
 
+[[datasource_prog_creation]]
 ====== Программное создание
 
 При необходимости создать источник данных в Java коде рекомендуется воспользоваться специальным классом `DsBuilder`. 
@@ -698,6 +702,7 @@ CollectionDatasource ds = new DsBuilder(getDsContext())
       .buildCollectionDatasource();
 ----
 
+[[datasource_custom_class]]
 ====== Собственные классы реализации
 
 Как правило, нестандартная реализация источника данных требуется для изменения процесса загрузки коллекции сущностей. При создании класса такого источника рекомендуется унаследовать его от `CollectionDatasourceImpl`, либо от `GroupDatasourceImpl` или `HierarchicalDatasourceImpl`, и переопределить метод `loadData()`.
@@ -706,21 +711,7 @@ CollectionDatasource ds = new DsBuilder(getDsContext())
 
 [source, java]
 ----
-public class MyDatasource extends CollectionDatasourceImpl<SomeEntity, UUID> {
-
-  private SomeService someService = AppBeans.get(SomeService.NAME);
-
-  @Override
-  protected void loadData(Map<String, Object> params) {
-      detachListener(data.values());
-      data.clear();
-
-      for (SomeEntity entity : someService.getEntities()) {
-          data.put(entity.getId(), entity);
-          attachListener(entity);
-      }
-  }
-}
+include::{sourcesdir}/gui/datasources_5.java[]
 ----
 
 Здесь `data` - поле базового класса, хранящее коллекцию загруженных экземпляров. Методы базового класса `detachListener()` и `attachListener()` управляют назначением на загруженные сущности слушателя, который оповещает источник данных об изменениях в полях экземпляров.
@@ -1594,6 +1585,7 @@ showNotification("Validation error", "<b>Date</b> is incorrect", NotificationTyp
 
 Фоновые задачи используются на клиентском уровне для асинхронного выполнения длительных операций без заморозки пользовательского интерфейса. 
 
+[[background_tasks_usage]]
 ===== Использование фоновых задач
 
 . Задача описывается как наследник абстрактного класса `BackgroundTask`. В конструктор задачи необходимо передать ссылку на контроллер экрана, с которым будет связана задача, и значение таймаута ее выполнения.
@@ -1606,44 +1598,11 @@ showNotification("Validation error", "<b>Date</b> is incorrect", NotificationTyp
 
 . Выполняется запуск задачи.
 
+Пример:
+
 [source, java]
 ----
-@Inject
-protected BackgroundWorker backgroundWorker;
-
-@Override
-public void init(Map<String, Object> params) {
-  // Create task with 10 sec timeout and this screen as owner
-  BackgroundTask<Integer, Void> task = new BackgroundTask<Integer, Void>(10, this) {
-      @Override
-      public Void run(TaskLifeCycle<Integer> taskLifeCycle) throws Exception {
-          // Do something in background thread
-          for (int i = 0; i < 5; i++) {
-              TimeUnit.SECONDS.sleep(1); // time consuming computations
-              taskLifeCycle.publish(i); // publish current progress to show it in progress() method
-          }
-          return null;
-      }
-
-      @Override
-      public void canceled() {
-          // Do something in UI thread if the task is canceled
-      }
-
-      @Override
-      public void done(Void result) {
-          // Do something in UI thread when the task is done
-      }
-
-      @Override
-      public void progress(List<Integer> changes) {
-          // Show current progress in UI thread
-      }
-  };
-  // Get task handler object and run the task
-  BackgroundTaskHandler taskHandler = backgroundWorker.handle(task);
-  taskHandler.execute();
-}
+include::{sourcesdir}/gui/backgroundtasks_1.java[]
 ----
 
 Подробная информация о назначении методов приведена в JavaDocs классов `BackgroundTask`, `TaskLifeCycle`, `BackgroundTaskHandler`. 
@@ -1672,6 +1631,7 @@ public void init(Map<String, Object> params) {
 
 * При возникновении исключительных ситуаций в потоке UI вызывается метод `BackgroundTask.handleException()`, в котором можно отобразить ошибку.
 
+[[background_tasks_setup]]
 ===== Настройка окружения
 
 Для корректной работы фоновых задач в проекте приложения необходимо произвести следующие настройки:
