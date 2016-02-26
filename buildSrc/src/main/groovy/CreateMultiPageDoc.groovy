@@ -43,7 +43,10 @@ class CreateMultiPageDoc extends DefaultTask {
                 environment('ASCIIDOC_HTML_CHOPPER_OPTS', "-Dchopper.title=\"$docTitle\"")
             }
 
-            def argsLine = "asciidoc-html-chopper -inputFile ${srcDir}/${docName}.html -outputDir ${dstDir} ${docLang == 'en' ? '' : '-loc ' + docLang}"
+            def argsLine = "asciidoc-html-chopper -inputFile ${srcDir}/${docName}.html " +
+                    "-outputDir ${dstDir} " +
+                    "${docLang == 'en' ? '' : '-loc ' + docLang} " +
+                    "-vars ${project.rootDir}/tools/chopper-vars.properties"
 
             if (System.getProperty('os.name').toLowerCase().contains('windows')) {
                 commandLine 'cmd', '/c'
