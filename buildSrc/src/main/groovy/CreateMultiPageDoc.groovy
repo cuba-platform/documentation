@@ -1,3 +1,4 @@
+import org.apache.tools.ant.filters.ReplaceTokens
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputDirectory
@@ -32,6 +33,15 @@ class CreateMultiPageDoc extends DefaultTask {
             }
         }
 
+        project.copy {
+            from "${project.rootDir}/tools/chopper-vars.properties"
+            from "${project.rootDir}/tools/chopper-vars-ru.properties"
+            into "${project.buildDir}/tmp/vars-$docName"
+            filter { String line ->
+                line.replace('${docName}', docName)
+            }
+        }
+
         def chopperRoot = new File("${project.buildDir}/tmp").listFiles().find {
             it.name.startsWith('asciidoc-html-chopper')
         }
@@ -46,7 +56,7 @@ class CreateMultiPageDoc extends DefaultTask {
             def argsLine = "asciidoc-html-chopper -inputFile ${srcDir}/${docName}.html " +
                     "-outputDir ${dstDir} " +
                     "${docLang == 'en' ? '' : '-loc ' + docLang} " +
-                    "-vars ${project.rootDir}/tools/chopper-vars.properties"
+                    "-vars ${project.buildDir}/tmp/vars-$docName/chopper-vars" + "${docLang == 'en' ? '' : '-' + docLang}" + ".properties"
 
             if (System.getProperty('os.name').toLowerCase().contains('windows')) {
                 commandLine 'cmd', '/c'
