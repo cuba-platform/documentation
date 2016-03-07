@@ -47,7 +47,7 @@ The actual launch of tasks is performed by `TaskScheduler` type bean, which is s
 [[scheduled_tasks_cuba]]
 ===== CUBA Scheduled Tasks
 
-*CUBA* scheduled tasks mechanism is intended to perform scheduled execution of arbitrary Spring beans methods in the Middleware block. The purposes of this mechanism and its distinction from the above mentioned standard *Spring Framework *mechanism are:
+*CUBA* scheduled tasks mechanism is intended to perform scheduled execution of arbitrary Spring beans methods on Middleware. The purposes of this mechanism and its distinction from the above mentioned standard *Spring Framework* schedulers are:
 
 * The ability to configure tasks while running an application without restarting the server.
 
@@ -57,7 +57,7 @@ The actual launch of tasks is performed by `TaskScheduler` type bean, which is s
 
 ** Binding tasks to servers by priorities.
 
-A _singleton_ task is a task which must be performed only on one server at a certain moment of time. For example, reading from a queue and sending emails.
+A _singleton_ task is a task which must be executed only on one server at a certain moment of time. For example, reading from a queue and sending emails.
 
 [[scheduled_tasks_cuba_reg]]
 ====== Task Registration
@@ -70,9 +70,9 @@ Task attributes are described below:
 
 ** *Bean* – the task is implemented by a method of a Spring bean. Additional attributes:
 
-*** *Bean name* – the name of the bean. The bean is listed and available for selection only if it has an interface, which contains methods appropriate for invocation from the task. Beans without an interface are not supported.
+*** *Bean name* – the name of the bean. The bean is listed and available for selection only if it is defined in the *core* module and has an interface, which contains methods appropriate for invocation from the task. Beans without an interface are not supported.
 
-*** *Method name* – the bean interface method that is executed. The method must either have no parameters, or all parameters must be of `String` type.
+*** *Method name* – the bean interface method that is executed. The method must either have no parameters, or all parameters must be of `String` type. The return type of the method can either be `void` or `String`. In the latter case the returning value will be stored in the executions table (see *Log finish* below).
 
 *** *Method parameters* – the parameters of the chosen method. Only `String` type parameters are supported.
 
@@ -124,7 +124,7 @@ For singleton tasks, the order of the servers in the list defines the execution 
 +
 [WARNING]
 ====
-Server priority works only if the `Start date` attribute is not specified. If Start date is specified, the start occurs at the same time and the interception is impossible.
+Server priority works only if *Scheduling type* is `Period` and the *Start date* attribute is not specified. Otherwise, start occurs at the same time and the interception is impossible.
 ====
 
 * *Log start* – flags if the task launch should be registered in the `++SYS_SCHEDULED_EXECUTION++` table, which corresponds to the `ScheduledExecution` entity. 
@@ -163,7 +163,7 @@ The method can be invoked automatically. Create a new task with the following pa
 * *Method parameters* – for example, `age = 72`, `maxPeriod = 12`.
 
 [[scheduled_tasks_cuba_impl]]
-====== Implementation
+====== Scheduling Implementation Details
 
 * Tasks processing invocation (the `SchedulingAPI.processScheduledTasks()` method) interval is specified in `cuba-spring.xml` and is equal to 1 second by default. It sets the minimal interval between task launches, which should be twice higher, i.e. 2 seconds. Reducing these values is not recommended.
 
@@ -173,7 +173,7 @@ The method can be invoked automatically. Create a new task with the following pa
 
 * The task will not be launched if its previous execution has not yet finished and the specified `Timeout` has not expired. For singleton tasks in the current implementation, this is achieved using the information in the database; for non-singletons, the execution status table is maintained in the server memory.
 
-* The execution mechanism creates and caches <<userSession,user sessions>> in accordance with the user name specified for tasks or the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. The session is available in the execution thread of a launched task using the standard <<userSessionSource,UserSessionSource>> interface.
+* The execution mechanism creates and caches <<userSession,user sessions>> for users, specified in the *User name* attribute of the tasks or in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. The session is available in the execution thread of a launched task through the standard <<userSessionSource,UserSessionSource>> interface.
 
 [WARNING]
 ====
