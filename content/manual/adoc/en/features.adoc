@@ -47,7 +47,7 @@ The actual launch of tasks is performed by `TaskScheduler` type bean, which is s
 [[scheduled_tasks_cuba]]
 ===== CUBA Scheduled Tasks
 
-*CUBA* scheduled tasks mechanism is intended to perform scheduled execution of arbitrary Spring beans methods in the Middleware block. The purposes of this mechanism and its distinction from the above mentioned standard *Spring Framework *mechanism are:
+*CUBA* scheduled tasks mechanism is intended to perform scheduled execution of arbitrary Spring beans methods on Middleware. The purposes of this mechanism and its distinction from the above mentioned standard *Spring Framework* schedulers are:
 
 * The ability to configure tasks while running an application without restarting the server.
 
@@ -57,8 +57,9 @@ The actual launch of tasks is performed by `TaskScheduler` type bean, which is s
 
 ** Binding tasks to servers by priorities.
 
-A _singleton_ task is a task which must be performed only on one server at a certain moment of time. For example, reading from a queue and sending emails.
+A _singleton_ task is a task which must be executed only on one server at a certain moment of time. For example, reading from a queue and sending emails.
 
+[[scheduled_tasks_cuba_reg]]
 ====== Task Registration
 
 Tasks are registered in the `++SYS_SCHEDULED_TASK++` database table, which corresponds to the `ScheduledTask` entity. There are browser and editor screens for working with tasks, which are available through the *Administration* -> *Scheduled Tasks* menu.
@@ -69,9 +70,9 @@ Task attributes are described below:
 
 ** *Bean* – the task is implemented by a method of a Spring bean. Additional attributes:
 
-*** *Bean name* – the name of the bean. The bean is listed and available for selection only if it has an interface, which contains methods appropriate for invocation from the task. Beans without an interface are not supported.
+*** *Bean name* – the name of the bean. The bean is listed and available for selection only if it is defined in the *core* module and has an interface, which contains methods appropriate for invocation from the task. Beans without an interface are not supported.
 
-*** *Method name* – the bean interface method that is executed. The method must either have no parameters, or all parameters must be of `String` type.
+*** *Method name* – the bean interface method that is executed. The method must either have no parameters, or all parameters must be of `String` type. The return type of the method can either be `void` or `String`. In the latter case the returning value will be stored in the executions table (see *Log finish* below).
 
 *** *Method parameters* – the parameters of the chosen method. Only `String` type parameters are supported.
 
@@ -123,7 +124,7 @@ For singleton tasks, the order of the servers in the list defines the execution 
 +
 [WARNING]
 ====
-Server priority works only if the `Start date` attribute is not specified. If Start date is specified, the start occurs at the same time and the interception is impossible.
+Server priority works only if *Scheduling type* is `Period` and the *Start date* attribute is not specified. Otherwise, start occurs at the same time and the interception is impossible.
 ====
 
 * *Log start* – flags if the task launch should be registered in the `++SYS_SCHEDULED_EXECUTION++` table, which corresponds to the `ScheduledExecution` entity. 
@@ -138,29 +139,31 @@ In the current implementation, if the task is a singleton, completion is registe
 
 The task also has activity flag, which can be set in the tasks list screen. Inactive tasks are ignored.
 
+[[scheduled_tasks_cuba_control]]
 ====== Tasks Handling Control
 
 *  <<cuba.schedulingActive,cuba.schedulingActive>> application property should be set to `true` prior to server startup to enable tasks processing.
 
-* For the ad hoc tasks processing management, `app-core.cuba:type=Scheduling` JMX bean can be used. Its `Active` attribute enables tasks processing for the current session of the server. After restarting the server, the processing will be started only if the `cuba.schedulingActive` application property is set to `true`.
+* The `app-core.cuba:type=Scheduling` JMX bean can be used for tasks processing management. Its `Active` attribute enables tasks processing for the current session of the server. After restarting the server, the processing will be started only if the `cuba.schedulingActive` application property is set to `true`.
 
 * All changes to tasks made via system screens take effect immediately for all servers in the cluster.
 
-The `removeExecutionHistory()` method of the `app-core.cuba:type=Scheduling `JMX bean can be used to remove old execution history. The method has two parameters:
+* The `removeExecutionHistory()` method of the `app-core.cuba:type=Scheduling` JMX bean can be used to remove old execution history. The method has two parameters:
 
-* `age` – the time (in hours) elapsed after the task execution.
+** `age` – the time (in hours) elapsed after the task execution.
 
-* `maxPeriod` – the maximum `Period` (in hours) for tasks that should have their execution history removed. This enables removing the history for frequently run tasks only, while keeping the history for tasks executed once a day.
-
+** `maxPeriod` – the maximum `Period` (in hours) for tasks that should have their execution history removed. This enables removing the history for frequently run tasks only, while keeping the history for tasks executed once a day.
++
 The method can be invoked automatically. Create a new task with the following parameters:
 
-* *Bean name* – `++cuba_SchedulingMBean++`
+*** *Bean name* – `++cuba_SchedulingMBean++`
 
-* *Method name* – `removeExecutionHistory(String age, String maxPeriod)` 
+*** *Method name* – `removeExecutionHistory(String age, String maxPeriod)`
 
-* *Method parameters* – for example, `age = 72`, `maxPeriod = 12`.
+*** *Method parameters* – for example, `age` = 72, `maxPeriod` = 12.
 
-====== Implementation Specifics
+[[scheduled_tasks_cuba_impl]]
+====== Scheduling Implementation Details
 
 * Tasks processing invocation (the `SchedulingAPI.processScheduledTasks()` method) interval is specified in `cuba-spring.xml` and is equal to 1 second by default. It sets the minimal interval between task launches, which should be twice higher, i.e. 2 seconds. Reducing these values is not recommended.
 
@@ -170,7 +173,7 @@ The method can be invoked automatically. Create a new task with the following pa
 
 * The task will not be launched if its previous execution has not yet finished and the specified `Timeout` has not expired. For singleton tasks in the current implementation, this is achieved using the information in the database; for non-singletons, the execution status table is maintained in the server memory.
 
-* The execution mechanism creates and caches <<userSession,user sessions>> in accordance with the user name specified for tasks or the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. The session is available in the execution thread of a launched task using the standard <<userSessionSource,UserSessionSource>> interface.
+* The execution mechanism creates and caches <<userSession,user sessions>> for users, specified in the *User name* attribute of the tasks or in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. The session is available in the execution thread of a launched task through the standard <<userSessionSource,UserSessionSource>> interface.
 
 [WARNING]
 ====
@@ -188,6 +191,9 @@ The platform provides email sending facilities with the following features:
 
 * User interface to search and view information about sent messages, including all message attributes and content, sending status and the number of attempts.
 
+See an example of using this mechanism in the <<sending_emails_recipe,Sending Emails>> development recipe.
+
+[[email_sending_methods]]
 ===== Sending Methods
 
 To send an email, the `EmailerAPI` bean should be used at the Middleware, and the `EmailService` service – at the client tier.
@@ -200,10 +206,11 @@ The message can be transmitted in the form of a set of parameters (the comma-sep
 +
 `EmailException` may be thrown during synchronous sending, containing the information on the recipient addresses, where delivery has failed, and the corresponding error messages.
 +
-During the execution of the `SendingMessage` method, an entity instance is created in the database for each recipient with the initial `SendingStatus.SENDING` status, and `SendingStatus.SENT` after successful sending. In case of a message sending error, the message status changes to `SendingStatus.NOTSENT`.
+During the execution of the method, a `SendingMessage` instance is created in the database for each recipient. It has the initial `SendingStatus.SENDING` status, and `SendingStatus.SENT` after successful sending. In case of a message sending error, the message status changes to `SendingStatus.NOTSENT`.
 
-* `sendEmailAsync()` – asynchronous message sending. This method returns the list (by number of recipients) of `SendingMessage` instances in `SendingStatus.QUEUE` status, which were created in the database. The actual sending is performed with the subsequent call of the `EmailManagerAPI.queueEmailsToSend()` method, which should be invoked from a <<scheduled_tasks,scheduled task>> with desired frequency.
+* `sendEmailAsync()` – asynchronous message sending. This method returns the list (by the number of recipients) of `SendingMessage` instances in `SendingStatus.QUEUE` status, which were created in the database. The actual sending is performed with the subsequent call of the `EmailerAPI.processQueuedEmails()` method, which should be invoked from a <<scheduled_tasks,scheduled task>> with the desired frequency.
 
+[[email_attachments]]
 ===== Email Attachments
 
 The `EmailAttachment` object is a wrapper that holds the attachment as a byte array (the `data` field), the file name (the `name` field), and, if necessary, the attachment identifier which is unique for this message (the optional but useful `contentId` field).
@@ -429,6 +436,7 @@ REST API also saves dynamic attributes passed to `commit`.
 
 This section describes the use of pessimistic locking in CUBA applications.
 
+[[pessimistic_locking_entity]]
 ===== Entity Editing Locks
 
 Pessimistic locking should be used when there is a high probability of simultaneous editing of a single entity instance. In such cases the standard <<optimistic_locking,optimistic locking>>, based on entity versioning, usually creates too many collisions.
@@ -456,12 +464,14 @@ insert into sys_lock_config (id, create_ts, name, timeout_sec) values (newid(), 
 
 * Restart the server or call `reloadConfiguration()` method of the `app-core.cuba:type=LockManager` JMX bean.
 
+[[pessimistic_locking_proc]]
 ===== Locking Arbitrary Processes
 
 Pessimistic locking mechanism can also be used to manage simultaneous execution of arbitrary processes. The key benefit is that the locks are distributed, since they are replicated in the Middleware cluster.
 
 More information is available in JavaDocs for the `LockManagerAPI` and `LockService` interfaces.
 
+[[pessimistic_locking_mon]]
 ===== Lock Monitoring
 
 Current lock state can be tracked via the `app-core.cuba:type=LockManager `JMX bean or through a dedicated screen available at *Administration* -> Locks. This screen also enables forced unlocking of any object.
@@ -513,6 +523,7 @@ Modified entity instances are passed to `registerCreate()`, `registerModify()` a
 
 The logs contain information about the time of modification, the user who has modified the entity, and the new values of the changed attributes. Log entries are stored in the *SEC_ENTITY_LOG* table corresponding to the `EntityLogItem` entity. Changed attribute values are stored in the *CHANGES* column and are converted to instances of `EntityLogAttr` entity when they are loaded by the Middleware.
 
+[[entity_log_setup]]
 ===== Setting Up Entity Log
 
 The simplest way to set up the entity log is using the *Administration > Entity Log > Setup* application screen. The process of manual set up is described below.
@@ -545,6 +556,7 @@ values (newid(), now(), 'admin', '25eeb644-e609-11e1-9ada-3860770d7eaf', 'grade'
 
 To activate the logging mechanism, the `Enabled` attribute of the `app-core.cuba:type=EntityLog` JMX bean should be set to `true`. The changes to logging settings made at runtime are applied after server restart or after calling `invalidateCache()` method of the same bean.
 
+[[entity_log_view]]
 ===== Viewing the Entity Log
 
 The entity log content can be viewed on a dedicated screen available at *Administration > Entity Log*.
@@ -620,6 +632,7 @@ The entity saving mechanism, much like the <<entity_log,entity log>>, is intende
 
 * The platform allows the snapshots to be viewed and compared.
 
+[[entity_snapshots_save]]
 ===== Saving Snapshots
 
 In order to save a snapshot of a given graph of entities, you need to call the `EntitySnapshotService.createSnapshot()` method passing the entity which is an entry point to the graph and the <<views,view>> describing the graph. The snapshot will be created using the loaded entities without any calls to the database. As a result, the snapshot will not contain the fields that are not included in the view used to load the entity.
@@ -649,6 +662,7 @@ public class CustomerEditor extends AbstractEditor<Customer> {
 }
 ----
 
+[[entity_snapshots_view]]
 ===== Viewing Snapshots
 
 Viewing snapshots for arbitrary entities is possible using the `com/haulmont/cuba/gui/app/core/entitydiff/diff-view.xml` frame. For example:
@@ -992,6 +1006,7 @@ The following application properties can influence the functionality of the fold
 
 * <<cuba.web.showFolderIcons,cuba.web.showFolderIcons>>
 
+[[application_folder]]
 ===== Application Folders
 
 Creating application folders requires special <<permissions,permissions>> to create/edit application folders (`cuba.gui.appFolder.global`).
@@ -1074,6 +1089,7 @@ Search folder's filter can be edited once the folder is created by opening the f
 
 Search folders are instances of the `SearchFolder` entity stored in the related *SYS_FOLDER* and *SEC_SEARCH_FOLDER* tables.
 
+[[record_set]]
 ===== Record Sets
 
 Using records sets within a screen is possible, if the <<gui_Filter,Filter>> has a corresponding <<gui_Table,Table>> component defined in the `applyTo` attribute. For example:
@@ -1138,7 +1154,7 @@ http://localhost:8080/app/open?screen=sales$Customer.lookup&params=p1:sales$Cust
 <bean id="cuba_LinkHandler" class="com.company.sample.web.MyLinkHandler" scope="prototype"/>
 ---- 
 
-[[entityInspector]]
+[[entity_inspector]]
 ==== Entity Inspector
 
 The entity inspector enables working with any application objects without having to create dedicated screens. The inspector dynamically generates the screens to browse and edit the instances of the selected entity.
