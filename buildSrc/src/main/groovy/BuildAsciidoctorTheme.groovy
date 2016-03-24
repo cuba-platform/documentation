@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015 Haulmont Technology Ltd. All Rights Reserved.
+ * Copyright (c) 2016 Haulmont Technology Ltd. All Rights Reserved.
  * Haulmont Technology proprietary and confidential.
  * Use is subject to license terms.
  */
