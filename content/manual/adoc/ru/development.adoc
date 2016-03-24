@@ -1380,54 +1380,64 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
 [[own_component_samples]]
 ==== Создание собственных визуальных компонентов
 
-В данном разделе рассматриваются примеры создания и использования собственных визуальных компонентов.
+Платформа CUBA не ограничена существующим набором визуальных компонентов. Если какого-либо компонента нет в поставке платформы, то у разработчика есть 3 пути:
 
-[[vaadin_addon_sample]]
-===== Пример использования стороннего компонента Vaadin
+. *Подключение аддона Vaadin*. Много сторонних компонентов Vaadin распространяются в виде дополнений (add-on). Библиотека аддонов находится по адресу https://vaadin.com/directory. Разработчик может подключить любой из них к проекту.
 
-Способ подключения сторонних компонентов Vaadin описан в <<vaadin_addon,>>.
+. *Подключение компонента, написанного на JavaScript*. Vaadin дает возможность создавать серверные компоненты, интегрированные с JavaScript-библиотекой. Далее разработчик на платформе просто использует серверный компонент Vaadin в коде контроллера экрана.
+
+. *Создание собственного компонента Vaadin* с клиентской частью, написанной на GWT.
+
+Каждый из этих способов на выходе дает нам компонент Vaadin, который мы можем инициализировать и добавить на экран модуля web (либо сделать это в соответствующем <<gui.adoc#companions,компаньоне>>). Если новый компонент используется на одном-двух экранах, то такой вариант вполне может нас устроить. Однако, если компонент используется многократно, и мы хотим иметь возможность объявлять его в XML-дескрипторе экрана, то необходимо интегрировать компонент Vaadin в универсальный пользовательский интерфейс (Generic UI) платформы.
+
+Далее в этом разделе приводятся примеры создания новых визуальных компонентов каждым из описанных выше способов. Интеграция в Generic UI одинакова для всех трех способов, поэтому она описана только для примера с <<vaadin_addon_sample_gui,подключением аддона Vaadin>>.
+
+[[vaadin_addon_sample_no_gui]]
+===== Подключение аддона Vaadin без интеграции в Generic UI
+
+Способ подключения сторонних компонентов Vaadin описан в секции <<gui.adoc#vaadin_addon>> руководства.
 
 Рассмотрим пример использования компонента *Stepper*, доступного по адресу link:$$http://vaadin.com/addon/stepper$$[http://vaadin.com/addon/stepper]. Данный компонент позволяет пошагово изменять значение текстового поля с помощью клавиатуры, колесика мыши и встроенных кнопок вверх/вниз.
 
-* Предположим, что в проекте имеется сущность `Customer` со строковым атрибутом name. В модуле *web* создан экран редактирования `customer-edit.xml` со следующей компоновкой:
+Для демонстрации подключения компонента создадим новый проект в CUBA Studio. Назовем его `addon-demo`.
+
+Для подключения аддона Vaadin проект должен иметь модуль *web-toolkit*. Создадим его, нажав на кнопку *Create web-toolkit module* секции *Project properties* навигатора Studio.
+
+Далее нажмите на кнопку *Create new UI component* - откроется окно создания визуального компонента. В секции *Component type* выберите значение `Vaadin add-on`.
+
+image::ui_component/studio_vaadin_addon_wizard_no_gui.png[align="center"]
+
+Рассмотрим поля, которые нам необходимо заполнить.
+
+* *Add-on maven dependency* - в этом поле необходимо указать maven-координаты аддона Vaadin для подключения его как зависимости к текущему проекту. Указание координат возможно в двух форматах:
+
+. XML, скопированный с сайта аддона (http://vaadin.com/addon/stepper):
 +
 [source, xml]
 ----
-<layout expand="windowActions"
-        spacing="true">
-    <fieldGroup id="fieldGroup"
-                datasource="customerDs">
-        <column width="250px">
-            <field id="name"/>
-        </column>
-    </fieldGroup>
-    <iframe id="windowActions"
-            screen="editWindowActions"/>
-</layout>
+<dependency>
+   <groupId>org.vaadin.addons</groupId>
+   <artifactId>stepper</artifactId>
+   <version>2.2.2</version>
+</dependency>
 ----
-+
-Нам необходимо добавить атрибут `score` типа `Integer`, и обеспечить его пошаговое редактирование в данном экране.
 
-* В CUBA Studio добавляем атрибут `score` сущности `Customer`:
+. Одной строкой в том виде, как вы добавляете зависимости в <<development.adoc#build.gradle,build.gradle>>:
 +
-[source, java]
+[source, plain]
 ----
-@Column(name = "SCORE")
-protected Integer score;
-
-public void setScore(Integer score) {
-    this.score = score;
-}
-public Integer getScore() {
-    return score;
-}
+org.vaadin.addons:stepper:2.2.2
 ----
-+
-Генерируем скрипты обновления БД и запускаем обновление.
 
-* Выполняем команду *Create web toolkit module* секции *Project properties* навигатора Studio.
+* *Inherited widgetset* - в этом поле необходимо указать имя набора виджетов подключаемого аддона. В нашем случае это `org.vaadin.risto.stepper.widgetset.StepperWidgetset`.
 
-* В <<build.gradle,build.gradle>> проекта добавляем зависимость модуля *web* от add-on, содержащего компонент:
+* *Integrate into generic UI* - в данном примере флажок должен быть снят, т.к. мы не интегрируем компонент в универсальный интерфейс платформы.
+
+Нажимаем кнопку *OK* - аддон подключен к проекту. Давайте посмотрим, что студия сделала для нас. Откройте проект в IDE. Можете сделать это, нажав на кнопку *IDE* секции *Project properties* навигатора.
+
+Студия изменила 2 файла:
+
+. <<development.adoc#build.gradle, build.gradle>>. В модуле *web* появилась новая зависимость от аддона, содержащего компонент:
 +
 [source, java]
 ----
@@ -1435,482 +1445,575 @@ configure(webModule) {
     ...
     dependencies {
         ...
-        compile("org.vaadin.addons:stepper:2.1.2")
+        compile("org.vaadin.addons:stepper:2.2.2")
     }
 ----
 
-* Пересоздаем проектные файлы IDE: меню *Create or update IDEA project files*.
-
-* В файл `AppWidgetSet.gwt.xml` модуля *web-toolkit* проекта подключаем набор виджетов add-on после набора виджетов платформы:
+. В файл `AppWidgetSet.gwt.xml` модуля *web-toolkit* проекта подключен набор виджетов add-on после набора виджетов платформы:
 +
 [source, xml]
 ----
 <module>
     <inherits name="com.haulmont.cuba.web.toolkit.ui.WidgetSet" />
-    
+
     <inherits name="org.vaadin.risto.stepper.widgetset.StepperWidgetset" />
 
     <set-property name="user.agent" value="safari" />
 ----
 +
-Для более быстрой сборки виджетов на время разработки можно установить свойство `user.agent`. В данном примере набор виджетов будет собираться только для браузеров, основанных на WebKit: Chrome, Safari, и т.д.
+TIP: Для более быстрой сборки виджетов на время разработки вы можете установить свойство `user.agent`. В данном примере набор виджетов будет собираться только для браузеров, основанных на WebKit: Chrome, Safari, и т.д.
 
-* В XML-дескрипторе экрана редактирования `customer-edit.xml` добавляем кастомное поле `score` в компонент <<gui_FieldGroup,fieldGroup>>:
+Компонент из аддона Vaadin подключен. Далее мы покажем как использовать его в экранах проекта.
+
+* Создаем новую сущность `Customer` с двумя полями:
+
+** `name` типа String
+** `score` типа Integer
+
+* Сгенерируем для новой сущности стандартные экраны. В диалоге генерации стандартных экранов изменим значение поля *In module* на `Web Module`. Экраны, использующие компоненты Vaadin напрямую, должны располагаться в модуле *web*.
++
+TIP: На самом деле экран может располагаться и в модуле *gui*, но тогда код, работающий с Vaadin компонентом, должен быть вынесен в отдельный <<gui.adoc#companions,компаньон>>.
+
+* Далее добавим компонент `stepper` на экран. Вы можете поместить его как в `FieldGroup`, так и вне ее. Рассмотрим оба способа.
++
+--
+. В XML-дескрипторе экрана редактирования `customer-edit.xml` поле `score` компонента <<gui.adoc#gui_FieldGroup, fieldGroup>> делаем кастомным, добавив атрибут `custom = "true"`:
 +
 [source, xml]
 ----
-<fieldGroup id="fieldGroup"
-            datasource="customerDs">
-    <column width="250px">
-        <field id="name"/>
-        <field id="score" custom="true" caption="Score"/>
-    </column>
-</fieldGroup>
+include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui-custom-field.xml[]
 ----
-
-* В контроллере экрана редактирования `CustomerEdit` добавляем следующий код:
++
+В контроллер экрана редактирования `CustomerEdit` добавляем следующий код:
 +
 [source, java]
 ----
-public class CustomerEdit extends AbstractEditor<Customer> {
-
-    @Inject
-    private ComponentsFactory componentsFactory;
-    @Inject
-    private FieldGroup fieldGroup;
-
-    private IntStepper stepper = new IntStepper();
-
-    @Override
-    public void init(Map<String, Object> params) {
-        fieldGroup.addCustomField("score", new FieldGroup.CustomFieldGenerator() {
-            @Override
-            public Component generateField(final Datasource datasource, final String propertyId) {
-                Component box = componentsFactory.createComponent(BoxLayout.VBOX);
-                com.vaadin.ui.Layout layout = WebComponentsHelper.unwrap(box);
-                layout.addComponent(stepper);
-                stepper.setSizeFull();
-
-                stepper.addValueChangeListener(new Property.ValueChangeListener() {
-                    @Override
-                    public void valueChange(Property.ValueChangeEvent event) {
-                        datasource.getItem().setValue(propertyId, event.getProperty().getValue());
-                    }
-                });
-
-                return box;
-            }
-        });
-    }
-
-    @Override
-    protected void postInit() {
-        stepper.setValue(getItem().getScore());
-    }
-}
+include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiCustomField.java[]
 ----
 +
-Здесь в поле `stepper` создается экземпляр компонента, подключенного из add-on. В методе `init()` производится инициализация кастомного поля `score`. Через `ComponentsFactory` создается экземпляр <<gui_BoxLayout,BoxLayout>>, затем из него с помощью <<webComponentsHelper,WebComponentsHelper>> извлекается ссылка на Vaadin-контейнер, и в этот контейнер добавляется наш новый компонент. `BoxLayout` возвращается для отображения в кастомном поле.
+Здесь в поле `stepper` создается экземпляр компонента, подключенного из add-on. В методе `init()` производится инициализация кастомного поля `score`. Через `ComponentsFactory` создается экземпляр <<gui.adoc#gui_BoxLayout>>, затем из него с помощью <<gui.adoc#webComponentsHelper,WebComponentsHelper>> извлекается ссылка на Vaadin-контейнер, и в этот контейнер добавляется наш новый компонент. `BoxLayout` возвращается для отображения в кастомном поле.
 +
-Для связи компонента с данными во-первых, в методе `postInit()` ему устанавливается текущее значение из редактируемого `Customer`, а во-вторых, добавляется слушатель на изменение значения, который обновляет соответствующий атрибут сущности при изменении значения пользователем. 
+Для связи компонента с данными во-первых, в методе `postInit()` ему устанавливается текущее значение из редактируемого `Customer`, а во-вторых, добавляется слушатель на изменение значения, который обновляет соответствующий атрибут сущности при изменении значения пользователем.
 
-* Новый компонент можно использовать и вне `FieldGroup` в произвольном месте экрана. Для этого в XML-дескрипторе объявим контейнер:
+. Чтобы использовать новый компонент вне `FieldGroup` в произвольном месте экрана в XML-дескрипторе объявим контейнер и удалим поле `score` из `FieldGroup`:
 +
 [source, xml]
 ----
-<hbox id="scoreBox"
-      spacing="true">
-    <label value="Score"/>
-</hbox>
+include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui-container.xml[]
 ----
 +
 В контроллере инжектируем контейнер, извлекаем ссылку на Vaadin-контейнер и добавляем в него компонент:
 +
 [source, java]
 ----
-public class CustomerEdit extends AbstractEditor<Customer> {
-
-    @Inject
-    private BoxLayout scoreBox;
-
-    private IntStepper stepper = new IntStepper();
-
-    @Override
-    public void init(Map<String, Object> params) {
-        com.vaadin.ui.Layout box = WebComponentsHelper.unwrap(scoreBox);
-        box.addComponent(stepper);
-
-        stepper.addValueChangeListener(new Property.ValueChangeListener() {
-            @Override
-            public void valueChange(Property.ValueChangeEvent event) {
-                getItem().setValue("score", event.getProperty().getValue());
-            }
-        });
-    }
-
-    @Override
-    protected void postInit() {
-        stepper.setValue(getItem().getScore());
-    }
-}
+include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiContainer.java[]
 ----
 +
 Связь с данными выполняется здесь аналогично примеру с `FieldGroup`.
+--
 
-* Для адаптации внешнего вида компонента создадим в проекте расширение темы. Для этого в *Studio* выполним команду *Create theme extension* секции *Project properties* навигатора. Затем откроем файл `themes/havana/havana-ext.scss` модуля *web*, и добавим в него следующий код:
+* Для адаптации внешнего вида компонента создадим в проекте расширение темы. Для этого в Studio выполним команду *Create theme extension* секции *Project properties* навигатора. В списке тем для расширения выберем `halo` и нажмем кнопку *Create* Затем откроем файл `themes/halo/halo-ext.scss` модуля *web*, и добавим в него следующий код:
 +
 [source, css]
 ----
-@import "../havana/havana"; 
- 
-@mixin havana-ext { 
-  @include havana; 
- 
-  /* Basic styles for stepper */
-  .v-stepper { 
-    /* Use box-sizing: border-box; for all browsers */
-    @include box-defaults; 
- 
-    height: 25px; 
-    border: 0; 
- 
-    /* Use theme fonts */
-    font-family: $theme_fonts; 
-  } 
- 
-  /* Basic styles for inner text box */
-  .v-stepper input[type="text"] { 
-    /* Use box-sizing: border-box; for all browsers */
-    @include box-defaults; 
- 
-    height: 25px; 
-    padding: 1px; 
-    outline: 0; 
-    margin: 0; 
- 
-    /* Use border color from theme */
-    border: 1px solid $theme_fieldBorderColor; 
-  } 
- 
-  /* Focused styles */
-  .v-stepper.v-stepper input[type="text"]:focus { 
-    /* Use focused border color from theme */
-    border-color: $theme_fieldFocusedBorderColor; 
-    /* hide default focus outline */
-    outline: 0; 
-  } 
- 
-  /* Readonly styles */
-  .v-readonly.v-stepper input[type="text"], 
-  .v-readonly.v-stepper input[type="text"]:focus { 
-    /* Use readonly border color from theme */
-    border-color: $theme_fieldReadonlyBorderColor; 
-  } 
-}
+include::{sourcesdir}/ui_component/vaadin_no_gui/halo-ext.scss[]
 ----
 
-[[own_gui_component_sample]]
-===== Пример интеграции компонента Vaadin в Generic UI
+* Создаем базу данных, запускаем проект и наслаждаемся результатом.
 
-В <<own_gui_component,>> были рассмотрены принципы интеграции "нативных" компонентов в универсальный UI для того, чтобы их можно было объявлять в XML-дескрипторах экранов и связывать с данными.
+image::ui_component/customer_edit_result.png[align="center"]
 
-В <<vaadin_addon_sample,предыдущем разделе>> мы подключили в проект сторонний компонент *Stepper*. Рассмотрим процесс интеграции в универсальный UI класса `IntStepper`, реализующего пошаговое изменение числового значения типа `int`.
+[[vaadin_addon_sample_gui]]
+===== Подключение аддона Vaadin с интеграцией в Generic UI
 
-* Интерфейс компонента в модуле *gui*:
-+
-[source, java]
-----
-package com.company.myproject.gui.components;
+В секции <<gui.adoc#own_gui_component>> руководства рассмотрены принципы интеграции "нативных" компонентов в универсальный UI для того, чтобы их можно было объявлять в XML-дескрипторах экранов и связывать с данными.
 
-import com.haulmont.cuba.gui.components.Field;
+В <<vaadin_addon_sample_no_gui,предыдущем разделе>> мы подключили в проект сторонний компонент *stepper*. Рассмотрим процесс подключения данного компонента, но уже с интеграцией в универсальный UI.
 
-public interface IntStepper extends Field {
+Для демонстрации подключения компонента создадим новый проект в CUBA Studio. Назовем его `addon-demo-gui`. В поле *Project namespace* вводим значение `adg`.
 
-    String NAME = "intStepper";
+Для подключения аддона Vaadin проект должен иметь модуль *web-toolkit*. Создадим его, нажав на кнопку *Create web-toolkit module* секции *Project properties* навигатора Studio.
 
-    boolean isManualInputAllowed();
-    void setManualInputAllowed(boolean value);
+Далее нажимаем на кнопку *Create new UI component* - откроется окно создания визуального компонента. В секции *Component type* выбираем значение `Vaadin add-on`.
 
-    boolean isMouseWheelEnabled();
-    void setMouseWheelEnabled(boolean value);
+Рассмотрим поля, которые нам необходимо заполнить.
 
-    int getStepAmount();
-    void setStepAmount(int amount);
+image::ui_component/studio_vaadin_addon_wizard_gui.png[align="center"]
 
-    int getMaxValue();
-    void setMaxValue(int maxValue);
+* *Add-on maven dependency* - в этом поле необходимо указать maven-координаты аддона Vaadin для подключения его как зависимость к текущему проекту. Указание координат возможно в двух форматах:
 
-    int getMinValue();
-    void setMinValue(int minValue);
-}
-----
-+
-В качестве базового для нашего компонента выбран интерфейс `Field`. Это позволяет осуществить связь с данными (data binding), то есть отображать и редактировать значение некоторого атрибута сущности. 
-
-* Реализация компонента в модуле *web*:
-+
-[source, java]
-----
-package com.company.myproject.web.components;
-
-import com.company.myproject.gui.components.IntStepper;
-import com.haulmont.cuba.web.gui.components.WebAbstractField;
-
-public class WebIntStepper 
-        extends WebAbstractField<org.vaadin.risto.stepper.IntStepper> 
-        implements IntStepper {
-
-    public WebIntStepper() {
-        component = new org.vaadin.risto.stepper.IntStepper();
-    }
-
-    @Override
-    public boolean isManualInputAllowed() {
-        return component.isManualInputAllowed();
-    }
-    @Override
-    public void setManualInputAllowed(boolean value) {
-        component.setManualInputAllowed(value);
-    }
-
-    @Override
-    public boolean isMouseWheelEnabled() {
-        return component.isMouseWheelEnabled();
-    }
-    @Override
-    public void setMouseWheelEnabled(boolean value) {
-        component.setMouseWheelEnabled(value);
-    }
-
-    @Override
-    public int getStepAmount() {
-        return component.getStepAmount();
-    }
-    @Override
-    public void setStepAmount(int amount) {
-        component.setStepAmount(amount);
-    }
-
-    @Override
-    public int getMaxValue() {
-        return component.getMaxValue();
-    }
-    @Override
-    public void setMaxValue(int maxValue) {
-        component.setMaxValue(maxValue);
-    }
-
-    @Override
-    public int getMinValue() {
-        return component.getMinValue();
-    }
-    @Override
-    public void setMinValue(int minValue) {
-        component.setMinValue(minValue);
-    }
-}
-----
-+
-В качестве базового класса выбран `WebAbstractField`, который реализует логику интерфейса `Field` по связыванию с <<datasources,источником данных>> и другие его методы.
-
-* XML-загрузчик компонента в модуле *gui*:
-+
-[source, java]
-----
-package com.company.myproject.gui.loaders;
-
-import com.company.myproject.gui.components.IntStepper;
-import com.haulmont.cuba.gui.components.Component;
-import com.haulmont.cuba.gui.xml.layout.*;
-import com.haulmont.cuba.gui.xml.layout.loaders.AbstractFieldLoader;
-import org.dom4j.Element;
-
-public class IntStepperLoader extends AbstractFieldLoader {
-
-    public IntStepperLoader(Context context, LayoutLoaderConfig config, ComponentsFactory factory) {
-        super(context, config, factory);
-    }
-
-    @Override
-    public Component loadComponent(ComponentsFactory factory, Element element, Component parent) {
-        IntStepper component = (IntStepper) super.loadComponent(factory, element, parent);
-
-        String manualInput = element.attributeValue("manualInput");
-        if (manualInput != null) {
-            component.setManualInputAllowed(Boolean.valueOf(manualInput));
-        }
-        String mouseWheel = element.attributeValue("mouseWheel");
-        if (mouseWheel != null) {
-            component.setMouseWheelEnabled(Boolean.valueOf(mouseWheel));
-        }
-        String stepAmount = element.attributeValue("stepAmount");
-        if (stepAmount != null) {
-            component.setStepAmount(Integer.valueOf(stepAmount));
-        }
-        String maxValue = element.attributeValue("maxValue");
-        if (maxValue != null) {
-            component.setMaxValue(Integer.valueOf(maxValue));
-        }
-        String minValue = element.attributeValue("minValue");
-        if (minValue != null) {
-            component.setMinValue(Integer.valueOf(minValue));
-        }
-        return component;
-    }
-}
-----
-+
-Логика загрузки базовых свойств компонента `Field` сосредоточена в классе `AbstractFieldLoader`. Нам достаточно загрузить только специфические свойства `IntStepper`.
-
-* Палитра компонентов проекта в модуле *web*:
-+
-[source, java]
-----
-package com.company.myproject.web;
-
-import com.company.myproject.gui.components.IntStepper;
-import com.company.myproject.gui.loaders.IntStepperLoader;
-import com.company.myproject.web.components.WebIntStepper;
-import com.haulmont.cuba.gui.ComponentPalette;
-import com.haulmont.cuba.gui.components.Component;
-import com.haulmont.cuba.gui.xml.layout.ComponentLoader;
-import java.util.HashMap;
-import java.util.Map;
-
-public class AppComponentPalette implements ComponentPalette {
-
-    @Override
-    public Map<String, Class<? extends ComponentLoader>> getLoaders() {
-        Map<String, Class<? extends ComponentLoader>> loaders = new HashMap<>();
-        loaders.put(IntStepper.NAME, IntStepperLoader.class);
-        return loaders;
-    }
-
-    @Override
-    public Map<String, Class<? extends Component>> getComponents() {
-        Map<String, Class<? extends Component>> components = new HashMap<>();
-        components.put(IntStepper.NAME, WebIntStepper.class);
-        return components;
-    }
-}
-----
-
-* Регистрация палитры компонентов в классе `App` модуля *web*:
-+
-[source, java]
-----
-package com.company.myproject.web;
-
-import com.haulmont.cuba.web.DefaultApp;
-import com.haulmont.cuba.web.gui.WebUIPaletteManager;
-
-public class App extends DefaultApp {
-
-    static {
-        WebUIPaletteManager.registerPalettes(new AppComponentPalette());
-    }
-}
-----
-
-* XSD компонентов проекта в модуле *gui*:
+. XML, скопированный с сайта аддона (http://vaadin.com/addon/stepper):
 +
 [source, xml]
 ----
-<xs:schema targetNamespace="http://schemas.company.com/app/0.1/app-components.xsd"
-           xmlns:xs="http://www.w3.org/2001/XMLSchema"
-           xmlns="http://schemas.company.com/app/0.1/app-components.xsd"
-           elementFormDefault="qualified"
-           attributeFormDefault="unqualified">
-
-    <xs:element name="intStepper">
-        <xs:complexType>
-            <xs:attribute name="id" type="xs:string"/>
-            <xs:attribute name="caption" type="xs:string"/>
-            <xs:attribute name="width" type="xs:string"/>
-            <xs:attribute name="height" type="xs:string"/>
-            <xs:attribute name="datasource" type="xs:string"/>
-            <xs:attribute name="property" type="xs:string"/>
-            <xs:attribute name="manualInput" type="xs:boolean"/>
-            <xs:attribute name="mouseWheel" type="xs:boolean"/>
-            <xs:attribute name="stepAmount" type="xs:int"/>
-            <xs:attribute name="maxValue" type="xs:int"/>
-            <xs:attribute name="minValue" type="xs:int"/>
-        </xs:complexType>
-    </xs:element>
-
-</xs:schema>
+<dependency>
+   <groupId>org.vaadin.addons</groupId>
+   <artifactId>stepper</artifactId>
+   <version>2.2.2</version>
+</dependency>
 ----
 
-* Использование компонента в экране внутри произвольного контейнера:
+. Одной строкой в том виде, как вы добавляете зависимости в <<development.adoc#build.gradle,build.gradle>>:
++
+[source, plain]
+----
+org.vaadin.addons:stepper:2.2.2
+----
+
+* *Inherited widgetset* - в этом поле необходимо указать имя набора виджетов подключаемого аддона. В нашем случае это `org.vaadin.risto.stepper.widgetset.StepperWidgetset`.
+
+* *Integrate into generic UI* указывает на необходимости интеграции компонента в универсальный интерфейс платформы.
+
+* *Component name in screen XML* -  имя компонента в XML-дескрипторе экрана. Введите значение `stepper`.
+
+* *Component interface name* - имя интерфейса компонента для универсального UI платформы. Введите `Stepper`.
+
+* *FQN of vaadin component from add-on* - полное имя класса компонента Vaadin из аддона. В нашем случае это `org.vaadin.risto.stepper.IntStepper`
+
+После нажатия кнопки *OK* студия сделает следующее:
+
+* Добавит аддон Vaadin в зависимости модуля *web* в файле *build.gradle*
+
+* Подключит набор виджетов аддона в файле `AppWidgetSet.gwt.xml` модуля *web-toolkit*
+
+* Если выбран чек-бокс *Integrate into generic UI*, то сгенерирует заготовки для следующих файлов:
+
+** `Stepper` - интерфейс универсального компонента в модуле *gui*
+
+** `WebStepper` - реализация компонента в модуле *web*
+
+** `StepperLoader` - XML-загрузчик компонента в модуле *gui*
+
+** `ui-component.xsd` - описатель схемы XML для нового компонента. Если файл уже существовал на момент генерации компонента, то информация о новом компоненте будет добавлена в существующий файл.
+
+** `cuba-ui-component.xml` - файл регистрации загрузчика нового компонента в модуле *web*. Если файл существовал, то информация о новом компоненте будет добавлена в существующий файл.
+
+Откройте проект в IDE. Можете сделать это, нажав на кнопку *IDE* секции *Project properties* навигатора.
+
+Последовательно пройдемся по сгенерированным студией заготовкам файлов и внесем в них необходимые изменения.
+
+* Перейдите к интерфейсу `Stepper` в модуле *gui*. Замените его содержимое на следующий код:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/Stepper.java[]
+----
++
+В качестве базового для нашего компонента выбран интерфейс `Field`. Это позволяет осуществить связь с данными (data binding), то есть отображать и редактировать значение некоторого атрибута сущности.
+
+* Далее перейдите к классу `WebStepper` - реализации компонента в модуле *web*. Замените содержимое класса следующим кодом:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/WebStepper.java[]
+----
++
+В качестве базового класса выбран `WebAbstractField`, который реализует логику интерфейса `Field` по связыванию с <<gui.adoc#datasources,источником данных>> и другие его методы.
+
+* `StepperLoader` в модуле *gui* - это XML-загрузчик компонента.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/StepperLoader.java[]
+----
++
+Логика загрузки базовых свойств компонента `Field` сосредоточена в классе `AbstractFieldLoader`. Нам достаточно загрузить только специфические свойства `Stepper`.
+
+* В файле `cuba-ui-component.xml`, расположенном в корне модуля *web*, регистрируется новый компонент и его загрузчик. Оставляем файл без изменений.
 +
 [source, xml]
 ----
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
-        xmlns:app="http://schemas.company.com/app/0.1/app-components.xsd"
-        caption="msg://editCaption"
-        class="com.company.myproject.web.customer.CustomerEdit"
-        datasource="customerDs"
-        focusComponent="fieldGroup"
-        messagesPack="com.company.myproject.web.customer">
-    <dsContext>
-        <datasource id="customerDs"
-                    class="com.company.myproject.entity.Customer"
-                    view="_local"/>
-    </dsContext>
-    <layout expand="windowActions"
-            spacing="true">
-        <app:intStepper id="stepper" datasource="customerDs" property="score" caption="Score"
-                        minValue="1" maxValue="20"/>
-        <iframe id="windowActions"
-                screen="editWindowActions"/>
-    </layout>
-</window>
+include::{sourcesdir}/ui_component/vaadin_gui/cuba-ui-component.xml[]
 ----
-+
-В данном примере компонент `intStepper` подсоединен к атрибуту `score` сущности `Customer`, экземпляр которой находится в источнике данных `customerDs`.
 
-* Использование компонента в кастомном поле <<gui_FieldGroup,FieldGroup>>:
+* Файл `ui-component.xsd`, расположенный в корне модуля *gui*, - это описатель XML схемы новых компонентов проекта. Добавим к элементу `stepper` описание его атрибутов.
 +
 [source, xml]
 ----
-<dsContext>
-    <datasource id="customerDs"
-                class="com.company.myproject.entity.Customer"
-                view="_local"/>
-</dsContext>
-<layout expand="windowActions"
-        spacing="true">
-    <fieldGroup id="fieldGroup"
-                datasource="customerDs">
-        <column width="250px">
-            <field id="name"/>
-            <field id="score" custom="true" caption="Score"/>
-        </column>
-    </fieldGroup>
-...
+include::{sourcesdir}/ui_component/vaadin_gui/ui-component.xsd[]
+----
+
+Далее рассмотрим, как добавить новый компонент на экран.
+
+* Создадим новую сущность `Customer` с двумя полями:
+
+** `name` типа String
+** `score` типа Integer
+
+* Сгенерируем для новой сущности стандартные экраны.
+
+* Далее добавим компонент `stepper` на экран. Вы можете поместить его как в `FieldGroup`, так и вне ее. Рассмотрим оба способа.
+
+. Использование компонента в экране внутри произвольного контейнера.
++
+--
+* Откройте файл `customer-edit.xml`.
+
+* Объявите новое пространство имен `xmlns:app="http://schemas.company.com/agd/0.1/ui-component.xsd"`
+
+* Удалите поле `stepper` из `FieldGroup`.
+
+* Добавьте компонент `stepper` на экран.
+
+В результате XML-дескриптор редактора должен выглядеть так:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-container.xml[]
+----
+
+В данном примере компонент `stepper` подсоединен к атрибуту `score` сущности `Customer`, экземпляр которой находится в источнике данных `customerDs`.
+--
+
+. Использование компонента в кастомном поле <<gui.adoc#gui_FieldGroup>>:
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-custom-field.xml[]
 ----
 +
 [source, java]
 ----
-@Inject
-private ComponentsFactory componentsFactory;
-@Inject
-private FieldGroup fieldGroup;
+include::{sourcesdir}/ui_component/vaadin_gui/CustomerEditGuiCustomField.java[]
+----
 
-@Override
-public void init(Map<String, Object> params) {
-    fieldGroup.addCustomField("score", new FieldGroup.CustomFieldGenerator() {
-        @Override
-        public Component generateField(final Datasource datasource, final String propertyId) {
-            IntStepper stepper = componentsFactory.createComponent(IntStepper.NAME);
-            stepper.setDatasource(datasource, propertyId);
-            stepper.setWidth("100%");
-            return stepper;
-        }
-    });
-}
----- 
+* Для адаптации внешнего вида компонента создадим в проекте расширение темы. Для этого в Studio выполним команду *Create theme extension* секции *Project properties* навигатора. В списке тем для расширения выберем `halo` и нажмем кнопку *Create* Затем откроем файл `themes/halo/halo-ext.scss` модуля *web*, и добавим в него следующий код:
++
+[source, css]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/halo-ext.scss[]
+----
+
+* Создаем базу данных, запускаем проект и наслаждаемся результатом.
+
+image::ui_component/customer_edit_result.png[align="center"]
+
+[[js_library_sample]]
+===== Подключение JavaScript библиотеки
+
+В данном примере мы подключим компонент https://jqueryui.com/slider/#range[slider] из библиотеки *jquery-ui*. Слайдер будет иметь 2 ползунка, определяющих диапазон значений.
+
+Для того, чтобы использовать JavaScript компонент в приложении мы должны выполнить следующее:
+
+. В модуле *web* создать серверный компонент Vaadin. Серверный компонент определяет API для серверного кода, различные get/set методы, слушатели событий и т.п. Компонент должен быть унаследован от `AbstractJavaScriptComponent`. Обратите внимание, что модуль *web-toolkit* и компиляция виджетсета при интеграции в проект JavaScript компонентов не требуются.
+
+. Создать JavaScript коннектор. Коннектор будет содержать функцию, инициализирующую JavaScript компонент и отвечающую за взаимодействие между кодом JavaScript и сервером.
+
+. Создать класс состояния. Он определяет, какие данные будут пересылаться между сервером и клиентом. В нём описываются публичные поля, которые будут автоматически сериализованы на сервере и десериализованы на клиенте. Класс состояния должен быть унаследован от `JavaScriptComponentState`.
+
+Для демонстрации подключения компонента JavaScript создадим новый проект в CUBA Studio. Назовите его `jscomponent`.
+
+Далее нажмите на кнопку *Create new UI component* - откроется окно создания визуального компонента. В секции *Component type* выберите значение `JavaScript component`.
+
+TIP: Обратите внимание, что для подключения JavaScript компонента наличие модуля *web-toolkit* необязательно.
+
+image::ui_component/studio_js_component_wizard.png[align="center"]
+
+В поле *Vaadin component class name* диалога генерации компонента введите значение `JsSlider`.
+
+Уберите флажок *Integrate into Generic UI*. Процесс интеграции компонента в универсальный интерфейс аналогичен описанному в разделе <<vaadin_addon_sample_gui>>, поэтому рассматривать его здесь мы не будем.
+
+После нажатия кнопки *OK* студия сгенерирует файлы:
+
+* `SliderServerComponent` - интегрированный с JavaScript компонент Vaadin
+
+* `SliderState` - класс состояния компонента Vaadin
+
+* `slider-connector.js` - JavaScript коннектор для компонента Vaadin
+
+Последовательно пройдемся по сгенерированным студией заготовкам файлов и внесем в них необходимые изменения. Откройте проект в IDE.
+
+* Класс состояния `SliderState` определяет, какие данные будут пересылаться между сервером и клиентом. В нашем случае мы будем пересылать информацию о минимальном и максимальном возможном значении и выбранных значениях слайдера.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/SliderState.java[]
+----
+
+* Серверный компонент Vaadin `SliderServerComponent`.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/SliderServerComponent.java[]
+----
++
+Серверный компонент Vaadin определяет набор геттеров и сеттеров для работы с состоянием слайдера, а также интерфейс слушателя изменения значений. Класс компонента должен наследовать `AbstractJavaScriptComponent`.
++
+Метод `addFunction` в конструкторе класса объявляет обработчик RPC-вызова функции `valueChanged` с клиента.
++
+Аннотации @JavaScript и @StyleSheet указывают на файлы, которые должны быть загружены на веб-страницу. В нашем примере это JS файлы библиотеки jquery-ui и коннектора, а также файл со стилями для jquery-ui. Расположим их в одном пакете с серверным компонентом.
+
+Скачайте архив jquery-ui с сайта http://jqueryui.com/download и поместите файлы `jquery-ui.js` и `jquery-ui.css` в пакет с классом `SliderServerComponent`. На странице скачивания jquery-ui у вас будет возможность выбрать компоненты, которые будут помещены в архив. Для нашего примера достаточно выделить пункт `Slider` группы `Widgets`.
+
+image::ui_component/js_project_structure.png[align="center"]
+
+
+* Javascript коннектор `slider-connector.js`.
++
+[source, javascript]
+----
+include::{sourcesdir}/ui_component/js/slider-connector.js[]
+----
++
+Коннектор представляет собой функцию, которая при загрузке веб-страницы проинициализирует JavaScript компонент. Имя функции должно соответствовать полному имени класса серверного компонента, где точки в имени пакета заменены на символ подчеркивания.
++
+Vaadin добавляет ряд полезных методов в фунцию коннектора. Например, `this.getElement()` возвращает HTML DOM элемент компонента, `this.getState()` возвращает объект-состояние.
++
+В нашем примере коннектор делает следующее:
++
+--
+* Инициализирует компонент *slider* из библиотеки *jquery-ui*. При изменении положения одного из ползунков будет вызывана функция `slide`. Мы видим, что она в свою очередь вызывает метод `valueChanged` коннектора. `valueChanged` - это метод, который мы объявили на стороне сервера в классе `SliderServerComponent`.
+
+* Объявляет функцию `onStateChange`. Она будет вызываться при изменении объекта-состояния на стороне сервера.
+--
+
+Для демонстрации работы компонента создадим сущность Product с тремя атрибутами:
+
+* `name` типа String
+* `minDiscount` типа Double
+* `maxDiscount` типа Double
+
+Затем сгенерируем стандартные экраны для данной сущности. Обратите внимание, что мы используем не универсальный компонент платформы, а "нативный" компонент Vaadin. Следовательно экраны должны располагаться в модуле Web, а не в GUI - укажите это в окне генерации стандартных экранов.
+
+NOTE: На самом деле экран может располагаться и в модуле *gui*, но тогда код, работающий с Vaadin компонентом, должен быть вынесен в отдельный <<gui.adoc#companions,компаньон>>.
+
+В редакторе сущности мы хотим устанавливать минимальное и максимальное значение скидки с помощью компонента `slider`, который мы только что создали.
+
+Перейдите к файлу `product-edit.xml`. Поля `minDiscount` и `maxDiscount` сделайте нередактируемыми, добавив к соответствующим тегам атрибут `editable="false"`. Затем добавьте в `fieldGroup` новое кастомное поле `slider`.
+
+В результате XML-дескриптор экрана редактирования должен выглядеть следующим образом:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/js/product-edit.xml[]
+----
+
+Перейдите к файлу `ProductEdit.java`. Замените его содержимое следующим кодом:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/ProductEdit.java[]
+----
+
+В методе `initNewItem()` мы проставляем начальные значения скидок для нового продукта.
+
+В методе `init()` инициализируем кастомное поле для слайдера. Для компонента слайдера мы проставляем текущие значения, максимальное и минимальное значения, а также объявляем слушатель изменений значений. При движении ползунка мы будем проставлять новые значения скидок в соответвующие поля редактируемой сущности.
+
+Запустите проект и откройте экран редактирования продукта. Изменение положения ползунка на слайдере должно изменять значение в соответствующем поле fieldGroup.
+
+image::ui_component/product_edit.png[align="center"]
+
+[[gwt_component_sample]]
+===== Создание GWT компонента
+
+В данном примере мы рассмотрим создание простого GWT-компонента - поля рейтинга в виде 5 звезд, а также использование его в экранах приложения.
+
+image::ui_component/rating_field_component.png[align="center"]
+
+Создадим новый проект в CUBA Studio. Имя проекта - `ratingsample`.
+
+Для возможности создания собственного GWT-компонента проект должен иметь модуль *web-toolkit*. Создадим его, нажав на кнопку *Create web-toolkit module* секции *Project properties* навигатора Studio.
+
+Далее нажмите на кнопку *Create new UI component* - откроется окно создания визуального компонента. В секции *Component type* выберите значение `New GWT component`.
+
+image::ui_component/studio_gwt_component_wizard.png[align="center"]
+
+В поле *Vaadin component class name* диалога генерации компонента введите значение `RatingFieldServerComponent`.
+
+Уберите флажок *Integrate into Generic UI*. Процесс интеграции компонента в универсальный интерфейс аналогичен описанному в разделе <<vaadin_addon_sample_gui>>, поэтому рассматривать его здесь мы не будем.
+
+После нажатия кнопки *OK* студия сгенерирует файлы:
+
+* `RatingFieldWidget.java` - виджет GWT в модуле *web-toolkit*
+
+* `RatingFieldServerComponent.java` - класс компонента Vaadin
+
+* `RatingFieldState.java` - класс состояния компонента
+
+* `RatingFieldConnector.java` - коннектор, связывающий клиентский код с серверным компонентом
+
+* `RatingFieldServerRpc.java` - класс, определяющий API сервера для клиентской части
+
+Последовательно пройдемся по сгенерированным студией заготовкам файлов и внесем в них необходимые изменения. Откройте проект в  IDE.
+
+* GWT виджет `RatingFieldWidget.java`. Замените содержимое файла на следующий код:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldWidget.java[]
+----
++
+Виджет представляет собой изолированный класс, отвечающий за отображение и реакцию на события. Он не должен знать о серверной части, он лишь определяет интерфейсы для работы с ней. В нашем случае это метод `setValue` и интерфейс `StarClickListener`.
+
+* Класс компонента Vaadin `RatingField`. Он определяет API для серверного кода, различные get/set методы для работы, слушатели событий и подключение источников данных. Прикладные разработчики всегда используют в своём коде методы этого класса.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldServerComponent.java[]
+----
+
+* Класс состояния `RatingFieldState` отвечает за то, какие данные будут пересылаться между клиентом и сервером. В нём определяются публичные поля, которые будут автоматически сериализованы на сервере и десериализованы на клиенте.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldState.java[]
+----
+
+* Интерфейс `RatingFieldServerRpc` — определяет API сервера для клиентской части, его методы могут вызываться с клиента при помощи механизма удалённого вызова процедур встроенного в Vaadin. Этот интерфейс мы реализуем в самом компоненте, в данном случае просто вызываем метод `setValue` нашего поля.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldServerRpc.java[]
+----
+
+* Коннектор `RatingFieldConnector` связывает клиентский  код с серверной частью.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldConnector.java[]
+----
+
+В коде виджета `RatingFieldWidget` нет упоминаний внешнего вида, кроме назначения имён стилей ключевым элементам. Для того, чтобы определить внешний вид нашего компонента, сперва, создадим файлы стилей. Для этого можем воспользоваться действием *Create theme extension* секции *Project properties* в навигаторе студии. В появившемся диалоге выбираем тему `halo`. Эта тема использует вместо иконок глифы шрифта FontAwesome, чем мы и воспользуемся. Studio создаст пустые файлы SCSS для расширения темы в каталоге `themes` модуля *web*.
+
+Стили каждого компонента принято выделять в отдельный файл `componentname.scss` в каталоге `components/componentname` в формате примеси SCSS. В каталоге `themes/halo` создадим пару вложенных каталогов: `components/ratingfield`. Затем внутри `ratingfield` создадим файл `ratingfield.scss`:
+
+[source, css]
+----
+include::{sourcesdir}/ui_component/gwt/ratingfield.scss[]
+----
+
+Подключим этот файл в главном файле темы `halo-ext.scss`:
+
+[source, css]
+----
+include::{sourcesdir}/ui_component/gwt/halo-ext.scss[]
+----
+
+Для демонстрации работы компонента создадим новый экран в модуле *web*.
+
+Назовите файл с экраном `rating-screen.xml`.
+
+image::ui_component/gwt_rating_screen_designer.png[align="center"]
+
+Добавим экран в меню приложения. Перейдите в секцию *Main menu* навигатора студии и нажмите кнопку *Edit*. Откроется редактор меню. Добавьте созданный экран в меню `application`.
+
+Перейдем к редактированию экрана `rating-screen.xml` в IDE. Нам понадобится контейнер для нашего компонента, объявим его в XML экрана:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/gwt/rating-screen.xml[]
+----
+
+Откроем класс контроллера экрана `RatingScreen.java` и добавим код размещения нашего компонента на экране:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingScreen.java[]
+----
+
+Запускаем приложение и смотрим результат.
+
+image::ui_component/rating_screen_result.png[align="center"]
+
+[[ui_component_studio_support]]
+===== Поддержка новых компонентов в CUBA Studio
+
+В данном разделе описывается, как добавить поддержку новых визуальных компонентов в дизайнер экранов CUBA Studio. Новый компонент появится в палитре компонентов, вы сможете перетаскивать его на экран и редактировать его свойства в панели свойств компонента.
+
+Информацию о новых визуальных компонентов CUBA Studio получает из плагина, который седержит реализацию расширения `CustomComponent`.
+
+Рассмотрим процесс создания плагина, добавляющего в студию поддержку компонента `stepper`, создание которого было описано в <<vaadin_addon_sample_gui>>.
+
+Откроем проект, содержащий компонент `stepper`.
+
+TIP: Если указанный проект вы не создавали, ничего страшного. Можете воспроизвести шаги, описанные ниже, и на новом проекте. Поддержку компонента студией вы увидите, не сможете только запустить приложение.
+
+На панели *Project properties* нажмем кнопку *Generate Studio plugin project*.
+
+image::ui_component/component_plugin_generation_window.png[align="center"]
+
+Рассмотрим поля, которые необходимо заполнить.
+
+* *Plugin id* - идентификатор плагина. Введем значение `stepper`
+
+* *Plugin path* - каталог, в котором будет создан проект плагина
+
+* *Deploy plugin* - если чек-бокс выбран, то плагин будет автоматически скопирован в папку `plugins` студии после создания. Оставим ее выделенной.
+
+* *Generate base project extension* - снимите флаг, т.к. нам не нужна поддержка нового базового проекта.
+
+* *Generate UI component extension* - этот чек-бокс должен быть выбран, т.к. мы хотим, чтобы плагин добавлял поддержку нового визуального компонента. После выделения этого чек-бокса, на экране появится область для заполнения свойств нового визуального компонента.
+
+* *Component name in screen XML* - имя компонента в том виде, как он должен быть добавлен в XML-дескриптор экрана. В нашем случае это `stepper`.
++
+Поля *Component class name* и *Component model class name* будут заполнены автоматически на основе введенного значения. Оставьте их значения без изменения.
+
+* *Component namespace URI* - пространство имен из XSD, описывающего компонент. Если вы генерировали новый компонент с помощью CUBA Studio, то посмотреть значение этого поля вы можете в файле `ui-component.xsd`.
+
+* *Component namespace prefix* - префикс, с которым тег компонента должен быть добавлен в XML-дескриптор экрана.
+
+* *Standard properties* - в секции выбираются стандартные свойства компонента, которые должны быть доступны для редактирования в панели свойств компонента в дизайнере экранов студии.
++
+Выделите `caption`, `datasource` и `property`.
++
+TIP: Свойства `id`, `align`, `height`, `width`, `enable`, `stylename`, `visible` по умолчанию подключены ко всем компонентам.
+
+* *Custom properties* - в таблице добавляются специфичные для компонента свойства, которые должны редактироваться в панели свойств дизайнера экранов студии.
++
+--
+Добавим следующие свойства:
+
+* *manualInput*, тип `Boolean`, значение по умолчанию `true`
+
+* *mouseWheel*, тип `Boolean`, значение по умолчанию `true`
+
+* *stepAmount*, тип `Integer`, значение по умолчанию `0`
+
+* *maxValue*, тип `Integer`, значение по умолчанию `0`
+
+* *minValue*, тип `Integer`, значение по умолчанию `0`
+--
+
+Далее нажмитие кнопку *OK*.
+
+Новые визуальные компоненты инициализируются при старте сервера студии. Откройте окно сервера студии, остановите сервер и запустите его снова.
+
+Сгенерируем стандартные экраны для сущности `Customer` заново, чтобы стереть результаты наших прошлых экспериментов.
+
+Переходим в секцию *Screens* навигатора студии и открываем экран `customer-edit`.
+
+Для начала удалим поле `stepper` из `fieldGroup`, т.к. мы хотим для его редактирования использовать специальный компонент. Перейдите на закладку *XML* и удалите строку `<field id="score">`.
+
+Вернитесь обратно на закладку дизайнера *Layout*.
+
+На палитре компонентов найдите новый компонент `Stepper` и перетащите его на экран под `fieldGroup`.
+
+image::ui_component/stepper_in_palette.png[align="center"]
+
+Выделяем компонент `stepper` и переходим на закладку свойств компонента *Properties*.
+
+image::ui_component/stepper_component_properties.png[align="center"]
+
+Заполняем необходимые поля:
+
+* *id* - `stepper`
+
+* *caption* - `Stepper`
+
+* *datasource* - `customerDs`
+
+* *property* - `score`
+
+* *maxValue* - `50`
+
+После этого переходим на закладку *XML*, чтобы увидеть результат.
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/studio_support/customer-edit.xml[]
+----
+
+Видим, что в XML экрана объявлено пространство имен компонента с префиксом `app`, компонент `stepper` добавлен на экран, и у него установлены необходимые свойства.
 
 [[sending_emails_recipe]]
 ==== Отправка email
