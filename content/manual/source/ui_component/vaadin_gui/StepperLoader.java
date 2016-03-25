@@ -12,6 +12,8 @@ public class StepperLoader extends AbstractFieldLoader<Stepper> {
 
     @Override
     public void loadComponent() {
+        super.loadComponent();
+
         String manualInput = element.attributeValue("manualInput");
         if (manualInput != null) {
             resultComponent.setManualInputAllowed(Boolean.valueOf(manualInput));
