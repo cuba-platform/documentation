@@ -2068,114 +2068,69 @@ Typically, `WindowManager` is not used in the application code directly.
 Please note that if a screen is located in the project's *gui* module, you can only work with generalized interfaces of CUBA-components. In order to use `DesktopComponentsHelper.unwrap()` you should either put the entire screen in the *desktop* module, or use the mechanism of <<companions,companion controllers>>.
 
 [[own_components]]
-==== Creating Custom Components
+==== Custom Visual Components
 
-This section covers the process of creating and using custom visual components in the application. To begin with, we will take a third party component available as Vaadin add-on, include it in the project and use it directly in the screen. Then we will perform a tighter integration, by creating a new <<gui_framework,GUI>> interface and an XML loader for the component, which will allow us to use it in the same way as other platform components. 
+This section contains an overview of different ways of creating custom web UI components in CUBA applications. The practical tutorial of using these approaches is located in the <<own_component_samples>> section.
 
-[[vaadin_addon]]
-===== Using Third-Party Vaadin Components
+A new component can be created with the following technologies:
 
-You can use third-party Vaadin components, distributed as add-ons, in the Web Client. Currently, the Vaadin library https://vaadin.com/directory has over 200 CUBA-compatible visual components. The main requirement for compatibility is the component's support of Vaadin 7+. 
-
-The following should be done to integrate a third-party component into the project:
-
-. Add *web-toolkit* module to the project. This module integrates with the client (browser) part of Vaadin components. The easiest way to do this is to run the *Create web toolkit module* command on the *Project properties* panel of the <<cubaStudio_install,CUBA Studio>> navigator. 
-
-. Add the add-on dependency to the *web* module in the project's <<build.gradle,build.gradle>>. For example: 
+* On the basis of a Vaadin add-on.
 +
-[source, java]
-----
-include::{sourcesdir}/gui/vaadinaddon_1.gradle[]
----- 
+--
+This is the simplest method. The following steps are required to use an add-on in your application:
 
-. Include the add-on widget set to the `AppWidgetSet.gwt.xml` file, created in Step 1:
-+
-[source, xml]
-----
-include::{sourcesdir}/gui/vaadinaddon_2.xml[]
----- 
+** Add a dependency to the add-on artifact to <<build.gradle,build.gradle>>.
 
-. In a *web* module screen (or in a corresponding <<companions,companion>>), get a link to the Vaadin container using the <<webComponentsHelper,WebComponentsHelper>> class, create a new component instance and add it to the container.
+** Create the web toolkit module in your project. This module contains a GWT widgetset file and allows you to create client-side parts of visual components.
 
-. To change the component's look, create a <<web_theme,theme extension>> and make the required changes in the `<theme>-ext.scss` file. The easiest way to create a theme file is to run the *Create theme extension* command on the *Project properties* panel of the Studio navigator.
+** Include the add-on widgetset to the widgetset of your project.
 
-<<vaadin_addon_sample>> covers the process of including and using the *Stepper* add-on, which enables stepping through the values.
+** If the component's look does not fit the application theme, create a theme extension and define some CSS for the new component.
 
-[[own_gui_component]]
-===== Integration with Generic UI
+See an example in the <<vaadin_addon_sample>> section.
+--
 
-Integration of a native component into the generic user interface enables using such component in a large number of screens with little effort, just like the basic platform components. Full integration requires the following steps:
+* As a wrapper of a JavaScript library.
++
+--
+This method is recommended if you already have a pure JavaScript component that does what you need. To use it in your application, you need to do the following:
 
-. Create the component interface. Interfaces are usually located in the GUI module, available to both client types – *Web* and *Desktop*. If the component should be implemented for one client type only, it can be placed in the *Web* or *Desktop* module directly. The example below implements the component for *Web Client* only. 
-+
-The component interface should be derived from `com.haulmont.cuba.gui.components.Component` or any of its inheritors, for example `DatasourceComponent` or `Field`: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/customcomponent_1.java[]
----- 
-+
-It is recommended to define the `NAME` constant in the interface. The constant should define the name of the component as a string, used for obtaining the component through the `ComponentsFactory`. This is also used as the name of the component's XML element in the XML screen descriptors.
+** Create a server-side Vaadin component in the web module. A server component defines an API for server code, access methods, event listeners, etc. The server component must extend the `AbstractJavaScriptComponent` class. Note that web-toolkit module with a widgetset is not required when integrating a JavaScript component.
 
-. Create the component implementation class in the *web* module.
-+
-It is recommended to derive the class from `com.haulmont.cuba.web.gui.components.WebAbstractComponent` or one of its inheritors, for example `WebAbstractField`. A native component instance should be created in the class constructor, and the GUI interface calls should be delegated to it: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/customcomponent_2.java[]
----- 
+** Create a JavaScript connector. A connector defines a function that initializes a JavaScript component and is responsible for JavaScript code and server interaction.
 
-. Create a class implementing the `ComponentPalette` interface and return a map of custom components and their implementation classes from the `getComponents()` method: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/customcomponent_3.java[]
----- 
-+
-The instance of the component palette must be registered in the application. This can be done in the <<gui_web,App>> class initialization block: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/customcomponent_4.java[]
----- 
+** Create a state class. It defines what data are sent between the server and the client. Public fields of this class will be automatically serialized on the server side and deserialized on the client. The class must extend `JavaScriptComponentState`.
 
-. At this point, the new GUI component can be retrieved via the `ComponentsFactory`: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/customcomponent_5.java[]
----- 
+See an example in the <<js_library_sample>> section.
+--
 
-. In order to support component declaration in screen XML-descriptors, create a component loader class, implementing `com.haulmont.cuba.gui.xml.layout.ComponentLoader`. It is recommended to derive the loader class from `com.haulmont.cuba.gui.xml.layout.loaders.ComponentLoader` or any of its inheritors. The loader operates with the component GUI interface only, so it is common for all client types, and can be located in the *gui* module. The minimal implementation should call the `loadComponent()` method, which creates the component instance and sets its common properties, such as ID or size, taken from XML. Any custom component properties can be initialized afterwards: 
+* As a new GWT component.
 +
-[source, java]
-----
-include::{sourcesdir}/gui/customcomponent_6.java[]
----- 
-+
-The loader must be registered by the `getLoaders()` method of the previously created component palette: 
-+
-[source, java]
-----
-include::{sourcesdir}/gui/customcomponent_7.java[]
----- 
+--
+This is the recommended method of creating completely new visual components. The following steps are required to create and use a GWT component in your application:
 
-. Now the component can be used in XML-descriptors of your project: 
-+
-[source, xml]
-----
-include::{sourcesdir}/gui/customcomponent_8.xml[]
----- 
-+
-In order to enable autocomplete for component name and attributes in IDE, define your own XSD and include it in the screens: 
-+
-[source, xml]
-----
-include::{sourcesdir}/gui/customcomponent_9.xml[]
----- 
+** Create the web toolkit module.
 
-<<own_gui_component_sample>> covers the process of integrating the *IntStepper* component, used for changing integer values incrementally.
+** Create a client-side GWT widget class.
+
+** Create a server-side Vaadin component.
+
+** Create a component state class that defines what data are sent between the client and the server.
+
+** Create a connector class that links the client code with the server component.
+
+** Create an RPC interface that defines a server API that is invoked from the client.
+
+See an example in the <<gwt_component_sample>> section.
+--
+
+There are three levels of integration of a new component into the platform.
+
+* On the first level, the new component becomes available as a native Vaadin component. You can use this component in your screen controllers directly: create a new instance and add it to an unwrapped container. All methods of creating new components described above give you a component on this level of integration.
+
+* On the second level, the new component is integrated into CUBA Generic UI. In this case, from an application developer perspective, it looks the same as a standard component from the visual components library. The developer can define the component in a screen XML descriptor or create it through `ComponentsFactory` in a controller. See an example in the <<vaadin_addon_sample_gui>> section.
+
+* On the third level, the new component is available on the Studio components palette and can be used in the WYSIWYG layout editor. See an example in the <<own_component_in_studio>> section.
 
 [[shortcuts]]
 ==== Keyboard Shortcuts

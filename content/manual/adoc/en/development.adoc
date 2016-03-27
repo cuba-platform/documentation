@@ -1379,38 +1379,38 @@ It should be noted that loading files into byte arrays is acceptable for small f
 [[own_component_samples]]
 ==== Creating Custom Visual Components
 
-CUBA Platform is not restricted by the current set of visual components. If any component is absent in the platform distribution then a developer has 3 ways:
+As explained in the <<own_components>> section, the standard set of visual components can be extended in your project. You have the following options:
 
-. *Integrate a Vaadin add-on*. Many third-party Vaadin components are distributed as add-ons. Add-ons library is located by address https://vaadin.com/directory. A developer can integrate any of them to the project.
+. Integrate a Vaadin add-on. Many third-party Vaadin components are distributed as add-ons and available at https://vaadin.com/directory.
 
-. *Integrate a JavaScript component*. Vaadin allows to create server components integrated with a JavaScript library.
+. Integrate a JavaScript component. You can create a Vaadin component wrapping a JavaScript library.
 
-. *Create an own Vaadin component* with a client part written on GWT.
+. Create a new Vaadin component with the client part written on GWT.
 
-Each of the methods listed above gives a Vaadin component as an output. A developer then can initialize it and add to the screen. This option is appropriate if the component is used in one or two screens, but if it is used many times and we want to be able to declare the component in screen XML-descriptor, then we have to integrate the Vaadin component to the platform Generic UI.
+Futher on, you can integrate the resulting Vaadin component into CUBA Generic UI to be able to use it declaratively in screen XML descriptors and bind to datasources.
 
-This section gives you examples of new visual components creation with all the methods described above. Integration to the Generic UI is the same for all methods, so it is described only for example of <<vaadin_addon_sample_gui,using a Vaadin add-on>>.
+And the final step of integration is the support of the new component in the Studio WYSIWYG layout editor.
+
+This section gives you examples of creating new visual components with all the methods described above. Integration to the Generic UI and support in Studio are the same for all methods, so these topics are described only for a new component created on the basis of a Vaadin add-on.
 
 [[vaadin_addon_sample]]
 ===== Using a Third-party Vaadin Component
 
-Integration of third-party Vaadin components is described in <<vaadin_addon>>.
+This is an example of using the *Stepper* component available at http://vaadin.com/addon/stepper, in an application project. The component enables changing text field value in steps using the keyboard, mouse scroll or built-in up/down buttons.
 
-Below there is an example of using the *Stepper* component, available at http://vaadin.com/addon/stepper. This component enables changing text field value in steps using the keyboard, mouse scroll or built-in up/down buttons.
+Create a new project in CUBA Studio and name it `addon-demo`.
 
-To demonstrate an integration of new component let's create a new project in CUBA Studio. Name it `addon-demo`.
+A Vaadin add-on may be integrated if the application project has a *web-toolkit* module. Create the module by clicking  the *Create web toolkit module* link of the *Project properties* navigator section.
 
-Vaadin add-on may be integrated if the project has a *web-toolkit* module. Create the module by clicking  the *Create web-toolkit module* button of the *Project properties* section of Studio navigation panel.
-
-Then click the *Create new UI component* button - a window for UI component creation window will be opened. Select the *Vaadin add-on* value in the *Component type* section.
+Then click the *Create new UI component* link. The *New UI component* page will open. Select the *Vaadin add-on* value in the *Component type* section.
 
 image::ui_component/studio_vaadin_addon_wizard_no_gui.png[align="center"]
 
-Let's look at fields that should be filled.
+Fill in the following fields:
 
-* *Add-on maven dependency* - this field contains maven coordinates of the Vaadin add-on to be included it as a dependency to the current project. You can define coordinates in two ways:
+* The *Add-on Maven dependency* field contains Maven coordinates of the Vaadin add-on. The add-on will be included as a dependency to the project. You can define coordinates in two formats:
 
-. XML copied from the add-on web site (http://vaadin.com/addon/stepper):
+. As an XML copied from the add-on web site (http://vaadin.com/addon/stepper):
 +
 [source, xml]
 ----
@@ -1421,22 +1421,22 @@ Let's look at fields that should be filled.
 </dependency>
 ----
 
-. In one line in the way you add dependencies in <<development.adoc#build.gradle,build.gradle>>:
+. In one line as you add dependencies in <<build.gradle,build.gradle>>:
 +
 [source, plain]
 ----
 org.vaadin.addons:stepper:2.2.2
 ----
 
-* *Inherited widgetset* - this fields contains a wedgetset name of the add-on. In out case it is `org.vaadin.risto.stepper.widgetset.StepperWidgetset`.
+* The *Inherited widgetset* field contains a widgetset name of the add-on. In our case it is `org.vaadin.risto.stepper.widgetset.StepperWidgetset`.
 
-* *Integrate into generic UI* - in this example this checkbox must be switched off because we don't integrate the component into the Generic UI.
+* *Integrate into generic UI* - deselect this checkbox as we do not integrate the component into the Generic UI in this example.
 
-Press the *OK* button and the add-on will be attached to the project. Let's see what Studio has done for us. Open the project in the IDE. You can do this by clicking the *IDE* button in *Project properties* section of Studio navigator.
+Press the *OK* button.
 
-Studio has changed 2 files:
+If you open the project in the IDE, you can see that Studio has changed two files:
 
-. <<development.adoc#build.gradle, build.gradle>>. Module *web* now contains a dependency to the add-on that contains the component.
+. In `build.gradle`, the *web* module now contains a dependency on the add-on that contains the component.
 +
 [source, java]
 ----
@@ -1448,7 +1448,7 @@ configure(webModule) {
     }
 ----
 
-. `AppWidgetSet.gwt.xml` file of *web-toolkit* module now contains an inheritance of add-on widgetset:
+. The `AppWidgetSet.gwt.xml` file of the *web-toolkit* module now inherits the add-on widgetset:
 +
 [source, xml]
 ----
@@ -1460,23 +1460,23 @@ configure(webModule) {
     <set-property name="user.agent" value="safari" />
 ----
 +
-TIP: You can increase the widgetset compilation speed by defining a `user.agent` property. In this example widgetset will be compiled only for browsers based on WebKit: Chrome, Safari, etc.
+TIP: You can speed up the widgetset compilation by defining the `user.agent` property. In this example, widgetset will be compiled only for browsers based on WebKit: Chrome, Safari, etc.
 
-Now the component from the Vaadin add-on is attached. Let's see how to use it in project screens.
+Now the component from the Vaadin add-on is included to the project. Let's see how to use it in the project screens.
 
 * Create a new entity `Customer` with two fields:
 
-** `name` of String type
-** `score` of Integer type
+** `name` of type String
+** `score` of type Integer
 
-* Generate standard screens for the new entity. Ensure that the *In module* field value is `Web Module`. Screens that use Vaadin components directly must be placed in the *web* module.
+* Generate standard screens for the new entity. Ensure that the *In module* field is set to `Web Module`. Screens that use Vaadin components directly must be placed in the *web* module.
 +
-TIP: Actually, the screen can be placed in the *gui* module as well, but then a code that uses a Vaadin component should be carried out to the separate <<gui.adoc#companions,companion>>.
+TIP: Actually, screens can be placed in the *gui* module as well, but then the code that uses the Vaadin component should be moved to a separate <<companions,companion>>.
 
-* Next, we will add the `stepper` component to the screen. You can place it both inside the `FieldGroup` and outside it. Let's examine both methods.
+* Next, we will add the `stepper` component to the screen. You can place it in a <<gui_FieldGroup,FieldGroup>> or in a separate container. Let's examine both methods.
 +
 --
-. Make the `score` field of the <<gui.adoc#gui_FieldGroup, fieldGroup>> component at the `customer-edit.xml` screen custom. Add an attribute `custom = "true"`.
+. Add the `custom = "true"` attribute to the `score` field of the `fieldGroup` component of the `customer-edit.xml` screen.
 +
 [source, xml]
 ----
@@ -1492,16 +1492,16 @@ include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiCustomField.ja
 +
 The `init()` method initializes the custom `score` field. The `ComponentsFactory` creates an instance of <<gui_BoxLayout,BoxLayout>>, retrieves a link to the Vaadin container via <<webComponentsHelper,WebComponentsHelper>>, and adds the new component to it. The `BoxLayout` is then returned to be used in the custom field.
 +
-Component data binding is implemented by setting the current value to the `stepper` component from the edited `Customer` in the `postInit()` method. Additionally, the corresponding entity attribute is updated through the implemented value change listener, when the user changes the value.
+Data binding is implemented programmatically by setting a current value to the `stepper` component from the edited `Customer` instance in the `postInit()` method. Additionally, the corresponding entity attribute is updated through the value change listener, when the user changes the value.
 
-. The new component can be used in any part of the screen outside of the `FieldGroup`. In order to do this, declare a container in the XML-descriptor:
+. The new component can be used in any part of the screen outside of the `FieldGroup`. In order to do this, declare the `scoreBox` container in the XML-descriptor:
 +
 [source, xml]
 ----
 include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui-container.xml[]
 ----
 +
-Inject the container to the screen controller, retrieve a link to the Vaadin container and add the component to it:
+Inject the container to the screen controller, retrieve a link to the underlying Vaadin container and add the component to it:
 +
 [source, java]
 ----
@@ -1511,94 +1511,72 @@ include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiContainer.java
 Data binding is implemented in the same way as described above.
 --
 
-* To adapt the component style, create a theme extension in the project. Run the *Create theme extension* command in the *Project properties* section of the Studio navigation panel. Select the `halo` theme to be extended. After that, open the `themes/halo/halo-ext.scss` file in the web module and add the following code:
+* To adapt the component style, create a theme extension in the project. Click the *Create theme extension* link in the *Project properties* navigator section. Select the `halo` theme. After that, open the `themes/halo/halo-ext.scss` file located in the *web* module and add the following code:
 +
 [source, css]
 ----
 include::{sourcesdir}/ui_component/vaadin_no_gui/halo-ext.scss[]
 ----
 
-* Create the database, run the project and enjoy the result.
+* Start the application server. The resulting editor screen will look as follows:
 
 image::ui_component/customer_edit_result.png[align="center"]
 
 [[vaadin_addon_sample_gui]]
 ===== Integrating a Vaadin Component into the Generic UI
 
-<<gui.adoc#own_gui_component>> covers the basics of native components integration into the Generic UI, which allows them to be declared in XML-descriptors and associated with data.
+In the <<vaadin_addon_sample,previous section>>, we have included the third-party Stepper component in the project. In this section, we will integrate it into CUBA Generic UI. This will allow developers to use the component declaratively in the screen XML and bind it to the data model entities through <<datasources,datasources>>.
 
-In the <<vaadin_addon_sample,previous section>>, we have included the third-party Stepper component in the project. Integration of the IntStepper component, which implements incremental change of `int` numerical values, is described below.
+Create a new project in CUBA Studio and name it `addon-demo-gui`. Type `adg` in the *Project namespace* field.
 
-To demonstrate an integration of new component let's create a new project in CUBA Studio. Name it `addon-demo-gui`. Type `adg` in the *Project namespace* field.
+Create the *web-toolkit* module by clicking the *Create web toolkit module* link of the *Project properties* navigator section.
 
-Vaadin add-on may be integrated if the project has a *web-toolkit* module. Create the module by clicking  the *Create web-toolkit module* button of the *Project properties* Studio navigation panel.
-
-Then click the *Create new UI component* button - a window for UI component creation window will be opened. Select the *Vaadin add-on* value in the *Component type* section.
+Then click the *Create new UI component* link. The *New UI component* page will open. Select the *Vaadin add-on* value in the *Component type* section.
 
 image::ui_component/studio_vaadin_addon_wizard_gui.png[align="center"]
 
-Let's look at fields that should be filled.
+Fill in the *Add-on Maven dependency* and *Inherited widgetset* as described in the <<vaadin_addon_sample,previous section>>.
 
-* *Add-on maven dependency* - this field contains maven coordinates of the Vaadin add-on to be included as a dependency to the current project. You can define coordinates in two ways:
+Then fill in the fields of the bottom section:
 
-. XML copied from the add-on web site (http://vaadin.com/addon/stepper):
-+
-[source, xml]
-----
-<dependency>
-   <groupId>org.vaadin.addons</groupId>
-   <artifactId>stepper</artifactId>
-   <version>2.2.2</version>
-</dependency>
-----
+* *Integrate into generic UI* - defines that a component should be integrated into the Generic UI.
 
-. In one line in the way you add dependencies in <<development.adoc#build.gradle,build.gradle>>:
-+
-[source, plain]
-----
-org.vaadin.addons:stepper:2.2.2
-----
+* *Component XML element* - an element to be used in screen XML descriptors. Enter `stepper`.
 
-* *Inherited widgetset* - this fields contains a widgetset name of the add-on. In out case it is `org.vaadin.risto.stepper.widgetset.StepperWidgetset`.
-
-* *Integrate into generic UI* - defines that a component should be integrated into the platform Generic UI.
-
-* *Component name in screen XML* - component name in screen XML-descriptor. Enter the value `stepper`.
-
-* *Component interface name* - an interface name for the platform Generic UI. Enter the value `Stepper`.
+* *Component interface name* - a name of the component Generic UI interface. Enter `Stepper`.
 
 * *FQN of the Vaadin component from add-on* - fully qualified class name of the Vaadin component from the add-on. In our case it is `org.vaadin.risto.stepper.IntStepper`.
 
-When you click *OK* Studio will do the following:
+When you click *OK*, Studio will do the following:
 
-* Add Vaadin add-on as *web* module dependency in *build.gradle*
+* Add the Vaadin add-on as a *web* module dependency in `build.gradle`.
 
-* Include add-on widgetset in `AppWidgetSet.gwt.xml` of *web-toolkit* module
+* Include add-on widgetset in `AppWidgetSet.gwt.xml` of *web-toolkit* module.
 
-* If the *Integrate into generic UI* checkbox is checked, Studio generates stubs for the following files:
+* Generate stubs for the following files:
 
-** `Stepper` - an interface of the component in *gui* module
+** `Stepper` - an interface of the component in the *gui* module.
 
-** `WebStepper` - a component implementation in *web* module
+** `WebStepper` - a component implementation in the *web* module.
 
-** `StepperLoader` - a component XML-loader in *gui* module
+** `StepperLoader` - a component XML-loader in the *gui* module.
 
-** `ui-component.xsd` - a new component XML schema description. If the file already exists when the component is generated, then the information about new component will be added to the existing file.
+** `ui-component.xsd` - a new component XML schema definition. If the file already exists, the information about the new component will be added to the existing file.
 
-** `cuba-ui-component.xml` - the file that registers a new component loader in *web* module. If the file already exists when the component is generated, then the information about new component will be added to the existing file.
+** `cuba-ui-component.xml` - the file that registers a new component loader in *web* module. If the file already exists, the information about the new component will be added to the existing file.
 
-Open the project in IDE. You can do this by clicking the *IDE* button of *Project properties* section of Studio navigation panel.
+Open the project in the IDE.
 
 Let's walk through generated files add make necessary changes.
 
-* Open the `Stepper` interface of *gui* module. Replace its content with the following code:
+* Open the `Stepper` interface in the *gui* module. Replace its content with the following code:
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/vaadin_gui/Stepper.java[]
 ----
 +
-The base interface for the component is `Field`, which enables data binding, i.e. the ability to view and edit an entity attribute.
+The base interface for the component is `Field`, which is designed to display and edit an entity attribute.
 
 * Open the `WebStepper` class - a component implementation in the *web* module. Replace its content with the following code:
 +
@@ -1607,54 +1585,54 @@ The base interface for the component is `Field`, which enables data binding, i.e
 include::{sourcesdir}/ui_component/vaadin_gui/WebStepper.java[]
 ----
 +
-The chosen base class is `WebAbstractField`. The base class implements the <<gui.adoc#datasources,datasource binding>> `Field` logic and other methods of the `Field` interface.
+The chosen base class is `WebAbstractField`, which implements the methods of the `Field` interface.
 
-* `StepperLoader` in *gui* module - an implementation of XML loader in the *gui* module.
+* The `StepperLoader` class in *gui* module loads the component from its representation in XML.
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/vaadin_gui/StepperLoader.java[]
 ----
 +
-The `AbstractFieldLoader` class contains a code for `Field` component basic properties loading. It is sufficient to load the specific properties of the `IntStepper` component only.
+The `AbstractFieldLoader` class contains code for loading basic properties of the `Field` component. So `StepperLoader` loads only the specific properties of the `IntStepper` component.
 
-* `cuba-ui-component.xml` file of *web* module. The new component and its loader are registered here. Remain the file unchanged.
+* The `cuba-ui-component.xml` file in the *web* module registers the new component and its loader. Leave the file unchanged.
 +
 [source, xml]
 ----
 include::{sourcesdir}/ui_component/vaadin_gui/cuba-ui-component.xml[]
 ----
 
-* `cuba-ui-component.xsd` file of *gui* module - an XML schema description of new visual components. Add `stepper` attributes definition.
+* The `cuba-ui-component.xsd` file in *gui* module contains XML schema definitions of custom visual components. Add the `stepper` attributes definition.
 +
 [source, xml]
 ----
 include::{sourcesdir}/ui_component/vaadin_gui/ui-component.xsd[]
 ----
 
-Let's see how to add the new component to the screen.
+Let's see how to add the new component to a screen.
 
 * Create a new entity `Customer`. The entity have two fields:
 
-** `name` of String type
-** `score` of Integer type
+** `name` of type String
+** `score` of type Integer
 
 * Generate standard screens for the new entity.
 
-* Add the `stepper` component to the editor screen. You can place it both inside the `FieldGroup` and outside it. We'll examine both methods.
+* Add the `stepper` component to the editor screen. You can place it in a <<gui_FieldGroup,FieldGroup>> or in a separate container. We'll examine both methods.
 
 . Using the component inside a container.
 +
 --
-* Open the `customer-edit.xml` file
+* Open the `customer-edit.xml` file.
 
-* Define a new namespace `xmlns:app="http://schemas.company.com/agd/0.1/ui-component.xsd"`
+* Define the new namespace `xmlns:app="http://schemas.company.com/agd/0.1/ui-component.xsd"`.
 
-* Remove the `stepper` field from the `FieldGroup`
+* Remove the `stepper` field from `fieldGroup`.
 
 * Add `stepper` component to the screen.
 
-As a result the XML-descriptor should look like this:
+As a result, the XML descriptor should look like this:
 
 [source, xml]
 ----
@@ -1664,7 +1642,7 @@ include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-container.xml[]
 In the example above, the `stepper` component is associated with the `score` attribute of the `Customer` entity. An instance of this entity is managed by the `customerDs` datasource.
 --
 
-. Using the component inside a <<gui.adoc#gui_FieldGroup>>:
+. Using the new component inside a <<gui_FieldGroup>>:
 +
 [source, xml]
 ----
@@ -1676,51 +1654,41 @@ include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-custom-field.xml
 include::{sourcesdir}/ui_component/vaadin_gui/CustomerEditGuiCustomField.java[]
 ----
 
-* To adapt the component style, create a theme extension in the project. Run the *Create theme extension* command in the *Project properties* section of the Studio navigation panel. Select the `halo` theme to be extended. After that, open the `themes/halo/halo-ext.scss` file in the web module and add the following code:
+* To adapt the component style, create a theme extension in the project. Click the *Create theme extension* link in the *Project properties* navigator section. Select the `halo` theme. After that, open the `themes/halo/halo-ext.scss` file located in the *web* module and add the following code:
 +
 [source, css]
 ----
 include::{sourcesdir}/ui_component/vaadin_gui/halo-ext.scss[]
 ----
 
-* Create the database, run the project and enjoy the result.
+* Start the application server. The resulting editor screen will look as follows:
 
 image::ui_component/customer_edit_result.png[align="center"]
 
 [[js_library_sample]]
 ===== Using a JavaScript library
 
-In this example we will attach a https://jqueryui.com/slider/#range[slider] component of the *jquery-ui* library. The slider will have two drag handlers that define a values range.
+In this example, we will use the https://jqueryui.com/slider/#range[slider] component from the *jquery-ui* library. The slider will have two drag handlers that define a values range.
 
-To integrate the JavaScript component to the application we have to do the following:
+Create a new project in CUBA Studio and name it `jscomponent`.
 
-. Create a server Vaadin component in *web* module. A server component defines an API for server code, different getters and setters, event listeners, etc. The server component must extend `AbstractJavaScriptComponent` class. Note that *web-toolkit* module and widgetset compilation is not required when integrating a JavaScript component.
-
-. Create a JavaScript connector. A connector defines a function that initializes a JavaScript component and that is responsible for JavaScript code and server interaction.
-
-. Create a state class. It defines what data are sent between the server and the client. Public fields of this class will be automatically serialized on the server side and deserialized on the client. The class must extend `JavaScriptComponentState`.
-
-To demonstrate how to integrate a JavaScript component let's create a new project in CUBA Studio. The project name is `jscomponent`.
-
-Click the *Create new UI component* button of the *Project properties* section in Studio navigation panel - a new UI component creation window will be opened.
-
-Select the `JavaScript component` value in the `Component type` section.
+Click the *Create new UI component* button on the *Project properties* navigator section. The *New UI component page* will open. Select the `JavaScript component` value in the `Component type` section.
 
 image::ui_component/studio_js_component_wizard.png[align="center"]
 
-Enter the value `SliderServerComponent` in the *Vaadin component class name* field.
+Enter `SliderServerComponent` in the *Vaadin component class name* field.
 
-Remove the *Integrate into Generic UI* flag. The process of integration the component into the Generic UI is similar to that is described at <<vaadin_addon_sample_gui>>, so we won't describe it here.
+Deselect the *Integrate into Generic UI* flag. The process of integration into the Generic UI is the same as described at <<vaadin_addon_sample_gui>>, so we won't repeat it here.
 
-After clicking the *OK* button Studio will generate the files:
+After clicking the *OK* button Studio will generate the following files:
 
-* `SliderServerComponent` - a Vaadin component integrated with JavaScript
+* `SliderServerComponent` - a Vaadin component integrated with JavaScript.
 
-* `SliderState` - a state class of Vaadin component
+* `SliderState` - a state class of the Vaadin component.
 
-* `slider-connector.js` - a JavaScript connector for Vaadin component
+* `slider-connector.js` - a JavaScript connector for the Vaadin component.
 
-Let's examine the generated files and make necessary source code modifications. Open the project in IDE.
+Let's examine the generated files and make necessary changes in the source code.
 
 * `SlideState` state class defines what data is transferred between the server and the client. In our case it is a minimal possible value, maximum possible value and selected values.
 +
@@ -1729,20 +1697,20 @@ Let's examine the generated files and make necessary source code modifications. 
 include::{sourcesdir}/ui_component/js/SliderState.java[]
 ----
 
-* Vaadin server component `SliderServerComponent`.
+* Vaadin server-side component `SliderServerComponent`.
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/js/SliderServerComponent.java[]
 ----
 +
-The server component defines getters and setters to work with a slider state and an interface for values change listener. The class extends `AbstractJavaScriptComponent`.
+The server component defines getters and setters to work with the slider state and an interface of value change listeners. The class extends `AbstractJavaScriptComponent`.
 +
-`addFunction` method in the class constructor defines a handler for an RPC-call for the function `valueChanged` from the client.
+The `addFunction()` method invocation in the class constructor defines a handler for an RPC-call of the `valueChanged()` function from the client.
 +
-@JavaScript and @StyleSheet annotations point to files that must be loaded at the web page. In our example these are JavaScript files of the `jquery-ui` library, connector and a stylesheet for `jquery-ui`. You need to put these files to the package with Vaadin server component.
+The `@JavaScript` and `@StyleSheet` annotations point to files that must be loaded in the web page. In our example, these are JavaScript files of the `jquery-ui` library, the connector and the stylesheet for `jquery-ui`. You should place these files to the Java package of the Vaadin server component.
 
-Download an archive with `jquery-ui` from http://jqueryui.com/download and put files `jquery-ui.js` and `jquery-ui.css` from the archive to the package with `SliderServerComponent` class. At the jquery-ui download page you can select which components should be put into the archive. For this demo it is enough to select just a `Slider` item of `Widgets` group.
+Download an archive with `jquery-ui` from http://jqueryui.com/download and put files `jquery-ui.js` and `jquery-ui.css` from the archive to the Java package of the `SliderServerComponent` class. At the jquery-ui download page, you can select which components should be put into the archive. For this demo, it is enough to select only the `Slider` item of the `Widgets` group.
 
 image::ui_component/js_project_structure.png[align="center"]
 
@@ -1753,127 +1721,125 @@ image::ui_component/js_project_structure.png[align="center"]
 include::{sourcesdir}/ui_component/js/slider-connector.js[]
 ----
 +
-Connector is a function that initializes a JavaScript component on a web page loading. The function name must correspond to the server component class name where dots in package name are replaces with underscore characters.
+Connector is a function that initializes a JavaScript component when the web page is loaded. The function name must correspond to the server component class name where dots in package name are replaced with underscore characters.
 +
 Vaadin adds several useful methods to the connector function. `this.getElement()` returns an HTML DOM element of the component, `this.getState()` returns a state object.
 +
 Our connector does the following:
 +
 --
-* Initializes a `slider` component of the `jquery-ui` library. The `slide` function is invoked when a position of any drag handler changes. This function in its turn invokes a connector method `valueChanged`. `valuedChanged` is the method that we defined on the server side in the `SliderServerComponent` class.
+* Initializes the `slider` component of the `jquery-ui` library. The `slide` function is invoked when the position of any drag handler changes. This function in turn invokes the `valueChanged()` connector method. `valuedChanged()` is the method that we defined on the server side in the `SliderServerComponent` class.
 
-* Defines an `onStateChange` function. It is called when the state object is changed on the server side.
+* Defines the `onStateChange()` function. It is called when the state object is changed on the server side.
 --
 
-To demonstrate how the component works let's create a `Product` entity with three attributes:
+To demonstrate how the component works, let's create the `Product` entity with three attributes:
 
-* `name` of String type
+* `name` of type String
 * `minDiscount` of type Double
 * `maxDiscount` of type Double
 
-Generate standard screens for the entity. Ensure that the *In module* field value is `Web Module`. Screens that use Vaadin components directly must be placed in the *web* module.
+Generate standard screens for the entity. Ensure that the value of the *In module* field is `Web Module`.
 
-TIP: Actually, the screen can be placed in the *gui* module as well, but then a code that uses a Vaadin component should be carried out to the separate <<gui.adoc#companions,companion>>.
+The `slider` component will set minimal and maximum discount values of a product.
 
-In the example we will set product minimal and maximum discount values with the `slider` component we just created.
+Open the `product-edit.xml` file. Make `minDiscount` and `maxDiscount` fields not editable by adding the `editable="false"` attribute to the corresponding elements. Then add the new custom `slider` field to the `fieldGroup`.
 
-Open the `product-edit.xml` file. Make `minDiscount` and `maxDiscount` fields not editable by adding the `editable="false"` attribute to the corresponding tags. Then add a new custom field `slider` to the `fieldGroup`.
-
-As a result an XML descriptor of the editor screen should look like this:
+As a result, the XML descriptor of the editor screen should look as follows:
 
 [source, xml]
 ----
 include::{sourcesdir}/ui_component/js/product-edit.xml[]
 ----
 
-Go to the `ProductEit.java` file. Replace its content with the following code:
+Open the `ProductEit.java` file. Replace its content with the following code:
 
 [source, java]
 ----
 include::{sourcesdir}/ui_component/js/ProductEdit.java[]
 ----
 
-In the `initNewItem()` method initial values for discounts of a new product are set.
+The `initNewItem()` method sets initial values for discounts of a new product.
 
-Method `init()` initializes the `slider` custom field. It sets current, minimal and maximum values of the `slider` and defines a value change listener. When a drag handler moves, a new value will be set to the corresponding field of the editable entity.
+Method `init()` initializes the `slider` custom field. It sets current, minimal and maximum values of the `slider` and defines the value change listener. When the drag handler moves, a new value will be set to the corresponding field of the editable entity.
 
-Run the project and open the product edit screen. Changing the drop handler position must change the value of fieldGroup field.
+Start the application server and open the product editor screen. Changing the drop handler position must change the value of the text fields.
 
 image::ui_component/product_edit.png[align="center"]
 
 [[gwt_component_sample]]
 ===== Creating a GWT component
 
-In this section we will cover a creation of a simple GWT component (a rating field that looks like 5 stars) and a usage of this component inside application screens.
+In this section, we will cover the creation of a simple GWT component (a rating field consisting of 5 stars) and its usage in application screens.
 
 image::ui_component/rating_field_component.png[align="center"]
 
-Create a new project in CUBA Studio. The project name is `ratingsample`.
+Create a new project in CUBA Studio and name it `ratingsample`.
 
-To be able to create a GWT component a project must contain a *web-toolkit* module. Create it by clicking the *Create web-toolkit module* button in the *Project properties* section of Studio navigation panel.
+Click the *Create web-toolkit module* link in the *Project properties* navigator section.
 
-Click the *Create new UI component* button, and a new UI component creation window will be opened. Select the *New GWT component* value in the *Component type* section.
+Click the *Create new UI component* link. The *New UI component* page will open. Select the *New GWT component* value in the *Component type* section.
 
 image::ui_component/studio_gwt_component_wizard.png[align="center"]
 
-Type `RatingFieldServerComponent` in the *Vaadin component class name* field.
+Enter `RatingFieldServerComponent` in the *Vaadin component class name* field.
 
-Remove the *Integrate into Generic UI* flag. The process of integration the component into the Generic UI is similar to that is described at <<vaadin_addon_sample_gui>>, so we won't describe it here.
+Deselect the *Integrate into Generic UI* flag. The process of integration into the Generic UI is the same as described at <<vaadin_addon_sample_gui>>, so we won't repeat it here.
 
 After clicking the *OK* button Studio generates the following files:
 
-* `RatingFieldWidget.java` - a GWT widget in *web-toolkit* module
+* `RatingFieldWidget.java` - a GWT widget in *web-toolkit* module.
 
-* `RatingFieldServerComponent.java` - a Vaadin component class
+* `RatingFieldServerComponent.java` - a Vaadin component class.
 
-* `RatingFieldState.java` - a component state class
+* `RatingFieldState.java` - a component state class.
 
-* `RatingFieldConnector.java` - a connector that links the client code with the server component
+* `RatingFieldConnector.java` - a connector that links the client code with the server component.
 
-* `RatingFieldServerRpc.java` - a class that defines a server API for the client
+* `RatingFieldServerRpc.java` - a class that defines a server API for the client.
 
-Let's look at the generated files and make necessary changes in them. Open the project in IDE.
+Let's look at the generated files and make necessary changes in them.
 
-* GWT widget `RatingFieldWidget.java`. Replace its content with the following code:
+* `RatingFieldWidget` is a GWT widget. Replace its content with the following code:
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/gwt/RatingFieldWidget.java[]
 ----
 +
-A widget is an isolated class responsible for the component displaying and for the reaction on events. It doesn't need to know about the server side, it just defines interfaces for working with the server side. In our case these are the `setValue` method and the `StarClickListener` interface.
+A widget is a client-side class responsible for displaying the component in the web browser and handling events. It defines interfaces for working with the server side. In our case these are the `setValue()` method and the `StarClickListener` interface.
 
-* Vaadin component class `RatingFieldServerComponent`. It defines an API for the server code, different getters and setters, event listeners and data sources connection. Developers use this class methods in their code.
+* `RatingFieldServerComponent` is a Vaadin component class. It defines an API for the server code, accessor methods, event listeners and data sources connection. Developers use the methods of this class in the application code.
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/gwt/RatingFieldServerComponent.java[]
 ----
 
-* State class `RatingFieldState` defines what data are sent between the client and the server. It contains public fields that are automatically serialized on server side and deserialized on the client.
+* The `RatingFieldState` state class defines what data are sent between the client and the server. It contains public fields that are automatically serialized on server side and deserialized on the client.
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/gwt/RatingFieldState.java[]
 ----
 
-* Interface *RatingFieldServerRpc* defines a server API that is used by the client. Its methods may be invoked by the RPC mechanism build into Vaadin. We will implement this interface in the component.
+* The `RatingFieldServerRpc` interface  defines a server API that is used from the client-side. Its methods may be invoked by the RPC mechanism built into Vaadin. We will implement this interface in the component.
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/gwt/RatingFieldServerRpc.java[]
 ----
 
-* Connector `RatingFieldConnector` links client code with the server.
+* The `RatingFieldConnector` connector links client code with the server.
 +
 [source, java]
 ----
 include::{sourcesdir}/ui_component/gwt/RatingFieldConnector.java[]
 ----
 
-`RatingFieldWidget` source code doesn't contain any mention about the component appearance except assigning style names to key elements. To define an appearance of the component we'll create stylesheet files. Use the *Create theme extension* action of the *Project properties* section for this. In the dialog select the `halo` theme. Studio creates SCSS files for theme extension in the `themes` directory of the *web* module. Instead of icons `halo` theme uses FonAwesome font glyphs. We'll use this fact.
+The `RatingFieldWidget` class does not define the component appearance, it only assigns style names to key elements. To define an appearance of the component, we'll create stylesheet files. Click the *Create theme extension* link on the *Project properties* navigator section. Select the `halo` theme in the dialog. Studio creates SCSS files for theme extension in the `themes` directory of the *web* module. The `halo` theme uses *FonAwesome* font glyphs instead of icons. We'll use this fact.
 
-It is usual to put component styles into the separate file `componentname.scss` in the `components/componentname` directory in form of SCSS mixture. Let's create a directories structure `components/ratingfield` in the `themes/halo` directory of *web* module. Then inside the `ratingfield` directory create a `ratingfield.scss` file:
+It is recommended to put component styles into a separate file `componentname.scss` in the `components/componentname` directory in the form of SCSS mixture. Create the `components/ratingfield` directories structure in the `themes/halo` directory of the *web* module. Then create the `ratingfield.scss` file inside the `ratingfield` directory:
 
 image::ui_component/gwt_theme_ext_structure.png[align="center"]
 
@@ -1882,7 +1848,7 @@ image::ui_component/gwt_theme_ext_structure.png[align="center"]
 include::{sourcesdir}/ui_component/gwt/ratingfield.scss[]
 ----
 
-Include this file in the main theme file `halo-ext.scss`:
+Include this file in the `halo-ext.scss`main theme file:
 
 [source, css]
 ----
@@ -1895,7 +1861,7 @@ Name the screen file `rating-screen.xml`.
 
 image::ui_component/gwt_rating_screen_designer.png[align="center"]
 
-Add the screen to the application menu. Go to the *Main menu* section of Studio navigation panel and click the *Edit* button. A menu editor will be opened. Add the screen created earlier to the `application` menu.
+Add the screen to the application menu. Go to the *Main menu* navigator section and click the *Edit* button. The menu editor will open. Add the screen created earlier to the `application` menu.
 
 Open the `rating-screen.xml` file in the IDE. We need a container for our component. Declare it in the screen XML:
 
@@ -1904,14 +1870,14 @@ Open the `rating-screen.xml` file in the IDE. We need a container for our compon
 include::{sourcesdir}/ui_component/gwt/rating-screen.xml[]
 ----
 
-Open the screen controller class `RatingScreen.java` and add the code that puts the component to the screen.
+Open the `RatingScreen.java` screen controller and add the code that puts the component to the screen.
 
 [source, java]
 ----
 include::{sourcesdir}/ui_component/gwt/RatingScreen.java[]
 ----
 
-Start the application and see the result.
+Start the application server and see the result.
 
 image::ui_component/rating_screen_result.png[align="center"]
 

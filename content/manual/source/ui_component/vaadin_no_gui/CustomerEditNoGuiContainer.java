@@ -22,7 +22,8 @@ public class CustomerEdit extends AbstractEditor<Customer> {
         com.vaadin.ui.Layout box = (Layout) WebComponentsHelper.unwrap(scoreBox);
         box.addComponent(stepper);
 
-        stepper.addValueChangeListener(event -> getItem().setValue("score", event.getProperty().getValue()));
+        stepper.addValueChangeListener(event ->
+                getItem().setValue("score", event.getProperty().getValue()));
     }
 
     @Override

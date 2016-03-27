@@ -77,7 +77,7 @@ public class RatingFieldWidget extends FocusWidget {
         updateStarsStyle(this.value);
     }
 
-    // let application code to change the state
+    // let application code change the state
     public void setValue(int value) {
         this.value = value;
         updateStarsStyle(value);

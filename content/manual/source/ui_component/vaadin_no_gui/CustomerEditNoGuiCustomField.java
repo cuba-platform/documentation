@@ -30,7 +30,8 @@ public class CustomerEdit extends AbstractEditor<Customer> {
             layout.addComponent(stepper);
             stepper.setSizeFull();
 
-            stepper.addValueChangeListener(event -> datasource.getItem().setValue(propertyId, event.getProperty().getValue()));
+            stepper.addValueChangeListener(event ->
+                    datasource.getItem().setValue(propertyId, event.getProperty().getValue()));
 
             return box;
         });
