@@ -1376,6 +1376,82 @@ After that, a listener is added in the `init()` method to the datasource contain
 +
 It should be noted that loading files into byte arrays is acceptable for small files only. If the file size is not predictable, you should only download it using <<file_download,ExportDisplay>>, which sends the file through input and output streams and never keeps the entire file in memory.
 
+[[sending_emails_recipe]]
+==== Sending Emails
+
+This section contains a practical guide to sending emails using the CUBA email sending <<email_sending,mechanism>>.
+
+Let us consider the following task:
+
+--
+* There are the `NewsItem` entity and the `NewsItemEdit` screen.
+
+* The `NewsItem` entity contains the following attributes: `date`, `caption`, `content`.
+
+* We want to send emails to some addresses every time a new instance of `NewsItem` is created through the `NewsItemEdit` screen. An email should contain `NewsItem.caption` as a subject and the message body should be created from a template including `NewsItem.content`.
+--
+
+. Add the following code to `NewsItemEdit.java`:
++
+--
+[source, java]
+----
+include::{sourcesdir}/development/sending_emails_1.java[]
+----
+
+As you can see, the `sendByEmail()` method invokes the `EmailService` and passes the `EmailInfo` instance describing the the messages. The body of the messages will be created on the basis of the `news_item.txt` template.
+--
+
+. Create the body template file `news_item.txt` in the `com.company.demo.templates` package of the *core* module:
++
+--
+[source, plain]
+----
+include::{sourcesdir}/development/sending_emails_2.txt[]
+----
+
+This is a link:http://freemarker.incubator.apache.org[Freemarker] template which will use parameters passed in the `EmailInfo` instance (`newsItem` in this case).
+--
+
+. Launch the application, open the `NewsItem` entity browser and click *Create*. The editor screen will be opened. Fill in the fields and press *OK*. The confirmation dialog with the question about sending emails will be shown. Click *Yes*.
+
+. Go to the *Administration > Email History* screen of your application. You will see two records (by the number of recipients) with the `Queue` status. It means that the emails are in the queue and not yet sent.
+
+. To process the queue, set up a <<scheduled_tasks_cuba,scheduled task>>. Go to the *Administration > Scheduled Tasks* screen of your application. Create a new task and set the following parameters:
++
+--
+* *Bean Name* - `cuba_Emailer`
+* *Method Name* - `processQueuedEmails()`
+* *Singleton* - yes (this is important only for a cluster of middleware servers)
+* *Period, sec* - 10
+--
++
+Save the task and click *Activate* on it.
++
+If you did not set up the scheduled tasks execution for this project before, nothing will happen on this stage - the task will not be executed until you start the whole scheduling mechanism.
+
+. Open the `modules/core/src/app.properties` file and add the following <<cuba.schedulingActive,property>>:
++
+[source, properties]
+----
+cuba.schedulingActive = true
+----
++
+Restart the application server. The scheduling mechanism is now active and invokes the email queue processing.
+
+. Go to the *Administration > Email History* screen. The status of the emails will be `Sent` if they were successfully sent, or, most probably, `Sending` or `Queue` otherwise. In the latter case, you can open the application log in `build/tomcat/logs/app.log` and find out the reason. The email sending mechanism will take several (10 by default) attempts to send the messages and if they fail, set the status to `Not sent`.
+
+. The most obvious reason that emails cannot be sent is that you have not set up the SMTP server <<email_sending_properties,parameters>>. You can set the parameters in the database through the `app-core.cuba:type=Emailer` JMX bean or in the application properties file of your middleware. Let us consider the latter. Open the `modules/core/src/app.properties` file and add the required <<email_sending_properties,parameters>>:
++
+[source, properties]
+----
+include::{sourcesdir}/development/sending_emails_3.properties[]
+----
++
+Restart the application server. Go to *Administration > JMX Console*, find the `Emailer` JMX bean and try to send a test email to yourself using the `sendTestEmail()` operation.
+
+. Now your sending mechanism is set up correctly, but it will not send the messages in the `Not sent` state. So you have to create another `NewsItem` in the editor screen. Do it and then watch how the status of new messages in the *Email History* screen will change to `Sent`.
+
 [[own_component_samples]]
 ==== Creating Custom Visual Components
 
@@ -1383,7 +1459,7 @@ As explained in the <<own_components>> section, the standard set of visual compo
 
 . Integrate a Vaadin add-on. Many third-party Vaadin components are distributed as add-ons and available at https://vaadin.com/directory.
 
-. Integrate a JavaScript component. You can create a Vaadin component wrapping a JavaScript library.
+. Integrate a JavaScript component. You can create a Vaadin component using a JavaScript library.
 
 . Create a new Vaadin component with the client part written on GWT.
 
@@ -1539,7 +1615,7 @@ Fill in the *Add-on Maven dependency* and *Inherited widgetset* as described in 
 
 Then fill in the fields of the bottom section:
 
-* *Integrate into generic UI* - defines that a component should be integrated into the Generic UI.
+* *Integrate into Generic UI* - defines that a component should be integrated into the Generic UI.
 
 * *Component XML element* - an element to be used in screen XML descriptors. Enter `stepper`.
 
@@ -1594,7 +1670,7 @@ The chosen base class is `WebAbstractField`, which implements the methods of the
 include::{sourcesdir}/ui_component/vaadin_gui/StepperLoader.java[]
 ----
 +
-The `AbstractFieldLoader` class contains code for loading basic properties of the `Field` component. So `StepperLoader` loads only the specific properties of the `IntStepper` component.
+The `AbstractFieldLoader` class contains code for loading basic properties of the `Field` component. So `StepperLoader` loads only the specific properties of the `Stepper` component.
 
 * The `cuba-ui-component.xml` file in the *web* module registers the new component and its loader. Leave the file unchanged.
 +
@@ -1668,7 +1744,7 @@ image::ui_component/customer_edit_result.png[align="center"]
 [[js_library_sample]]
 ===== Using a JavaScript library
 
-In this example, we will use the https://jqueryui.com/slider/#range[slider] component from the *jquery-ui* library. The slider will have two drag handlers that define a values range.
+In this example, we will use the https://jqueryui.com/slider/#range[Slider] component from the *jQuery UI* library. The slider will have two drag handlers that define a values range.
 
 Create a new project in CUBA Studio and name it `jscomponent`.
 
@@ -1708,9 +1784,9 @@ The server component defines getters and setters to work with the slider state a
 +
 The `addFunction()` method invocation in the class constructor defines a handler for an RPC-call of the `valueChanged()` function from the client.
 +
-The `@JavaScript` and `@StyleSheet` annotations point to files that must be loaded in the web page. In our example, these are JavaScript files of the `jquery-ui` library, the connector and the stylesheet for `jquery-ui`. You should place these files to the Java package of the Vaadin server component.
+The `@JavaScript` and `@StyleSheet` annotations point to files that must be loaded on the web page. In our example, these are JavaScript files of the jquery-ui library, the connector and the stylesheet for jquery-ui. You should place these files to the Java package of the Vaadin server component.
 
-Download an archive with `jquery-ui` from http://jqueryui.com/download and put files `jquery-ui.js` and `jquery-ui.css` from the archive to the Java package of the `SliderServerComponent` class. At the jquery-ui download page, you can select which components should be put into the archive. For this demo, it is enough to select only the `Slider` item of the `Widgets` group.
+Download an archive with jQuery UI from http://jqueryui.com/download and put files `jquery-ui.js` and `jquery-ui.css` from the archive to the Java package of the `SliderServerComponent` class. At the jQuery UI download page, you can select which components should be put into the archive. For this demo, it is enough to select only the `Slider` item of the `Widgets` group.
 
 image::ui_component/js_project_structure.png[align="center"]
 
@@ -1728,7 +1804,7 @@ Vaadin adds several useful methods to the connector function. `this.getElement()
 Our connector does the following:
 +
 --
-* Initializes the `slider` component of the `jquery-ui` library. The `slide` function is invoked when the position of any drag handler changes. This function in turn invokes the `valueChanged()` connector method. `valuedChanged()` is the method that we defined on the server side in the `SliderServerComponent` class.
+* Initializes the `slider` component of the jQuery UI library. The `slide()` function is invoked when the position of any drag handler changes. This function in turn invokes the `valueChanged()` connector method. `valuedChanged()` is the method that we defined on the server side in the `SliderServerComponent` class.
 
 * Defines the `onStateChange()` function. It is called when the state object is changed on the server side.
 --
@@ -1823,7 +1899,7 @@ include::{sourcesdir}/ui_component/gwt/RatingFieldServerComponent.java[]
 include::{sourcesdir}/ui_component/gwt/RatingFieldState.java[]
 ----
 
-* The `RatingFieldServerRpc` interface  defines a server API that is used from the client-side. Its methods may be invoked by the RPC mechanism built into Vaadin. We will implement this interface in the component.
+* The `RatingFieldServerRpc` interface defines a server API that is used from the client-side. Its methods may be invoked by the RPC mechanism built into Vaadin. We will implement this interface in the component.
 +
 [source, java]
 ----
@@ -1882,7 +1958,7 @@ Start the application server and see the result.
 image::ui_component/rating_screen_result.png[align="center"]
 
 [[own_component_in_studio]]
-===== Custom Visual Components Support in CUBA Studio
+===== Support for Custom Visual Components in CUBA Studio
 
 This section describes how to integrate a new custom visual component into CUBA Studio. As a result of the integration, the component will be available on the component palette of the WYSIWYG screen layout designer. Developers will be able to drag and drop the component to the canvas and edit its properties in the properties panel.
 
@@ -1896,7 +1972,7 @@ Click the *Extend Studio* link on the *Project properties* navigator section.
 
 image::ui_component/ui_component_extension_window.png[align="center"]
 
-In the *Extend Studio* screen, select the *UI Component configuration* option.
+In the *Extend Studio* screen, select the *UI component configuration* option.
 
 Fill in the following fields:
 
@@ -1970,79 +2046,3 @@ include::{sourcesdir}/ui_component/studio_support/customer-edit.xml[]
 ----
 
 There is a new namespace with the `app` prefix in the screen XML, the `stepper` component is added to the screen, and its properties are set correctly.
-
-[[sending_emails_recipe]]
-==== Sending Emails
-
-This section contains a practical guide to sending emails using the CUBA email sending <<email_sending,mechanism>>.
-
-Let us consider the following task:
-
---
-* There are the `NewsItem` entity and the `NewsItemEdit` screen.
-
-* The `NewsItem` entity contains the following attributes: `date`, `caption`, `content`.
-
-* We want to send emails to some addresses every time a new instance of `NewsItem` is created through the `NewsItemEdit` screen. An email should contain `NewsItem.caption` as a subject and the message body should be created from a template including `NewsItem.content`.
---
-
-. Add the following code to `NewsItemEdit.java`:
-+
---
-[source, java]
-----
-include::{sourcesdir}/development/sending_emails_1.java[]
-----
-
-As you can see, the `sendByEmail()` method invokes the `EmailService` and passes the `EmailInfo` instance describing the the messages. The body of the messages will be created on the basis of the `news_item.txt` template.
---
-
-. Create the body template file `news_item.txt` in the `com.company.demo.templates` package of the *core* module:
-+
---
-[source, plain]
-----
-include::{sourcesdir}/development/sending_emails_2.txt[]
-----
-
-This is a link:http://freemarker.incubator.apache.org[Freemarker] template which will use parameters passed in the `EmailInfo` instance (`newsItem` in this case).
---
-
-. Launch the application, open the `NewsItem` entity browser and click *Create*. The editor screen will be opened. Fill in the fields and press *OK*. The confirmation dialog with the question about sending emails will be shown. Click *Yes*.
-
-. Go to the *Administration > Email History* screen of your application. You will see two records (by the number of recipients) with the `Queue` status. It means that the emails are in the queue and not yet sent.
-
-. To process the queue, set up a <<scheduled_tasks_cuba,scheduled task>>. Go to the *Administration > Scheduled Tasks* screen of your application. Create a new task and set the following parameters:
-+
---
-* *Bean Name* - `cuba_Emailer`
-* *Method Name* - `processQueuedEmails()`
-* *Singleton* - yes (this is important only for a cluster of middleware servers)
-* *Period, sec* - 10
---
-+
-Save the task and click *Activate* on it.
-+
-If you did not set up the scheduled tasks execution for this project before, nothing will happen on this stage - the task will not be executed until you start the whole scheduling mechanism.
-
-. Open the `modules/core/src/app.properties` file and add the following <<cuba.schedulingActive,property>>:
-+
-[source, properties]
-----
-cuba.schedulingActive = true
-----
-+
-Restart the application server. The scheduling mechanism is now active and invokes the email queue processing.
-
-. Go to the *Administration > Email History* screen. The status of the emails will be `Sent` if they were successfully sent, or, most probably, `Sending` or `Queue` otherwise. In the latter case, you can open the application log in `build/tomcat/logs/app.log` and find out the reason. The email sending mechanism will take several (10 by default) attempts to send the messages and if they fail, set the status to `Not sent`.
-
-. The most obvious reason that emails cannot be sent is that you have not set up the SMTP server <<email_sending_properties,parameters>>. You can set the parameters in the database through the `app-core.cuba:type=Emailer` JMX bean or in the application properties file of your middleware. Let us consider the latter. Open the `modules/core/src/app.properties` file and add the required <<email_sending_properties,parameters>>:
-+
-[source, properties]
-----
-include::{sourcesdir}/development/sending_emails_3.properties[]
-----
-+
-Restart the application server. Go to *Administration > JMX Console*, find the `Emailer` JMX bean and try to send a test email to yourself using the `sendTestEmail()` operation.
-
-. Now your sending mechanism is set up correctly, but it will not send the messages in the `Not sent` state. So you have to create another `NewsItem` in the editor screen. Do it and then watch how the status of new messages in the *Email History* screen will change to `Sent`.
