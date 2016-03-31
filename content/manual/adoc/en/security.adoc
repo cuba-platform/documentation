@@ -360,25 +360,27 @@ image::group_users.png[align="center"]
 [[constraints]]
 ===== Constraints
 
-Constraints allow restricting access to entity instances. Unlike the permissions, restricting *class* of entities, constraints restrict *particular entity instances*, which do not match the contraints conditions.
-Constraints might be set for creation, reading, modification, deletion. Also, one can add custom constraints, not related to CRUD actions. Note, that the constraints are checked for all operations performed by user through standard `Data Manager`. If the entity does not match the constraints conditions the `RowLevelSecurityException` is thrown during creation, modification or deletion. 
+Constraints restrict user access to entity instances. Unlike the permissions which are applied to _classes_ of entities, constraints are applied to _particular entity instances_ that do not match the contraint conditions. Constraints can be set for creation, reading, updating and deletion. Besides, one can add custom constraints not related to CRUD actions.
 
-There are several types of constraint check: check in database, check in memory, check in database and in memory.
+TIP: A user gets the constraints list from all groups starting with their own one, and up the hierarchy. Thus, the following principle is implemented: the lower the users are in the groups hierarchy, the more constraints they have.
 
-For the constraints with check in database the conditions are specified using <<jpql,JPQL>> expression fragments. These fragments are appended to all entity instance selection queries. So the entities, not matching the conditions, are filtered on the database level. Constraints with database check can be used only for reading operation.
+Note that constraints are checked for all operations performed from the client tier through the standard <<dataManager,DataManager>>. If an entity does not match the constraints conditions during creation, modification or deletion, the `RowLevelSecurityException` is thrown.
 
-For the constraints with check in memory the conditions are specified using <<groovy,Groovy>> expressions. The expressions are executed for every entity in the checked graph of objects and if the entity does not match the conditions, it is filtered from the graph.
+There are three types of constraint check: check in database, check in memory, check in database and in memory.
 
-The constraints with check in database and in memory are combination of previous 2 types.
+. For the constraints with check in database, conditions are specified using <<jpql,JPQL>> expression fragments. These fragments are appended to all entity instance selection queries. So the entities not matching the conditions are filtered on the database level. Constraints with database check can be used only for the read operation.
 
-The user gets the constraints list from all the groups, starting with their own one, following up the hierarchy. Thus, the following principle is implemented: the lower the users are in the group hierarchy, the more constraints they have.
+. For the constraints with check in memory, the conditions are specified using Groovy expressions. The expressions are executed for every entity in the checked graph of objects and if the entity does not match the conditions, it is filtered from the graph.
 
-In order to create a constraint in the *Access Groups* screen, select the group to create the constraint for, go to the *Constraints* tab and click *Create*:
+. The constraints with check in database and in memory are combination of previous two types.
+
+In order to create a constraint, open the *Access Groups* screen, select a group to create the constraint for, go to the *Constraints* tab and click *Create*:
 
 image::constraint_edit.png[align="center"]
 
-Then, select an entity from the *Entity Name* drop-down list, operation type from the *Operation type* drop-down list, check type from the *Check type* drop-down list. Depending on selected check type you have to set JPQL conditions in the *Join Clause* and *Where Clause* fields and/or Groovy condition in the *Groovy script* field. Also you can use the *Constraint wizard*. This screen allows visual creation of the JPQL and Groovy conditions.
-When you select custom operation type, the required *Code* field appears, and you have to set a specific code, which will be used to identify the constraint.  
+Select an entity from the *Entity Name* drop-down list, operation type from the *Operation Type* drop-down list, check type from the *Check type* drop-down list. Depending on selected check type, you have to set JPQL conditions in the *Join Clause* and *Where Clause* fields and/or Groovy condition in the *Groovy Script* field. You can use the *Constraint Wizard*, which enables visual creation of the JPQL and Groovy conditions.
+When you select custom operation type, the required *Code* field appears, and you should set a specific code, which will be used to identify the constraint.
+
 [TIP]
 ====
 The JPQL editor in the *Join Clause* and *Where Clause* fields supports autocompletion for entity names and their attributes. In order to invoke autocompletion, press *Ctrl+Space*. If the invocation is made after the period symbol, an entity attributes list matching the context will be shown, otherwise – a list of all data model entities.
@@ -402,28 +404,21 @@ The following JPQL constraint rules apply:
 
 * The *Join Clause* field content is added to the `from` query clause. It should begin with a comma, `join` or `left join`.
 
-The simplest constraint example is shown in the figure above: the users with this constraint will see only `ref$Car` entity instances that have VIN starting with '00'.
+The simplest constraint example is shown on the figure above: users with this constraint will see only `ref$Car` entity instances that have VIN starting with '00'.
 
-Developer can check the constraints conditions for the particular entity using the following methods of `Security` interface: 
+A developer can check the constraints conditions for the particular entity using the following methods of the `Security` interface:
 
-* `isPermitted(Entity, ConstraintOperationType)` - to check constraints by the operation type
+* `isPermitted(Entity, ConstraintOperationType)` - to check constraints by the operation type.
 
-* `isPermitted(Entity, String)` - to check constraints by the string code
+* `isPermitted(Entity, String)` - to check constraints by the string code.
 
-Also, there is ability to link any <<list_actions,Item Tracking Action>> with certain constraint. The "constraintOperationType" attribute should be set in the `action` xml element.
+Also, it is possible to link any <<list_actions,item tracking action>> with a certain constraint. The `constraintOperationType` attribute should be set for the `action` XML element.
 
 Example:
 [source, xml]
 ----
-<table>
-    ...
-    <actions>
-		<action id="create"/>
-		<action id="edit" constraintOperationType="update"/>
-		<action id="remove" constraintOperationType="delete"/>
-    </actions>
-</table>
----- 
+include::{sourcesdir}/security/constraints_1.xml[]
+----
 
 [[session_attr]]
 ===== Session Attributes
