@@ -1468,18 +1468,17 @@ JMX ObjectName: `app-core.cuba:type=CachingFacade` and `app.cuba:type=CachingFac
 
 `ConfigStorageMBean` enables viewing and setting values of the <<app_properties,application properties>> in the Middleware, Web Client and Web Portal blocks.
 
-This interface has separate sets of methods for working with parameters of configuration and deployment (`*AppProperties`) and with runtime parameters (`*DbProperties`). This is due to the difference in mechanisms of storing these categories of properties.
+This interface has separate sets of operations for working with properties stored in files (`*AppProperties`) and stored in the database (`*DbProperties`). These operations show only the properties explicitly set in the storage. It means that if you have a configuration interface defining a property and its default value, but you did not set the value in the database (or a file), these methods will not show the property and its current value.
 
-[WARNING]
-====
-The following usage restrictions of `ConfigStorageMBean` interface apply:
+Please note that the changes to property values stored in files are not persistent, and are valid only until restart of the application block.
 
-* Only the properties explicitly set in the storage location are displayed. When accessed through the <<config_interfaces,configuration interface>>, the default value is returned, if the property value is not set. However, the default value cannot be obtained through `ConfigStorageMBean`.
+Unlike the operations described above, the `getConfigValue()` operation returns exactly the same value as the corresponding method of the configuration interface invoked in the application code.
 
-* The changes to property values stored in files are not persistent, and are valid only until a restart of this block.
-====
+JMX ObjectName:
 
-JMX ObjectName: `app-core.cuba:type=ConfigStorage`, `app.cuba:type=ConfigStorage`, `app-portal.cuba:type=ConfigStorage`
+* `app-core.cuba:type=ConfigStorage`
+* `app.cuba:type=ConfigStorage`
+* `app-portal.cuba:type=ConfigStorage`
 
 [[emailerMBean]]
 ====== EmailerMBean
@@ -2003,68 +2002,76 @@ A real example of using `AppContext.Listener` can be found in <<app_start_recipe
 [[app_properties]]
 ==== Application Properties
 
-Application properties present named data of different types, which determine various aspects of application configuration and functions. 
+Application properties represent named values of different types, which determine various aspects of application configuration and functionality. The platform uses application properties extensively, and you can also employ them to configure application-specific features.
 
-Application properties can be classified by the intended purpose as follows: 
+Platform application properties can be classified by intended purpose as follows:
 
-* _Configuration parameters_ – specify sets of configuration files and certain user interface parameters, i.e. determine the application functionality. 
+* _Configuration parameters_ – specify sets of configuration files and certain user interface parameters, i.e. determine the application functionality. Values of configuration parameters are usually defined for the application project at development time.
 +
 For example: <<cuba.springContextConfig,cuba.springContextConfig>>, <<cuba.web.useLightHeader,cuba.web.useLightHeader>>.
 
-* _Deployment parameters_ – describe different URLs to connect application <<app_tiers,blocks>>, DBMS type, security subsystem settings etc.
+* _Deployment parameters_ – describe various URLs to connect application <<app_tiers,blocks>>, DBMS type, security settings etc. Values of deployment parameters are usually depend on the environment where the application instance is installed.
 +
 For example: <<cuba.connectionUrlList,cuba.connectionUrlList>>, <<cuba.dbmsType,cuba.dbmsType>>, <<cuba.userSessionExpirationTimeoutSec,cuba.userSessionExpirationTimeoutSec>>.
 
-* _Runtime parameters_ – audit settings, email sending parameters etc.
+* _Runtime parameters_ – audit settings, email sending parameters etc. Values of these properties can be changed when needed at the application run time even without restart.
 +
-For example: <<cuba.entityLog.enabled,cuba.entityLog.enabled>>, `cuba.email.smtpHost`.
+For example: <<cuba.entityLog.enabled,cuba.entityLog.enabled>>, <<cuba.email._,cuba.email.smtpHost>>.
 
-Typically, a property belongs to one or several application <<app_tiers,blocks>>. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is only intended for Middleware, <<cuba.web.useLightHeader,cuba.web.useLightHeader>> belongs to Web Client, while <<cuba.springContextConfig,cuba.springContextConfig>> is used in all blocks.
+Values of application properties can be set in the <<app_properties_db,database>>, in the <<app_properties_files,property files>>, or via Java system properties. Besides, a value set in a file overrides the value with the same name from the database. A value set as a Java system property overrides both values from files and from the database.
 
-Belonging to a block means that if you need to set some value to a property, you should do it __in all blocks__, used in the application, to which this property belongs.
+Some properties do not support setting values in the database for the following reason: their values are needed when the database is not accessible to the application code yet. These are configuration and deployment parameters mentioned above. So you can only define them in property files or via Java system properties. Runtime parameters can always be set in the database (and possibly be overridden by values in files or system properties).
 
-You can find out where a property belongs as per below: 
+Typically, an application property is used in one or several application <<app_tiers,blocks>>. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is used only in Middleware, <<cuba.web.useLightHeader,cuba.web.useLightHeader>> is used in Web Client, while <<cuba.springContextConfig,cuba.springContextConfig>> is used in all blocks. It means that if you need to set some value to a property, you should do it __in all blocks__ that use this property. Properties stored in the database are automatically available to all blocks, so you set them just in one place (in the database table) regardless of what blocks use them. Moreover, there is a standard UI screen to manage properties of this type: see *Administration > Application Properties*. Properties stored in files should be set separately in the respective files of the blocks.
 
-* From the documentation: See <<app_properties_reference>>.
-* By tracing property usage in the application code.
-* If a property has an access via <<config_interfaces,configuration interface>>, by project <<app_modules,module>> owning the interface .
+[TIP]
+====
+When you need to set a value to a platform property, find this property in the <<app_properties_reference,documentation>>. If the documentation states that the property is stored in the database, use the *Administration > Application Properties* screen to set its value. Otherwise, find out what blocks use the property and define it in the `app.properties` files of this blocks. For example, if the documentation states that the property is used in all blocks, and your application consists of Middleware and Web Client, you should define the property in the `app.properties` file of the *core* module and in the `web-app.properties` file of the *web* module. Deployment parameters can also be set outside of project files in the <<conf_dir,configuration>> directory. See <<app_properties_files>> for details.
+====
 
-[[app_properties_access]]
-===== Access to Properties
+You can access application properties in your code using the following mechanisms:
 
-<<config_interfaces,Configuration interfaces>> mechanism is the main way to get access to the application properties from the application code. In addition, all configuration and deployment parameters are available via <<appContext,AppContext>> class methods.
+* <<config_interfaces,Configuration interfaces>>. If you define application properties as annotated methods of a configuration interface, the application code will have typed access to the properties. Configuration interfaces allow you to define and access properties of all types of storage: database, files and system properties.
 
-Some application blocks define JMX interfaces for application properties access. In particular, Middleware, Web Client and Web Portal blocks contain <<configStorageMBean,ConfigStorageMBean>> JMX interface, which allows you to get and set the value of any property at runtime.
+* The `getProperty()` method of the <<appContext,AppContext>> class. If you set a property in a file or as a Java system property, you can read its value using this method. This approach has the following drawbacks:
+** Properties stored in the database are not supported.
+** Unlike invoking an interface method, you have to provide the property name as String.
+** Unlike getting a result of a specific type, you can only get the property value as String.
 
 [[app_properties_files]]
 ===== Storing Properties in Files
 
-The properties, which determine configuration and deployment parameters, are specified in special properties files, named using `*-app.properties` pattern. Each application <<app_tiers,block>> contains a set of such files, including files from platform <<base_projects,base projects >> and the current application file. Properties files set is defined as follows:
+Properties that determine configuration and deployment parameters are specified in special property files named according to the `*app.properties` pattern. Each application <<app_tiers,block>> contains a set of such files, including files from the platform <<base_projects,base projects>>. The set of property files is defined as follows:
 
-* For web applications blocks (Middleware, Web Client, Web Portal) properties files set should be specified in `web.xml` in `appPropertiesConfig` parameter.
+* For web application blocks (Middleware, Web Client, Web Portal) the set of property files is specified in the `appPropertiesConfig` parameter of <<web.xml,web.xml>>.
 
-* For the Desktop Client block the standard way to specify properties files set is to override `getDefaultAppPropertiesConfig()` method in an application class inherited from `com.haulmont.cuba.desktop.App`.
+* For the Desktop Client block the standard way to specify the set of property files is to override the `getDefaultAppPropertiesConfig()` method in an application class inherited from `com.haulmont.cuba.desktop.App`.
 
-For example, properties files set of the Middleware block is specified in `web/WEB-INF/web.xml` file of the *core* module, and looks as follows:
+For example, the set of property files of the Middleware block is specified in the `web/WEB-INF/web.xml` file of the *core* module and looks as follows:
 
-[source, properties]
+[source, xml]
 ----
-classpath:cuba-app.properties
-classpath:app.properties
-file:${catalina.home}/conf/app-core/local.app.properties
+<context-param>
+    <param-name>appPropertiesConfig</param-name>
+    <param-value>
+        classpath:cuba-app.properties
+        classpath:app.properties
+        file:${catalina.home}/conf/app-core/local.app.properties
+    </param-value>
+</context-param>
 ----
 
-The `classpath:` prefix means that corresponding file can be found in Java classpath, while `file:` prefix means that it should be accessed using file system path. Java system properties can be used, in this example it is `catalina.home` – Tomcat root path.
+The `classpath:` prefix means that the corresponding file can be found in the Java classpath, while `file:` prefix means that it should be loaded from the file system. Java system properties can be used: in this example, `catalina.home` is the Tomcat installation path.
 
-Files declaration order is important as the values, specified in each subsequent file override the values of the same named properties, specified in the preceding files. This allows you to override platform properties in application.
+An order in which files are declared is important because the values, specified in each subsequent file override the values of the properties with the same name, specified in the preceding files. This allows you to override platform properties in the application.
 
-The last file in the above set is `local.app.properties`. It can be used to override application properties upon deployment. If the file does not exist, it is ignored. However if application installation requires overriding of certain parameters (usually different URLs) you can create such file and place all overridden properties into it. It is easy to retain such file during further system updates. 
+The last file in the above set is `local.app.properties`. It can be used to override application properties upon deployment. If the file does not exist, it is silently ignored. You can create this file on the application server and define all properties specific to the environment in it. As a result, the settings will be separated from the application, and you will be able to update the application without fear of losing the specific configuration information. The <<tomcat_in_prod>> section contains an example of using the `local.app.properties` file.
 
-For Desktop Client, JVM command line arguments serve as an equivalent of `local.app.properties`. Properties loader of this block treats all the arguments containing "`=`" sign as a key/value pair and uses them to replace corresponding application properties specified in `app.properties` files.
+For Desktop Client, JVM command line arguments serve as an equivalent of `local.app.properties`. In this block, the properties loader treats all the arguments containing "=" sign as a key/value pair and uses them to replace corresponding application properties specified in `app.properties` files.
 
 [TIP]
 ====
-The rules for data definition in `*.properties` files:
+Use the following rules when create `*.properties` files:
 
 * File encoding – `UTF-8`.
 
@@ -2076,44 +2083,45 @@ The rules for data definition in `*.properties` files:
 
 * Set file paths either in UNIX (`/opt/haulmont/`) or Windows (`c:\\haulmont\\`) format.
 
-* You can use `\n \t \r` codes. The `\` sign is a reserved code, use (`\\`) to insert it in value. See more at: link:$$http://docs.oracle.com/javase/tutorial/java/data/characters.html$$[http://docs.oracle.com/javase/tutorial/java/data/characters.html].
+* You can use `\n \t \r` codes. The `\` sign is a reserved code, use `\\` to insert it in a value. See more at: link:$$http://docs.oracle.com/javase/tutorial/java/data/characters.html$$[http://docs.oracle.com/javase/tutorial/java/data/characters.html].
 
-* Use `\` sign at the end of each line to enter a multi-line value. 
+* To enter a multi-line value, use `\` sign at the end of each line .
 ====
 
 [[app_properties_db]]
 ===== Storing Properties in the Database
 
-Runtime parameters are stored in the `SYS_CONFIG` table.
+Application properties that represent runtime parameters are stored in the `SYS_CONFIG` database table.
 
 Such properties have the following distinctive features:
 
-* As the property value is stored in the database, it is defined in a single location, regardless of the application blocks in which it is used.
+* As the property value is stored in the database, it is defined in a single location, regardless of what application blocks use it.
 
-* The value can be changed and saved at runtime both using <<config_interfaces,configuration interface>>, containing this property, or <<configStorageMBean,ConfigStorageMBean>>.
+* The value can be changed and saved at runtime in the following ways:
+** Using the *Administration > Application Properties* screen.
+** Using the <<configStorageMBean,ConfigStorageMBean>> JMX bean.
+** If the configuration interface has a setter method, you can set the property value in the application code.
 
-* Property value can be overridden for a particular application block in its `app.properties` files. Value search is always done in two stages – in `app.properties` first, then if not found – in the database.
+* Property value can be overridden for a particular application block in its `*app.properties` file or via Java system property with the same name.
 
-The properties kept in the database are cached on Middleware. You can clean the cache via <<configStorageMBean,ConfigStorageMBean>> JMX interfaces using `clearCache()` method or via <<cachingFacadeMBean,CachingFacadeMBean>> using `clearConfigStorageCache()` method.
-
-It is important to mention, that retrieving DB-stored properties on the client side leads to Middleware requests. This is less efficient than retrieving local properties from `app.properties` files. To reduce the number of such requests the client caches all the properties, kept in the DB, for the lifetime of configuration interface implementation instance. Thus, if you need to access the properties of a configuration interface from some UI screen for several times, it is better to get the reference to this interface at screen initialization and save it to a screen controller field for further access.
+It is important to mention, that access to properties stored in the database on the client side leads to Middleware requests. This is less efficient than retrieving properties from local `*app.properties` files. To reduce the number of requests, the client caches properties for the lifetime of configuration interface implementation instance. Thus, if you need to access the properties of a configuration interface from some UI screen for several times, it is recommended to get the reference to this interface upon screen initialization and save it to a screen controller field for further access.
 
 [[config_interfaces]]
 ===== Configuration Interfaces
 
 The configuration interfaces mechanism enables working with application properties using Java interface methods, providing the following benefits:
 
-* Typed access – application code works with actual data types (String, Boolean, Integer etc.) and not only with strings.
-* The application code uses interface methods instead of string property identifiers, so IDE can prompt their names.
+* Typed access – application code works with actual data types (String, Boolean, Integer etc.).
+* Instead of string property identifiers, the application code uses interface methods, which are checked by the compiler and you can use code completion when working in an IDE.
 
-Example of transaction timeout value access in the Middleware block:
+Example of reading the transaction timeout value in the Middleware block:
 
 [source, java]
 ----
 include::{sourcesdir}/common/configinterface_1.java[]
 ----
 
-If injection is impossible, the configuration interface reference can be obtained via <<configuration,Configuration>> infrastructure interface:
+If injection is impossible, the configuration interface reference can be obtained via the <<configuration,Configuration>> infrastructure interface:
 
 [source, java]
 ----
@@ -2128,23 +2136,23 @@ Configuration interfaces are not regular Spring managed beans. They can only be 
 [[config_interface_usage]]
 ====== Using Configuration Interfaces
 
-Do the following to create a configuration interface: 
+To create a configuration interface in your application, do the following:
 
 * Create an interface inherited from `com.haulmont.cuba.core.config.Config` (not to be confused with the entity class `com.haulmont.cuba.core.entity.Config`).
 
-* Add `@Source` annotation to the interface in order to identify the source (storing method) for parameters: 
+* Add `@Source` annotation to specify where the property values should be stored:
 
-** `SourceType.SYSTEM` – the property value will be taken from the system properties of the given JVM, using ` System.getProperty()` method.
+** `SourceType.SYSTEM` – values will be taken from the system properties of the given JVM using the `System.getProperty()` method.
 
-** `SourceType.APP` – the property value will be taken from `app.properties` files.
+** `SourceType.APP` – values will be taken from `*app.properties` files.
 
-** `SourceType.DATABASE` – the property value will be taken from `SYS_CONFIG` table.
+** `SourceType.DATABASE` – values will be taken from the database.
 
-* Create property access methods (getters / setters). If the property value is not expected to be changed at runtime, setter is not needed. Possible property types are described below.
+* Create property access methods (getters / setters). If you are not going to change the property value from the application code, do not create setter. A getter return type defines the property type. Possible property types are described <<config_interface_property_types,below>>.
 
-* Add `@Property` annotation defining the property name to getter.
+* Add `@Property` annotation defining the property name to the getter.
 
-* You can optionally set `@Source` annotation for a particular property of the interface if its source differs from the interface source.
+* You can optionally set `@Source` annotation for a particular property if its source differs from the interface source.
 
 Example:
 
@@ -2153,19 +2161,19 @@ Example:
 include::{sourcesdir}/common/configinterface_3.java[]
 ----
 
-There is no need to create implementation class for the configuration interface as the required proxy will be automatically created.
+Do not create any implementation classes because the platform will create a required proxy automatically when you inject the configuration interface or obtain it through <<configuration,Configuration>>.
 
 [[config_interface_property_types]]
 ====== Property Types
 
-The following property types are supported out-of-the-box:
+The following property types are supported in the platform out-of-the-box:
 
-* `String`, primitive types or their object wrappers (`boolean`, `Boolean`, `int`, `Integer`, etc.)
+* `String`, primitive types and their object wrappers (`boolean`, `Boolean`, `int`, `Integer`, etc.)
 
 * `enum`. The property value is stored in a file or in the database as the value name of the enumeration.
 +
 
-If an enum implements the `EnumClass` and has the static `fromId()` method for getting a value by an identifier, you can specify that the enum identifier should be stored instead of value with the `@EnumStore` annotation. For example:
+If the enum implements the `EnumClass` interface and has the static `fromId()` method for getting a value by an identifier, you can specify that the enum identifier should be stored instead of value with the `@EnumStore` annotation. For example:
 +
 [source, java]
 ----
@@ -2174,9 +2182,9 @@ include::{sourcesdir}/common/configinterface_8.java[]
 
 * Persistent <<data_model,entity>> classes. When accessing a property of the entity type, the instance defined by the property value is loaded from the database.
 
-To support arbitrary types use `TypeStringify` and `TypeFactory` classes to convert the value to/from a string and specify these classes for property with `@Stringify` and `@Factory` annotations.
+To support arbitrary types, use `TypeStringify` and `TypeFactory` classes to convert the value to/from a string and specify these classes for the property with `@Stringify` and `@Factory` annotations.
 
-Let us consider this process using `UUID` type as example.
+Let us consider this process using the `UUID` type as an example.
 
 * Create class `com.haulmont.cuba.core.config.type.UuidTypeFactory` inherited from `com.haulmont.cuba.core.config.type.TypeFactory` and implement the following method in it:
 +
@@ -2205,14 +2213,14 @@ The platform provides `TypeFactory` implementations for the following types:
 cuba.test.dateProp = 2013-12-12 00:00:00.000
 ----
 
-* `List<Integer>` (integer numbers list) – `IntegerListTypeFactory`. The property value must be specified in the form of numbers list, separated by spaces, for example:
+* `List<Integer>` (the list of integers) – `IntegerListTypeFactory`. The property value must be specified in the form of numbers, separated by spaces, for example:
 +
 [source, properties]
 ----
 cuba.test.integerListProp = 1 2 3
 ----
 
-* `List<String>` (list of strings) – `StringListTypeFactory`. The property value must be specified as a list of strings separated by "|" sign, for example:
+* `List<String>` (the list of strings) – `StringListTypeFactory`. The property value must be specified as a list of strings separated by "|" sign, for example:
 +
 [source, properties]
 ----
@@ -2222,16 +2230,16 @@ cuba.test.stringListProp = aaa|bbb|ccc
 [[config_interface_default_values]]
 ====== Default Values
 
-You can specify default values for configuration interfaces properties. These values will be returned instead of `null` if the property is not defined in the storage location – DB or `app.properties`.
+You can specify default values for properties defined by configuration interfaces. These values will be returned instead of `null` if the property is not set in the storage location – the database or `*app.properties` files.
 
-The default value can be specified as a string using `@Default` annotation, or as a specific type using other annotations from `com.haulmont.cuba.core.config.defaults` package:
+A default value can be specified as a string using the `@Default` annotation, or as a specific type using other annotations from `com.haulmont.cuba.core.config.defaults` package:
 
 [source, java]
 ----
 include::{sourcesdir}/common/configinterface_6.java[]
 ----
 
-Default value for entities is a string of `++{entity_name}-{id}-{optional_view_name}++` type, for example:
+A default value for an entity is a string of the `++{entity_name}-{id}-{optional_view_name}++` format, for example:
 
 [source, java]
 ----
