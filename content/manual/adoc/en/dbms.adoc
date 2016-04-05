@@ -1,17 +1,19 @@
 [[dbms]]
 === Database Components
-This section provides information on how to configure the application for working with particular DBMS. Furthermore, a script-based mechanism, which enables creating a new database and keeping it up-to-date throughout the entire cycle of the development and operation of the application, is described.
+This section provides information on how to configure the application for working with particular DBMS. It also describes a script-based mechanism, which enables creating a new database and keeping it up-to-date throughout the entire cycle of the development and operation of the application.
 
 Database components belong to the Middleware <<app_tiers,block>>; other blocks of the application do not have direct access to the database. 
 
-Some additional information on working with the database is provided in <<databases>> section.
+Some additional information on working with the database is provided in the <<databases>> section.
 
 [[dbms_types]]
 ==== DBMS Types
 
-The type of the DBMS used is defined by the <<cuba.dbmsType,cuba.dbmsType>> and (optionally) <<cuba.dbmsVersion,cuba.dbmsVersion>> application properties and the configuration of `javax.sql.DataSource` datasource, which the database access is made through. The instance of the datasource is extracted from the JNDI by name specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property. The configuration file for Tomcat, which defines the datasource, is described in <<context.xml>>
+The type of the DBMS used in the application is defined by the <<cuba.dbmsType,cuba.dbmsType>> and (optionally) <<cuba.dbmsVersion,cuba.dbmsVersion>> application properties. These properties affect various platform mechanisms depending on the database type.
 
-The platform supports the following DBMS "out of the box":
+The application connects to the database through the `javax.sql.DataSource` which is extracted from JNDI by the name specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property (`java:comp/env/jdbc/CubaDS` by default). Configuration of the data source for <<fast_deployment,standard deployment>> is defined in the <<context.xml>> file of the *core* module. The data source should use a proper JDBC driver for the selected DBMS.
+
+The platform supports the following types of DBMS "out of the box":
 
 [options="header", cols="3*"]
 |===
@@ -20,11 +22,11 @@ The platform supports the following DBMS "out of the box":
 |PostgreSQL 8.4+ |postgres|
 |Microsoft SQL Server 2005, 2008 |mssql|
 |Microsoft SQL Server 2012+ |mssql |2012
-|Oracle Database 11g |oracle|
+|Oracle Database 11g+ |oracle|
 |MySQL 5.7.10+ |mysql|
 |===
 
-The table below describes the recommended mapping of data types between entity attributes in Java and table columns in different DBMS. These types are automatically chosen by *CUBA Studio* when generating scripts to create and update the database. The operation of all platform mechanisms is guaranteed when using these types.
+The table below describes the recommended mapping of data types between entity attributes in Java and table columns in different DBMS. CUBA Studio automatically chooses these types when generates scripts to create and update the database. The operation of all platform mechanisms is guaranteed when you use these types.
 
 [options="header"]
 |===
@@ -43,9 +45,9 @@ The table below describes the recommended mapping of data types between entity a
 |byte[]|longvarbinary|bytea|image|blob|longblob
 |===
 
-As a rule, the whole work to convert the data between the database and the Java code is performed by the <<orm,ORM layer>> in conjunction with the appropriate JDBC driver. This means that no manual conversion is required when working with the data using the <<entityManager,EntityManager>> methods and <<query,JPQL queries>> you should simply use Java types listed in the left column of the table.
+Usually, the whole work to convert the data between the database and the Java code is performed by the <<orm,ORM layer>> in conjunction with the appropriate JDBC driver. This means that no manual conversion is required when working with the data using the <<entityManager,EntityManager>> methods and <<query,JPQL queries>>; you should simply use Java types listed in the left column of the table.
 
-When using native SQL through <<nativeQuery,EntityManager.createNativeQuery()>> or through <<queryRunner,QueryRunner>> some types in the Java code will be different from those mentioned above, depending on DBMS used. In particular, this applies to attributes of the `UUID` - type – only the PostgreSQL driver returns values of corresponding columns using this type; other servers return `String`. To abstract application code from the DBMS used, it is recommended to convert parameter types and query results using the <<dbTypeConverter,DbTypeConverter>> interface.
+When using native SQL through <<nativeQuery,EntityManager.createNativeQuery()>> or through <<queryRunner,QueryRunner>>, some types in the Java code will be different from those mentioned above, depending on DBMS used. In particular, this applies to attributes of the `UUID` - type – only the PostgreSQL driver returns values of corresponding columns using this type; other servers return `String`. To abstract application code from the database type, it is recommended to convert parameter types and query results using the <<dbTypeConverter,DbTypeConverter>> interface.
 
 [[arbitrary_dbms]]
 ===== Support for Other DBMSs

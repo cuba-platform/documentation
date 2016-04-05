@@ -39,17 +39,12 @@ Update scripts become a convenient and necessary tool for developing and maintai
 
 Use <<db_update_gradle,DB script execution by Gradle tasks>> to apply scripts: invoke *Run* > *Create database* to recreate the database and *Run* > *Update database* to apply the scripts. Please note that these items are available only if the application server is stopped. Of course, you can invoke the corresponding Gradle tasks (`createDb` and `updateDb`) at any time from the command line, but if the database or any of its objects are locked, script execution may fail.
 
-[[db_postgres_features]]
-=== PostgreSQL Specifics
-
-To create a PostgreSQL database on an Ubuntu-like system, you should install the *postgresql-contrib* package with the UUID generation function.
-
 [[db_mssql_features]]
 === MS SQL Server Specifics
 
 *Microsoft SQL Server* uses cluster indexes for tables.
 
-By default, a cluster index is based on the table's primary key, however keys of the `UUID` type used by CUBA-applications are poorly suited for clustered index. We recommend creating UUID primary keys with the `nonclustered` modificator:
+By default, a cluster index is based on the table's primary key, however keys of the `UUID` type used by CUBA applications are poorly suited for clustered index. We recommend creating UUID primary keys with the `nonclustered` modificator:
 
 [source, sql]
 ----
@@ -64,7 +59,44 @@ create table SALES_CUSTOMER (
 [[db_oracle_features]]
 === Oracle Database Specifics
 
-Due to the distribution policy of Oracle JDBC driver, it can only be downloaded manually from http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html. After downloading, copy `ojdbc6.jar` file into the lib subfolder in Studio and the lib subfolder of the installed Tomcat server. Then you need to stop Studio, stop Gradle daemon by executing `gradle --stop` in the command line, then start Studio again.
+Due to the distribution policy of Oracle JDBC driver, it can only be downloaded manually from http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html. After downloading, copy `ojdbc6.jar` file to the `lib` subdirectory of the CUBA Studio installation path and to the `lib` subdirectory of the installed Tomcat server. Then stop Studio, stop Gradle daemon by executing `gradle --stop` in the command line, then start Studio again.
+
+[[db_mysql_features]]
+=== MySQL Database Specifics
+
+The MySQL JDBC driver is not distributed with CUBA Studio due to license restrictions. So you should download the driver archive from https://dev.mysql.com/downloads/connector/j, extract JAR file, rename it to `mysql-connector-java-5.1.38.jar` and place it to the `lib` subdirectory of the Studio installation directory and to the `lib` subdirectory of the installed Tomcat server. Then stop Studio, stop Gradle daemon by executing `gradle --stop` in the command line, then start Studio again.
+
+
+MySQL does not support partial indexes, so the only way to implement a unique constraint for a <<soft_deletion,soft deleted>> entity is to use the `DELETE_TS` column in the index. But there is another problem: MySQL allows multiple NULLs in a column with a unique constraint. Since the standard `DELETE_TS` column is nullable, it cannot be used in the unique index. We recommend the following workaround for creating unique constraints for soft deleted entities:
+
+. Create a `DELETE_TS_NN` column in the database table. This column is not null and is initialized by a default value:
++
+[source, sql]
+----
+create table DEMO_CUSTOMER (
+    ...
+    DELETE_TS_NN datetime(3) not null default '1000-01-01 00:00:00.000',
+    ...
+)
+----
+
+. Create a trigger that will change `DELETE_TS_NN` value when `DELETE_TS` value is changed:
++
+[source, sql]
+----
+create trigger DEMO_CUSTOMER_DELETE_TS_NN_TRIGGER before update on DEMO_CUSTOMER
+for each row
+    if not(NEW.DELETE_TS <=> OLD.DELETE_TS) then
+        set NEW.DELETE_TS_NN = if (NEW.DELETE_TS is null, '1000-01-01 00:00:00.000', NEW.DELETE_TS);
+    end if
+----
+
+. Create a unique index including unique columns and `DELETE_TS_NN`:
++
+[source, sql]
+----
+create unique index IDX_DEMO_CUSTOMER_UNIQ_NAME on DEMO_CUSTOMER (NAME, DELETE_TS_NN)
+----
 
 [[db_update_in_prod]]
 === Creating and Updating the Database in Production

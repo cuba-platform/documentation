@@ -39,11 +39,6 @@
 
 Для применения скриптов используйте механизм <<db_update_gradle,выполнения скриптов БД задачами Gradle>>: чтобы пересоздать базу данных полностью, вызовите в главном меню пункт *Run* → *Create database*, а чтобы применить скрипты обновления - пункт *Run* → *Update database*. Следует иметь в виду, что эти пункты доступны, только если сервер приложения остановлен. Разумеется, соответствующие задачи Gradle (`createDb` и `updateDb`) можно вызвать в любой момент из командной строки, но если при этом база данных или какие-либо ее объекты заняты, выполнение скриптов завершится с ошибкой.
 
-[[db_postgres_features]]
-=== Особенности PostgreSQL
-
-Для создания базы данных PostgreSQL на Ubuntu-подобных операционных системах требуется установка пакета *postgresql-contrib*, содержащего функцию генерации UUID.
-
 [[db_mssql_features]]
 === Особенности MS SQL Server
 
@@ -65,6 +60,42 @@ create table SALES_CUSTOMER (
 === Особенности Oracle Database
 
 В связи с политикой распространения JDBC драйвера Oracle его можно скачать только вручную с сайта link:$$http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html$$[http://www.oracle.com/technetwork/database/features/jdbc/index-091264.html]. После скачивания скопируйте JAR с драйвером `ojdbc6.jar` в подкаталог `lib` Studio и подкаталог `lib` установленного сервера Tomcat. После этого необходимо остановить Studio, остановить демона Gradle, выполнив в командной строке `gradle --stop`, а затем снова запустить Studio.
+
+[[db_mysql_features]]
+=== Особенности MySQL
+
+JDBC-драйвер MySQL не распространяется в составе CUBA Studio в связи с его лицензией. Поэтому следует загрузить архив с драйвером со страницы https://dev.mysql.com/downloads/connector/j, извлечь JAR-файл, переименовать его в `mysql-connector-java-5.1.38.jar` и положить в подкаталог `lib` Studio и подкаталог `lib` установленного сервера Tomcat.  После этого необходимо остановить Studio, остановить демона Gradle, выполнив в командной строке `gradle --stop`, а затем снова запустить Studio.
+
+MySQL не поддерживает частичные (partial) индексы, поэтому единственная возможность создать ограничение уникальности для <<soft_deletion,soft deleted>> сущности - это использовать в составе индекса колонку `DELETE_TS`. Однако, существует другая проблема: MySQL позволяет иметь несколько NULLs в колонке с ограничением уникальности. Так как стандартная колонка `DELETE_TS` является nullable, она не может быть использована в уникальном индексе. Рекомендуется следующий способ создания уникальных ограничений для сущностей с мягким удалением:
+
+. Создайте в таблице колонку `DELETE_TS_NN` с параметром not null и значением по умолчанию:
++
+[source, sql]
+----
+create table DEMO_CUSTOMER (
+    ...
+    DELETE_TS_NN datetime(3) not null default '1000-01-01 00:00:00.000',
+    ...
+)
+----
+
+. Создайте триггер, изменяющий `DELETE_TS_NN` когда меняется `DELETE_TS`:
++
+[source, sql]
+----
+create trigger DEMO_CUSTOMER_DELETE_TS_NN_TRIGGER before update on DEMO_CUSTOMER
+for each row
+    if not(NEW.DELETE_TS <=> OLD.DELETE_TS) then
+        set NEW.DELETE_TS_NN = if (NEW.DELETE_TS is null, '1000-01-01 00:00:00.000', NEW.DELETE_TS);
+    end if
+----
+
+. Создайте уникальный индекс, включающий в себя уникальные колонки и `DELETE_TS_NN`:
++
+[source, sql]
+----
+create unique index IDX_DEMO_CUSTOMER_UNIQ_NAME on DEMO_CUSTOMER (NAME, DELETE_TS_NN)
+----
 
 [[db_update_in_prod]]
 === Создание и обновление БД при эксплуатации приложения
