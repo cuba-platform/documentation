@@ -118,25 +118,40 @@ image::project_structure_web.png[align="center"]
 В данном разделе описывается структура скриптов, а также предназначение и параметры задач (tasks) Gradle.
 
 [[build.gradle]]
-==== Структура build.gradle
+==== build.gradle
 
-[[build.gradle_parameters]]
-===== Configuration Parameters
+В данном разделе описывается структура и основные элементы скрипта `build.gradle`.
 
 В секции `buildscript` задается следующее:
 
 * Версия базовых проектов, на которой основан данный проект.
 
-* Набор репозиториев, из которых будут загружаться зависимости проекта. В качестве имени и пароля для доступа к репозиторию зависимостей используются либо значения свойств проекта `repoUser` и `repoPass`, либо стандартные значения, явно указанные в скрипте сборки. При сборке проекта вне Studio `repoUser` и `repoPass` можно передать в командной строке в аргументах `-P`:
+* Набор репозиториев, из которых будут загружаться зависимости проекта. Когда вы создаете новый проект в CUBA Studio, он содержит ссылку на репозиторий, который указан в окне сервера Studio. По умолчанию это публичный репозиторий:
 +
 [source]
 --
-gradlew assemble -PrepoUser=me -PrepoPass=mypassword
+https://repo.cuba-platform.com/content/groups/work
+--
++
+Если ваш проект использует Премиум Дополнения, Studio добавляет еще один репозиторий:
++
+[source]
+--
+https://repo.cuba-platform.com/content/groups/premium
+--
++
+Оба репозитория требуют указания имени пользователя и пароля. В то время как публичный репозиторий использует общеизвестные параметры, указанные прямо в скрипте сборки (`cuba` / `cuba123`), параметры подключения к репозиторию дополнений предоставляются по подписке на разработчика. Первая часть лицензионного ключа до тире представляет собой имя пользователя, вторая часть после тире - пароль. Например, если ваш ключ `111111222222-abcdefabcdef`, то имя - `111111222222`, пароль - `abcdefabcdef`
++
+Studio передает Gradle параметры подключения когда запускает скрипт сборки. При сборке проекта вне Studio передайте `premiumRepoUser` и `premiumRepoPass` в командной строке в аргументах `-P`:
++
+[source]
+--
+gradle assemble -PpremiumRepoUser=111111222222 -PpremiumRepoPass=abcdefabcdef
 --
 
-После секции `buildscript` обявдяются несколько переменных.
+После секции `buildscript` обявляются несколько переменных, используемых далее в скрипте.
 
-Логика сборки, специфичная для CUBA, сосредоточена в Gradle плагине *cuba*. Он подключается в корне скрипта и в секциях `configure` каждого модуля:
+Логика сборки, специфичная для CUBA, сосредоточена в Gradle плагине `cuba`. Он подключается в корне скрипта и в секциях `configure` каждого модуля:
 
 [source, groovy]
 ----
@@ -186,12 +201,12 @@ gradlew uploadArchives -PuploadUrl=http://myrepo.com/content/repositories/snapsh
 --
 
 [[build.gradle_tasks]]
-===== Задачи сборки
+==== Задачи сборки
 
 Исполняемыми единицами в Gradle являются _задачи_ (tasks). Они задаются как внутри плагинов, так и в самом скрипте сборки. Рассмотрим специфические для CUBA задачи, параметры которых могут быть сконфигурированы в `build.gradle`. 
 
 [[build.gradle_enhance]]
-====== enhance
+===== enhance
 
 `enhance` - задача типа `CubaEnhancing`, выполняющая bytecode enhancement (weaving) классов сущностей. Объявляется в <<app_modules,модуле>> *global*.
 
@@ -209,12 +224,12 @@ Optional parameters:
 * `metadataXml` - позволяет явно указать файл <<metadata.xml, metadata.xml>> проекта. Если не установлено, задача будет обрабатывать все неперсистентные сущности, перечисленные в файле `*metadata.xml`, найденном в дереве исходных текстов модуля.
 
 [[build.gradle_setupTomcat]]
-====== setupTomcat
+===== setupTomcat
 
 `setupTomcat` - задача типа `CubaSetupTomcat`, выполняющая установку и инициализацию локального сервера Tomcat для последующего <<fast_deployment,быстрого развертывания>> приложения. Эта задача автоматически добавляется в проект при подключении плагина сборки *cuba*, поэтому объявлять ее в `build.gradle` не нужно. Каталог установки Tomcat задается свойством `tomcat.dir` секции `cuba`. По умолчанию это подкаталог `build/tomcat` проекта.
 
 [[build.gradle_deploy]]
-====== deploy
+===== deploy
 
 `deploy` - задача типа `CubaDeployment`, выполняющая <<fast_deployment,быстрое развертывание>> модуля в Tomcat. Объявляется в модулях *core*, *web*, *portal*. Параметры:
 
@@ -233,7 +248,7 @@ task deploy(dependsOn: assemble, type: CubaDeployment) {
 ----
 
 [[build.gradle_deployThemes]]
-====== deployThemes
+===== deployThemes
 
 `deployThemes` - задача типа `CubaDeployThemeTask`, выполняющая сборку и развертывание определенных в проекте <<web_theme,тем>> в запущенное веб-приложение, развернутое задачей <<build.gradle_deploy,deploy>>. Изменения в темах применяются без рестарта сервера.
 
@@ -246,7 +261,7 @@ task deployThemes(type: CubaDeployThemeTask, dependsOn: buildScssThemes) {
 ----
 
 [[build.gradle_buildWar]]
-====== buildWar
+===== buildWar
 
 `buildWar` - задача типа `CubaWarBuilding`, выполняющая сборку приложения и его зависимостей в WAR-файл. Должна быть объявлена в корне скрипта `build.gradle`. Собранные WAR-файлы находятся в подкаталоге `build/distributions` проекта.
 
@@ -307,7 +322,7 @@ include::{sourcesdir}/development/build_gradle_buildWar_3.xml[]
 В разделе <<war_deployment>> содержатся пошаговые инструкции по некоторым вариантам развертывания WAR-файлов.
 
 [[build.gradle_createDb]]
-====== createDb
+===== createDb
 
 `createDb` - задача типа `CubaDbCreation`, создающая базу данных приложения путем выполнения соответствующих <<db_scripts,скриптов>>. Объявляется в модуле *core*. Параметры:
 
@@ -371,12 +386,12 @@ task createDb(dependsOn: assemble, description: 'Creates database', type: CubaDb
 ----
 
 [[build.gradle_updateDb]]
-====== updateDb
+===== updateDb
 
 `updateDb` - задача типа `CubaDbUpdate`, обновляющая базу данных приложения путем выполнения соответствующих <<db_scripts,скриптов>>. Аналогична задаче `createDb`, за исключением отсутствия параметров `dropDbSql` и `createDbSql`.
 
 [[build.gradle_startDb]]
-====== startDb
+===== startDb
 
 `startDb` - задача типа `CubaHsqlStart`, выполняющая запуск локального сервера HSQLDB. Параметры:
 
@@ -394,27 +409,27 @@ include::{sourcesdir}/development/build_gradle_startDb_1.groovy[]
 ---- 
 
 [[build.gradle_stopDb]]
-====== stopDb
+===== stopDb
 
 `stopDb` - задача типа `CubaHsqlStop`, выполняющая остановку локального сервера HSQLDB. Параметры аналогичны задаче `startDb`.
 
 [[build.gradle_start]]
-====== start
+===== start
 
 `start` - задача типа `CubaStartTomcat`, выполняющая запуск локального сервера Tomcat, установленного задачей <<build.gradle_setupTomcat,setupTomcat>>. Эта задача автоматически добавляется в проект при подключении плагина *cuba*, поэтому объявлять ее в `build.gradle` не нужно.
 
 [[build.gradle_stop]]
-====== stop
+===== stop
 
 `stop` - задача типа `CubaStopTomcat`, выполняющая остановку локального сервера Tomcat, установленного задачей <<build.gradle_setupTomcat,setupTomcat>>. Эта задача автоматически добавляется в проект при подключении плагина *cuba*, поэтому объявлять ее в `build.gradle` не нужно.
 
 [[build.gradle_restart]]
-====== restart
+===== restart
 
 `restart` - задача, выполняющая остановку, <<fast_deployment,быстрое развертывание>> и старт локального сервера Tomcat.
 
 [[build.gradle_debugWidgetSet]]
-====== debugWidgetSet
+===== debugWidgetSet
 
 `debugWidgetSet` - задача типа `CubaWidgetSetDebug`, которая запускает GWT Code Server для отладки виджетов в веб-браузере.
 
@@ -439,13 +454,11 @@ include::{sourcesdir}/development/build_gradle_debugWidgetSet_2.groovy[]
 
 Задачи (tasks) Gradle, описанные в скриптах сборки, запускаются на исполнение следующими способами:
 
-* Если работа с проектом ведется с помощью *CUBA Studio*, то при выполнении пунктов меню *Build* и *Run* производится подключение к демону Gradle (запущенному на старте сервера Studio), который и выполняет соответствующие задачи.
+* Если работа с проектом ведется с помощью CUBA Studio, то при выполнении пунктов меню *Build* и *Run* производится подключение к демону Gradle (запущенному на старте сервера Studio), который и выполняет соответствующие задачи.
 
 * С помощью исполняемого скрипта `gradlew` (Gradle wrapper), включенного в проект. Этот скрипт должен находится в корневом каталоге проекта, и может быть создан в Studio с помощью команды *Build* → *Create Gradle wrapper*.
 
-* С помощью установленного вручную Gradle версии {gradleVersion}
-
-В этом случае используется исполняемый скрипт `gradle`, находящийся в подкаталоге `bin` установленного Gradle.
+* С помощью установленного вручную Gradle версии {gradleVersion}. В этом случае используется исполняемый файл `gradle`, находящийся в подкаталоге `bin` установленного Gradle.
 
 [TIP]
 ====
@@ -456,13 +469,16 @@ include::{sourcesdir}/development/build_gradle_debugWidgetSet_2.groovy[]
 
 Например, чтобы выполнить компиляцию Java файлов и сборку JAR файлов артефактов проекта, необходимо запустить следующую команду:
 
-`gradlew --daemon assemble`
+[source]
+----
+gradlew --daemon assemble
+----
 
 Рассмотрим типичные задачи сборки в обычном порядке их использования.
 
-* `idea` - создать проектные файлы *IntelliJ IDEA*. При выполнении этой задачи из репозитория артефактов в локальный кэш *Gradle* загружаются зависимости вместе со своими исходными кодами.
+* `idea`, `eclipse` - создать проектные файлы IntelliJ IDEA или Eclipse. При выполнении этой задачи из репозитория артефактов в локальный кэш Gradle загружаются зависимости вместе со своими исходными кодами.
 
-* `cleanIdea` - удалить проектные файлы *IntelliJ IDEA*.
+* `cleanIdea`, `cleanEclipse` - удалить проектные файлы IntelliJ IDEA или Eclipse.
 
 * `assemble` - выполнить компиляцию Java файлов и сборку JAR файлов артефактов проекта в подкаталогах `build` модулей.
 
@@ -476,30 +492,11 @@ include::{sourcesdir}/development/build_gradle_debugWidgetSet_2.groovy[]
 
 * <<build.gradle_updateDb,updateDb>> - обновление существующей базы данных приложения путем выполнения соответствующих <<db_scripts,скриптов>>.
 
-* <<build.gradle_start,start>> - запуск сервера *Tomcat*.
+* <<build.gradle_start,start>> - запуск сервера Tomcat.
 
-* <<build.gradle_stop,stop>> - остановка запущенного сервера *Tomcat*. 
+* <<build.gradle_stop,stop>> - остановка запущенного сервера Tomcat.
 
 * <<build.gradle_restart,restart>> - последовательное выполнение задач `stop`, `deploy`, `start`. 
-
-[[build_on_ci]]
-==== Сборка на сервере Continuous Integration
-
-Плагин CUBA для Gradle требует интерактивного принятия условий лицензии CUBA, если это первая сборка для данного пользователя. При автоматической сборке на CI-сервере это невозможно, поэтому существует два пути обхода интерактивного действия: 
-
-. Создайте файл `${user.home}/.haulmont/license.properties`, где `${user.home}` - домашний каталог пользователя, от которого работает CI-сервер, и добавьте в него следующее: 
-+
-[source, properties]
-----
-accepted=true
-----
-
-. Если создание файла в домашнем каталоге нежелательно, укажите следующий параметр командной строки Gradle: 
-+
-[source, properties]
-----
--PlicenseAgreementAccepted=true
-----
 
 [[project_creation]]
 === Создание проекта
