@@ -1856,11 +1856,13 @@ To call from a static context, you can use the `UuidProvider` class, which also 
 [[dataManager]]
 ===== DataManager
 
-`DataManager` interface provides CRUD functionality on both middle and client tiers. It is the universal tool for loading entity graphs from the database and saving changes applied to detached entity instances.
+`DataManager` interface provides CRUD functionality on both middle and client tiers. It is a universal tool for loading entity graphs from the database and saving changes applied to detached entity instances.
 
 `DataManager` always starts a new <<transactions,transaction>> and commits it on operation completion, thus returning entities in the <<entity_states,detached state>>.
 
-DataManager methods are listed below:
+`DataManager` always applies <<security_subsystem,security>> restrictions when invoked from a client, and ignores them by default when invoked from middleware code. If you want to check security when using `DataManager` in your middleware code, obtain a wrapper via `DataManager.secure()` method and call its methods. Alternatively, you can set the <<cuba.dataManagerChecksSecurityOnMiddleware,cuba.dataManagerChecksSecurityOnMiddleware>> application property to turn on security check for the whole application.
+
+`DataManager` methods are listed below:
 
 * `load()`, `loadList()` – loads a graph of entities according to the parameters of the `LoadContext` object passed to it.
 +
@@ -1897,13 +1899,13 @@ While loading data, `DataManager` may also implement additional functionality de
 [[query_with_distinct]]
 ====== Queries with distinct
 
-The following may happen when `distinct` operator is omitted in JPQL queries for screens containing lists of entities with enabled paging and in scenario where an unpredictable modification of the query can happen as result of applying a <<gui_Filter,generic filter>> or access group <<constraints,constraints>> mechanisms:
+If a screen contains a table with paging, and JPQL that is used to load data can be modified at run time as a result of applying a <<gui_Filter,generic filter>> or access group <<constraints,constraints>>, the following can happen when `distinct` operator is omitted in JPQL queries:
 
-* If a collection is joined at database level, the dataset will contain duplicate rows.
-* On client level the duplicates disappear in the datasource as they are added to a map (`java.util.Map`).
+* If a collection is joined at the database level, the loaded dataset will contain duplicate rows.
+* On client level, the duplicates disappear in the datasource as they are added to a map (`java.util.Map`).
 * In case of paged table, a page may show fewer lines than requested, while the total number of lines exceeds requested.
 
-Thus, we recommend including `distinct` in JPQL queries, which ensures the absence of duplicates in the dataset returned from the DB. However, certain DB servers (*PostgreSQL* in particular) may take unacceptably long time to execute an SQL query with `distinct`, if the number of returned records is big (more than 10000).
+Thus, we recommend including `distinct` in JPQL queries, which ensures the absence of duplicates in the dataset returned from the database. However, certain DB servers (PostgreSQL in particular) have performance problems when executing SQL queries with `distinct` if the number of returned records is large (more than 10000).
 
 To solve this, the platform contains a mechanism to operate correctly without `distinct` at SQL level. This mechanism is enabled by <<cuba.inMemoryDistinct,cuba.inMemoryDistinct>> application property. When activated, it does the following:
 
@@ -1918,11 +1920,11 @@ To solve this, the platform contains a mechanism to operate correctly without `d
 
 The mechanism works as follows:
 
-* If a `LoadContext` with defined attributes `prevQueries` and `queryKey` is provided, the `DataManager` executes the previous query and saves identifiers of retrieved entities in the `SYS_QUERY_RESULT` table (corresponding to `sys$QueryResult` entity), separating the sets of records by user sessions and the query session key `queryKey`.
+* If a `LoadContext` with defined attributes `prevQueries` and `queryKey` is provided, `DataManager` executes the previous query and saves identifiers of retrieved entities in the `SYS_QUERY_RESULT` table (corresponding to `sys$QueryResult` entity), separating the sets of records by user sessions and the query session key `queryKey`.
 
 * The current query is modified to be combined with the results of the previous one, so that the resulting data complies with the conditions of both queries combined by AND.
 
-* The process may be further repeated. In this case the gradually reduced set of previous results gets deleted from the `SYS_QUERY_RESULT` table and refilled again.
+* The process may be further repeated. In this case the gradually reduced set of previous results is deleted from the `SYS_QUERY_RESULT` table and refilled again.
 
 The `SYS_QUERY_RESULT` table should be periodically cleaned of all unnecessary query results left by terminated user sessions. This is done by the `deleteForInactiveSessions()` method of the `QueryResultsManagerAPI` bean. In an application with enabled <<cuba.allowQueryFromSelected,cuba.allowQueryFromSelected>> property this method should be called by <<scheduled_tasks,scheduled tasks>>, for example:
 
