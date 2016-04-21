@@ -1223,15 +1223,15 @@ include::{sourcesdir}/common/metaannotations_1.xml[]
 [[views]]
 ==== Views
 
-When retrieving the entities from the database, we often face a question: how to ensure loading of the related entities to desired depth?
+When retrieving entities from the database, we often face the question: how to ensure loading of related entities to the desired depth?
 
-For example, you need to display the date and order amount together with the Customer name in Orders browser, which means that you need to fetch the related Customer instance. And for Order editor screen, you need to fetch the collection of Items, in addition to that each Item should contain a related Product instance to display its name.
+For example, you need to display the date and amount together with the Customer name in the Orders browser, which means that you need to fetch the related Customer instance. And for the Order editor screen, you need to fetch the collection of Items, in addition to that each Item should contain a related Product instance to display its name.
 
-<<lazy_loading,Lazy loading>> can not help in most cases because data processing is usually performed not in the transaction where the entities were loaded but, for example, on client <<app_tiers,tier>> in UI. At the same time it is unacceptable to apply <<eager_fetching, eager fetching>> by <<entity_annotations,entity annotations>> as it leads to constant retrieval of the entire graph of related entities which can be very large.
+<<lazy_loading,Lazy loading>> can not help in most cases because data processing is usually performed not in the transaction where the entities were loaded but, for example, on the client <<app_tiers,tier>> in UI. At the same time, it is unacceptable to apply <<eager_fetching, eager fetching>> using <<entity_annotations,entity annotations>> as it leads to constant retrieval of the entire graph of related entities which can be very large.
 
 Another similar problem is the requirement to limit the set of <<local_attribute, local>> entity attributes of the loaded graph: for example, some entity can have 50 attributes, including BLOB, but only 10 attributes need to be displayed on the screen. In this case, why should we download 40 remaining attributes from the database, then serialize them and transfer to the client when it does not need them at the moment?
 
-_Views_ mechanism resolves these issues by providing retrieval from the database and transmitting to the client entity graphs, limited by depth and by attributes. A _view_ is a descriptor of the object graph required for a certain UI screen or data-processing operation.
+_Views_ mechanism resolves these issues by retrieving from the database and transmitting to the client entity graphs limited by depth and by attributes. A _view_ is a descriptor of the object graph required for a certain UI screen or data-processing operation.
 
 Views processing is performed in the following way:
 
@@ -1244,15 +1244,15 @@ Views processing is performed in the following way:
 .View Classes
 image::View.png[align="center"]
 
-The view is determined by `View` class instance, where:
+A view is determined by an instance of the `View` class, where:
 
-* `entityClass` – the entity class, for which the view is defined. In other words, it is the"root" of the loaded entities tree.
+* `entityClass` – the entity class, for which the view is defined. In other words, it is the "root" of the loaded entities tree.
 
-* `name` – the name of the view. It should be either `null`, or a unique name within all views for the entity.
+* `name` – the name of the view. It should be either `null` or a unique name within all views for the entity.
 
-* `properties` – collection of `ViewProperty` instances, corresponding to the entity attributes which should be loaded. 
+* `properties` – collection of `ViewProperty` instances corresponding to the entity attributes that should be loaded.
 
-* `includeSystemProperties` – if set, system attributes (defined by <<entity_base_classes,basic interfaces>> of persistent entities, such as `BaseEntity` and `Updatable`) are automatically included in the view. The system attributes are not explicitly listed in `properties` but they are included into FetchGroup by the view processing mechanism depending on the interfaces which are implemented by this entity.
+* `includeSystemProperties` – if set, system attributes (defined by <<entity_base_classes,basic interfaces>> of persistent entities, such as `BaseEntity` and `Updatable`) are automatically included in the view.
 
 `ViewProperty` class has the following properties:
 
@@ -1294,7 +1294,7 @@ An attempt to get or set a value for a not loaded attribute (not included into a
 
 A view can be created in two possible ways: 
 
-* *Programmatically* – by creating `View` instance, for example:
+* *Programmatically* – by creating a `View` instance, for example:
 +
 [source, java]
 ----
@@ -1303,17 +1303,17 @@ include::{sourcesdir}/common/views_1.java[]
 +
 Typically, this way can be appropriate for creating views that are used in a single piece of business logic.
 
-* *Declaratively* – by creating an XML descriptor and deploying it to `ViewRepository`. `View` instances are created and cached when the XML descriptor is deployed. Further on the required view can be retrieved in any part of the application code by call to `ViewRepository` providing the entity class and the view name.
+* *Declaratively* – by creating an XML descriptor and deploying it to `ViewRepository`. `View` instances are created and cached when the XML descriptor is deployed. Further on, the required view can be retrieved in any part of the application code by a call to `ViewRepository` providing the entity class and the view name.
 
 Let us consider in details the declarative way for creation and working with views.
 
-`ViewRepository` is a *Spring* bean, accessible to all application blocks. The reference to `ViewRepository` can be obtained using injection or through the <<metadata,Metadata>> infrastructure interface. `ViewRepository.getView()` methods are used to retrieve view instances from the repository. `deployViews()` methods from `AbstractViewRepository` basic implementation are used to deploy XML descriptors to the repository.
+`ViewRepository` is a Spring bean, accessible to all application blocks. The reference to `ViewRepository` can be obtained using injection or through the <<metadata,Metadata>> infrastructure interface. `ViewRepository.getView()` methods are used to retrieve view instances from the repository. `deployViews()` methods from `AbstractViewRepository` basic implementation are used to deploy XML descriptors to the repository.
 
 Two views named `++_local++` and `++_minimal++` are available in the views repository for each entity by default:
 
 * `++_local++` contains all <<local_attribute, local>> entity attributes.
 
-* `++_minimal++` contains the attributes which are included to the name of the entity instance and which are specified in the <<namePattern,@NamePattern>> annotation. If the `@NamePattern` annotation is not specified at the entity, this view does not contain any attributes.
+* `++_minimal++` contains the attributes which are included to the name of the entity instance and specified in the <<namePattern,@NamePattern>> annotation. If the `@NamePattern` annotation is not specified at the entity, this view does not contain any attributes.
 
 The detailed structure of view XML descriptors is explained <<views.xml, here>>.
 
@@ -1326,11 +1326,11 @@ include::{sourcesdir}/common/views_2.xml[]
 
 The recommended way of grouping and deployment of view descriptors is as follows: 
 
-* Create <<views.xml>> file in the `src` root of the *global* module and place all view descriptors which should be globally accessible (i.e. on all application tiers into it).
+* Create <<views.xml>> file in the `src` root of the *global* module and place all view descriptors that should be globally accessible (i.e. on all application tiers) into it.
 
-* Register this file in the <<cuba.viewsConfig>> application property of all used blocks, i.e. in `app.properties` of the *core* module, `web-app.properties` of the *web* module, etc. This will ensure automatic deployment of the views upon application startup into the repository.
+* Register this file in the <<cuba.viewsConfig>> application property of all blocks, i.e. in `app.properties` of the *core* module, `web-app.properties` of the *web* module, etc. This will ensure automatic deployment of the views upon application startup into the repository.
 
-* If there are views which are used only in one application block, they can be specified in the similar file in this block, for example, `web-views.xml`, and registered in <<cuba.viewsConfig>> property of this block only.
+* If there are views which are used only in one application block, they can be specified in the similar file of this block, for example, `web-views.xml`, and registered in <<cuba.viewsConfig>> property of this block only.
 +
 If the repository contains a view with certain name for some entity, an attempt to deploy another view with this name for the same entity will be ignored. If you need to replace the existing view in the repository with a new one and guarantee its deployment, specify `overwrite = "true"` attribute for it.
 
