@@ -1,4 +1,4 @@
-import org.apache.tools.ant.filters.ReplaceTokens
+import chopper.Chopper
 import org.gradle.api.DefaultTask
 import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputDirectory
@@ -26,46 +26,26 @@ class CreateMultiPageDoc extends DefaultTask {
 
     @TaskAction
     def createMultiPageDoc() {
-        project.configurations.chopper.files.each { dep ->
-            project.copy {
-                from project.zipTree(dep.absolutePath)
-                into "${project.buildDir}/tmp"
-            }
-        }
+
+        def chopper = new Chopper(
+                "${srcDir}/${docName}.html",
+                dstDir.absolutePath,
+                "${project.rootDir}/tools/chopper",
+                docLang == 'en' ? '' : docLang,
+                ['docName': docName]
+        )
+        chopper.process()
 
         project.copy {
-            from "${project.rootDir}/tools/chopper-vars.properties"
-            from "${project.rootDir}/tools/chopper-vars-ru.properties"
-            into "${project.buildDir}/tmp/vars-$docName"
-            filter { String line ->
-                line.replace('${docName}', docName)
-            }
+            from "${project.rootDir}/buildSrc/build/classes/main/chopper/server"
+            into "${dstDir}/WEB-INF/classes/chopper/server"
         }
 
-        def chopperRoot = new File("${project.buildDir}/tmp").listFiles().find {
-            it.name.startsWith('asciidoc-html-chopper')
-        }
-
-        project.exec {
-            workingDir new File(chopperRoot, 'bin').toString()
-
-            if (docTitle) {
-                environment('ASCIIDOC_HTML_CHOPPER_OPTS', "-Dchopper.title=\"$docTitle\"")
-            }
-
-            def argsLine = "asciidoc-html-chopper -inputFile ${srcDir}/${docName}.html " +
-                    "-outputDir ${dstDir} " +
-                    "${docLang == 'en' ? '' : '-loc ' + docLang} " +
-                    "-vars ${project.buildDir}/tmp/vars-$docName/chopper-vars" + "${docLang == 'en' ? '' : '-' + docLang}" + ".properties"
-
-            if (System.getProperty('os.name').toLowerCase().contains('windows')) {
-                commandLine 'cmd', '/c'
-                args argsLine
-            } else {
-                commandLine 'sh'
-                args '-c', './' + argsLine
+        project.configurations.chopper.files.each { dep ->
+            project.copy {
+                from dep.absolutePath
+                into "${dstDir}/WEB-INF/lib"
             }
         }
-
     }
 }

@@ -14,7 +14,7 @@ class DocPlugin implements Plugin<Project> {
         }
 
         project.dependencies {
-            chopper(group: 'xyz.knstvk', name: 'asciidoc-html-chopper', version: '1.1.2', ext: 'zip')
+            chopper('org.apache.commons:commons-lang3:3.4')
         }
     }
 }
