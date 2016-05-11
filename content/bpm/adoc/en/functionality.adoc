@@ -214,3 +214,64 @@ To localize the process role name, create a record with a role code as a key.
 === Submodels
 
 A *Sub model* node of the *Structural group* allows using an existing model as a part of a new model. While deploying a process submodel elements are being inserted to the current model, and a process XML is produced from the result of this concatenation.
+
+[[custom_stencils]]
+=== Custom Elements in Model Designer
+
+BPM subsystem allows creating custom elements for process model designer. Basically, a custom element is `ServiceTask` that saves the developer from the necessity of typing long expressions for method invocation, like this `${app_MyBean.someMethod(argument1, 'argument2')}`.
+
+[[custom_stencils_example]]
+==== Example of Element Creation
+
+Suppose, there is a middleware bean with a name `app_DiscountManager`. There is a `makeDiscount(int discountPercent, UUID contractId)` method in the bean. The method updates the contract amount by subtracting the discount.
+
+In this example we will create a custom model element, that will invoke the method. The discount percent will be defined as a parameter of a model element.
+
+Open the model elements editor with the menu item *BPM -> Model Elements Editor*.
+
+Click the *Add group* button and enter the group name - *Discounts*.
+
+image::StencilSetAddGroup.png[]
+
+Select the created group and click the *Add element* button.
+
+image::StencilSetAddStencil.png[]
+
+Enter the following values for element properties:
+
+* Title: *Contract discount*
+
+* Element ID: *contractDiscount*
+
+* Icon: click the *Upload* button and select the icon file (optional)
+
+* Bean name: *app_DiscountManager*
+
+* Method name: *makeDiscount*
+
+Add method arguments according to the screenshot. Arguments must be added in the proper order. The *Caption* column is a caption in element properties panel.
+
+Save the elements set by clicking the *Save* button.
+
+Open the process model editor (*BPM -> Process Models*). There are the *Discounts* group and the *Contract discount* element in the elements list. Drag and drop the new element to the model and select it. You'll see that fields for discount percent and process variable name for entity identifier appeared.
+
+image::StencilSetModel.png[]
+
+TIP: `entityId` is a name of the process variable. This process variable is added automatically to each process that is linked to the entity. The variable stores an entity identifier, you can use it in any method calls.
+
+During the process deployment a custom element will be transformed to the serviceTask:
+
+[source,xml]
+----
+<serviceTask id="sid-5C184F22-6071-45CD-AEA9-1792512BBDCE" name="Make discount" activiti:expression="${app_DiscountManager.makeDiscount(10,entityId)}"></serviceTask>
+----
+
+[[custom_stencils_import_export]]
+==== Elements Import and Export
+
+The elements set can be exported to the ZIP archive and then restored from the archive. It may be useful when new elements are created on a developer's machine and then imported to the production server. Import and export are performed with the corresponding buttons on the elements editor screen.
+
+[[custom_stencils_reset]]
+==== Reset elements set
+
+*Reset* button removes all custom groups and elements and reverts the elements set to its initial state.
