@@ -73,6 +73,8 @@ Open the project in an IDE. A simple way to do it is to use an *IDE* button from
 
 Create a package `com.company.demo.core` in the `core` module. Create `ApprovalHelper` class in this package.
 
+image::ApprovalHelperProjectTree.png[]
+
 .ApprovalHelper.java
 [source,java]
 ----
@@ -302,12 +304,9 @@ if (procInstance == null) {
 
 [source,java]
 ----
-getDsContext().addListener(new DsContext.CommitListenerAdapter() {
-    @Override
-    public void beforeCommit(CommitContext context) {
-        if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
-            context.getCommitInstances().add(procInstance);
-        }
+getDsContext().addBeforeCommitListener(context -> {
+    if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
+        context.getCommitInstances().add(procInstance);
     }
 });
 ----
@@ -319,35 +318,21 @@ A `ProcActionsFrame` is a standard frame displaying the buttons with available p
 [source, java]
 ----
 private void initProcActionsFrame() {
-    procActionsFrame.setBeforeStartProcessPredicate(new ProcAction.BeforeActionPredicate() {
-        @Override
-        public boolean evaluate() {
-            if (PersistenceHelper.isNew(getItem())) {
-                showNotification(getMessage("saveContract"), NotificationType.WARNING);
-                return false;
-            }
-            return true;
+    procActionsFrame.setBeforeStartProcessPredicate(() -> {
+        if (PersistenceHelper.isNew(getItem())) {
+            showNotification(getMessage("saveContract"), NotificationType.WARNING);
+            return false;
         }
+        return true;
     });
-    procActionsFrame.setAfterStartProcessListener(new ProcAction.AfterActionListener() {
-        @Override
-        public void actionCompleted() {
-            showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
-            close(COMMIT_ACTION_ID);
-        }
+    procActionsFrame.setAfterStartProcessListener(() -> {
+        showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
+        close(COMMIT_ACTION_ID);
     });
-    procActionsFrame.setBeforeCompleteTaskPredicate(new ProcAction.BeforeActionPredicate() {
-        @Override
-        public boolean evaluate() {
-            return commit();
-        }
-    });
-    procActionsFrame.setAfterCompleteTaskListener(new ProcAction.AfterActionListener() {
-        @Override
-        public void actionCompleted() {
-            showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
-            close(COMMIT_ACTION_ID);
-        }
+    procActionsFrame.setBeforeCompleteTaskPredicate(this::commit);
+    procActionsFrame.setAfterCompleteTaskListener(() -> {
+        showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
+        close(COMMIT_ACTION_ID);
     });
     procActionsFrame.setCancelProcessEnabled(false);
     procActionsFrame.init(procInstance);

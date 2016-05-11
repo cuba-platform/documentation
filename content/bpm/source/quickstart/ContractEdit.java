@@ -1,4 +1,4 @@
-package com.company.demo.gui.contract;
+package com.company.demo.web.contract;
 
 import com.company.demo.entity.Contract;
 import com.haulmont.bpm.entity.ProcDefinition;
