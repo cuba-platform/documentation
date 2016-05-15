@@ -54,6 +54,10 @@ long start = System.currentTimeMillis();
 	} else if (searchTerms.length() < 3) {
 		out.println("<p>{{searchTermIsTooShort}}</p>");
 	} else {
+	    if (search.isIgnoreCase(searchTerms))
+		    out.println("<p>{{searchResultsCaseInsensitive}}</p>");
+		else
+		    out.println("<p>{{searchResultsMatchCase}}</p>");
 		List<SearchResult> results = search.search(searchTerms);
 		out.println("<p>" + results.size() + " {{searchResultsMsg}} " + htmlSearchTerms + "</p>");
 		for (SearchResult result : results) {
