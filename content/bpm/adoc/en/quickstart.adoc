@@ -135,7 +135,7 @@ Let's look at the sequence of steps to create the model.
 
 Open the screen *BPM -> Process models* in the running application web interface and press *Create*. Enter the model name `Contract approval` and press *OK*. A new browser tab *Model editor* will be opened.
 
-TIP: If the model editor tab didn't appear, ensure that the browser haven't block the new popup window.
+TIP: If the model editor tab didn't appear, ensure that the browser haven't blocked the new popup window.
 
 Select the *Process roles* property in the model properties panel. The process roles edit window will be opened.
 
@@ -245,7 +245,7 @@ Select the model in the list on the *Process models* screen. Press the *Deploy* 
 
 image::DeployModelScreen.png[]
 
-Open the screen *BPM -> Process Definitions*. Open the 'Contract approval' item for editing. Change the *Code* field value to `contractApproval`. We will search the process definition object by this code later in this chapter.
+Open the screen *BPM -> Process Definitions*. Open the 'Contract approval' item for editing. The *Code* field value is `contractApproval`. Remember this value. We will use it to identify the process definition later in this chapter.
 
 image::ProcDefinitionEdit.png[]
 
@@ -286,73 +286,19 @@ Press *OK* to save the changes.
 
 Let's examine the controller code in details.
 
-To start the process, we have to create an instance of the process (`ProcInstance` object), link it to a process definition (`ProcDefinition` object), and perform start. The process instance can be started both without a link to any project entity and with this link. In our case a link to the contract is mandatory.
+The `ProcActionsFrame` is the frame that displays process actions available at the moment. During the frame initialization, a related `ProcInstance` object search is performed based on two parameters (process code and entity instance). If the `ProcInstance` object is not found then a new instance is created and the frame displays a start process button. If the related process instance is found then an uncompleted process task for the current user is searched and the buttons for process task actions are displayed. See <<ui.adoc#proc_actions_frame>> for details.
 
-In the beginning of the `postInit()` method an instance of contract approval process is searched by `findProcDefinition()` method, which searches for a process definition with the `contractApproval` code. Next, there is a check whether a ProcInstance object linked with the contract exists in the database (`findProcInstance()` method). If the process instance object doesn't exist, then it is created, the relation to ProcDefinition is set, and a linked entity name and identifier are filled.
+In the contract editor the process actions frame initialization is performed in the `initProcActionsFrame()` method. The main part of the method is the invocation of the `init(PROCESS_CODE, getItem())`. The `PROCESS_CODE` stores a process code (`contractApproval` - we saw this value during the model deployment, see <<qs_process_model_deployment>>). The second argument `getItem()` is the current contract.
 
-[source,java]
-----
-if (procInstance == null) {
-    procInstance = metadata.create(ProcInstance.class);
-    procInstance.setProcDefinition(procDefinition);
-    procInstance.setEntityName("demo$Contract");
-    procInstance.setEntityId(getItem().getId());
-}
-----
+We also defined an additional business logic that is related to process actions:
 
-`CommitListener` adds the created `ProcInstance` object to the list of entities that will be sent to the middleware for be committed.
+* `setBeforeStartProcessPredicate` adds the check that is performed before the process is started. An editor commit is performed and if the commit fails the process won't start
 
-[source,java]
-----
-getDsContext().addBeforeCommitListener(context -> {
-    if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
-        context.getCommitInstances().add(procInstance);
-    }
-});
-----
+* `setAfterStartProcessListener` shows the notification and closes the contract editor after the process start
 
-Next, go to the `initProcActionsFrame()` method.
+* `setBeforeCompleteTaskPredicate` invokes the editor commit before the process action. If the commit fails the action won't be performed
 
-A `ProcActionsFrame` is a standard frame displaying the buttons with available process actions. `ProcActionsFrame` is linked with a `ProcInstance` instance. If the process is not started yet, the frame will display the start process button. If the process is started and there are active tasks for the current user, then the frame will display buttons for task completion according to the task outcomes defined in the process model. For the detailed information about ProcActionsFrame see <<ui.adoc#proc_actions_frame>>.
-
-[source, java]
-----
-private void initProcActionsFrame() {
-    procActionsFrame.setBeforeStartProcessPredicate(() -> {
-        if (PersistenceHelper.isNew(getItem())) {
-            showNotification(getMessage("saveContract"), NotificationType.WARNING);
-            return false;
-        }
-        return true;
-    });
-    procActionsFrame.setAfterStartProcessListener(() -> {
-        showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
-        close(COMMIT_ACTION_ID);
-    });
-    procActionsFrame.setBeforeCompleteTaskPredicate(this::commit);
-    procActionsFrame.setAfterCompleteTaskListener(() -> {
-        showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
-        close(COMMIT_ACTION_ID);
-    });
-    procActionsFrame.setCancelProcessEnabled(false);
-    procActionsFrame.init(procInstance);
-}
-----
-
-The `procActionsFrame.setBeforeStartProcessPredicate()` method adds the check that is performed before the process start. If the contract is not saved yet, the process will not start and the warning message will be shown.
-
-The `procActionsFrame.setBeforeCompleteTaskPredicate()` method invokes an editor commit and allows to complete a process action only if the editor commit was successful. 
-
-`setAfterProcessStartListener` and `setAfterCompleteTaskListener` methods will be invoked after corresponding events. They will show the notification and close the contract editor.
-
-After all necessary listeners and predicates are set up, the initialization frame is invoked.
-
-[source,java]
-----
-procActionsFrame.init(procInstance);
-----
-
-UI components are created during the frame initialization.
+* `setAfterCompleteTaskListener` shows the notification and closes the contract editor after the process action is performed
 
 [[qs_localization]]
 ==== Localized Messages File
@@ -365,7 +311,6 @@ browseCaption = Contract browser
 editCaption = Contract editor
 attachments = Attachments
 process = Contract approval
-saveContract = Save the contract before starting a process
 processStarted = Process started
 taskCompleted = Task completed
 ----
@@ -406,13 +351,7 @@ When a process reaches the *User task* node, a `ProcTask` object is created. Thi
 
 image::ProcTaskBrowse.png[]
 
-Wee see that the user `norman` has one uncompleted task `Validation` of the `Contract approval` process. Select it and click the *Open process instance* button. The following screen will appear:
-
-image::ProcInstanceEdit.png[]
-
-It displays the information about the process start time, initiator, attachments list, actors list, process instance tasks list. The screen also allows you to open the linked entity editor and execute a process action. We will complete a process task in another way - using `procActionsFrame` that we added earlier to the contract editor.
-
-Close the *Process Instance Edit* screen and open the contract instance.
+We see that the user `norman` has one uncompleted task `Validation` of the `Contract approval` process. Select it and click the *Open entity editor* button. The contract edit screen will appear:
 
 image::ContractEditValidation.png[]
 
@@ -435,9 +374,11 @@ Open the current task list *BPM -> Process tasks*. There is the `Approval` task 
 
 image::TaskListApproval.png[]
 
-Open the *Process Instance Editor*.
+Select the task and this time click the *Open process instance* button. The system screen for working with the process instance will be opened.
 
 image::ProcInstanceEditApproval.png[]
+
+It displays the information about the process start time, initiator, attachments list, actors list, process instance tasks list. The screen also allows you to open the linked entity editor and execute a process action.
 
 Pay attention to the *Tasks* table. The previous task `Validation` has been completed with the `Valid` outcome, and two new `Approval` tasks were created for managers `pierce` and `roberts`.
 

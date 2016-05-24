@@ -244,7 +244,7 @@ image::ProcessFull.png[]
 
 image::DeployModelScreen.png[]
 
-Откройте экран *BPM -> Process definitions*. Откройте строку с `Contract approval` для редактирования. Измените значение поля *Code* на `contractApproval`. По этому атрибуту мы в дальнейшем будем искать объект с описанием процесса.
+Откройте экран *BPM -> Process definitions*. Откройте строку с `Contract approval` для редактирования. Поле *Code* имеет значение `contractApproval`. Запомните его. В дальнейшем мы используем это значение чтобы идентифицировать процесс.
 
 image::ProcDefinitionEdit.png[]
 
@@ -285,74 +285,19 @@ include::{sourcesdir}/quickstart/ContractEdit.java[]
 
 Рассмотрим код контроллера более подробно.
 
-Чтобы запустить процесс, мы должны создать экземпляр процесса - объект `ProcInsntance`, связать его с описанием процесса (`ProcDefinition`) и выполнить запуск. Экземпляр процесса (`ProcInstance`) может быть запущен как самостоятельно, так и с привязкой к какой-либо сущности проекта. В нашем случае нужна привязка к договору.
+`ProcActionsFrame` - это стандартный фрейм для отображения кнопок доступных в данный момент процессных действий. Во время инициализации фрейма по двум параметрам (код процесса и сущность) ищется связанный экезмпляр `ProcInstance`. Если процесс не находится, то создается новый `ProcInstance`, и фрейм отображает кнопку запуска процесса. Если связанный с сущностью процесс найден, то проверяется, имеется ли незавершенная процессная задача для текущего пользователя, и если да, то отображаются кнопки завершения данной задачи. Подробнее о ProcActionsFrame см. <<ui.adoc#proc_actions_frame>>.
 
-В начале метода `postInit()` производится поиск экземпляра процесса согласования договора. Метод `findProcDefinition()` по коду `contractApproval` ищет описание процесса.
-Далее проверяется нет ли в базе объекта `ProcInstance`, связанного с текущим договором (метод `findProcInstance()`). Если экземпляр процесса для данного договора еще не создан, то создаем его, заполняя ссылку на описание процесса, устанавливая имя связанной сущности и ее идентификатор.
+В контроллере редактора договора инициализация фрейма процессных действий происходит в методе `initProcActionsFrame()`. Самая важная часть метода - вызов `init(PROCESS_CODE, getItem())`. Константа `PROCESS_CODE` хранит код процесса (`contractApproval` - это значение мы видели при равертывании процесса, см. <<qs_process_model_deployment>>). Второй аргумент `getItem()` - текущий договор.
 
-[source,java]
-----
-if (procInstance == null) {
-    procInstance = metadata.create(ProcInstance.class);
-    procInstance.setProcDefinition(procDefinition);
-    procInstance.setEntityName("demo$Contract");
-    procInstance.setEntityId(getItem().getId());
-}
-----
+Во время инициализации фрейма мы также объявили дополнительную логику, связанную с процессными действиями:
 
-`CommitListener` добавляет в список сущностей, отправляемых на средний слой для коммита, созданный объект `ProcInstance`.
+* `setBeforeStartProcessPredicate` добавляет проверку, выполняемую перед запуском процесса. Выполняется коммит экрана, если коммит не проходит успешно, процесс не запускается
 
-[source,java]
-----
-getDsContext().addBeforeCommitListener(context -> {
-    if (procInstance != null && PersistenceHelper.isNew(procInstance)) {
-        context.getCommitInstances().add(procInstance);
-    }
-});
-----
+* `setAfterStartProcessListener` отображает уведомление и закрывает редактор договора после запуска процесса
 
-Далее переходим к методу `initProcActionsFrame()`.
+* `setBeforeCompleteTaskPredicate` вызывает коммит редактора договора перед выполнением процессного действия. В случае неуспешного коммита, процессное действие не выполняется
 
-`ProcActionsFrame` - это стандартный фрейм для отображения кнопок доступных в данный момент процессных действий. `ProcActiosnFrame` связан с экземпляром `ProcInstance`. Если процесс не запущен, то фрейм отобразит кнопку запуска процесса, если процесс запущен и для текущего пользователя имеются активные задачи, то он отобразит кнопки завершения текущей задачи в соответствии с определенными в модели процесса выходами из задачи (`Task outcomes`). Подробнее о ProcActionsFrame см. <<ui.adoc#proc_actions_frame>>.
-
-[source, java]
-----
-private void initProcActionsFrame() {
-    procActionsFrame.setBeforeStartProcessPredicate(() -> {
-        if (PersistenceHelper.isNew(getItem())) {
-            showNotification(getMessage("saveContract"), NotificationType.WARNING);
-            return false;
-        }
-        return true;
-    });
-    procActionsFrame.setAfterStartProcessListener(() -> {
-        showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
-        close(COMMIT_ACTION_ID);
-    });
-    procActionsFrame.setBeforeCompleteTaskPredicate(this::commit);
-    procActionsFrame.setAfterCompleteTaskListener(() -> {
-        showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
-        close(COMMIT_ACTION_ID);
-    });
-    procActionsFrame.setCancelProcessEnabled(false);
-    procActionsFrame.init(procInstance);
-}
-----
-
-Метод `procActionsFrame.setBeforeStartProcessPredicate()` добавляет проверку, выполняемую перед запуском процесса. Если объект с договором еще не сохранен, то процесс не запустится и будет выведено соответствующее предупреждение.
-
-Метод `procActionsFrame.setBeforeCompleteTaskPredicate()` вызывает коммит редактора и позволяет завершить процессное действие только если коммит редактора прошел успешно.
-
-Методы `setAfterProcessStartListener` и `setAfterCompleteTaskListener` будут вызваны после соответствующего события. Они отобразят уведомление и закроют редактор договора.
-
-После того, как необходимые слушатели и предикаты для `procActionsFrame` заданы, вызывается инициализация фрейма.
-
-[source,java]
-----
-procActionsFrame.init(procInstance);
-----
-
-Во время инициализации и происходит создание необходимых элементов управления внутри фрейма.
+* `setAfterCompleteTaskListener` отображает уведомление и закрывает редактор договора после завершения процессного действия.
 
 [[qs_localization]]
 ==== Файл локализованных сообщений
@@ -365,7 +310,6 @@ browseCaption = Contract browser
 editCaption = Contract editor
 attachments = Attachments
 process = Contract approval
-saveContract = Save the contract before starting a process
 processStarted = Process started
 taskCompleted = Task completed
 ----
@@ -406,13 +350,7 @@ image::StartProcessForm.png[]
 
 image::ProcTaskBrowse.png[]
 
-Видим, что для пользователя `norman` есть одна задача `Validation` по процессу `Contract approval`. Выделите ее и нажмите кнопку *Open process instance* - откроется системный экран для работы с экземпляром `ProcInstance`.
-
-image::ProcInstanceEdit.png[]
-
-В нем отображается информация о времени запуска процесса, инициаторе процесса, список вложений, участников, текущих и выполненных задач в рамках данного процесса. Также экран позволяет перейти к связанной сущности и выполнить процессное действие. Мы завершим действие другим способом - воспользовавшись `procActionsFrame`, который мы добавили ранее в редактор договора.
-
-Закройте *Process Instance Editor* и откройте на редактирование созданный договор.
+Видим, что для пользователя `norman` есть одна задача `Validation` по процессу `Contract approval`. Выделите ее и нажмите кнопку *Open entity editor* - откроется экран редактирования договора.
 
 image::ContractEditValidation.png[]
 
@@ -435,9 +373,11 @@ image::ValidationCompleteForm.png[]
 
 image::TaskListApproval.png[]
 
-Откройте *Process Instance Editor*.
+Выделите ее и на этот раз нажмите кнопку *Open process instance* - откроется системный экран для работы с экземпляром `ProcInstance`.
 
 image::ProcInstanceEditApproval.png[]
+
+В нем отображается информация о времени запуска процесса, инициаторе процесса, список вложений, участников, текущих и выполненных задач в рамках данного процесса. Также экран позволяет перейти к связанной сущности и выполнить процессное действие.
 
 Обратите внимание на таблицу *Tasks*. Предыдущая задача `Validation` завершена с результатом `Valid`, и после успешной валидации контролером создались две новые задачи `Approval` на менеджеров `pierce` и `roberts`.
 
