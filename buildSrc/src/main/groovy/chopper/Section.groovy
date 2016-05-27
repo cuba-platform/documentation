@@ -82,7 +82,10 @@ class Section {
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
         for (name in vars.stringPropertyNames()) {
-            html = html.replace("{{" + name + "}}", vars.getProperty(name))
+            if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts')))
+                html = html.replace('{{scripts}}', '')
+            else
+                html = html.replace("{{" + name + "}}", vars.getProperty(name))
         }
         return html
     }
