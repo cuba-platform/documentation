@@ -1444,10 +1444,15 @@ include::{sourcesdir}/gui/notifications_1.java[]
 [[background_tasks]]
 ==== Background Tasks
 
-Background tasks can be used at the client tier to perform tasks asynchronously without locking the user interface.
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=normal-progressbar" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
 
-[[background_tasks_usage]]
-===== Using Background Tasks
+Background tasks mechanism is designed for performing tasks at the client tier asynchronously without blocking the user interface.
+
+In order to use background tasks, do the following:
 
 . Define a task as an inheritor of the `BackgroundTask` abstract class. Pass a link to a screen controller which will be associated with the task and the task timeout to the task constructor.
 +
@@ -1476,11 +1481,11 @@ Please note the following:
 
 ** `V` − task result type passed to the `done()` method. It can also be obtained by invoking `BackgroundTaskHandler.getResult()` method, which will wait for a task to complete.
 
-* `canceled()` method is invoked only during a controlled cancelation of a task, i.e. when `cancel()` is invoked in the `TaskHandler`.
+* `canceled()` method is invoked only during a controlled cancellation of a task, i.e. when `cancel()` is invoked in the `TaskHandler`.
 
-* If task timeout expires, or a window where it was running closes, the task is stopped without notifications. In the *Web Client* block, timeout-based interruption is performed with a delay specified in the <<cuba.backgroundWorker.maxClientLatencySeconds,cuba.backgroundWorker.maxClientLatencySeconds>> application property.
+* `handleTimeoutException()` is invoked when the task timeout expires. If the window where the task is running closes, the task is stopped without a notification.
 
-* `run()` method of a task should support external interruptions. To ensure this, we recommend checking the `TaskLifeCycle.isInterrupted()` flag periodically during long processes and stopping execution when needed. Additionally, you should not silently discard `InterruptedException` (or any other exceptions) - instead you should either exit the method correctly or not handle the exception at all.
+* `run()` method of a task should support external interruptions. To ensure this, we recommend checking the `TaskLifeCycle.isInterrupted()` flag periodically during long processes and stopping execution when needed. Additionally, you should not silently discard `InterruptedException` (or any other exception) - instead you should either exit the method correctly or not handle the exception at all.
 
 * `BackgroundTask` objects are stateless. If you did not create fields for temporary data when implementing task class, you can start several parallel processes using a single task instance.
 
@@ -1492,21 +1497,17 @@ Please note the following:
 
 * If any exception occurs, the framework invokes `BackgroundTask.handleException()` method in the UI thread, which can be used to display the error.
 
-[[background_tasks_setup]]
-===== Setting Up Environment
+* Background tasks are affected by <<cuba.backgroundWorker.maxActiveTasksCount,cuba.backgroundWorker.maxActiveTasksCount>> and <<cuba.backgroundWorker.timeoutCheckInterval,cuba.backgroundWorker.timeoutCheckInterval>> application properties.
 
-In order for background tasks to work correctly, the following configuration should be performed for the application project:
+[WARNING]
+====
+In Web Client, background tasks are implemented using HTTP push provided by the Vaadin framework. See https://vaadin.com/wiki/-/wiki/Main/Working+around+push+issues for information on how to set up your web servers for this technology.
+====
 
-* Timeout-based task interruption is implemented by the `WatchDog` bean. To ensure that it is invoked periodically, you should add the following declaration to the <<spring.xml,spring.xml>> files of the *Web Client *and *Desktop Client* blocks: 
-+
-[source, xml]
-----
-include::{sourcesdir}/gui/backgroundtasks_2.xml[]
----- 
-
-* In the *Web Client* block task state polling is initiated by the client code running in web-browser. Polling interval is defined by the <<cuba.backgroundWorker.uiCheckInterval,cuba.backgroundWorker.uiCheckInterval>> application property; the default value is 2 seconds.
-+
-Additionally, background tasks running in the *Web Client* block are affected by <<cuba.backgroundWorker.maxActiveTasksCount,cuba.backgroundWorker.maxActiveTasksCount>> and <<cuba.backgroundWorker.maxClientLatencySeconds,cuba.backgroundWorker.maxClientLatencySeconds>> application properties.
+[TIP]
+====
+If you don't use background tasks, but want to update UI state from a non-UI thread, use methods of the `UIAccessor` interface. You should get a reference to `UIAccessor` using the `BackgroundWorker.getUIAccessor()` method in the UI thread, and after that you can invoke its `access()` and `accessSynchronously()` methods from a background thread to safely read or modify the state of UI components.
+====
 
 [[gui_themes]]
 ==== Themes

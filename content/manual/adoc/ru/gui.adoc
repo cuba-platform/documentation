@@ -1578,10 +1578,15 @@ showNotification("Validation error", "<b>Date</b> is incorrect", NotificationTyp
 [[background_tasks]]
 ==== Фоновые задачи
 
-Фоновые задачи используются на клиентском уровне для асинхронного выполнения длительных операций без заморозки пользовательского интерфейса. 
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=normal-progressbar" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
 
-[[background_tasks_usage]]
-===== Использование фоновых задач
+Механизм фоновых задач предназначен для асинхронного выполнения длительных операций на клиентском уровне без заморозки пользовательского интерфейса.
+
+Использование фоновых задач:
 
 . Задача описывается как наследник абстрактного класса `BackgroundTask`. В конструктор задачи необходимо передать ссылку на контроллер экрана, с которым будет связана задача, и значение таймаута ее выполнения.
 +
@@ -1612,7 +1617,7 @@ include::{sourcesdir}/gui/backgroundtasks_1.java[]
 
 * Метод `canceled()` вызывается только в случае управляемой отмены задачи, то есть при вызове `cancel()` у `TaskHandler`.
 
-* Если у задачи истек таймаут, или было закрыто окно, в котором она исполнялась, то задача будет завершена без уведомлений. В блоке *Web Client* завершение по таймауту производится с задержкой, задаваемой свойством приложения `<<cuba.backgroundWorker.maxClientLatencySeconds,cuba.backgroundWorker.maxClientLatencySeconds>>`.
+* Метод `handleTimeoutException()` вызывается при истечении таймаута задачи. Если окно, в котором выполняется задача, закрывается, то задача останавливается без оповещения.
 
 * Метод `run()` задачи должен поддерживать возможность прерывания извне. Для этого в долгих процессах желательно периодически проверять флаг `TaskLifeCycle.isInterrupted()`, и соответственно завершать выполнение. Кроме того, нельзя тихо проглатывать исключение `InterruptedException` (или вообще все исключения). Вместо этого нужно либо вообще не перехватывать его, либо выполнять корректный выход из метода.
 
@@ -1626,28 +1631,17 @@ include::{sourcesdir}/gui/backgroundtasks_1.java[]
 
 * При возникновении исключительных ситуаций в потоке UI вызывается метод `BackgroundTask.handleException()`, в котором можно отобразить ошибку.
 
-[[background_tasks_setup]]
-===== Настройка окружения
+* На выполнение фоновых задач влияют свойства приложения <<cuba.backgroundWorker.maxActiveTasksCount,cuba.backgroundWorker.maxActiveTasksCount>> и <<cuba.backgroundWorker.timeoutCheckInterval,cuba.backgroundWorker.timeoutCheckInterval>>.
 
-Для корректной работы фоновых задач в проекте приложения необходимо произвести следующие настройки:
+[WARNING]
+====
+В блоке Web Client фоновые задачи используют технологию HTTP push, предоставляемую фреймворком Vaadin. См. https://vaadin.com/wiki/-/wiki/Main/Working+around+push+issues для получения информации о настройке веб-серверов для использования данной технологии.
+====
 
-* Прерывание задач по таймауту реализуется бином `WatchDog`. Для его периодического вызова в файлы `<<spring.xml,spring.xml>>` блоков *Web Client* и *Desktop Client* необходимо добавить следующее объявление:
-+
-[source, xml]
-----
-<bean id="backgroundWorkerScheduler" class="org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler">
-  <property name="daemon" value="true"/>
-  <property name="poolSize" value="1"/>
-</bean>
-
-<task:scheduled-tasks scheduler="backgroundWorkerScheduler">
-  <task:scheduled ref="cuba_BackgroundWorker_WatchDog" method="cleanupTasks" fixed-delay="2000"/>
-</task:scheduled-tasks> 
-----
-
-* В блоке *Web Client* опрос состояния задачи инициируется клиентским кодом, выполняющимся в веб-браузере. Периодичность опроса задается свойством приложения `<<cuba.backgroundWorker.uiCheckInterval,cuba.backgroundWorker.uiCheckInterval>>`, по умолчанию - 2 секунды.
-+
-Кроме того, на выполнение фоновых задач в блоке *Web Client* влияют свойства приложения `<<cuba.backgroundWorker.maxActiveTasksCount,cuba.backgroundWorker.maxActiveTasksCount>>` и `<<cuba.backgroundWorker.maxClientLatencySeconds,cuba.backgroundWorker.maxClientLatencySeconds>>`.
+[TIP]
+====
+Если вы не используете фоновую задачу, но хотите изменять состояние UI-компонентов из не-UI потока, воспользуйтесь методами интерфейса `UIAccessor`. Получите ссылку на интерфейс `UIAccessor` методом `BackgroundWorker.getUIAccessor()` в UI-потоке, и после этого вы сможете вызывать его методы `access()` и `accessSynchronously()` из фонового потока для безопасного чтения и изменения состояния UI-компонентов.
+====
 
 [[gui_themes]]
 ==== Темы приложения

@@ -694,3 +694,22 @@ include::{sourcesdir}/middleware/transactions_7.java[]
 ----
 
 The default timeout can be defined using the <<cuba.defaultQueryTimeoutSec,cuba.defaultQueryTimeoutSec>> application property.
+
+[[entity_cache]]
+==== Entity Cache
+
+Entity cache is provided by EclipseLink <<orm,ORM>> framework. It stores recently read or written entity instance in memory, which minimizes database access and improves the application performance.
+
+Entity cache is used only when you retrieve entities by ID, so queries by other attributes still run on the database. However, these queries can be simpler and faster if related entities are in cache. For example, if you query for Orders together with related Customers and do not use cache, the SQL query will contain a JOIN for customers table. If Customer entities are cached, the SQL query will select only orders, and related customers will be retrieved from the cache.
+
+In order to turn on entity cache, set the following properties in the <<app_properties_files,app.properties>> file of your *core* module:
+
+* `eclipselink.cache.shared.default = true` - turns on caching of all entities.
+
+* `eclipselink.cache.shared.sales$Customer = true` - turns on caching of `sales$Customer` entity only.
+
+* `eclipselink.cache.size.sales$Customer = 500` - sets cache size for `sales$Customer` to 500 instances. Default size is 100.
+
+The fact of whether an entity is cached affects the <<views,fetch mode>> chosen by the platform for loading entity graphs. If a reference attribute is a cacheable entity, the fetch mode is always `UNDEFINED`, which allows ORM to retrieve the reference from the cache instead of executing queries with JOINs or separate batch queries.
+
+The platform provides entity cache coordination in <<cluster_mw_server,middleware cluster>>. When a cached entity is updated or deleted on one cluster node, the same cached instance on other nodes (if any) will be invalidated, so the next operation with this instance will read a fresh state from the database.
