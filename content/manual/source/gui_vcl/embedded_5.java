@@ -1,0 +1,1 @@
+embedded.setRelativeSource("VAADIN/themes/halo/my-logo.png")
