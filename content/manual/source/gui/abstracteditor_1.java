@@ -1,5 +1,5 @@
 public class CustomerEdit extends AbstractEditor<Customer> {
 
     @Override
-    protected void initItem(Customer item) {
+    protected void initNewItem(Customer item) {
         ...
