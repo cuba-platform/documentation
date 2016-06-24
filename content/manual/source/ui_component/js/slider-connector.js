@@ -16,6 +16,6 @@ com_company_jscomponent_web_toolkit_ui_slider_SliderServerComponent = function()
         slider.slider("values", state.values);
         slider.slider("option", "min", state.minValue);
         slider.slider("option", "max", state.maxValue);
-        element.width(state.width);
+        $(element).width(state.width);
     }
 }
