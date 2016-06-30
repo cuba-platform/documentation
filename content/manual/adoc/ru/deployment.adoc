@@ -226,7 +226,7 @@ cuba.webContextName = /
 ---- 
 
 [[war_deployment]]
-==== Развертывание в WAR
+==== Развертывание WAR в Jetty
 
 CUBA-приложения можно разворачивать в файлы с помощью задачи сборки <<build.gradle_buildWar,buildWar>> и выполнять на любом контейнере сервлетов Java. Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Jetty*.
 
@@ -252,8 +252,6 @@ gradlew buildWar
 В результате в подкаталоге `build\distributions\war` проекта будут созданы файлы `app-core.war` и `app.war`.
 
 . Создайте домашний каталог приложения на сервере, например, `c:\work\app_home`.
-
-. Создаем файл конфигурации <<logging, Logback>>. Вы можете взять файл `build\tomcat\conf\logback.xml` после стандартного <<fast_deployment,быстрого развертывания>> в Tomcat. Замените переменную `${catalina.home}` на `${app.home}` в содержимом файла и скопируйте файл на сервер в домашний каталог приложения.
 
 . Загрузите и установите сервер Jetty, например в каталог `c:\work\jetty-home`. Данный пример тестировался на версии `jetty-distribution-9.3.6.v20151106.zip`.
 
@@ -291,7 +289,52 @@ java -jar c:\work\jetty-home\start.jar
 
 . Откройте `++http://localhost:8080/app++` в веб-браузере.
 
-. Лог-файлы создаются в каталоге `c:\work\app_home\logs`.
+[[tomcat_war_deployment]]
+==== Развертывание WAR в Tomcat Windows Service
+
+. Добавьте в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
++
+--
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_2.groovy[]
+----
+
+Если параметры сервера отличаются от параметров локального Tomcat, используемого для <<fast_deployment,быстрого развертывания>>, укажите соответствующие свойства приложения:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_3.groovy[]
+----
+
+Можно также указать отдельный `context.xml` для настройки соединения с production БД, например:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_4.groovy[]
+----
+--
+
+. Запустите задачу `buildWar`. В результате, в каталоге `build/distibutions` проекта будут сгенерированы файлы `app.war` и `app-core.war`.
++
+[source, plain]
+----
+gradlew buildWar
+----
+
+. Скачайте и установите Tomcat 8 Windows Service Installer.
+
+. После установки, перейдите в подкаталог `bin` установленного сервера и запустите `tomcat8w.exe` от имени администратора.
+На вкладке *Java* установите параметр *Maximum memory pool* 1024MB. Перейдите на вкладку *General* и запустите сервис.
++
+image::tomcatPropeties.jpg[align="center"]
+
+. Скопируйте сгенерированные файлы `app.war` и `app-core.war` в подкаталог `webapps` сервера.
+
+. Запустите сервис Tomcat.
+
+. Откройте `++http://localhost:8080/app++` в браузере.
+
 
 [[jelastic_deployment]]
 ==== Развертывание в облаке Jelastic

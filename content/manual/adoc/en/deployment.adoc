@@ -222,7 +222,7 @@ cuba.webContextName = /
 ---- 
 
 [[war_deployment]]
-==== Deployment in WAR
+==== WAR deployment to Jetty
 
 You can deploy CUBA applications to WAR files using the <<build.gradle_buildWar,buildWar>> build task and run them on any Java servlet container. An example of deployment of the WAR files to the *Jetty* web server is provided below.
 
@@ -248,8 +248,6 @@ gradlew buildWar
 As a result, the `app-core.war` and `app.war` files will be created in the `build\distributions\war` project subdirectory.
 
 . Create an application home directory, for example, `c:\work\app_home`.
-
-. Create a <<logging, Logback>> configuration file. You can take the `logback.xml` file from the `build\tomcat\conf` project directory after the standard <<fast_deployment,fast deployment>> to Tomcat. Replace the `${catalina.home}` variable to `${app.home}` in the file content and place the file into the application home directory.
 
 . Download and install Jetty to a local directory, for example `c:\work\jetty-home`. This example has been tested on `jetty-distribution-9.3.6.v20151106.zip`.
 
@@ -287,7 +285,53 @@ java -jar c:\work\jetty-home\start.jar
 
 . Open `++http://localhost:8080/app++` in your web browser.
 
-. Log files are created in the `c:\work\app_home\logs` directory.
+
+[[tomcat_war_deployment]]
+==== WAR deployment to Tomcat Windows Service
+
+. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>:
++
+--
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_2.groovy[]
+----
+
+If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999, the task definition should be as follows:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_3.groovy[]
+----
+
+You can also specify a different `context.xml` file to setup the connection to the production database, for example:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_4.groovy[]
+----
+--
+
+. Run the `buildWar` gradle task. As a result, `app.war` and `app-core.war` files will be generated in the `build/distibutions` directory of your project.
++
+[source, plain]
+----
+gradlew buildWar
+----
+
+. Download and run Tomcat 8 Windows Service Installer.
+
+. Go to the `bin` directory of the installed server and run `tomcat8w.exe` with the administrative rights.
+Set *Maximum memory pool* to 1024MB on the *Java* tab. Then go to the *General* tab and restart the service.
++
+image::tomcatPropeties.jpg[align="center"]
+
+. Copy the generated `app.war` and `app-core.war` files to the `webapps` directory of the server.
+
+. Start the Tomcat service.
+
+. Open `++http://localhost:8080/app++` in your web browser.
+
 
 [[jelastic_deployment]]
 ==== Deployment to Jelastic Cloud
