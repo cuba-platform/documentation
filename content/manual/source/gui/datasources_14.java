@@ -1,6 +1,6 @@
 public class EmployeeBrowse extends AbstractLookup {
 
-    private Logger log = LoggerFactory.getLogger(getClass());
+    private Logger log = LoggerFactory.getLogger(EmployeeBrowse.class);
 
     @Inject
     private CollectionDatasource<Employee, UUID> employeesDs;
