@@ -713,3 +713,37 @@ admin admin
 ** Run the command:
 +
 `chmod go-rwx jmxremote.password`
+
+[[server_push_settings]]
+=== Server Push Settings
+
+CUBA applications use server push technology in the <<background_tasks,Background Tasks>> mechanism. It may require an additional setup of the application and proxy server (if any).
+
+By default, server push uses the WebSocket protocol. The following application properties affect the platform server push functionality:
+
+<<cuba.web.pushLongPolling,cuba.web.pushLongPolling>>
+
+<<cuba.web.pushEnabled,cuba.web.pushEnabled>>
+
+If users connect to the application server via a proxy that does not support WebSocket, set `cuba.web.pushLongPolling` to `true` and increase proxy request timeout to 10 minutes or more.
+
+Below is an example of the *Nginx* web server settings for using WebSocket:
+
+[source, plain]
+----
+location / {
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Server $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout     3600;
+    proxy_connect_timeout  240;
+    proxy_set_header Host $host;
+    proxy_set_header X-RealIP $remote_addr;
+
+    proxy_pass http://127.0.0.1:8080/;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+----
