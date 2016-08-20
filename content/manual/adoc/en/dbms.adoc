@@ -58,8 +58,6 @@ In the application project, you can use any DBMS supported by the <<orm,ORM>> fr
 
 * Implement the `DbmsFeatures`, `SequenceSupport`, `DbTypeConverter` interfaces by classes with the following names: `TypeDbmsFeatures`, `TypeSequenceSupport`, and `TypeDbTypeConverter`, respectively, where `Type` is the DBMS type code. The package of the implementation class must be the same as of the interface.
 
-* If the project includes the *workflow* base project, override the `CubaJbpmSpringHelper` bean and its `getHibernateDialectName()` method to select the Hibernate dialect that will be used in jBPM.
-
 * Create database init and update scripts in the directories marked with the DBMS type code. Init scripts must create all database objects required by the platform entities (you can copy them from the existing `10-cuba`, etc. directories and modify for your database).
 
 * To create and update the database by Gradle tasks, you need to specify the additional parameters for these tasks in `build.gradle`:
@@ -190,7 +188,7 @@ This mechanism is generally used by application developers for updating their ow
 
 To run scripts to __create__ the database, the `createDb` task is used. In Studio, it corresponds to the *Run* -> *Create database* command in main menu. When this task is started, the following occurs:
 
-. Platform's <<base_projects,base projects>> scripts and `++db/**/*.sql++` scripts of the *core* module of the current project are built in the `modules/core/build/db` directory. Sets of scripts for base projects are located in subdirectories with numeric prefixes starting from 10. Scripts of the current project are located in a subdirectory with prefix 50. The numeric prefixes are used to provide the alphabetical order of the execution of scripts – first, *cuba* scripts are executed, then base projects scripts, then current project scripts.
+. Scripts of the <<app_components,application components>> and `++db/**/*.sql++` scripts of the *core* module of the current project are built in the `modules/core/build/db` directory. Sets of scripts for application components are located in subdirectories with numeric prefixes. The prefixes are used to provide the alphabetical order of the execution of scripts according to the dependencies between components.
 
 . If the database exists, it is completely erased. A new empty database is created.
 
@@ -200,11 +198,11 @@ To run scripts to __create__ the database, the `createDb` task is used. In Studi
 
 To run scripts to __update__ the database, the `updateDb` task is used. In Studio, it corresponds to the *Run* -> *Update database* command in main menu. When this task is started, the following occurs:
 
-. The scripts are built in similar way to `createDb` command described above.
+. The scripts are built in the same way as for the `createDb` command described above.
 
-. The execution mechanism checks, whether all base projects have required tables in the database. If the database is not initialized for use of some base project, its creation scripts are executed.
+. The execution mechanism checks, whether all creation scripts of application components have been run (by checking the `SYS_DB_CHANGELOG` table). If not, the application component creation scripts are executed and registered in the `SYS_DB_CHANGELOG` table.
 
-. A search is performed in `++modules/core/build/db/update/**++` directories, for update scripts, which are not registered in the `SYS_DB_CHANGELOG` table, i.e., not previously executed.
+. A search is performed in `++modules/core/build/db/update/**++` directories, for update scripts which are not registered in the `SYS_DB_CHANGELOG` table, i.e., not previously executed.
 
 . All scripts found in the previous step are executed sequentially in the alphabetical order, and their names along with the path relative to the `db` directory are registered in the `SYS_DB_CHANGELOG` table.
 
@@ -219,13 +217,13 @@ The mechanism to execute scripts by the server works as follows:
 
 * The scripts are extracted from the <<db_dir,database scripts directory>>, defined by the <<cuba.dbDir,cuba.dbDir>> application property, which by default is set to `tomcat/webapps/app-core/WEB-INF/db`.
 
-* If the DB does not have the *SEC_USER* table, the database is considered empty and the full initialization is run using the create scripts. After executing the initialization scripts, their names are stored in the `SYS_DB_CHANGELOG` table. The names of all available update scripts are stored in the same table, __without their execution__.
+* If the DB does not have the `SEC_USER` table, the database is considered empty and the full initialization is run using the create scripts. After executing the initialization scripts, their names are stored in the `SYS_DB_CHANGELOG` table. The names of all available update scripts are stored in the same table, __without their execution__.
 
-* If the DB has the *SEC_USER* table but does not have the `SYS_DB_CHANGELOG` table (this is the case when the described mechanism is launched for the first time on the existing production DB),__no scripts are executed__. Instead, the `SYS_DB_CHANGELOG` table is created and the names of all currently available create and update scripts are stored.
+* If the DB has the `SEC_USER` table but does not have the `SYS_DB_CHANGELOG` table (this is the case when the described mechanism is launched for the first time on the existing production DB), __no scripts are executed__. Instead, the `SYS_DB_CHANGELOG` table is created and the names of all currently available create and update scripts are stored.
 
-* If the DB has both the *SEC_USER* and `SYS_DB_CHANGELOG` tables, the update scripts whose names were not previously stored in the `SYS_DB_CHANGELOG` table are executed and their names are stored in the `SYS_DB_CHANGELOG` table. The sequence of scripts execution is determined by two factors: the priority of the base project (see <<db_dir,database scripts directory>>: `10-cuba`, `20-workflow`, ...) and the name of the script file (taking into account the subdirectories of the `update` directory) in the alphabetical order.
+* If the DB has both the `SEC_USER` and `SYS_DB_CHANGELOG` tables, the update scripts whose names were not previously stored in the `SYS_DB_CHANGELOG` table are executed and their names are stored in the `SYS_DB_CHANGELOG` table. The sequence of scripts execution is determined by two factors: the priority of the application component (see <<db_dir,database scripts directory>>: `10-cuba`, `20-bpm`, ...) and the name of the script file (taking into account the subdirectories of the `update` directory) in the alphabetical order.
 +
-Before the execution of update scripts, the check is performed, whether all base projects have required tables in the database. If the database is not initialized for use of some base project, its creation scripts are executed.
+Before the execution of update scripts, the check is performed, whether all creation scripts of application components have been run (by checking the `SYS_DB_CHANGELOG` table). If the database is not initialized for use of some application component, its creation scripts are executed.
 
 The mechanism to execute the scripts on server startup is enabled by the <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property.
 
