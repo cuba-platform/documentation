@@ -2040,6 +2040,10 @@ For example: <<cuba.connectionUrlList,cuba.connectionUrlList>>, <<cuba.dbmsType,
 +
 For example: <<cuba.entityLog.enabled,cuba.entityLog.enabled>>, <<cuba.email._,cuba.email.smtpHost>>.
 
+[[setting_app_properties]]
+Setting Application Properties::
++
+--
 Values of application properties can be set in the <<app_properties_db,database>>, in the <<app_properties_files,property files>>, or via Java system properties. Besides, a value set in a file overrides the value with the same name from the database. A value set as a Java system property overrides both values from files and from the database.
 
 Some properties do not support setting values in the database for the following reason: their values are needed when the database is not accessible to the application code yet. These are configuration and deployment parameters mentioned above. So you can only define them in property files or via Java system properties. Runtime parameters can always be set in the database (and possibly be overridden by values in files or system properties).
@@ -2048,9 +2052,23 @@ Typically, an application property is used in one or several application <<app_t
 
 [TIP]
 ====
-When you need to set a value to a platform property, find this property in the <<app_properties_reference,documentation>>. If the documentation states that the property is stored in the database, use the *Administration > Application Properties* screen to set its value. Otherwise, find out what blocks use the property and define it in the `app.properties` files of this blocks. For example, if the documentation states that the property is used in all blocks, and your application consists of Middleware and Web Client, you should define the property in the `app.properties` file of the *core* module and in the `web-app.properties` file of the *web* module. Deployment parameters can also be set outside of project files in the <<conf_dir,configuration>> directory. See <<app_properties_files>> for details.
+When you need to set a value to a platform property, find this property in the <<app_properties_reference,documentation>>. If the documentation states that the property is stored in the database, use the *Administration > Application Properties* screen to set its value. Otherwise, find out what blocks use the property and define it in the `app.properties` files of these blocks. For example, if the documentation states that the property is used in all blocks, and your application consists of Middleware and Web Client, you should define the property in the `app.properties` file of the *core* module and in the `web-app.properties` file of the *web* module. Deployment parameters can also be set outside of project files in the <<conf_dir,configuration>> directory. See <<app_properties_files>> for details.
 ====
+--
 
+[[additive_app_properties]]
+Additive Properties::
++
+--
+Properties representing configuration parameters can be _additive_. Additive properties get their values from all <<app_components,components>> used in the application. This allows platform mechanisms to configure your application depending on the properties provided by application components. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is an additive property. In your project, it specifies a `persistence.xml` file defining your project's data model. But due to the fact that the real property value will include also `persistence.xml` files of the application components, the whole data model of your application will include also entities defined in the components.
+
+Additive properties are stored in <<app_properties_files,files>> and usually have the plus sign in the beginning of values, indicating that the property value will be assembled from application components at runtime. If you omit `+` for an additive property, its value will be obtained only from the current project. It can be useful if you don't want to inherit some configuration from components, for example, when you define a menu structure.
+--
+
+[[app_properties_access]]
+Programmatic Access to Application Properties::
++
+--
 You can access application properties in your code using the following mechanisms:
 
 * <<config_interfaces,Configuration interfaces>>. If you define application properties as annotated methods of a configuration interface, the application code will have typed access to the properties. Configuration interfaces allow you to define and access properties of all types of storage: database, files and system properties.
@@ -2059,11 +2077,12 @@ You can access application properties in your code using the following mechanism
 ** Properties stored in the database are not supported.
 ** Unlike invoking an interface method, you have to provide the property name as String.
 ** Unlike getting a result of a specific type, you can only get the property value as String.
+--
 
 [[app_properties_files]]
 ===== Storing Properties in Files
 
-Properties that determine configuration and deployment parameters are specified in special property files named according to the `*app.properties` pattern. Each application <<app_tiers,block>> contains a set of such files, including files from *cuba* <<app_components,application component>>. The set of property files is defined as follows:
+Properties that determine configuration and deployment parameters are specified in special property files named according to the `++*app.properties++` pattern. Each application <<app_tiers,block>> contains a set of such files, including files from *cuba* <<app_components,application component>>. The set of property files is defined as follows:
 
 * For web application blocks (Middleware, Web Client, Web Portal) the set of property files is specified in the `appPropertiesConfig` parameter of <<web.xml,web.xml>>.
 
@@ -2077,7 +2096,7 @@ For example, the set of property files of the Middleware block is specified in t
     <param-name>appPropertiesConfig</param-name>
     <param-value>
         classpath:cuba-app.properties
-        classpath:app.properties
+        classpath:com/company/sample/app.properties
         file:${catalina.home}/conf/app-core/local.app.properties
     </param-value>
 </context-param>
