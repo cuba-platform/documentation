@@ -1,0 +1,1 @@
+table.requestFocus(item, "count");
