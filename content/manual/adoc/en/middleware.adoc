@@ -121,64 +121,65 @@ include::{sourcesdir}/middleware/service_6.java[]
 
 `DataService` provides a facade for calling <<dataManager,DataManager>> middleware implementation from the client tier. The usage of `DataService` interface in the application code is not recommended. Instead, use `DataManager` directly on both middle and client tiers.
 
-[[system_authentication]]
-==== System Authentication
+[[data_store]]
+==== Data Stores
 
-When executing user requests, the Middleware program code always has access to the information on the current user via the <<userSessionSource,UserSessionSource>> interface. This is possible because the corresponding <<securityContext,SecurityContext>> object is automatically set for the current thread when a request is received from the client tier.
+A usual way of working with data in CUBA applications is manipulating entities - either declaratively through <<datasources,datasources>> and data-aware visual components, or programmatically via <<dataManager,DataManager>> or <<entityManager,EntityManager>>. The entities are mapped to data in a data store, which is usually a relational database. An application can connect to multiple data stores so its <<data_model,data model>> will contain entities mapped to data located in different databases.
 
-However, there are situations when the current thread is not associated with any system user, for example, when calling a bean's method from the <<scheduled_tasks_spring,scheduler>>, or via the JMX interface. In case the bean modifies entities in the database, it will require information on who is making changes, i.e., authentication.
+An entity can belong only to a single data store. You can display entities from different data stores on a single UI screen, and `DataManager` will ensure they will be dispatched to appropriate data stores on save. Depending on the entity type, `DataManager` selects a registered data store represented by an implementation of the `DataStore` interface and delegates loading and saving entities to it. When you control transactions in your code and work with entities via `EntityManager`, you have to specify explicitly what data store to use. See the <<persistence,Persistence>> interface methods and <<transactions_decl,@Transactional>> annotation parameters for details.
 
-This kind of authentication is called "system authentication" as it requires no user participation – the application middle layer simply creates or uses an existing user session and sets the corresponding `SecurityContext` object for the current thread.
+The platform contains a single implementation of the `DataStore` interface called `RdbmsStore`. It is designed to work with relational databases through the <<orm,ORM>> layer. You can implement `DataStore` in your project to provide integration, for example, with a non-relational database or an external system having REST interface.
 
-The following methods can be used to provide the system authentication for a code block: 
+In any CUBA application, there is always the main data store which contains system and security entities and where the users log in. When we mention a database in this manual, we always mean the main data store if other is not explicitly stated. The main data store must be a relational database connected through a JDBC data source. The main data source is located in JNDI and should have a name specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property, which is `jdbc/CubaDS` by default.
 
-* Make use of the `com.haulmont.cuba.security.app.Authentication` bean: 
-+
-[source, java]
+Additional data store names should be specified in the <<cuba.additionalStores,cuba.additionalStores>> application property. If the additional store is `RdbmsStore`, you should provide the following properties for it:
+
+* `cuba.dataSourceJndiName_{store_name}` - JNDI name of the corresponding JDBC data source.
+* `cuba.dbmsType_{store_name}` - type of the data store DBMS.
+* `cuba.persistenceConfig_{store_name}` - location of the data store `persistence.xml` file.
+
+If you implement the `DataStore` interface in your project, specify the name of the implementation bean in the `cuba.storeImpl_{store_name}` application property.
+
+For example, if you need to work with two additional data stores: `db1` (a PostgreSQL database) and `mem1` (an in-memory storage implemented by some project bean), specify the following application properties in the `app.properties` file of your *core*:
+
+[source,properties]
 ----
-include::{sourcesdir}/middleware/auth_1.java[]
+cuba.additionalStores = db1, mem1
+cuba.dataSourceJndiName_db1 = jdbc/db1
+cuba.dbmsType_db1 = hsql
+cuba.persistenceConfig_db1 = com/company/sample/db1-persistence.xml
+cuba.storeImpl_mem1 = sample_InMemoryStore
 ----
 
-* Add the `@Authenticated` annotation to the bean method: 
-+
-[source, java]
-----
-include::{sourcesdir}/middleware/auth_2.java[]
-----
+The `cuba.additionalStores` and `cuba.persistenceConfig_db1` properties should also be specified in the property files of all used application blocks (`web-app.properties`, `portal-app.properties`, etc.).
 
-The second case uses the `Authentication` bean implicitly, via the `AuthenticationInterceptor` object, which intercepts calls of all bean methods with the `@Authenticated` annotation.
-
-In the examples above, the user session will be created on behalf of the user, whose login is specified in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. If authentication on behalf of another user is required, pass the login of the desired user to the `begin()` method of the first variant.
-
-[WARNING]
+[TIP]
 ====
-If current thread has an active user session assigned at the time of `Authentication.begin()` execution, it will not be replaced. Therefore the code will be executed with the existing session and the subsequent call to the `end()` method will not clear the thread.
-
-For example, if a bean is in the same JVM as the Web Client block, to which the user is currently connected, the call of the JMX bean method from the Web Client built-in <<jmx_console,JMX console>> will be executed on behalf of the currently logged in user, regardless of the system authentication.
+CUBA Studio allows you to set up additional data stores on the *Project properties > Advanced* tab. It automatically creates all required application properties and JDBC data sources, as well as maintains additional `persistence.xml` files.
 ====
 
 [[persistence]]
 ==== The Persistence Interface
 
-The infrastructure interface, serving as an entry point to data storage functionality.
+The `Persistence` interface is designed to be an entry point to the data storage functionality provided by the <<orm,ORM>> layer.
 
 The interface has the following methods:
 
-* `createTransaction()`, `getTransaction()` – obtain the interface to manage <<transactions,transactions>>.
+* `createTransaction()`, `getTransaction()` – obtain the interface for managing <<transactions,transactions>>. The methods can accept a <<data_store,data store>> name. If it is not provided, the main data store is assumed.
 
-* `callInTransaction()`, `runInTransaction()` - execute an action in a new transaction with or without return value.
+* `callInTransaction()`, `runInTransaction()` - execute an action in a new transaction with or without return value. The methods can accept a <<data_store,data store>> name. If it is not provided, the main data store is assumed.
 
-* `isInTransaction()` – checks if an active transaction exists at the moment.
+* `isInTransaction()` – checks if there is an active transaction the moment.
 
-* `getEntityManager()` – returns the <<entityManager,EntityManager>> instance bound to the current transaction.
+* `getEntityManager()` – returns an <<entityManager,EntityManager>> instance bound to the current transaction. The method can accept a <<data_store,data store>> name. If it is not provided, the main data store is assumed.
 
 * `isSoftDeletion()` – allows you to determine if the <<soft_deletion,soft deletion>> mode is active.
 
-* `setSoftDeletion()` – enables or disables the soft deletion mode. Setting this property affects all newly created `EntityManager`. instances. Soft deletion is enabled by default.
+* `setSoftDeletion()` – enables or disables the soft deletion mode. Setting this property affects all newly created `EntityManager` instances. Soft deletion is enabled by default.
 
-* `getDbTypeConverter()` – returns the <<dbTypeConverter,DbTypeConverter>> instance for the currently used database.
+* `getDbTypeConverter()` – returns the <<dbTypeConverter,DbTypeConverter>> instance for the main database or for an additional data store.
 
-* `getDataSource()` – returns the `javax.sql.DataSource` instance for the currently used database.
+* `getDataSource()` – returns the `javax.sql.DataSource` instance for the currently used database. The method can accept a <<data_store,data store>> name. If it is not provided, the main data store is assumed.
 +
 [WARNING]
 ====
@@ -626,7 +627,7 @@ This section covers various aspects of transaction management in CUBA applicatio
 [[transactions_prog]]
 ===== Programmatic Transaction Management
 
-Programmatic transaction management is done using `com.haulmont.cuba.core.Transaction` interface, a reference to which may be obtained via the `createTransaction()` or `getTransaction()` methods of the <<persistence,Persistence>> infrastructure interface.
+Programmatic transaction management is done using the `com.haulmont.cuba.core.Transaction` interface. A reference to it can be obtained via the `createTransaction()` or `getTransaction()` methods of the <<persistence,Persistence>> infrastructure interface.
 
 The `createTransaction()` method creates a new transaction and returns the `Transaction` interface. Subsequent calls of `commit()`, `commitRetaining()`, `end()` methods of this interface control the created transaction. If at the moment of creation there was another transaction, it will be suspended and resumed after the completion of the newly created one.
 
@@ -653,7 +654,25 @@ Keep in mind that `execute()` method of a given instance of `Transaction` may be
 
 Any method of the Middleware <<managed_beans,managed bean>> may be annotated with `@org.springframework.transaction.annotation.Transactional`, which will automatically create a transaction when the method is called. Such method does not require invoking `Persistence.createTransaction()`, you can immediately get `EntityManager` and work with it.
 
-`@Transactional` annotation supports a number of parameters. The main parameter is the transaction creation mode – `Propagation`. The `REQUIRED` value corresponds to `getTransaction()`, the `REQUIRES_NEW` value – to `createTransaction()`. The default value is `REQUIRED`.
+`@Transactional` annotation supports a number of parameters, including:
+
+* `propagation` - transaction creation mode. The `REQUIRED` value corresponds to `getTransaction()`, the `REQUIRES_NEW` value – to `createTransaction()`. The default value is `REQUIRED`.
++
+[source, java]
+----
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void doSomething() {
+}
+----
+
+* `value` - <<data_store,data store>> name. If omitted, the main data store is assumed. For example:
++
+[source, java]
+----
+@Transactional("db1")
+public void doSomething() {
+}
+----
 
 Declarative transaction management allows you to reduce the amount of http://en.wikipedia.org/wiki/Boilerplate_code[boilerplate code], but it has the following drawback: transactions are committed outside of the application code, which often complicates debugging because it conceals the moment when changes are sent to the database and the entities become <<entity_states,Detached>>. Additionally, keep in mind that declarative markup will only work if the method is called by the container, i.e. calling a transaction method from another method of the same object will not start a transaction.
 
@@ -732,3 +751,39 @@ In order to turn on entity cache, set the following properties in the <<app_prop
 The fact of whether an entity is cached affects the <<views,fetch mode>> chosen by the platform for loading entity graphs. If a reference attribute is a cacheable entity, the fetch mode is always `UNDEFINED`, which allows ORM to retrieve the reference from the cache instead of executing queries with JOINs or separate batch queries.
 
 The platform provides entity cache coordination in <<cluster_mw_server,middleware cluster>>. When a cached entity is updated or deleted on one cluster node, the same cached instance on other nodes (if any) will be invalidated, so the next operation with this instance will read a fresh state from the database.
+
+[[system_authentication]]
+==== System Authentication
+
+When executing user requests, the Middleware program code always has access to the information on the current user via the <<userSessionSource,UserSessionSource>> interface. This is possible because the corresponding <<securityContext,SecurityContext>> object is automatically set for the current thread when a request is received from the client tier.
+
+However, there are situations when the current thread is not associated with any system user, for example, when calling a bean's method from the <<scheduled_tasks_spring,scheduler>>, or via the JMX interface. In case the bean modifies entities in the database, it will require information on who is making changes, i.e., authentication.
+
+This kind of authentication is called "system authentication" as it requires no user participation – the application middle layer simply creates or uses an existing user session and sets the corresponding `SecurityContext` object for the current thread.
+
+The following methods can be used to provide the system authentication for a code block:
+
+* Make use of the `com.haulmont.cuba.security.app.Authentication` bean:
++
+[source, java]
+----
+include::{sourcesdir}/middleware/auth_1.java[]
+----
+
+* Add the `@Authenticated` annotation to the bean method:
++
+[source, java]
+----
+include::{sourcesdir}/middleware/auth_2.java[]
+----
+
+The second case uses the `Authentication` bean implicitly, via the `AuthenticationInterceptor` object, which intercepts calls of all bean methods with the `@Authenticated` annotation.
+
+In the examples above, the user session will be created on behalf of the user, whose login is specified in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. If authentication on behalf of another user is required, pass the login of the desired user to the `begin()` method of the first variant.
+
+[WARNING]
+====
+If current thread has an active user session assigned at the time of `Authentication.begin()` execution, it will not be replaced. Therefore the code will be executed with the existing session and the subsequent call to the `end()` method will not clear the thread.
+
+For example, if a bean is in the same JVM as the Web Client block, to which the user is currently connected, the call of the JMX bean method from the Web Client built-in <<jmx_console,JMX console>> will be executed on behalf of the currently logged in user, regardless of the system authentication.
+====
