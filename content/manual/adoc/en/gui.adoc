@@ -1910,39 +1910,31 @@ Implementation of the generic user interface of the *Web Client* <<app_tiers,blo
 .Web Client Infrastructure Classes
 image::WebClientInfrastructure.png[align="center"]
 
-* `App` - the central class of the application infrastructure. Contains links to `Connection`, `AppWindow` and other infrastructure objects. Only one instance of `App` exists for a given HTTP-session.
+* `App` - the central class of the application infrastructure. Contains links to `Connection` and other infrastructure objects. Only one instance of `App` exists for a given HTTP session. You can get a reference to the `App` instance by using the `App.getInstance()` static method.
+
+* `Connection` is an interface providing functionality of connecting to middleware and holding a <<userSession,user session>>. `DefaultConnection` is a standard implementation of this interface.
+
+* `ExceptionHandlers` class contains a collection of <<exceptionHandlers,client-level exception handlers>>.
+
+* `AppUI` is a platform class inherited from `com.vaadin.ui.UI` class. There is one instance of this class for each open tab of a web browser. Contains a link to a `TopLevelWindow` implementation – either a login window or main window, depending on the connection state. You can get a reference to the `AppUI` for the current browser tab by using the `AppUI.getCurrent()` static method.
+
+* `AppLoginWindow` – the window displayed before a user logs in. You can customize the login window by extending `AppLoginWindow` or create completely new one by extending <<abstractWindow,AbstractWindow>> and implementing the `TopLevelWindow` marker interface. In Studio, go to the *Screens* section and click *Create login window*.
+
+* `AppMainWindow` – main application window displayed after a user logs in. You can customize the main window by extending `AppMainWindow` or create completely new one by extending `AbstractMainWindow` and defining desired layout in XML descriptor. In Studio, go to the *Screens* section and click *Create main window*.
 +
-Each application typically has its own `App` class class inherited from the `DefaultApp` and thus from the basic abstract `App` class of the platform. It allows you to override `createAppWindow()` and `createLoginWindow()` methods to create custom implementations of the main window and the login window.
+You can control certain main window parameters without redefinig the default implementation using the following application properties:
 +
-The `App` class of an application should be registered in the `application` parameter of the `++app_servlet++` in the <<web.xml,web.xml>> file of the *web* module.
-
-* `Connection` is the interface providing functionality of connecting to middleware and storing <<userSession,user sessions>>. `DefaultConnection` is a standard implementation of this interface.
-
-* `AppUI` is a platform class inherited from `com.vaadin.ui.UI` class. There is one instance of this class for each open tab of a web browser. Contains a link to the `UIView` object – either a `LoginWindow` or `AppWindow`.
-+
-`AppUI` application class should be registered in the `UI` parameter of the `++app_servlet++` in the web/WEB-INF/web.xml file of the *web* module. In most cases, standard platform class is used.
-
-* `LoginWindow` – the window displayed before a user logs in. In your application you can create an inheritor of `LoginWindow` and redefine the `createLoginWindow()` method of the `App` class to use it.
-
-* `AppWindow` – main application window displayed after a user logs in. In your application, you can create an inheritor of `AppWindow` and override the `createAppWindow()` method of the `App` class to use it.
-+
-`onHistoryBackPerformed()` method allows you to handle browser *Back* button. This method is invoked instead of standard browser behavior if <<cuba.web.allowHandleBrowserHistoryBack,cuba.web.allowHandleBrowserHistoryBack>> application property is true.
-+
-You can control certain main window parameters without creating `AppWindow` inheritor, using the following application properties:
-
-** <<cuba.web.useLightHeader,cuba.web.useLightHeader>> - switches on compact window header - logo, menu bar, user name and log out button in one line. When switched off, `AppWindow.createTitleLayout()` method creates additional area at the top.
-
-** <<cuba.web.foldersPaneEnabled,cuba.web.foldersPaneEnabled>> - enables creation of <<folders_pane,folders pane>> by `AppWindow.createFoldersPane()` method.
+--
+** <<cuba.web.foldersPaneEnabled,cuba.web.foldersPaneEnabled>> - enables creation of <<folders_pane,folders pane>>.
 
 ** <<cuba.web.appWindowMode,cuba.web.appWindowMode>> – sets default mode for the main window: tabbed or single screen (`TABBED` or `SINGLE`). Users can change the mode later using *Help* > *Settings* screen.
 
 ** <<cuba.web.maxTabCount,cuba.web.maxTabCount>> – when the main window is in the tabbed mode, this property sets the maximum number of tabs that a user can open. The default value is 7.
+--
 
-* `WindowManager` - the central class implementing application screens management logic. `openWindow()`, `openEditor()`, `showMessageDialog()` and other methods of the `Frame` interface implemented by screen <<screen_controller,controllers>> delegate to the window manager. `WindowManager` class is located in the platform's common *gui* module and is abstract. The *web* module has a dedicated `WebWindowManager` class that implements web client specifics.
-+
-Normally, the `WindowManager` is not used in the application code directly.
+* `WindowManager` - the central class implementing application screens management logic. `openWindow()`, `openEditor()`, `showMessageDialog()` and other methods of the `Frame` interface implemented by screen <<screen_controller,controllers>> delegate to the window manager. `WindowManager` class is located in the platform's common *gui* module and is abstract. The *web* module has a dedicated `WebWindowManager` class that implements web client specifics. You can get a reference to `WindowManager` from any `Window` implementation (e.g. a screen controller), or via the `WindowManagerProvider` bean.
 
-* `ExceptionHandlers` - contains a collection of <<exceptionHandlers,client-level exception handlers>>.
+If you want to handle the browser *Back* button, implement the `CubaHistoryControl.HistoryBackHandler` interface in your `TopLevelWindow` (login and/or main windows). Its `onHistoryBackPerformed()` method is invoked instead of standard browser behavior if the <<cuba.web.allowHandleBrowserHistoryBack,cuba.web.allowHandleBrowserHistoryBack>> application property is set to true.
 
 [[webComponentsHelper]]
 ===== Working with Vaadin Components
