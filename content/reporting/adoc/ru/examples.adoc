@@ -88,3 +88,49 @@ ru = Книги по автору
 ----
 
 Вызвать отчет на <<running,исполнение>> можно из общего списка в экране *Reports* -> *Run Reports*.
+
+[[without_params]]
+== Пример отчёта без параметров
+
+Можно создать отчёт и вручную, не прибегая к Мастеру. Рассмотрим ещё один пример отчёта, на этот раз без использования внешних параметров, который будет выводить все книги из базы данных в одну таблицу.
+За основу возьмём то же приложение-пример https://github.com/cuba-platform/sample-library[*Библиотека*].
+
+Чтобы перейти к созданию отчёта, необходимо нажать *Create* -> *New* на вкладке *Reports*.
+
+image::without_params_1.png[align="center"]
+
+Так мы попадаем сразу в *Report editor*. Допустим, мы собираемся создать максимально прямолинейную структуру отчёта.
+Создадим 3 дочерние полосы для Root: *Title, TableHeader* и *Books*. Первые две оставим пустыми, для Books создадим набор данных с помощью запроса на вывод всех книг, имеющихся в базе данных, и детальной информации по ним:
+
+[source, sql]
+----
+select b.name as "book_name", a.first_name||' '||a.last_name as "author",
+lp.name as "publisher", cast(bp.year_ as varchar(4)) as "year",
+ld.name as "department", count(bi.id) as "amount"
+from library_book b
+    join library_book_author_link ba on ba.book_id = b.id
+    join library_author a on a.id = ba.author_id
+    join library_book_publication bp on bp.book_id = b.id
+    join library_publisher lp on lp.id = bp.publisher_id
+    join library_book_instance bi on bi.book_publication_id = bp.id
+    join library_library_department ld on ld.id = bi.library_department_id
+where b.id is not null
+group by bp.year_, lp.name, a.first_name||' '||a.last_name, b.name, ld.name
+order by a.first_name||' '||a.last_name asc;
+----
+
+image::without_params_2.png[align="center"]
+
+
+Затем вручную создаём шаблон, содержащий 3 обязательные полосы, указанные в *Report structure*, добавляем файл шаблона в поле *Default Template*
+и сохраняем изменения.
+
+image::without_params_3.png[align="center"]
+
+
+Теперь созданный отчёт доступен к исполнению из общего списка в экране Reports в → Run Reports. При исполнении этого отчёта не будут запрашиваться параметры, система сразу перейдёт к скачиванию файла.
+
+image::without_params_4.png[align="center"]
+
+
+При необходимости в отчёт можно включить дополнительное оформление и диаграммы средствами той программы, в которой вы создаёте шаблон, и связать их с именованными регионами, соответствующими полосам отчёта.
