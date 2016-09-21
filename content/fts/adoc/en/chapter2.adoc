@@ -7,7 +7,7 @@ We will split the task into the following stages:
 
 . Enable search functionality for the project, configure the indexing process and verify that it works.
 . Adjust the FTS configuration file to include entities from the sample Library data model.
-. Use the `EBook` entity and the functionality described in the *Workflow subsystem* guide to illustrate search function for the loaded files.
+. Use the `BookPublication` entity and the functionality of file upload described in the *File Storage* guide to illustrate search function for the loaded files.
 
 [[qs_project_setup]]
 === Project Setup
@@ -25,7 +25,7 @@ Once the steps above are completed, full text search functionality will be added
 
 To start one-off indexing of the current state of the database (i.e. the entities listed in the FTS configuration file by default), open the `app-core.fts:type=FtsManager` JMX bean again and consequently invoke `reindexAll()` first and then `processQueue()`. After this, searching the "adm" string should give the following results:
 
-image::SearchResults1.png[align="center"]
+image::2.1_project_setup.png[align="center"]
 
 [[qs_indexing]]
 === Configuring Invocation of Indexing Process
@@ -59,7 +59,8 @@ Automatic indexing does not cover the entities created before its start. To put 
 [[qs_conf]]
 === Setting up Configuration File
 
-Create the `fts.xml` file with the following content in the source text directory of the *core* module:
+When you add  `fts` base project, the new `fts.xml` file is created with the following content
+ in the source text directory of the *core* module:
 
 [source, xml]
 ----
@@ -104,7 +105,8 @@ Create the `fts.xml` file with the following content in the source text director
 
 This is the FTS configuration file, which in our case enables indexing of all domain model entities with all their attributes.
 
-Add the following property to the *app.properties* file of the application *core* module:
+The following property is automatically added to the *app.properties* file of the application
+*core* module:
 
 [source, properties]
 ----
@@ -117,50 +119,37 @@ Restart the application server. From now on, full text search should work for al
 
 [[qs_search_files]]
 === Uploaded Files Content Search
+Now we need to provide the possibility of file upload for each book publication
+and add uploaded files to the `BookPublication` browse screen.
 
-Take the following steps to see the example of uploaded files content search: add the workflow component, add `EBook` entity to the project and create and complete the book scanning workflow as described in the *Workflow* subsystem guide (see <<fts.adoc#additional_info>>). Further in this section it is assumed that the application already has an instance of `EBook` and that a file with the original book has already been uploaded as a result of the *`Book scanning`* process execution.
+Let us customize `BookPublication` entity. Firstly we add a new `file` attribute which is a many-to-one *association* to
+`FileDescriptor` entity. `FileDescriptor` is the descriptor of the uploaded file (not to be confused
+with `java.io.FileDescriptor`) that enables referencing the file from the data model objects.
+When saving the changes, select all screens and related views suggested by the Studio to append new
+attribute.
 
-Add the following elements to the project's `fts.xml` file:
 
-[source, xml]
-----
-...
-        <entity class="com.sample.library.entity.EBook">
-            <include name="publication.book"/>
-            <include name="attachments.file"/>
-        </entity>
+image::book_publication_new_attribute.png[align="center"]
 
-        <entity class="com.haulmont.workflow.core.entity.CardAttachment" show="false">
-            <include re=".*"/>
-            <exclude name="card"/>
+Update database and restart application server.
 
-            <searchables>
-                searchables.add(entity.card)
-            </searchables>
-        </entity>
+As far as we have added the new attribute, the table of publications on `BookPublication` browser screen now contains one more column: *File*.
+To fulfil it, open any line for editing, upload text file using the new upload field and click OK. By default CUBA supports
+`rtf`, `txt`, `doc`, `docx`, `xls`, `xslx`, `odt`, `ods`, and `pdf` file formats.
 
-    </entities>
-</fts-config>
-----
+image::book_publication_file_is_not.png[align="center"]
 
-In order for search results screen to display the `EBook` instances properly, you should add `@NamePattern` annotation to the `EBook` class:
+New files appeared in the table. The appearance of new column can be adjusted.
 
-[source, java]
-----
-@NamePattern("%s|publication")
-public class EBook extends Card {
-...
-----
+image::book_publication_files_uploaded.png[align="center"]
 
-After that, restart the application server. Open the *JMX Console* screen, open the `app-core.fts:type=FtsManager` JMX bean and invoke sequentially `reindexAll()` and `processQueue()` to re-index the existing instances in the database and files according to the new search configuration. All new and changed data will be indexed automatically with a delay depending on the scheduled task interval, i.e. not longer than 30 seconds.
+Open the *JMX Console* screen, open the `app-core.fts:type=FtsManager` JMX bean and invoke sequentially `reindexAll()` and `processQueue()` to re-index the existing instances in the database and files according to the new search configuration. All new and changed data will be indexed automatically with a delay depending on the scheduled task interval, i.e. not longer than 30 seconds.
 
-As a result, if the database contains a book called *`Alice's Adventures`* with an original PDF available, search results for "alice" will look like this:
+As a result, *Full text search* will now output all the entries including external files contents.
 
-image::SearchResults2.png[align="center"]
+image::book_publication_fts_result.png[align="center"]
 
-Search results for "rabbit" will look like this:
-
-image::SearchResults3.png[align="center"]
+You can find more information on `FileStorageAPI` and `FileDescriptor` in corresponding chapters of the main manual.
 
 [[reindex]]
 
