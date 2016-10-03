@@ -220,6 +220,7 @@ To place a field in the document text, you should use a string having `++${band_
 
 In order to output data into a table, you should tie it to a band. This is done by specifying `++##band=band_name++` in the table's first cell, where `++band_name++` is the band name. The table fields are placed using `++${field_name}++` format, where `++field_name++` is the field name of the band associated with the table. You can use band name prefix to access fields of other bands, same as in the document text fields. You can output several fields in a single table cell.
 
+Horizontal bands in DOCX, DOC and ODT cannot contain sub-bands. If you need to use sub-bands, you would better use XLS(X) format.
 [WARNING]
 ====
 The table must contain either one or two rows. If the table has two rows, then the corresponding band fields must be in the second row. The first row should contain the marker with the corresponding band name and, if necessary, static text or other band fields.
@@ -230,6 +231,21 @@ Below is an example of a template which outputs a report consisting of two bands
 image::report_template_doc.png[align="center"]
 
 [[template_html]]
+
+[WARNING]
+====
+Cells data format is no supported in DOCX, DOC and ODT templates. To avoid numbers or dates formatting problems due to user's locale, such as unnecessary numeric separators, try to cast your data to string.
+For example, wrap
+[source, sql]
+----
+select e.year as "year"
+----
+into
+[source, sql]
+----
+select cast(e.year as varchar(4)) as "year"
+----
+====
 ==== HTML Template
 
 An HTML template is defined in an `.html` file (`UTF-8` encoding without `BOM`). FreeMarker tags are used to place data (FreeMarker documentation is available at http://freemarker.org/docs).
@@ -457,6 +473,14 @@ reporting.fontsDir = /usr/share/fonts/truetype/msttcorefonts
     </style>
 ----
 
+Another thing to mention is parsing of special characters. To avoid errors when converting HTML to PDF, it is recommended to wrap your fields in `<![CDATA[ ]]>` construction in your HTML template file:
+[source, html]
+----
+<tr>
+	<td> <![CDATA[${(row.fields('book_name'))!?string!}]]> </td>
+	<td> <![CDATA[${(row.fields('author'))!?string!}]]> </td>
+</tr>
+----
 [[template_custom]]
 ==== Class-Defined Template
 
@@ -586,6 +610,7 @@ With the help of formats, it is possible to insert images and HTML blocks into t
 
 * In order to insert an HTML block, you should return an HTML markup in the field, and select `${html}` as the format string. In the output value, you may omit top-level tags up to `<body>` inclusive. If necessary, all missing top-level tags will be added automatically. All blocks should be encoded with `UTF-8`. CSS and the `style` attribute are not supported.
 
+You can specify your own custom formats as well. To do this, type the new value in the field without opening the dropdown and press Enter. You can also choose any format from the dropdown, edit its name in the field and press Enter. Custom format will be saved in both cases.
 [[permissions]]
 === Report Access Rights
 
