@@ -552,15 +552,19 @@ All created users, including the local administrators, will get the `*local_user
 [[ldap]]
 === Integration with LDAP
 
-CUBA application can be integrated with LDAP to provide the following benefits:
+CUBA applications can be integrated with LDAP to provide the following benefits:
 
-. Keep and manage user passwords centrally in the LDAP database.
+. Storing user passwords centrally in the LDAP database.
 
-. For Windows domain users, enable logging in through Single Sign-On without having to specify the username and password.
+. For Windows domain users, ability to log in using Single Sign-On without having to specify the username and password.
 
-A user account with all the required properties and permissions must be created in the application. It is recommended to leave the password empty, so that the user could log in using the password from LDAP only. The first authentication attempt is made via LDAP, followed by the standard way of using the password hash from the database. As a result, a user can log in to the system with this password even if the user is not registered in LDAP or has a different LDAP password.
+If the LDAP integration is enabled, a user still needs an account in the application. All the user permissions and properties (except password) are stored in the application database, LDAP is used only for authentication. When the user logs in to the application, the first authentication attempt is made via LDAP. If it fails, the application tries to authenticate the user by the password hash stored in the database. As a result, a user can log in to the system with this password even if he is not registered in LDAP or has a different LDAP password. However, it is recommended to leave the application password empty, so that the user could log in using the password from LDAP only (the password field in the user editor screen is not required if the <<cuba.web.externalAuthentication,cuba.web.externalAuthentication>> property is set to `true`).
 
-A CUBA-based application interacts with LDAP via the `CubaAuthProvider` interface. The platform includes a single implementation of this interface, `LdapAuthProvider`, which supports LDAP authentication without Single Sign-On. In order to enable advanced Active Directory integration and Single Sign-On, the *Jespa* library can be used with the corresponding `CubaAuthProvider` implementation, as described in <<jespa,>>. A custom `CubaAuthProvider` implementation class can also be used by setting the following application properties:
+A CUBA-based application interacts with LDAP via the `CubaAuthProvider` interface. The platform includes a single implementation of this interface, `LdapAuthProvider`, which supports LDAP authentication.
+
+You can use the *Jespa* library with the corresponding `CubaAuthProvider` described in the <<jespa,>> section in order to enable advanced integration with Active Directory, including Single Sign-On for Windows domain users.
+
+You can also create your own implementation of the `CubaAuthProvider` interface and use it by setting the following application properties:
 
 [source, properties]
 ----
@@ -569,7 +573,7 @@ cuba.web.externalAuthenticationProviderClass = com.company.sample.web.MyAuthProv
 ----
 
 [[ldap_basic]]
-==== Basic Active Directory Integration
+==== Basic LDAP Integration
 
 If the <<cuba.web.externalAuthentication,cuba.web.externalAuthentication>> property is enabled, the `LdapAuthProvider` class is used by default. In this case, the Spring LDAP library is used for user authentication.
 
@@ -579,9 +583,9 @@ The following Web Client application properties are used to set up LDAP integrat
 
 * `cuba.web.ldap.base` – base DN for user search.
 
-* `cuba.web.ldap.user` – the distinguished name of a user which has the right to read the information from the directory.
+* `cuba.web.ldap.user` – the distinguished name of a system user which has the right to read the information from the directory.
 
-* `cuba.web.ldap.password` – the password for the user defined in the `cuba.web.ldap.user` property.
+* `cuba.web.ldap.password` – the password for the system user defined in the `cuba.web.ldap.user` property.
 
 * `cuba.web.ldap.userLoginField` - the name of an LDAP user attribute that is used for matching the login name. `sAMAccountName` by default (suitable for Active Directory).
 
@@ -592,16 +596,16 @@ Example of <<app_properties_files,local.app.properties>> file for the Web Client
 cuba.web.externalAuthentication = true
 cuba.web.ldap.urls = ldap://192.168.1.1:389
 cuba.web.ldap.base = ou=Employees,dc=mycompany,dc=com
-cuba.web.ldap.user = cn=Some User,ou=Employees,dc=mycompany,dc=com
-cuba.web.ldap.password = some_user_password
+cuba.web.ldap.user = cn=System User,ou=Employees,dc=mycompany,dc=com
+cuba.web.ldap.password = system_user_password
 ----
 
-When creating users in the application, use their `sAMAccountName` without domain if you work with Active Directory.
+In case of the integration with Active Directory, when creating users in the application, specify their `sAMAccountName` without domain as a login.
 
 [[jespa]]
-==== Setting Up Authentication Using Jespa
+==== Active Directory Integration Using Jespa
 
-Jespa is a Java library that enables integrating Active Directory service and Java applications using link:$$http://en.wikipedia.org/wiki/NTLMv2#NTLMv2$$[NTLMv2]. For details, see link:$$http://www.ioplex.com$$[http://www.ioplex.com].
+Jespa is a Java library that enables integration of Active Directory service and Java applications using link:$$http://en.wikipedia.org/wiki/NTLMv2#NTLMv2$$[NTLMv2]. For details, see link:$$http://www.ioplex.com$$[http://www.ioplex.com].
 
 [[jespa_lib]]
 ===== Including the Library
