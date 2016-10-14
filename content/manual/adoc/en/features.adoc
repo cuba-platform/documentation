@@ -565,7 +565,10 @@ Version 2 of the universal REST API provides the following functionality:
 
 REST API Version 2 uses the OAuth2 protocol for authentication and supports anonymous access.
 
+[TIP]
+====
 The detailed documentation for the API is written according to http://swagger.io/specification[Swagger specification] and is available at the following URL: http://files.cuba-platform.com/swagger.
+====
 
 Any running CUBA application also exports the swagger documentation at the URLs `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.yaml` and  `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.json`.
 
@@ -670,6 +673,288 @@ Example:
 ----
 include::{sourcesdir}/features/securityToken.json[]
 ----
+
+[[rest_api_v2_usage_example]]
+===== REST API Usage Examples
+
+This chapter contains REST API usage examples.
+
+As mentioned earlier, a detailed information about REST API methods is written according to http://swagger.io/specification[Swagger] specification and is available by address http://files.cuba-platform.com/swagger.
+
+[[rest_api_v2_ex_get_token]]
+====== Getting an OAuth Token
+
+An OAuth token is required for any REST API method (except when you are using an <<rest_api_v2_anonymous, anonymous access>>). A token can be obtained by the POST request on the address:
+
+  http://localhost:8080/app/rest/v2/oauth/token
+
+An access to this endpoint is protected with a basic authentication. REST API client identifier and password is used for basic authentication. Please note that these are not an application user login and password. REST API client id and password are defined in the application properties <<cuba.rest.client.id, cuba.rest.client.id>> and <<cuba.rest.client.secret, cuba.rest.client.secret>>. The default values are `client` and `secret`.
+
+
+The request type must be `application/x-www-form-urlencoded`, an encoding is `UTF-8`.
+
+The requst must contain the following parameters:
+
+* `grant_type` - always `password`
+* `username` - application user login
+* `password` - application user password
+
+[source, httprequest]
+----
+include::{sourcesdir}/features/rest-access-token-request.txt[]
+----
+
+Method returns a JSON object:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-access-token-response.json[]
+----
+
+A token value is in the `access_token` property.
+
+[[rest_api_v2_ex_get_entities_list]]
+====== Getting an Entity Instances List
+
+Let's suppose that the system has a `sales$Order` entity and we need to get a list of this entity instances. Besides, we need to get not all the records, but only 50 records, starting with the 100th one. A response must contain not only simple properties of the `sales$Order` entity but also an information about the order customer (a reference field named `customer`). Orders must be sorted by date.
+
+A base URL for getting all instances of the `sales$Order` entity is as follows:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+To implement all the conditions described above the following request parameters must be specified:
+
+* *view* - a <<views, view>>, that will be used for loading entities. In our case the `order-edit-view` contains a `customer` reference.
+* *limit* - a number of instances to be returned
+* *offset* - a position of the first extracted record
+* *sort* - an entity attribute name that will be used for sorting
+
+An OAuth token must be placed to the `Authorization` header with the `Bearer` type:
+
+  Authorization: Bearer 29bc6b45-83cd-4050-8c7a-2a8a60adf251
+
+As a result, we get the following *GET* request URL:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order?view=order-edit-view&limit=50&offset=100&sort=date
+
+The response will be like this:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-orders-list-response.json[]
+----
+
+Please note, that every entity in the response has a `_entityName` attribute with the entity name and an `_instanceName` attribute with the entity <<namePattern, short name>>.
+
+[[rest_api_v2_ex_create_entity]]
+====== New Entity Instance Creation
+
+New `sales$Order` entity instance can be created with the *POST* request on the address:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+An OAuth token must be placed to the `Authorization` header with the `Bearer` type.
+
+The request body must contain a JSON object that describes a new entity instance, e.g.:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-create-order-request.json[]
+----
+
+A collection of order items (`items`) and a `customer` reference are passed in the request body. Let's examine how these attributes will be processed.
+
+First, let's have a quick look to the `Order` class:
+
+[source, java]
+----
+include::{sourcesdir}/features/Order.java[]
+----
+
+The `items` collection property is annotated with the <<composition_annotation, @Composition>>. REST API methods for entity creation and update will create a new entity instances for all members of such collections. In our case, two instances of `OrderItem` entity will be created with the `Order` entity.
+
+The `customer` reference doesn't have a `@Composition` annotation, that's whe the REST API wil try to find a client with the given id and set it to the `customer` field. If the client is not found then an order won't be created and the method will return an error.
+
+In case of successful method execution a full object graph of the created entity is returned:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-create-order-response.json[]
+----
+
+[[rest_api_v2_ex_update_entity]]
+====== Existing Entity Instance Update
+
+An existing `sales$Order` entity instance can be updated with the *PUT* request on the address:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/5d7ff8e3-7828-ba94-d6ba-155c5c4f2a50
+
+The last part of the query here is the entity identifier.
+
+An OAuth token must be placed to the `Authorization` header with the `Bearer` type.
+
+The request body must contain a JSON object containing only fields we want to update, e.g.:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-update-order-request.json[]
+----
+
+The response body will contain a modified entity:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-update-order-response.json[]
+----
+
+[[rest_api_v2_ex_query]]
+====== Executing a JPQL Query
+
+Before the execution with the REST API a query must be described in the <<rest_api_v2_queries_config, configuration file>>. The `sales-rest-queries.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
+
+[source, properties]
+----
+cuba.rest.queriesConfig = +com/company/sales/sales-rest-queries.xml
+----
+
+`sales-rest-queries.xml` contents:
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-queries.xml[]
+----
+
+To execute a JPQL query the following *GET* request must be executed:
+
+  http://localhost:8080/app/rest/v2/queries/sales$Order/ordersAfterDate?startDate=2016-11-01&endDate=2017-11-01
+
+The request URL parts:
+
+* `sales$Order` - extracted entity name
+* `ordersAfterDate` - a query name from the configuration file
+* `startDate` and `endDate` - request parameters with the values
+
+An OAuth token must be placed to the `Authorization` header with the `Bearer` type.
+
+The method returns a JSON array of extracted entity instances:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-ordersAfterDate-query-response.json[]
+----
+
+A full list of possible request parameters is available in the http://files.cuba-platform.com/swagger[Swagger documentation].
+
+[[rest_api_v2_ex_service_get]]
+====== Service Method Invocation (GET)
+
+Suppose, there is an `OrderService` <<service, service>> in the system. The implementation looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderServiceBean.java[]
+----
+
+Before the execution with the REST API a service method invocation must be allowed in the <<rest_api_v2_services_config, configuration file>>. The `sales-rest-services.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
+
+[source, properties]
+----
+cuba.rest.servicesConfig = +com/company/sales/sales-rest-services.xml
+----
+
+`sales-rest-services.xml` contents:
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-services.xml[]
+----
+
+To invoke the service method the following *GET* request must be executed:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/calculatePrice?orderNumber=00001
+
+The request URL parts:
+
+* `sales_OrderService` - a service name
+* `calculatePrice` - a method name
+* `orderNumber` - an argument name with the value
+
+An OAuth token must be placed to the `Authorization` header with the `Bearer` type.
+
+A service method may return a result of  simple datatype, an entity, an entities collection or a POJO. In our case a BigDecimal is returned, so the response body contains just a number:
+
+  39.2
+
+[[rest_api_v2_ex_service_post]]
+====== Service Method Invocation (POST)
+
+REST API allows execution not only of methods that have arguments of simple datatypes, but also of methods with the following arguments:
+
+* entities
+* entities collections
+* POJOs
+
+Suppose, we added a new method to the `OrderService` created in the previous section:
+
+[source, java]
+----
+@Override
+public OrderValidationResult validateOrder(Order order, Date validationDate){
+    OrderValidationResult result=new OrderValidationResult();
+    result.setSuccess(false);
+    result.setErrorMessage("Validation of order "+order.getNumber()+" failed. validationDate parameter is: "+validationDate);
+    return result;
+}
+----
+
+`OrderValidationResult` class looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderValidationResult.java[]
+----
+
+The new method has an `Order` entity in the arguments list and returns a POJO.
+
+Before the invocation with the REST API the method must be allowed, so we add a record to the `sales-rest-services.xml` configuration file (it was described in the <<rest_api_v2_ex_service_get>>).
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-services-2.xml[]
+----
+
+The `validateOrder` service method may be called with the *POST* request on the address:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/validateOrder
+
+In case of the POST request parameters are passed in the request body. The request body must contain a JSON object, each field of this object corresponds to the service method argument.
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-validateOrder-service-request.json[]
+----
+
+An OAuth token must be placed to the `Authorization` header with the `Bearer` type.
+
+The REST API method returns a serialized POJO:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-validateOrder-service-response.json[]
+----
+
+[[rest_api_v2_ex_file_download]]
+====== Files Downloading
+
+When downloading a file, passing a security token in the request header is often inconvenient. It is desirable to have a URL for downloading that may be put to the *src* attribute of the *img* tag.
+
+As a solution, an OAuth token can also be passed in the request URL as a parameter with the *access_token* name.
+
+For example, an image is uploaded to the application. Its FileDescriptor id is `44809679-e81c-e5ae-dd81-f56f223761d6`.
+
+In this case a URL for downloading the image will look like this:
+
+  http://localhost:8080/app/rest/v2/files/44809679-e81c-e5ae-dd81-f56f223761d6?access_token=a2f0bb4e-773f-6b59-3450-3934cbf0a2d6
 
 [[scheduled_tasks]]
 ==== Scheduled Tasks Execution
