@@ -1,24 +1,24 @@
 @Inject
 private Accordion accordion;
-private boolean detailsInitialized;
+
+private boolean tabInitialized;
 
 @Override
-public void init(Map<String, Object> params){
-    Accordion.Tab tabBoston = accordion.getTab("tabBoston");
-    Accordion.Tab tabLondon = accordion.getTab("tabLondon");
-    accordion.addListener(new Accordion.TabChangeListener(){
+public void init(Map<String, Object> params) {
+    accordion.addListener(new Accordion.TabChangeListener() {
         @Override
-        public void tabChanged(Accordion.Tab newTab){
-            if ("tabCambridge".equals(newTab.getName())){
-                initDetails();
+        public void tabChanged(Accordion.Tab newTab) {
+            if ("tabCambridge".equals(newTab.getName())) {
+                initCambridgeTab();
             }
         }
     });
 }
 
-private void initDetails(){
-    if (detailsInitialized){
+private void initCambridgeTab() {
+    if (tabInitialized) {
         return;
     }
-    detailsInitialized=true;
+    tabInitialized = true;
+    // initialization code here
 }
