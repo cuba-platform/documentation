@@ -46,6 +46,8 @@ image::Components_new.png[align="center"]
 
 | <<gui_RichTextArea,RichTextArea>>| image:gui_RichTextArea.png[]
 
+| <<gui_SourceCodeEditor, SourceCodeEditor>>| image:gui_SourceCodeEditor_1.png[]
+
 | |
 
 | *Date inputs*| 
@@ -2814,6 +2816,88 @@ Elements of searchPickerField::
 
 '''
 
+[[gui_SourceCodeEditor]]
+====== SourceCodeEditor
+
+`SourceCodeEditor` is a component to display and enter source code. It is multi-line text area featured with code highlighting and optional print margin and gutter with line numbers.
+
+XML-name of the component: `sourceCodeEditor`.
+
+image::gui_SourceCodeEditor_dia.png[align="center"]
+
+`SourceCodeEditor` is implemented for *Web Client*.
+
+Basically, `SourceCodeEditor` mostly replicates the functionality of the <<gui_TextField,TextField>> component and has the following specific attributes:
+
+[[gui_sourceCodeEditor_handleTabKey]]
+* if `handleTabKey` is `true`, the *Tab* button on the keyboard is handled to indent lines, when `false`, it is used to advance the cursor or focus to the next tab stop. This attribute should be set when the screen is initialized and will not work if changed at a runtime.
+
+All following properties can be easily changed at a runtime:
+[[gui_sourceCodeEditor_highlightActiveLine]]
+* `highlightActiveLine` is used to highlight the line the caret is on.
+
+[[gui_sourceCodeEditor_mode]]
+* `mode` provides the list of languages supported for the syntax highlight. This list is defined in the `Mode` enumeration of the `SourceCodeEditor` interface and includes the following languages: Java, HTML, XML, Groovy, SQL, JavaScript, Properties, and Text with no highlight.
+
+[[gui_sourceCodeEditor_printMargin]]
+* `printMargin` attribute sets if the printing edge line should be displayed or hidden.
+
+[[gui_sourceCodeEditor_showGutter]]
+* `showGutter` is used to hide or show the left gutter with line numbers.
+
+Below is an example of `SourceCodeEditor` component adjustable at a runtime.
+
+XML-descriptor:
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/sourceCodeEditor_1.xml[]
+----
+The controller:
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/sourceCodeEditor_2.java[]
+----
+The result will be:
+
+image::gui_SourceCodeEditor_1.png[align="center"]
+
+`SourceCodeEditor` can also support code autocomplete provided by the `Suggester` class. To activate word completion, the `setSuggester` method should be invoked, for example:
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/sourceCodeEditor_1.java[]
+----
+
+The result:
+
+image::gui_SourceCodeEditor_2.png[align="center"]
+
+'''
+
+Attributes of sourceCodeEditor::
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_colspan,colspan>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_sourceCodeEditor_handleTabKey,handleTabKey>> -
+<<gui_attr_height,height>> -
+<<gui_sourceCodeEditor_highlightActiveLine,highlightActiveLine>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_sourceCodeEditor_mode,mode>> -
+<<gui_sourceCodeEditor_printMargin,printMargin>> -
+<<gui_attr_property,property>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_attr_rowspan,rowspan>> -
+<<gui_sourceCodeEditor_showGutter,showGutter>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+'''
 [[gui_Table]]
 ====== Table
 
@@ -3389,7 +3473,7 @@ Attributes of textField::
 <<gui_attr_visible,visible>> -
 <<gui_attr_width,width>>
 
-Elements textField::
+Elements of textField::
 <<gui_validator,validator>>
 
 '''
@@ -3803,6 +3887,8 @@ Elements of twinColumn::
 [[gui_layouts]]
 ===== Containers
 
+<<gui_Accordion, Accordion>>
+
 <<gui_BoxLayout,BoxLayout>>
 
 <<gui_ButtonsPanel,ButtonsPanel>>
@@ -3822,6 +3908,78 @@ Elements of twinColumn::
 <<gui_SplitPanel,SplitPanel>>
 
 <<gui_TabSheet,TabSheet>>
+
+[[gui_Accordion]]
+====== Accordion
+
+`Accordion` is a container for collapsible content that allows you to toggle between hiding and showing large amount of content. The `Accordion` container is implemented for *Web Client*.
+
+image::gui_accordion.png[align="center"]
+
+XML-name of the component: `accordion`.
+An example description of an accordion in a screen XML-descriptor:
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/accordion_1.xml[]
+----
+
+The `accordion` component should contain nested `tab` elements describing tabs. Each tab is a container  with a vertical components layout similar to <<gui_TabSheet,TabSheet>>. Accordion container can be used if the application page is limited in space or the tab title is too long to be displayed in the `TabSheet`. Accordion is featured with a smooth transition animation.
+
+`tab` element attributes:
+
+* `id` – tab identifier. Please note that tabs are not components and their IDs are used only within the `Accordion` in order to work with tabs from the controller.
+
+* <<gui_attr_caption,caption>> – tab caption.
+
+* <<gui_attr_icon,icon>> - defines icon location in theme catalog. Detailed information on recommended icon placement is available in <<gui_themes>>.
+
+[[gui_accordion_tab_lazy]]
+* `lazy` – sets lazy loading for tab content.
++
+Lazy-tabs do not load their content when the screen is opened, which reduces the number of components in memory. Components within a tab are loaded only when a user selects the tab. Additionally, if a lazy-tab includes visual components linked to a <<datasources, datasource>> containing a JPQL query, this query is not executed as well. As a result, screen opens faster, and data is loaded only when the user requests it by selecting this tab.
++
+Please note that the components located on a lazy tab do not exist when the screen is opened. Therefore they cannot be <<screen_controller_injection,injected>> into a controller and cannot be obtained by invoking `getComponent()` in the controller's `init()` method. The lazy tab components can be accessed only after the user opens the tab. This moment may be intercepted using `TabSheet.TabChangeListener`, for example:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/accordion_1.java[]
+----
++
+By default, tabs are not `lazy`, which means that all their content is loaded when a screen is opened.
+
+An `accordion` tab can contain any other visual container, such as table, grid etc:
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/accordion_2.xml[]
+----
+image::gui_accordion_2.png[align="center"]
+
+'''
+
+Attributes of accordion::
+<<gui_attr_colspan, colspan>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_id,id>> -
+<<gui_attr_rowspan, rowspan>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Attributes of tab::
+<<gui_attr_caption,caption>> -
+<<gui_attr_description,description>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_expand,expand>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_accordion_tab_lazy,lazy>> -
+<<gui_attr_margin,margin>> -
+<<gui_attr_spacing,spacing>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_visible,visible>>
+
+'''
 
 [[gui_BoxLayout]]
 ====== BoxLayout
@@ -4207,9 +4365,9 @@ include::{sourcesdir}/gui_vcl/htmlBox_1.xml[]
 ----
 
 [[gui_htmlBox_template]]
-`template` attribute defines the name of a HTML file located in the `layouts` subdirectory of your theme. You should create a <<web_theme_extension,theme extension>> or a <<web_theme_creation,custom theme>> before creating a template. For example, if your theme is Halo and the attribute contains `my_template`, the template file should be `modules/web/themes/halo/layouts/my_template.html`.
+`template` attribute defines the name of an HTML file located in the `layouts` subdirectory of your theme. You should create a <<web_theme_extension,theme extension>> or a <<web_theme_creation,custom theme>> before creating a template. For example, if your theme is Halo and the attribute contains `my_template`, the template file should be `modules/web/themes/halo/layouts/my_template.html`.
 
-Content of the HTML templated located in the `modules/web/themes/halo/layouts/sample.html` file:
+Content of the HTML template located in the `modules/web/themes/halo/layouts/sample.html` file:
 
 [source, html]
 ----
