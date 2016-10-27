@@ -14,8 +14,8 @@ private SimpleCalendarEvent generateEvent(String caption, String description, St
     SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm");
     calendarEvent.setCaption(caption);
     calendarEvent.setDescription(description);
-    calendarEvent.setStart(df.parse(start, new ParsePosition(0)));
-    calendarEvent.setEnd(df.parse(end, new ParsePosition(0)));
+    calendarEvent.setStart(df.parse(start));
+    calendarEvent.setEnd(df.parse(end));
     calendarEvent.setAllDay(allDay);
     calendarEvent.setStyleName(style);
     return calendarEvent;
