@@ -4,17 +4,19 @@ public class MyEntityListener implements
         BeforeUpdateEntityListener<MyEntity> {
 
     @Inject
-    protected Persistence persistence;
+    protected Metadata metadata;
 
     @Override
-    public void onBeforeInsert(MyEntity entity) {
-        EntityManager em = persistence.getEntityManager();
+    public void onBeforeInsert(MyEntity entity, EntityManager entityManager) {
+        Foo foo = metadata.create(Foo.class);
         ...
+        entity.setFoo(foo);
+        entityManager.persist(foo);
     }
 
     @Override
-    public void onBeforeUpdate(MyEntity entity) {
-        EntityManager em = persistence.getEntityManager();
+    public void onBeforeUpdate(MyEntity entity, EntityManager entityManager) {
+        Foo foo = entityManager.find(Foo.class, entity.getFoo().getId());
         ...
     }
 }
