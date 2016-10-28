@@ -1,0 +1,1 @@
+calendarEvent.setStyleName("event-green");
