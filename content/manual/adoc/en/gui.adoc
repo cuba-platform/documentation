@@ -547,15 +547,15 @@ include::gui_vcl.adoc[]
 [[datasources]]
 ==== Datasources
 
-Datasources provide work of data-aware components.
+Datasources provide data to data-aware components.
 
-Visual components themselves do not access *Middleware* and get entity instances from related datasources. Furthermore, one datasource can work with multiple visual components if they need the same instance or set of instances.
+Visual components themselves do not access Middleware: they get entity instances from linked datasources. Furthermore, one datasource can work with multiple visual components if they need the same instance or set of instances.
 
-* When the user changes the value in the component, the new value is set for the entity attribute in the datasource
+* When a user changes a value in the component, the new value is set for the entity attribute in the datasource.
 
-* When the entity attribute is modified in the code, the new value is set and displayed in the visual component 
+* When the entity attribute is modified in the code, the new value is set and displayed in the visual component.
 
-* User input can be monitored both by the <<datasource_listeners,datasource listener>> and the value listener of the component – they are fired sequentially. 
+* User input can be monitored both by <<datasource_listeners,datasource listeners>> and value listeners on the component – they are notified sequentially.
 
 * To read or write the value of an attribute in the application code, it is recommended to use the datasource, rather than the component. Below is an example of reading the attribute:
 +
@@ -564,29 +564,29 @@ Visual components themselves do not access *Middleware* and get entity instances
 include::{sourcesdir}/gui/datasources_1.java[]
 ---- 
 +
-As can be seen, working entity attribute values through the component requires type casting and, in case of the <<gui_FieldGroup,FieldGroup>>, specifying the attribute name as a string. At the same time, if the instance is obtained from the datasource via the `getItem()` method, the values of attributes can be read and modified directly. 
+As you can see, working with entity attribute values through a component requires type casting and, in case of <<gui_FieldGroup,FieldGroup>>, specifying the attribute name as a string. At the same time, if the instance is obtained from the datasource via the `getItem()` method, the values of attributes can be read and modified directly.
+
+Datasources also track changes in entities contained therein and can send modified instances back to the middleware for storing in the database.
 
 [WARNING]
 ====
-Typically, the visual component is bound to the attribute that directly belongs to the entity in the datasource. In the example above, the component is bound to the `customer` attribute of the `Order` entity.
+Typically, a visual component is bound to an attribute that directly belongs to the entity in the datasource. In the example above, the component is bound to the `customer` attribute of the `Order` entity.
 
-A component can be associated with an attribute of a related entity, for example, `customer.name`. In this case, the component will display the value of the name attribute, however when the user changes the value, the datasource listeners will not be invoked and the changes will not be saved. Therefore, it makes sense to bind the component to second-order entity attributes only if they are intended for display. For example in a <<gui_Label,Label>>, a <<gui_Table,Table>> column, or in a <<gui_TextField,TextField>>, where `editable = false`.
+A component can also be associated with an attribute of a related entity, for example, `customer.name`. In this case, the component will display the value of the `name` attribute, however when the user changes the value, the datasource listeners will not be invoked and the changes will not be saved. Therefore, it makes sense to bind the component to second-level entity attributes only if they are intended for display. For example in a <<gui_Label,Label>>, a <<gui_Table,Table>> column, or in a <<gui_TextField,TextField>>, where `editable = false`.
 ====
 
-datasources also track changes in entities contained therein and can send modified instances back to the middleware for storing in the database.
-
-The basic sources of interfaces are described below.
+The basic interfaces of datasources are described below.
 
 .Datasource interfaces
 image::Datasources.png[align="center"]
 
-* `Datasource` is a simple data source designed to work with one entity instance. The instance is set by the `setItem()` method and is accessed via `getItem()`. 
+* `Datasource` is a simple datasource designed to work with one entity instance. The instance is set by the `setItem()` method and is accessed via `getItem()`.
 +
 `DatasourceImpl` class is the standard implementation of such datasource, which is used, for instance, as a main datasource on entity <<screen_edit,edit screens>>.
 
 * `CollectionDatasource` is a datasource designed to work with a collection of entity instances. The collection is loaded with the invocation of the `refresh()` method, instance keys are accessible through the `getItemIds()` method. The `setItem()` method sets the "current" instance of the collection and `getItem()` returns it (for example, the one that corresponds to the currently selected table row).
 +
-The way to load collections is determined by implementation. The most typical one is loading from Middleware via <<dataManager,DataManager>>; in this case, `setQuery()`, `setQueryFilter()` are used to form a JPQL query.
+The way of loading collections is determined by implementation. The most typical one is loading from Middleware via <<dataManager,DataManager>>; in this case, `setQuery()`, `setQueryFilter()` are used to form a JPQL query.
 +
 `CollectionDatasourceImpl` class is the standard implementation of such datasources, which is used on screens with entity lists.
 
@@ -600,15 +600,15 @@ Standard implementation is the `HierarchicalDatasourceImpl` class.
 
 * `NestedDatasource` is a datasource designed to work with instances that are loaded in an attribute of another entity. In this case, a datasource that contains a parent entity is accessible via `getMaster()`, and <<metaProperty,meta property>> that corresponds to the parent attribute containing instances of this datasource is accessible via `getProperty()`.
 +
-For example an entity instance `Order` which contains a reference to the `Customer` instance is set in the `dsOrder` datasource. Then, to link the `Customer` instance with visual components, it is enough to create `NestedDatasource` with `dsOrder as parent` and meta property to point to the `Order.customer` attribute.
+For example an `Order` instance which contains a reference to the `Customer` instance is set in the `dsOrder` datasource. Then, to link the `Customer` instance with visual components, it is enough to create `NestedDatasource` with `dsOrder` as parent and meta property to point to the `Order.customer` attribute.
 
 ** `PropertyDatasource` is a subtype of `NestedDatasource`, designed to work with one instance or collection of related entities that are not embedded.
 +
-Standard implementations: for working with one instance – `PropertyDatasourceImpl`, with a collection – `CollectionPropertyDatasourceImpl`, `GroupPropertyDatasourceImpl`, `HierarchicalPropertyDatasourceImpl`. The latter also implement the `CollectionDatasource` interface, however some of its irrelevant methods associated with loading like `setQuery()` throw `UnsupportedOperationException`.
+Standard implementations: for working with one instance – `PropertyDatasourceImpl`, with a collection – `CollectionPropertyDatasourceImpl`, `GroupPropertyDatasourceImpl`, `HierarchicalPropertyDatasourceImpl`. The latter also implements the `CollectionDatasource` interface, however some of its irrelevant methods like `setQuery()` throw `UnsupportedOperationException`.
 
 ** `EmbeddedDatasource` is a subtype of `NestedDatasource`, which contains an instance of an embedded entity.
 +
-Standard implementation is the `EmbeddedDatasourceImpl class`.
+Standard implementation is the `EmbeddedDatasourceImpl` class.
 
 * `RuntimePropsDatasource` is a specific datasource, designed to work with <<dynamic_attributes,dynamic attributes>> of entities.
 
