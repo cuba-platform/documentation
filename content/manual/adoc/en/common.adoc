@@ -130,10 +130,27 @@ In this manual, if an annotation is identified by a simple class name, it refers
 [[entity_class_annotations]]
 ====== Class Annotations
 
-[[entity_annotation]]
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Entity.html$$[@javax.persistence.Entity]`::
+[[embeddable_annotation]]
+@Embeddable::
 +
 --
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Embeddable.html[javax.persistence.Embeddable].
+
+Defines an embedded entity stored in the same table as the owning entity.
+
+<<metaclass_annotation,@MetaClass>> annotation should be used to specify the entity name.
+--
+
+[[enableRestore_annotation]]
+@EnableRestore::
+Indicates that the entity instances are available for recovery after <<soft_deletion,soft deletion>> on the `core$Entity.restore` screen available through the *Administration > Data Recovery* main menu item.
+
+[[entity_annotation]]
+@Entity::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Entity.html[javax.persistence.Entity].
+
 Declares a class to be a data model entity.
 
 Parameters:
@@ -148,51 +165,16 @@ Example:
 ----
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/MappedSuperclass.html$$[@javax.persistence.MappedSuperclass]`::
-+
-Defines that the class is an ancestor for some entities and its attributes must be used as part of descendant entities. Such class is not associated with any particular database table.
+[[extends_annotation]]
+@Extends::
+Indicates that the entity is an extension and it should be used everywhere instead of the base entity. See <<extension>>.
 
-[[table_annotation]]
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Table.html$$[@javax.persistence.Table]`::
-+
---
-Defines database table for the given entity.
-
-Parameters:
-
-* `name` – the table name
-
-Example:
-
-[source, java]
-----
-@Table(name = "SALES_CUSTOMER")
-----
---
-
-[[embeddable_annotation]]
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Embeddable.html$$[@javax.persistence.Embeddable]`::
+[[discriminatorColumn_annotation]]
+@DiscriminatorColumn::
 +
 --
-Defines an embedded entity stored in the same table as the owning entity.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/DiscriminatorColumn.html[javax.persistence.DiscriminatorColumn].
 
-<<metaclass_annotation,@MetaClass>> annotation should be used to specify the entity name.
---
-
-[[inheritance_annotation]]
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Inheritance.html$$[@javax.persistence.Inheritance]`::
-+
---
-Defines the inheritance strategy to be used for an entity class hierarchy. It is specified on the entity class that is the root of the entity class hierarchy.
-
-Parameters:
-
-* `strategy` – inheritance strategy, `++SINGLE_TABLE++` by default
---
-
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/DiscriminatorColumn.html$$[javax.persistence.DiscriminatorColumn]`::
-+
---
 Is used for defining a database column responsible for the distinction of entity types in the cases of `++SINGLE_TABLE++` and `JOINED` inheritance strategies.
 
 Parameters:
@@ -208,9 +190,12 @@ Example:
 ----
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/DiscriminatorValue.html$$[@javax.persistence.DiscriminatorValue]`::
+[[discriminatorValue_annotation]]
+@DiscriminatorValue::
 +
 --
+See http://docs.oracle.com/javaee/7/api/javax/persistence/DiscriminatorValue.html[javax.persistence.DiscriminatorValue].
+
 Defines the discriminator column value for this entity.
 
 Example:
@@ -221,26 +206,68 @@ Example:
 ----
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/PrimaryKeyJoinColumn.html$$[@javax.persistence.PrimaryKeyJoinColumn]`::
+[[inheritance_annotation]]
+@Inheritance::
 +
 --
-Is used in the case of `JOINED` inheritance strategy to specify a foreign key column for the entity which refers to the primary key of the ancestor entity.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Inheritance.html[javax.persistence.Inheritance].
+
+Defines the inheritance strategy to be used for an entity class hierarchy. It is specified on the entity class that is the root of the entity class hierarchy.
 
 Parameters:
 
-* `name` – the name of the foreign key column of the entity
-* `referencedColumnName` – the name of primary key column of the ancestor entity
+* `strategy` – inheritance strategy, `++SINGLE_TABLE++` by default
+--
+
+[[listeners_annotation]]
+@Listeners::
++
+--
+Defines the list of listeners intended for reaction to the entity instance lifecycle events on the middle <<app_tiers,tier>>.
+
+The annotation value should be a string or an array of strings containing class names of the listeners. See <<entity_listeners>>.
+
+The strings here are used instead of class references because classes of the listeners are contained only on middleware and are inaccessible for client code, while the classes of the entities are used on all tiers.
+
+Examples:
+[source, java]
+----
+@Listeners("com.haulmont.cuba.security.listener.UserEntityListener")
+----
+
+[source, java]
+----
+@Listeners({"com.company.sales.entity.FooListener","com.company.sales.entity.BarListener"})
+----
+--
+
+[[mappedSuperclass_annotation]]
+@MappedSuperclass::
++
+See http://docs.oracle.com/javaee/7/api/javax/persistence/MappedSuperclass.html[javax.persistence.MappedSuperclass].
+
+Defines that the class is an ancestor for some entities and its attributes must be used as part of descendant entities. Such class is not associated with any particular database table.
+
+[[metaclass_annotation]]
+@MetaClass::
++
+--
+Is used for declaring non-persistent or <<embeddable_annotation,embedded>> entity (meaning that `@javax.persistence.Entity` annotation cannot be applied)
+
+Parameters:
+
+* `name` – the entity name, must begin with a prefix, separated by a `$` sign. It is recommended to use a short name of the project as prefix to form a separate namespace.
 
 Example:
 
 [source, java]
 ----
-@PrimaryKeyJoinColumn(name = "CARD_ID", referencedColumnName = "ID")
+@MetaClass(name = "sales$Customer")
 ----
 --
 
-[[namePattern]]
-`@NamePattern`::
+[[namePattern_annotation]]
+@NamePattern::
 +
 --
 Determines the way of getting the name of the instance returned by the `Instance.getInstanceName()` method.
@@ -264,75 +291,71 @@ Examples:
 ----
 --
 
-[[listeners_annotation]]
-`@Listeners`::
+[[postConstruct_entity_annotation]]
+@PostConstruct::
+This annotation can be specified for a method. Such method will be invoked right after the entity instance is created by the <<metadata,Metadata.create()>> method. This is convenient when instance initialization requires invocation of <<managed_beans,managed beans>>. For example, see <<init_values_in_class>>.
+
+[[primaryKeyJoinColumn_annotation]]
+@PrimaryKeyJoinColumn::
 +
 --
-Defines the list of listeners intended for reaction to the entity instance lifecycle events on the middle <<app_tiers,tier>>.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/PrimaryKeyJoinColumn.html[javax.persistence.PrimaryKeyJoinColumn].
 
-The annotation value should be a string or an array of strings containing class names of the listeners. See <<entity_listeners>>.
-
-The strings here are used instead of class references because classes of the listeners are contained only on middleware and are inaccessible for client code, while the classes of the entities are used on all tiers.
-
-Examples:
-[source, java]
-----
-@Listeners("com.haulmont.cuba.security.listener.UserEntityListener")
-----
-
-[source, java]
-----
-@Listeners({"com.company.sales.entity.FooListener","com.company.sales.entity.BarListener"})
-----
---
-
-[[metaclass_annotation]]
-`@MetaClass`::
-+
---
-Is used for declaring non-persistent or <<embeddable_annotation,embedded>> entity (meaning that `@javax.persistence.Entity` annotation cannot be applied)
+Is used in the case of `JOINED` inheritance strategy to specify a foreign key column for the entity which refers to the primary key of the ancestor entity.
 
 Parameters:
 
-* `name` – the entity name, must begin with a prefix, separated by a `$` sign. It is recommended to use a short name of the project as prefix to form a separate namespace.
+* `name` – the name of the foreign key column of the entity
+* `referencedColumnName` – the name of primary key column of the ancestor entity
 
 Example:
 
 [source, java]
 ----
-@MetaClass(name = "sales$Customer")
+@PrimaryKeyJoinColumn(name = "CARD_ID", referencedColumnName = "ID")
 ----
 --
 
-`@SystemLevel`:: Indicates that the entity is system only and should not be available for selection in various lists of entities, such as <<gui_Filter,generic filter>> parameter types or <<dynamic_attributes,dynamic attribute>> type.
+[[systemLevel_annotation]]
+@SystemLevel::
+Indicates that the entity is system only and should not be available for selection in various lists of entities, such as <<gui_Filter,generic filter>> parameter types or <<dynamic_attributes,dynamic attribute>> type.
 
-`@EnableRestore`:: Indicates that the entity instances are available for recovery after <<soft_deletion,soft deletion>> on the `core$Entity.restore` screen available through the *Administration > Data Recovery* main menu item.
+[[table_annotation]]
+@Table::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Table.html[javax.persistence.Table].
 
-`@TrackEditScreenHistory`:: Indicates that <<screen_edit, editor screens>> opening history will be recorded with the ability to display it on the `sec$ScreenHistory.browse` screen available through the *Help > History* main menu item.
+Defines database table for the given entity.
 
-`@Extends`:: Indicates that the entity is an extension and it should be used everywhere instead of the base entity. See <<extension>>.
+Parameters:
 
-[[postConstruct_entity_annotation]]
-`@PostConstruct`:: This annotation can be specified for a method. Such method will be invoked right after the entity instance is created by the <<metadata,Metadata.create()>> method. This is convenient when instance initialization requires invocation of <<managed_beans,managed beans>>. For example, see <<init_values_in_class>>.
+* `name` – the table name
+
+Example:
+
+[source, java]
+----
+@Table(name = "SALES_CUSTOMER")
+----
+--
+
+[[trackEditScreenHistory_annotation]]
+@TrackEditScreenHistory::
+Indicates that <<screen_edit, editor screens>> opening history will be recorded with the ability to display it on the `sec$ScreenHistory.browse` screen available through the *Help > History* main menu item.
+
 
 [[entity_attr_annotations]]
 ====== Attribute Annotations
 
 Attribute annotations should be set for the corresponding fields, with the following exception: if there is a need to declare read-only, non-persistent attribute `foo`, it is sufficient to create `getFoo()` method and annotate it with `@MetaProperty`.
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Transient.html$$[@javax.persistence.Transient]`::
+[[column_annotation]]
+@Column::
 +
 --
-Indicates that field is not stored in the database, meaning it is non-persistent.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Column.html[javax.persistence.Column].
 
-The fields supported by JPA types (See link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html$$[http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html]) __are persistent by default__, that is why `@Transient` annotation is mandatory for non-persistent attribute of such type.
-
-<<metaProperty_annotation,@MetaProperty>> annotation is required if `@Transient` attribute should be included in metadata.
---
-
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Column.html$$[@javax.persistence.Column]`::
-+
---
 Defines DB column for storing attribute values.
 
 Parameters:
@@ -344,105 +367,77 @@ Parameters:
 * `nullable` – (optional parameter, `true` by default) – determines if an attribute can contain `null` value. When `nullable = false` JPA ensures that the field has a value when saved. In addition, visual components working with the attribute can request the user to enter a value.
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Id.html$$[@javax.persistence.Id ]`::
+[[composition_annotation]]
+@Composition::
 +
 --
-Indicates that the attribute is the entity primary key. Typically, this annotation is set on the field of a base class, such as <<base_entity_classes,BaseUuidEntity>>. Using this annotation for a specific entity class is required only in case of inheritance from the `BaseStringIdEntity` base class (i.e. creating an entity with a string primary key).
---
+Indicates that the relationship is a composition, which is a stronger variant of the association. Essentially this means that the related entity should only exist as a part of the owning entity, i.e. be created and deleted together with it.
 
-[[manyToOne]]
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToOne.html$$[@javax.persistence.ManyToOne]`::
-+
---
-Defines a reference attribute with many-to-one relationship type.
-
-Parameters:
-
-* `fetch` – (`EAGER` by default) parameter that determines whether JPA will <<eager_fetching, eagerly>> fetch the referenced entity. This parameter should always be set to `LAZY`, since retrieval of referenced entity in CUBA-application is determined dynamically by the <<views,views>> mechanism.
-
-* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
-
-For example, several `Order` instances refer to the same `Customer` instance. In this case the `Order.customer` attribute should have the following annotations:
-
-[source, java]
-----
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "CUSTOMER_ID")
-protected Customer customer;
-----
---
-
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/OneToMany.html$$[@javax.persistence.OneToMany]`::
-+
---
-Defines a collection attribute with one-to-many relationship type.
-
-Parameters:
-
-* `mappedBy` – the field of the referenced entity, which owns the relationship.
-
-* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using Java generics.
-
-* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will <<eager_fetching, eagerly>> fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
-
-For example, several `Item` instances refer to the same `Order` instance using `@ManyToOne` field `Item.order`. In this case the `Order` class can contain a collection of `Item` instances:
+For example, a list of items in an order (`Order` class contains a collection of `Item` instances):
 
 [source, java]
 ----
 @OneToMany(mappedBy = "order")
-protected Set<Item> items;
+@Composition
+protected List<Item> items;
 ----
+
+Choosing `@Composition` annotation as the relationship type enables making use of a special commit mode for datasources in <<screen_edit,edit screens>>. In this mode, the changes to related instances are only stored when the master entity is committed. See <<composition_recipe>> for details.
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/OneToOne.html$$[@javax.persistence.OneToOne]`::
+[[embedded_annotation]]
+@Embedded::
 +
 --
-Defines a reference attribute with one-to-one relationship type.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Embedded.html[javax.persistence.Embedded].
 
-Parameters:
+Defines a reference attribute of embeddable type. The referenced entity should have `@Embeddable` annotation.
 
-* `fetch` – (`EAGER` by default) determines whether JPA will <<eager_fetching, eagerly>> fetch the referenced entity. This parameter should be set to `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
-
-* `mappedBy` – the field of the referenced entity, which owns the relationship. It must only be set on the non-owning side of the relationship.
-
-* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
-
-Example of owning side of the relationship in the `Driver` class:
+Example:
 
 [source, java]
 ----
-@OneToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "CALLSIGN_ID")
-protected DriverCallsign callsign;
+@Embedded
+protected Address address;
 ----
+--
 
-Example of non-owning side of the relationship in the `DriverCallsign` class:
+[[embeddedParameters_annotation]]
+@EmbeddedParameters::
++
+--
+By default, <<orm,ORM>> does not create an instance of embedded entity if all its attributes are null in the database. You can use the `@EmbeddedParameters` annotation to specify a different behavior when an instance is always non-null, for example:
+
 [source, java]
 ----
-@OneToOne(fetch = FetchType.LAZY, mappedBy = "callsign")
-protected Driver driver;
+@Embedded
+@EmbeddedParameters(nullAllowed = false)
+protected Address address;
 ----
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToMany.html$$[@javax.persistence.ManyToMany]`::
+[[id_annotation]]
+@Id::
 +
 --
-Defines a collection attribute with many-to-many relationship type.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Id.html[javax.persistence.Id].
 
-Many-to-many relationship always has an owning side and can also have inverse, non-owning side. The owning side should be marked with additional `@JoinTable` annotation, and the non-owning side – with `mappedBy` parameter.
-
-Parameters:
-
-* `mappedBy` – the field of the referenced entity, which owns the relationship. It must only be set on the non-owning side of the relationship.
-
-* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using Java generics.
-
-* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will <<eager_fetching, eagerly>> fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+Indicates that the attribute is the entity primary key. Typically, this annotation is set on the field of a base class, such as <<base_entity_classes,BaseUuidEntity>>. Using this annotation for a specific entity class is required only in case of inheritance from the `BaseStringIdEntity` base class (i.e. creating an entity with a string primary key).
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/JoinColumn.html$$[@javax.persistence.JoinColumn]`::
+[[ignoreUserTimeZone]]
+@IgnoreUserTimeZone::
 +
 --
+Makes the platform to ignore the user's <<timeZone,time zone>> (if it is set for the current session) for an attribute of the timestamp type (annotated with `@javax.persistence.Temporal.TIMESTAMP`).
+--
+
+[[joinColumn_annotation]]
+@JoinColumn::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/JoinColumn.html[javax.persistence.JoinColumn].
+
 Defines DB column that determines the relationship between entities. Presence of this annotation indicates the owning side of the association.
 
 Parameters:
@@ -459,9 +454,12 @@ protected Customer customer;
 ----
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/JoinTable.html$$[@javax.persistence.JoinTable]`::
+[[joinTable_annotation]]
+@JoinTable::
 +
 --
+See http://docs.oracle.com/javaee/7/api/javax/persistence/JoinTable.html[javax.persistence.JoinTable].
+
 Defines a join table on the owning side of `@ManyToMany` relationship.
 
 Parameters:
@@ -492,85 +490,12 @@ protected Set<Group> groups;
 ----
 --
 
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/OrderBy.html$$[@javax.persistence.OrderBy]`::
-+
---
-Determines the order of elements in a collection attribute at the point when the association is retrieved from the database. This annotation should be specified for ordered Java collections such as `List` or `LinkedHashSet` to get a predictable sequence of elements.
-
-Parameters:
-
-* `value` – string, determines the order in the format:
-
-[source, plain]
-----
-orderby_list::= orderby_item [,orderby_item]*
-orderby_item::= property_or_field_name [ASC | DESC]
-----
-
-Example:
-
-[source, java]
-----
-@OneToMany(mappedBy = "user")
-@OrderBy("createTs")
-protected List<UserRole> userRoles;
-----
---
-
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Embedded.html$$[@javax.persistence.Embedded]`::
-+
---
-Defines a reference attribute of embeddable type. The referenced entity should have `@Embeddable` annotation.
-
-Example:
-
-[source, java]
-----
-@Embedded
-protected Address address;
-----
---
-
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Temporal.html$$[@javax.persistence.Temporal]`::
-+
---
-Specifies the type of the stored value for `java.util.Date` attribute: date, time or date+time.
-
-Parameters:
-
-* `value` – the type of the stored value: `DATE`, `TIME`, `TIMESTAMP`
-
-Example:
-
-[source, java]
-----
-@Column(name = "START_DATE")
-@Temporal(TemporalType.DATE)
-protected Date startDate;
-----
---
-
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Version.html$$[@javax.persistence.Version]`::
-+
---
-Indicates that the annotated field stores a version for <<optimistic_locking, optimistic locking>> support.
-
-Such field is required when an entity class implements the `Versioned` interface (`StandardEntity` base class already contains such field).
-
-Example:
-
-[source, java]
-----
-@Version
-@Column(name = "VERSION")
-private Integer version;
-----
---
-
 [[lob_annotation]]
-`link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Lob.html$$[@javax.persistence.Lob]`::
+@Lob::
 +
 --
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Lob.html[javax.persistence.Lob].
+
 Indicates that the attribute does not have any length restrictions. This annotation is used together with the `@Column` annotation. If `@Lob` is set, the default or explicitly defined length in `@Column` is ignored.
 
 Example:
@@ -583,8 +508,77 @@ private String description;
 ----
 --
 
+[[localizedValue_annotation]]
+@LocalizedValue::
++
+--
+Determines a method for retrieving a localized value for an attribute, using <<messageTools,MessageTools>>`.getLocValue()` method.
+
+Parameters:
+
+* `messagePack` – explicit indication of the package, from which a localized message will be taken, for example, `com.haulmont.cuba.core.entity`.
+
+* `messagePackExpr` – expression defining the path to the attribute, containing a package name from which the localized message should be taken (for example, `proc.messagesPack`). The path starts from the attribute of the current entity.
+
+The annotation in the example below indicates that localized message for the `state` attribute value should be taken from the package name defined in the `messagesPack` attribute of the `proc` entity.
+
+[source, java]
+----
+@Column(name = "STATE")
+@LocalizedValue(messagePackExpr = "proc.messagesPack")
+protected String state;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "PROC_ID")
+protected Proc proc;
+----
+--
+
+[[manyToMany_annotation]]
+@ManyToMany::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToMany.html[javax.persistence.ManyToMany].
+
+Defines a collection attribute with many-to-many relationship type.
+
+Many-to-many relationship always has an owning side and can also have inverse, non-owning side. The owning side should be marked with additional `@JoinTable` annotation, and the non-owning side – with `mappedBy` parameter.
+
+Parameters:
+
+* `mappedBy` – the field of the referenced entity, which owns the relationship. It must only be set on the non-owning side of the relationship.
+
+* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using Java generics.
+
+* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will <<eager_fetching, eagerly>> fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+--
+
+[[manyToOne_annotation]]
+@ManyToOne::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToOne.html[javax.persistence.ManyToOne].
+
+Defines a reference attribute with many-to-one relationship type.
+
+Parameters:
+
+* `fetch` – (`EAGER` by default) parameter that determines whether JPA will <<eager_fetching, eagerly>> fetch the referenced entity. This parameter should always be set to `LAZY`, since retrieval of referenced entity in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
+
+For example, several `Order` instances refer to the same `Customer` instance. In this case the `Order.customer` attribute should have the following annotations:
+
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+--
+
 [[metaProperty_annotation]]
-`@MetaProperty`::
+@MetaProperty::
 +
 --
 Indicates that <<metadata_framework,metadata>> should include the annotated attribute. This annotation can be set for a field or for a getter method, if there is no corresponding field.
@@ -624,7 +618,7 @@ public String getLocValue() {
 --
 
 [[onDelete_annotation]]
-`@OnDelete`::
+@OnDelete::
 +
 --
 Determines related entities handling policy in case of soft deletion of the entity, containing the attribute. See <<soft_deletion>>.
@@ -640,7 +634,7 @@ private Set<Constraint> constraints;
 --
 
 [[onDeleteInverse_annotation]]
-`@OnDeleteInverse`::
+@OnDeleteInverse::
 +
 --
 Determines related entities handling policy in case of soft deletion of the entity from the inverse side of the relationship. See <<soft_deletion>>.
@@ -656,55 +650,145 @@ private Driver driver;
 ----
 --
 
-[[composition_annotation]]
-`@Composition`::
+[[oneToMany_annotation]]
+@OneToMany::
 +
 --
-Indicates that the relationship is a composition, which is a stronger variant of the association. Essentially this means that the related entity should only exist as a part of the owning entity, i.e. be created and deleted together with it.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/OneToMany.html[javax.persistence.OneToMany].
 
-For example, a list of items in an order (`Order` class contains a collection of `Item` instances):
+Defines a collection attribute with one-to-many relationship type.
+
+Parameters:
+
+* `mappedBy` – the field of the referenced entity, which owns the relationship.
+
+* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using Java generics.
+
+* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will <<eager_fetching, eagerly>> fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+For example, several `Item` instances refer to the same `Order` instance using `@ManyToOne` field `Item.order`. In this case the `Order` class can contain a collection of `Item` instances:
 
 [source, java]
 ----
 @OneToMany(mappedBy = "order")
-@Composition
-protected List<Item> items;
+protected Set<Item> items;
 ----
-
-Choosing `@Composition` annotation as the relationship type enables making use of a special commit mode for datasources in <<screen_edit,edit screens>>. In this mode, the changes to related instances are only stored when the master entity is committed. See <<composition_recipe>> for details.
 --
 
-[[localizedValue_annotation]]
-`@LocalizedValue`::
+[[oneToOne_annotation]]
+@OneToOne::
 +
 --
-Determines a method for retrieving a localized value for an attribute, using <<messageTools,MessageTools>>`.getLocValue()` method.
+See http://docs.oracle.com/javaee/7/api/javax/persistence/OneToOne.html[javax.persistence.OneToOne].
+
+Defines a reference attribute with one-to-one relationship type.
 
 Parameters:
 
-* `messagePack` – explicit indication of the package, from which a localized message will be taken, for example, `com.haulmont.cuba.core.entity`.
+* `fetch` – (`EAGER` by default) determines whether JPA will <<eager_fetching, eagerly>> fetch the referenced entity. This parameter should be set to `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
 
-* `messagePackExpr` – expression defining the path to the attribute, containing a package name from which the localized message should be taken (for example, `proc.messagesPack`). The path starts from the attribute of the current entity. 
+* `mappedBy` – the field of the referenced entity, which owns the relationship. It must only be set on the non-owning side of the relationship.
 
-The annotation in the example below indicates that localized message for the `state` attribute value should be taken from the package name defined in the `messagesPack` attribute of the `proc` entity.
+* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
+
+Example of owning side of the relationship in the `Driver` class:
 
 [source, java]
 ----
-@Column(name = "STATE")
-@LocalizedValue(messagePackExpr = "proc.messagesPack")
-protected String state;
+@OneToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CALLSIGN_ID")
+protected DriverCallsign callsign;
+----
 
-@ManyToOne(fetch = FetchType.LAZY)
-@JoinColumn(name = "PROC_ID")
-protected Proc proc;
+Example of non-owning side of the relationship in the `DriverCallsign` class:
+[source, java]
+----
+@OneToOne(fetch = FetchType.LAZY, mappedBy = "callsign")
+protected Driver driver;
 ----
 --
 
-[[ignoreUserTimeZone]]
-`@IgnoreUserTimeZone`::
+[[orderBy_annotation]]
+@OrderBy::
 +
 --
-Makes the platform to ignore the user's <<timeZone,time zone>> (if it is set for the current session) for an attribute of the timestamp type (annotated with `@javax.persistence.Temporal.TIMESTAMP`).
+See http://docs.oracle.com/javaee/7/api/javax/persistence/OrderBy.html[javax.persistence.OrderBy].
+
+Determines the order of elements in a collection attribute at the point when the association is retrieved from the database. This annotation should be specified for ordered Java collections such as `List` or `LinkedHashSet` to get a predictable sequence of elements.
+
+Parameters:
+
+* `value` – string, determines the order in the format:
+
+[source, plain]
+----
+orderby_list::= orderby_item [,orderby_item]*
+orderby_item::= property_or_field_name [ASC | DESC]
+----
+
+Example:
+
+[source, java]
+----
+@OneToMany(mappedBy = "user")
+@OrderBy("createTs")
+protected List<UserRole> userRoles;
+----
+--
+
+[[temporal_annotation]]
+@Temporal::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Temporal.html[javax.persistence.Temporal].
+
+Specifies the type of the stored value for `java.util.Date` attribute: date, time or date+time.
+
+Parameters:
+
+* `value` – the type of the stored value: `DATE`, `TIME`, `TIMESTAMP`
+
+Example:
+
+[source, java]
+----
+@Column(name = "START_DATE")
+@Temporal(TemporalType.DATE)
+protected Date startDate;
+----
+--
+
+[[transient_annotation]]
+@Transient::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Transient.html[javax.persistence.Transient].
+
+Indicates that field is not stored in the database, meaning it is non-persistent.
+
+The fields supported by JPA types (See link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html$$[http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html]) __are persistent by default__, that is why `@Transient` annotation is mandatory for non-persistent attribute of such type.
+
+<<metaProperty_annotation,@MetaProperty>> annotation is required if `@Transient` attribute should be included in metadata.
+--
+
+[[version_annotation]]
+@Version::
++
+--
+See http://docs.oracle.com/javaee/7/api/javax/persistence/Version.html[javax.persistence.Version].
+
+Indicates that the annotated field stores a version for <<optimistic_locking, optimistic locking>> support.
+
+Such field is required when an entity class implements the `Versioned` interface (`StandardEntity` base class already contains such field).
+
+Example:
+
+[source, java]
+----
+@Version
+@Column(name = "VERSION")
+private Integer version;
+----
 --
 
 [[enum_attributes]]
@@ -1341,7 +1425,7 @@ Two views named `++_local++` and `++_minimal++` are available in the views repos
 
 * `++_local++` contains all <<local_attribute, local>> entity attributes.
 
-* `++_minimal++` contains the attributes which are included to the name of the entity instance and specified in the <<namePattern,@NamePattern>> annotation. If the `@NamePattern` annotation is not specified at the entity, this view does not contain any attributes.
+* `++_minimal++` contains the attributes which are included to the name of the entity instance and specified in the <<namePattern_annotation,@NamePattern>> annotation. If the `@NamePattern` annotation is not specified at the entity, this view does not contain any attributes.
 
 The detailed structure of view XML descriptors is explained <<views.xml, here>>.
 
@@ -1723,7 +1807,7 @@ Interface methods:
 * `isTransient()` – checks if a meta-property or an arbitrary attribute is non-persistent.
 * `isEmbedded()` – checks if a meta-property is an embedded object.
 * `isAnnotationPresent()` – checks if an annotation is present on the class or on one of its ancestors.
-* `getNamePatternProperties()` – returns collection of meta-properties of attributes included in the instance name, returned by `Instance.getInstanceName()` method. See <<namePattern,@NamePattern>>.
+* `getNamePatternProperties()` – returns collection of meta-properties of attributes included in the instance name, returned by `Instance.getInstanceName()` method. See <<namePattern_annotation,@NamePattern>>.
 
 You can <<bean_extension,override>> `MetadataTools` bean in your application to extend the set of its methods. The examples of working with the extended interface:
 
