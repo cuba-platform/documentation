@@ -21,4 +21,5 @@ private void initCambridgeTab() {
     }
     tabInitialized = true;
     // initialization code here
+    // use getComponentNN("comp_id") here to get lazy tab's components
 }
