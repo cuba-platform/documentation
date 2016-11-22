@@ -1,0 +1,6 @@
+configure(webModule) {
+    ...
+    dependencies {
+        compile('com.company.thirdparty:jespa:1.1.17')  // from a custom repository
+        compile('jcifs:jcifs:1.3.17')                   // from Maven Central
+        ...

@@ -6,7 +6,6 @@ import com.haulmont.cuba.core.global.GlobalConfig;
 import com.haulmont.cuba.core.global.Messages;
 import com.haulmont.cuba.core.sys.AppContext;
 import com.haulmont.cuba.security.global.LoginException;
-import com.haulmont.cuba.web.auth.ActiveDirectoryHelper;
 import com.haulmont.cuba.web.auth.CubaAuthProvider;
 import com.haulmont.cuba.web.auth.DomainAliasesResolver;
 import jespa.http.HttpSecurityService;
@@ -109,10 +108,7 @@ public class JespaAuthProvider extends HttpSecurityService implements CubaAuthPr
         } else {
             int slashPos = login.indexOf('\\');
             if (slashPos <= 0) {
-                throw new LoginException(
-                        messages.getMessage(ActiveDirectoryHelper.class, "activeDirectory.invalidName", loc),
-                        login
-                );
+                throw new LoginException("Invalid name: %s", login);
             }
             String domainAlias = login.substring(0, slashPos);
             domain = aliasesResolver.getDomainName(domainAlias).toUpperCase();
@@ -122,10 +118,7 @@ public class JespaAuthProvider extends HttpSecurityService implements CubaAuthPr
 
         DomainInfo domainInfo = domains.get(domain);
         if (domainInfo == null) {
-            throw new LoginException(
-                    messages.getMessage(ActiveDirectoryHelper.class, "activeDirectory.unknownDomain", loc),
-                    domain
-            );
+            throw new LoginException("Unknown domain: %s", domain);
         }
 
         Map<String, String> params = new HashMap<>();
@@ -140,10 +133,7 @@ public class JespaAuthProvider extends HttpSecurityService implements CubaAuthPr
             PasswordCredential credential = new PasswordCredential(userName, password.toCharArray());
             provider.authenticate(credential);
         } catch (SecurityProviderException e) {
-            throw new LoginException(
-                    messages.getMessage(ActiveDirectoryHelper.class, "activeDirectory.authenticationError", loc),
-                    e.getMessage()
-            );
+            throw new LoginException("Authentication error: %s", e.getMessage());
         }
     }
 
