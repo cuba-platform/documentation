@@ -2,7 +2,7 @@
 private BoxLayout container;
 
 @Override
-public void init(Map&lt;String, Object&gt; params) {
+public void init(Map<String, Object> params) {
     SomeFrame frame = openFrame(container, "someFrame");
     frame.setHeight("100%");
     frame.someInitMethod();
