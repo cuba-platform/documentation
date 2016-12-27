@@ -1,0 +1,1 @@
+progressBar.setStyleName(HaloTheme.PROGRESSBAR_POINT);

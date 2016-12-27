@@ -1,0 +1,1 @@
+button.setStyleName(HaloTheme.BUTTON_FRIENDLY);

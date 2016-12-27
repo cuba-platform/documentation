@@ -1,0 +1,1 @@
+textField.setStyleName(HaloTheme.TEXTFIELD_INLINE_ICON);

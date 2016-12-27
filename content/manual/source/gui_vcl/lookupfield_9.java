@@ -1,0 +1,1 @@
+lookupField.setStyleName(HaloTheme.LOOKUPFIELD_BORDERLESS);

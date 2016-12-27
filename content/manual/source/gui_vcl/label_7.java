@@ -1,0 +1,1 @@
+label.setStyleName(HaloTheme.LABEL_COLORED);

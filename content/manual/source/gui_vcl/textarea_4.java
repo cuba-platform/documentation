@@ -1,0 +1,1 @@
+textArea.setStyleName(HaloTheme.TEXTAREA_BORDERLESS);
