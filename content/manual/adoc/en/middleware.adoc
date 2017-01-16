@@ -553,7 +553,7 @@ _Entity Listeners_ are designed to react to the entity instances lifecycle event
 
 A listener is a class implementing one or several interfaces from the `com.haulmont.cuba.core.listener` package. The listener will react to events corresponding to the implemented interfaces.
 
-`BeforeDetachEntityListener`:: 
+BeforeDetachEntityListener::
 +
 --
 `onBeforeDetach()` method is called before the object is detached from <<entityManager,EntityManager>> on transaction commit. 
@@ -561,7 +561,7 @@ A listener is a class implementing one or several interfaces from the `com.haulm
 This listener can be used for populating non-persistent entity attributes before sending it to the client tier.
 --
 
-`BeforeAttachEntityListener`:: 
+BeforeAttachEntityListener::
 +
 --
 `onBeforeAttach()` method is called before the object is attached to the persistence context as a result of `EntityManager.merge()` operation.
@@ -569,22 +569,22 @@ This listener can be used for populating non-persistent entity attributes before
 This listener can be used, for example, to populate persistent entity attributes before saving it to the database.
 --
 
-`BeforeInsertEntityListener`:: 
+BeforeInsertEntityListener::
 `onBeforeInsert()` method is called before a record is inserted into the database. All kinds of operations can be performed with the current <<entityManager,EntityManager>> available within this method.
 
-`AfterInsertEntityListener`:: 
+AfterInsertEntityListener::
 `onAfterInsert()` is called after a record is inserted into database, but before transaction commit. This method does not allow modifications of the current persistence context, however, database modifications can be done using <<queryRunner,QueryRunner>>.
 
-`BeforeUpdateEntityListener`:: 
+BeforeUpdateEntityListener::
 `onBeforeUpdate()` method is called before a record is updated in the database. All kinds of operations can be performed with the current <<entityManager,EntityManager>> available within this method. 
 
-`AfterUpdateEntityListener`:: 
+AfterUpdateEntityListener::
 `onAfterUpdate()` method is called after a record was updated in the database, but before transaction commit. This method does not allow modifications of the current persistence context, however, database modifications can be done using <<queryRunner,QueryRunner>>.
 
-`BeforeDeleteEntityListener`:: 
+BeforeDeleteEntityListener::
 `onBeforeDelete()`method is called before a record is deleted from the database (in the case of <<soft_deletion,soft deletion>> – before updating a record). All kinds of operations can be performed with the current <<entityManager,EntityManager>> available within this method.
 
-`AfterDeleteEntityListener`:: 
+AfterDeleteEntityListener::
 `onAfterDelete()` method is called after a record is deleted from the database (in the case of <<soft_deletion,soft deletion>> – before updating a record), but before transaction commit. This method does not allow modifications of the current persistence context, however, database modifications can be done using <<queryRunner,QueryRunner>>.
 
 An entity listener can be a plain Java class or a managed bean. In the latter case, injection can be used as follows: 
@@ -674,9 +674,9 @@ With this in mind, we recommend using declarative transaction management only fo
 [[transactions_interaction]]
 ===== Examples of Transactions Interaction
 
-[[transactions_interaction_rollback_nested]]
-====== Rollback of a Nested Transaction
-
+Rollback of a Nested Transaction::
++
+--
 If a nested transaction was created via `getTransaction()` and rolled back, then commit of the enclosing transaction will be impossible. For example: 
 
 [source, java]
@@ -685,10 +685,11 @@ include::{sourcesdir}/middleware/transactions_3.java[]
 ----
 
 If the transaction in `methodB()` is created with `createTransaction()` instead, then rolling it back will have no influence on the enclosing transaction in `methodA()`.
+--
 
-[[transactions_interaction_modify_nested]]
-====== Reading and Modifying Data in a Nested Transaction
-
+Reading and Modifying Data in a Nested Transaction::
++
+--
 Let us first have a look at a dependent nested transaction created using `getTransaction()`: 
 
 [source, java]
@@ -704,10 +705,15 @@ include::{sourcesdir}/middleware/transactions_5.java[]
 ----
 
 In the last example, the exception at point (8) will only occur if the entity supports optimistic locking, i.e. if it implements `Versioned` interface.
+--
+
+[[transaction_params]]
+===== Transaction Parameters
 
 [[transaction_timeout]]
-===== Transaction Timeout
-
+Transaction Timeout::
++
+--
 You can set a timeout in seconds for created transaction. When the timeout is exceeded, the transaction is interrupted and rolled back. Transaction timeout effectively limits the maximum duration of a database request.
 
 When transactions are managed programmatically, the timeout is specified by passing `TransactionParams` object to the `Persistence.createTransaction()` method. For example:
@@ -717,7 +723,7 @@ When transactions are managed programmatically, the timeout is specified by pass
 include::{sourcesdir}/middleware/transactions_6.java[]
 ----
 
-In the case of declarative transactions management, `timeout` parameter of the `@Transactional` annotation can be used, for example:
+In case of declarative transactions management, use the `timeout` parameter of the `@Transactional` annotation:
 
 [source, java]
 ----
@@ -725,6 +731,66 @@ include::{sourcesdir}/middleware/transactions_7.java[]
 ----
 
 The default timeout can be defined using the <<cuba.defaultQueryTimeoutSec,cuba.defaultQueryTimeoutSec>> application property.
+--
+
+[[transaction_read_only]]
+Read-only Transactions::
++
+--
+A transaction can be marked as read-only if it is intended only for reading data from the database. For example, all `load` methods of <<dataManager,DataManager>> use read-only transactions by default. Read-only transactions yield better performance because the platform does not execute code that handles possible entity modifications. `BeforeCommit` <<transaction_listeners,transaction listeners>> are not invoked as well.
+
+[WARNING]
+====
+If the persistence context of a read-only transaction contains modified entities, `IllegalStateException` will be thrown on attempt to commit the transaction. It means that you should mark a transaction as read-only only when you are sure that it doesn't modify any entity.
+====
+
+When transactions are managed programmatically, the read-only sign is specified by passing `TransactionParams` object to the `Persistence.createTransaction()` method. For example:
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_8.java[]
+----
+
+In case of declarative transactions management, use the `readOnly` parameter of the `@Transactional` annotation:
+
+[source, java]
+----
+include::{sourcesdir}/middleware/transactions_9.java[]
+----
+--
+
+[[transaction_listeners]]
+===== Transaction Listeners
+
+Transaction listeners are designed to react on transaction lifecycle events. Unlike <<entity_listeners,entity listeners>>, they are not tied to an entity type and invoked for each transaction.
+
+A listener is a <<managed_beans,managed bean>> implementing one or both `BeforeCommitTransactionListener` and `AfterCompleteTransactionListener` interfaces.
+
+BeforeCommitTransactionListener::
++
+--
+`beforeCommit()` method is called before transaction commit after all <<entity_listeners,entity listeners>> if the transaction is not read-only. The method accepts a current <<entityManager,EntityManager>> and a collection of entities in the current persistence context.
+
+The listener can be used to enforce complex business rules involving multiple entities. In the following example, the `amount` attribute of the `Order` entity must be calculated based on `discount` value located in the order, and `price` and `quantity` of `OrderLine` entities constituted the order.
+
+[source,java]
+----
+include::{sourcesdir}/middleware/tx_listener_1.java[]
+----
+--
+
+AfterCompleteTransactionListener::
++
+--
+`afterComplete()` method is called after transaction is completed. The method accepts a parameter indicating whether the transaction was successfully committed and a collection of detached entities contained in the persistence context of the completed transaction.
+
+Usage example:
+
+[source,java]
+----
+include::{sourcesdir}/middleware/tx_listener_2.java[]
+----
+--
 
 [[entity_cache]]
 ==== Entity and Query Cache

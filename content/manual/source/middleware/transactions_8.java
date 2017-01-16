@@ -1,0 +1,1 @@
+Transaction tx = persistence.createTransaction(new TransactionParams().setReadOnly(true));
