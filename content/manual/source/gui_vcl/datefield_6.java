@@ -1,0 +1,1 @@
+dateField.setStyleName(HaloTheme.DATEFIELD_BORDERLESS);

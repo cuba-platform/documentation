@@ -1,0 +1,1 @@
+accordion.setStyleName(HaloTheme.ACCORDION_BORDERLESS);

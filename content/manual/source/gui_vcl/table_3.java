@@ -1,0 +1,1 @@
+table.setStyleName(HaloTheme.TABLE_NO_STRIPES);

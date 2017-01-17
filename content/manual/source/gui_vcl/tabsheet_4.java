@@ -1,0 +1,1 @@
+tabSheet.setStyleName(HaloTheme.TABSHEET_COMPACT_TABBAR);
