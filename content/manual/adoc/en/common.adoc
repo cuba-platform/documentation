@@ -1137,13 +1137,15 @@ Metaclass and metaproperty parameters are determined on the base of the listed <
 [[datatype]]
 ===== Datatype
 
-`Datatype` interface describes a valid data type for the entity attribute if it is not a reference. Each `Datatype` implementation corresponds to a single Java class. 
+`Datatype` interface describes a valid data type for an entity attribute if it is not a reference.
 
-All of the instances are registered in repository – `Datatypes` class, which performs loading and initializing of `Datatype` implementation classes in the following way:
+Datatypes are registered in the `Datatypes` class, which loads and initializes `Datatype` implementation classes in the following way:
 
-* <<datatypes.xml,datatypes.xml>> file is searched in `CLASSPATH` root, and if it is found, `Datatypes` repository is initialized from it.
+* Default `Datatypes` implementations are loaded from the `/com/haulmont/chile/core/datatypes/datatypes.xml` classpath resource.
 
-* otherwise `Datatypes` repository is initialized from `/com/haulmont/chile/core/datatypes/datatypes.xml` file.
+* <<metadata.xml,metadata.xml>> files from <<app_components,application components>> and from the project itself are scanned for the `datatypes` element and if it is found, custom `Datatype` implementations are loaded. See an example of a custom datatype <<datatype_custom_example,below>>.
+
+* For backward compatibility, the platform searches for the `datatypes.xml` file in `CLASSPATH` root, and if it is found, default `Datatype` implementations are loaded from it instead of the resource mentioned above.
 
 `Datatype` instance can be obtained in two ways:
 
@@ -1155,7 +1157,7 @@ All of the instances are registered in repository – `Datatypes` class, which p
 
 * If `@MetaProperty` annotation is defined on the field or method having a non-empty `datatype` value, the attribute is associated with the `Datatype` instance with the given name.
 +
-For instance, if the entity attribute is declared as in the example below, it will be associated with a nonstandard type – `GeoCoordinateDatatype`:
+For instance, if the entity attribute is declared as in the example below, it will be associated with a custom type – `GeoCoordinateDatatype`:
 +
 [source, java]
 ----
@@ -1166,7 +1168,7 @@ private Double latitude;
 
 * In most cases, explicit specification is omitted, and the attribute is associated with the `Datatype` instance from repository, which is returned by `Datatypes.get(Class)` by supplied field or method type.
 +
-In example below, `latitude` attribute will get a standard `DoubleDatatype` type registered in the `/com/haulmont/chile/core/datatypes/datatypes.xml` base file:
+In the example below, `latitude` attribute will get a standard `DoubleDatatype` type registered in the `/com/haulmont/chile/core/datatypes/datatypes.xml` resource:
 +
 [source, java]
 ----
@@ -1182,11 +1184,11 @@ Basic methods of `Datatype` interfaces:
 
 * `parse()` – transforms a string into the value of corresponding type.
 
-`Datatype` determines two sets of methods for formatting and parsing: considering and not considering locale. Conversion considering locale is applied everywhere in user interface, ignoring locale – in system mechanisms, for example, serialization in <<rest_api,REST API>>.
+`Datatype` determines two sets of methods for formatting and parsing: considering and not considering locale. Conversion considering locale is applied everywhere in user interface, ignoring locale – in system mechanisms, for example, serialization in <<rest_api_v2,REST API>>.
 
-Parsing formats ignoring locale are specified in the above mentioned <<datatypes.xml,datatypes.xml>> file.
+Parsing formats ignoring locale are specified in the above mentioned `datatypes.xml` resource or in the `datatypes` element of the `metadata.xml` file.
 
-The parsing formats considering locale are provided in the <<main_message_pack,main localized messages pack>>, in the strings containing the following keys:
+The parsing formats considering locale are provided in the <<main_message_pack,main messages pack>>, in the strings with the following keys:
 
 * `numberDecimalSeparator` – specifies decimal separator for numeric types. 
 
@@ -1208,7 +1210,7 @@ The parsing formats considering locale are provided in the <<main_message_pack,m
 
 * `falseString` – string corresponding to `Boolean.FALSE`.
 
-All the listed formats are specified in the main localized message pack of CUBA <<app_components,application component>> by default, and can be overridden in the similar files of the application project.
+All the listed formats are specified in the main message pack of CUBA <<app_components,application component>> by default, and can be overridden in the similar files of the application project.
 
 [[datatype_ui_format]]
 ====== Example of Data Formatting in UI
@@ -1276,7 +1278,7 @@ First, create the following class in the *global* module:
 include::{sourcesdir}/common/datatype_1.java[]
 ----
 
-Next, create the `datatypes.xml` file in the root of the *global* module `src` directory in the application project and copy contents from the `/com/haulmont/chile/core/datatypes/datatypes.xml` file located in *global* module of the *CUBA* <<app_components,application component>>. Then add registration of the new type to it:
+Then add the `datatypes` element to the <<metadata.xml,metadata.xml>> of your project:
 
 [source, xml]
 ----
