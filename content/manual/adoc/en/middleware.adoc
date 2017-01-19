@@ -151,6 +151,44 @@ The `cuba.additionalStores` and `cuba.persistenceConfig_db1` properties should a
 CUBA Studio allows you to set up additional data stores on the *Project properties > Advanced* tab. It automatically creates all required application properties and JDBC data sources, as well as maintains additional `persistence.xml` files. After that, you can select a data store for an entity in the *Data store* field of the entity designer. You will also be able to select  a data store when using the *Generate model* wizard for creation of new entities mapped to an existing database schema.
 ====
 
+[[cross_datastore_ref]]
+References between entities from different data stores::
++
+--
+<<dataManager,DataManager>> can automatically maintain TO-ONE references between entities from different data stores, if they are properly defined. For example, consider the case when you have `Order` entity in the main data store and `Customer` entity in an additional data store, and you want to have a reference from `Order` to `Customer`. Then do the following:
+
+* In the `Order` entity, define an attribute with the type of the `Customer` identifier. The attribute should be annotated with `@SystemLevel` to exclude it from various lists available to users, like attributes in <<gui_Filter,Filter>>:
++
+[source,java]
+----
+@SystemLevel
+@Column(name = "CUSTOMER_ID")
+private Long customerId;
+----
+
+* In the `Order` entity, define a non-persistent reference to `Customer` and specify the `customerId` attribute as "related":
++
+[source,java]
+----
+@Transient
+@MetaProperty(related = "customerId")
+private Customer customer;
+----
+
+* Include non-persistent `customer` attribute to appropriate <<views,views>>.
+
+After that, when you load `Order` with a view including `customer` attribute, `DataManager` automatically loads related `Customer` from the additional data store. The loading of collections is optimized for performance: after loading a list of orders, the loading of references from the additional data store is done in batches. The size of the batch is defined by the <<cuba.crossDataStoreReferenceLoadingBatchSize,cuba.crossDataStoreReferenceLoadingBatchSize>> application property.
+
+When you commit an entity graph which includes `Order` with `Customer`, `DataManager` saves the instances via corresponding `DataStore` implementations, and then saves the identifier of the customer in the order's `customerId` attribute.
+
+Cross-datastore references are also supported by the <<gui_Filter,Filter>> component.
+
+[TIP]
+====
+CUBA Studio automatically maintains the set of attributes for cross-datastore references when you select an entity from a different data store as an association.
+====
+--
+
 [[persistence]]
 ==== The Persistence Interface
 
