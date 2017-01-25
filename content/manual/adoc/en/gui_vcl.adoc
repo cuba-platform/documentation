@@ -90,6 +90,8 @@ image::gui_components.png[align="center"]
 
 | *Tables and trees*| 
 
+| <<gui_DataGrid,DataGrid>>| image:gui_DataGrid.png[]
+
 | <<gui_Table,Table>>| image:gui_table.png[]
 
 | <<gui_GroupTable,GroupTable>>| image:gui_groupTable.png[]
@@ -629,6 +631,239 @@ Attributes of colorPicker::
 <<gui_attr_width,width>>
 
 '''
+
+[[gui_DataGrid]]
+====== DataGrid
+
+`DataGrid`, similarly to the <<gui_Table,Table>> component, is designed to display and sort tabular data, and provides means to manipulate rows and columns with greater performance due to lazy loading of data while scrolling.
+
+image::gui_dataGrid_1.png[align="center"]
+
+XML name of the component: `dataGrid`.
+
+The component is implemented for *Web Client*.
+
+An example of component definition in an XML-descriptor of a screen:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datagrid.xml[]
+----
+
+In the example above the `id` attribute is a column identifier, and the `property` is the name of the entity attribute from the data source that populates the column with data.
+
+*dataGrid elements:*
+
+
+[[gui_DataGrid_columns]]
+* `columns` - mandatory element that defines the `DataGrid` columns set. Each column is described in the nested `column` element with the following attributes:
++
+--
+* `id` - mandatory attribute with the column identifier.
+
+[[gui_DataGrid_property]]
+* `property` - contains the entity attribute's name. Can be either an attribute of the entity from the data source or a linked entity – object graph traversal is indicated with a dot. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datagrid_dot.xml[]
+----
+
+* `caption` - an optional attribute containing the column caption. If not specified, a <<entity_localization,localized attribute name>> will be displayed.
+
+[[gui_DataGrid_expandRatio]]
+* `expandRatio` - sets the column width ratio. By default, all columns have equal width (i.e. `expandRatio = 1`). If another value is set for at least one column, all implicit values are ignored, and only set values are considered.
+
+[[gui_DataGrid_collapsible]]
+* `collapsible` - defines whether a user can hide or show columns using the sidebar menu in the top right of `DataGrid`. The default value is `true`
+
+[[gui_DataGrid_collapsed]]
+* `collapsed` -  an optional attribute; hides the column by default when set to `true`. The default value is `false`.
+
+[[gui_DataGrid_collapsingToggleCaption]]
+* `collapsingToggleCaption` - sets the column's caption in the sidebar menu. By default its value is `null`, in this case the caption remains the same as the column's caption.
++
+image::gui_dataGrid_2.png[align="center"]
+
+[[gui_DataGrid_resizable]]
+* `resizable` - defines whether a user can change the column's size.
+
+[[gui_DataGrid_sortable,sortable]]
+* `sortable` - an optional attribute to disable sorting of the column. Takes effect if the whole `DataGrid` has `sortable` attribute set to `true` (which is by default).
+
+* `width` - an optional attribute controlling default column width. May contain only numeric values in pixels.
+
+[[gui_DataGrid_minimumWidth]]
+* `minimumWidth` - sets the minimal column width in pixels.
+
+[[gui_DataGrid_maximumWidth]]
+* `maximumWidth` - sets the maximal column width in pixels.
+
+The `column` element may contain a nested <<gui_formatter,formatter>> element that allows you to represent the attribute value in a format different from the standard for this <<datatype,DataType>>:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datagrid_formatter.xml[]
+----
+--
+
+[[gui_DataGrid_actions]]
+* `actions` - optional element to define <<gui_Action,actions>> for `DataGrid`. Besides custom actions, the <<standard_actions,standard actions>> from the `ListActionType` enumeration are also supported: create, edit, remove, refresh, add, exclude.
+
+[[gui_DataGrid_buttonsPanel]]
+* `buttonsPanel` - creates a `ButtonsPanel` container with action buttons above the `DataGrid` component.
+
+[[gui_DataGrid_rowsCount]]
+* `rowsCount` - optional element that creates a `RowsCount` component for the `DataGrid`. `RowsCount` enables pagination of data, the page size is set by limitation of records in the data source with the help of `CollectionDatasource.setMaxResults()` method from the screen controller. Another way to do this is to use a universal `Filter` component bound with the same data source as the `DataGrid`.
+
+The `RowsCount` component can also display the total number of records returned by current data request without loading these records. When a user clicks the "*?*" button, it calls the `AbstractCollectionDatasource.getCount()` method that passes to the database a request with the same parameters as current but with `++COUNT(*)++` aggregation function instead of getting results. The returned number is displayed in place of "*?*" symbol.
+
+*dataGrid attributes:*
+
+[[gui_DataGrid_columnResizeMode]]
+* `columnResizeMode` - sets the mode of columns resizing by user. Two modes are supported:
++
+--
+* `AMINATED` - the columns size follows the mouse when dragging (default mode).
+
+* `SIMPLE` - the columns size is changed after the dragging is finished.
+--
+
+[[gui_DataGrid_columnsCollapsingAllowed]]
+* `columnsCollapsingAllowed` - defines whether a user can hide columns in the sidebar menu. Displayed columns are checked in the menu. When a column name is checked/unchecked, the value of `collapsed` attribute of each column is updated. When set to `false`, the `collapsed` attribute of any column cannot be set to `true`.
+
+[[gui_DataGrid_frozenColumnCount]]
+* `frozenColumnCount` - sets the number of fixed `DataGrid` columns. The `0` value means that no columns will be fixed except the predefined column with checkboxes for multiple choice if the multiselect mode is used. The `-1` value makes even multiselect column not fixed.
+
+[[gui_DataGrid_headerVisible]]
+* `headerVisible` - defines if the `DataGrid` header is visible. The default value is `true`.
+
+[[gui_DataGrid_reorderingAllowed]]
+* `reorderingAllowed` - defines whether a user can change the columns order by dragging them with a mouse. The default value is `true`.
+
+[[gui_DataGrid_responsive]]
+* `responsive` - indicates that the component should react on change in the available space. Reaction can be customized with the help of <<web_theme_extension,styles>>.
+
+[[gui_DataGrid_selectionMode]]
+* `selectionMode` - sets the rows selection mode. There are 4 predefined selection modes:
++
+--
+* `SINGLE` - single record selection.
+* `MULTI` - multiple selection as in any table.
+* `MULTI_CHECK` - multiple selection using the embedded column with checkboxes.
+* `NONE` - selection is disabled.
++
+image::gui_dataGrid_3.png[align="center"]
+--
+
+[[gui_DataGrid_settingsEnabled]]
+* `settingsEnabled` - defines if a user settings of `DataGrid` appearance should be saved. The default value is `true`.
+
+[[gui_DataGrid_sortable]]
+* `sortable` - enables or disables the `DataGrid` sorting. The default value is `true`. When the sorting is enabled, the click on the column name will display the sorting icon to the right of che column caption. Sorting of any specific column can be disabled by this column's `sortable` attribute.
+
+*methods of the DataGrid interface:*
+
+* `getColumns()` - returns the current set of `DataGrid` columns in their current display order.
+
+* `getSelected()`, `getSingleSelected()` - return instances of the entities corresponding to the selected rows of the table. A collection can be obtained by invoking getSelected(). If nothing is selected, the application returns an empty set. If `SelectionMode.NONE` is set, it is more convenient to use getSingleSelected() method returning one selected entity or null, if nothing is selected.
+
+* `getVisibleColumns()` - returns the current set of visible `DataGrid` columns in their current display order.
+
+* `scrollTo()` - method allows you to scroll the `DataGrid` to the specified row. It takes  an entity instance identifying the row as a parameter. Besides the entity instance, an overridden method can take a `ScrollDestination` parameter with the following possible values:
++
+--
+* `ANY` - scroll as little as possible to show the required record.
+* `START` - scroll to place the required record in the beginning of the `DataGrid` visible area.
+* `MIDDLE` - scroll to place the required record in the centre of the `DataGrid` visible area.
+* `END` - scroll to place the required record in the end of the `DataGrid` visible area.
+--
+
+* `scrollToStart()` and `scrollToEnd()` - scroll the `DataGrid` to the top and to the end respectively.
+
+* `setCellStyleProvider()` - enables setting the `DataGrid` cell display style.
+
+* `setRowStyleProvider()` - enables setting the `DataGrid` row display style.
+
+* `setEnterPressAction()` - method allows you to define an <<gui_Action,action>> executed when *Enter* is pressed. If such action is not defined, the table will attempt to find an appropriate one in the list of its actions in the following order:
++
+--
+* The action defined by the `setItemClickAction()` method.
+
+* The action assigned to the *Enter* key by the `shortcut` property.
+
+* The `edit` action.
+
+* The `view` action.
+
+If such action is found, and has `enabled = true` property, the action is executed.
+
+--
+
+* `setItemClickAction()` -  method allows you to define an <<gui_Action,action>> that will be performed when a table row is double-clicked. If such action is not defined, the table will attempt to find an appropriate one in the list of its actions in the following order:
++
+--
+* The action assigned to the Enter key by the `shortcut` property.
+
+* The `edit` action.
+
+* The `view` action.
+
+If such action is found, and has `enabled = true` property, the action is executed.
+
+--
+
+'''
+
+Attributes of dataGrid::
+
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_colspan,colspan>> -
+<<gui_DataGrid_columnResizeMode,columnResizeMode>> -
+<<gui_DataGrid_columnsCollapsingAllowed,columnsCollapsingAllowed>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_description,description>> -
+<<gui_attr_enable,enable>> -
+<<gui_DataGrid_frozenColumnCount,frozenColumnCount>> -
+<<gui_DataGrid_headerVisible,headerVisible>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_DataGrid_reorderingAllowed,reorderingAllowed>> -
+<<gui_DataGrid_responsive,responsive>> -
+<<gui_attr_rowspan,rowspan>> -
+<<gui_DataGrid_selectionMode,selectionMode>> -
+<<gui_DataGrid_settingsEnabled,settingsEnabled>> -
+<<gui_DataGrid_sortable,sortable>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Elements of dataGrid::
+<<gui_DataGrid_actions,actions>> -
+<<gui_DataGrid_buttonsPanel,buttonsPanel>> -
+<<gui_DataGrid_columns,columns>> -
+<<gui_DataGrid_rowsCount,rowsCount>>
+
+Attributes of column::
+
+<<gui_attr_caption,caption>> -
+<<gui_DataGrid_collapsed,collapsed>> -
+<<gui_DataGrid_collapsible,collapsible>> -
+<<gui_DataGrid_collapsingToggleCaption,collapsingToggleCaption>> -
+<<gui_DataGrid_expandRatio,expandRatio>> -
+<<gui_attr_id,id>> -
+<<gui_DataGrid_maximumWidth,maximumWidth>> -
+<<gui_DataGrid_minimumWidth,minimumWidth>> -
+<<gui_DataGrid_property,property>> -
+<<gui_DataGrid_resizable,resizable>> -
+<<gui_DataGrid_sortable,sortable>> -
+<<gui_attr_width,width>>
+
+Elements of column::
+
+<<gui_formatter,formatter>>
 
 [[gui_DateField]]
 ====== DateField
