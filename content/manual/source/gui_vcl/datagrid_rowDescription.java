@@ -1,0 +1,1 @@
+customersDataGrid.setRowDescriptionProvider(Instance::getInstanceName);
