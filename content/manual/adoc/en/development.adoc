@@ -1252,45 +1252,15 @@ Let us create the `AppLifecycle` bean implementing the `AppContext.Listener` int
 
 [source, java]
 ----
-@Component("sample_AppLifecycle")
-public class AppLifecycle implements AppContext.Listener {
-
-    @Inject
-    private EntityListenerManager entityListenerManager;
-
-    public AppLifecycle() {
-        AppContext.addListener(this);
-    }
-
-    @Override
-    public void applicationStarted() {
-        entityListenerManager.addListener(User.class, UserEntityListener.class);
-    }
-
-    @Override
-    public void applicationStopped() {
-    }
-
-    public static class UserEntityListener implements BeforeUpdateEntityListener<User> {
-        @Override
-        public void onBeforeUpdate(User user) {
-            Persistence persistence = AppBeans.get(Persistence.class);
-            if (persistence.getTools().getDirtyFields(user).contains("name")) {
-                EntityManager em = persistence.getEntityManager();
-                TypedQuery<Employee> query = em.createQuery(
-                        "select e from sample$Employee e where e.user.id = ?1", Employee.class);
-                query.setParameter(1, user.getId());
-                Employee employee = query.getFirstResult();
-                if (employee != null) {
-                    employee.setName(user.getName());
-                }
-            }
-        }
-    }
-}
+include::{sourcesdir}/development/app_start_recipe_1.java[]
 ----
 
-As a result, the `applicationStarted()` method of this bean will be invoked immediately after the start of the Middleware <<app_tiers,block>>. In this method, the internal `UserEntityListener` class is registered as an entity listener for the `User` entity.
+[source, java]
+----
+include::{sourcesdir}/development/app_start_recipe_2.java[]
+----
+
+As a result, the `applicationStarted()` method of this bean will be invoked immediately after the start of the Middleware <<app_tiers,block>>. In this method, the `sample_UserEntityListener` bean is registered as an entity listener for the `User` entity.
 
 The `onBeforeUpdate()` method of the `UserEntityListener` class will be invoked every time before the changes in the `User` instances are saved to the database. The method checks if the `name` attribute exists among the updated attributes. If yes, a related `Employee` instance is loaded and its `name` is updated with the new value.
 

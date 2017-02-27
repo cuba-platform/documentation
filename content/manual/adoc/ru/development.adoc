@@ -1252,47 +1252,17 @@ image::init_values_recipe_2.png[align="center"]
 
 [source, java]
 ----
-@Component("sample_AppLifecycle")
-public class AppLifecycle implements AppContext.Listener {
-
-    @Inject
-    private EntityListenerManager entityListenerManager;
-
-    public AppLifecycle() {
-        AppContext.addListener(this);
-    }
-
-    @Override
-    public void applicationStarted() {
-        entityListenerManager.addListener(User.class, UserEntityListener.class);
-    }
-
-    @Override
-    public void applicationStopped() {
-    }
-
-    public static class UserEntityListener implements BeforeUpdateEntityListener<User> {
-        @Override
-        public void onBeforeUpdate(User user) {
-            Persistence persistence = AppBeans.get(Persistence.class);
-            if (persistence.getTools().getDirtyFields(user).contains("name")) {
-                EntityManager em = persistence.getEntityManager();
-                TypedQuery<Employee> query = em.createQuery(
-                        "select e from sample$Employee e where e.user.id = ?1", Employee.class);
-                query.setParameter(1, user.getId());
-                Employee employee = query.getFirstResult();
-                if (employee != null) {
-                    employee.setName(user.getName());
-                }
-            }
-        }
-    }
-}
+include::{sourcesdir}/development/app_start_recipe_1.java[]
 ----
 
-В результате сразу после старта <<app_tiers,блока>> Middleware будет вызван метод `applicationStarted()` данного бина. В этом методе в качестве entity listener сущности `User` регистрируется внутренний класс `UserEntityListener`. 
+[source, java]
+----
+include::{sourcesdir}/development/app_start_recipe_2.java[]
+----
 
-Метод `onBeforeUpdate()` класс `UserEntityListener` будет вызываться перед каждым сохранением изменений экземпляров `User` в базу данных. В методе проверяется, есть ли атрибут `name` среди измененных, и если да, загружается связанный экземпляр `Employee`, и в нем устанавливается это же значение `name`.
+В результате сразу после старта <<app_tiers,блока>> Middleware будет вызван метод `applicationStarted()` данного бина. В этом методе в качестве entity listener сущности `User` регистрируется бин `sample_UserEntityListener`.
+
+Метод `onBeforeUpdate()` класса `UserEntityListener` будет вызываться перед каждым сохранением изменений экземпляров `User` в базу данных. В методе проверяется, есть ли атрибут `name` среди измененных, и если да, загружается связанный экземпляр `Employee`, и в нем устанавливается это же значение `name`.
 
 [[images_recipe]]
 ==== Загрузка и вывод изображений
