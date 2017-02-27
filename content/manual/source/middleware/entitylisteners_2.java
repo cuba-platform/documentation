@@ -1,6 +1,6 @@
 @Entity(...)
 @Table(...)
-@Listeners("cuba_MyEntityListener")
+@Listeners("sample_MyEntityListener")
 public class MyEntity extends StandardEntity {
     ...
 }

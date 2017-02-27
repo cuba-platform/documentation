@@ -1,4 +1,4 @@
-@Component("cuba_MyEntityListener")
+@Component("sample_MyEntityListener")
 public class MyEntityListener implements
         BeforeInsertEntityListener<MyEntity>,
         BeforeUpdateEntityListener<MyEntity> {
