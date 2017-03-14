@@ -115,7 +115,7 @@ class Section {
         def inHierarchy = hierarchy.contains(this)
         def isSelected = this == hierarchy.last()
 
-        sb.append("\n<li class='toc-item'>${getTocMarker(this, inHierarchy)}${getTocA(this, isSelected)}");
+        sb.append("\n<li class='toc-item'>${getTocMarker(this, inHierarchy)}${getTocA(this, isSelected, inHierarchy)}");
         if (inHierarchy) {
             sb.append("\n<ul>")
             for (child in children) {
@@ -136,7 +136,7 @@ class Section {
         def hierarchy = getHierarchy()
         def root = hierarchy[0]
 
-        sb.append("\n<li>${getTocA(root, false)}</li>");
+        sb.append("\n<li>${getTocA(root, false, false)}</li>");
 
         for (item in root.children) {
             sb.append(item.printTocItem(hierarchy))
@@ -159,9 +159,12 @@ class Section {
         return sb.toString()
     }
 
-    private String getTocA(Section section, Boolean active) {
+    private String getTocA(Section section, Boolean active, Boolean open) {
         def sb = new StringBuilder()
-        sb.append("<div class='toc-link'><a href='${section.id}.html'")
+        sb.append("<div class='toc-link")
+        if (open)
+            sb.append(" open")
+        sb.append("'><a href='${section.id}.html'")
         if (active)
             sb.append(" class='toc-highlighted'")
         sb.append(">${section.tocItem}</a></div>")

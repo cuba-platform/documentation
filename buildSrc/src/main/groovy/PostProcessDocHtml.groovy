@@ -26,8 +26,6 @@ class PostProcessDocHtml extends DefaultTask {
         def treeControl = toc.prependElement("div")
         treeControl.attr("id", "treecontrol")
 
-        treeControl.html("<a href=\"#\" id=\"close-panel\" style=\"white-space: pre;\">$hideCaption</a>")
-
         doc.body().append("<script type=\"text/javascript\" src=\"js/jquery-1.11.1.min.js\"/>\n" +
                 "<script type=\"text/javascript\" src=\"js/jquery.treeview.js\"/>\n" +
                 "<script type=\"text/javascript\" src=\"js/jquery.nearest.min.js\"/>\n" +
@@ -36,6 +34,8 @@ class PostProcessDocHtml extends DefaultTask {
         doc.body().append("<a href=\"#\" id=\"toc-position-marker\">. . .</a>");
 
         doc.head().prepend("<link rel=\"stylesheet\" href=\"styles/jquery.treeview.css\"/>")
+
+        doc.head().append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=0.6\">")
 
         file.write(doc.toString(), 'utf-8')
     }

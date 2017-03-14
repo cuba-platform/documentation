@@ -40,6 +40,11 @@ class Asciidoc2Html extends DefaultTask {
         }
 
         project.copy {
+            from "images"
+            into "$dstDocDir/img"
+        }
+
+        project.copy {
             from "styles"
             into "$dstDocDir/styles"
         }

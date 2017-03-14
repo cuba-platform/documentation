@@ -23,7 +23,7 @@ $(document).ready(function () {
         unique: false,
     });
 
-    var closePanel = $("#close-panel");
+    var closePanel = $("#treecontrol");
     var tocMarker = $("#toc-position-marker");
 
     var book = $(".book");
