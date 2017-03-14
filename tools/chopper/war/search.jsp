@@ -21,7 +21,7 @@
 String searchTerms = request.getParameter("searchTerms");
 String htmlSearchTerms = StringEscapeUtils.escapeHtml4(searchTerms);
 boolean isSensitive = false;
-if (request.getParameter("isSensitive").equals("1")) {
+if (request.getParameter("isSensitive").equals("yes")) {
     isSensitive = true;
 }
 long start = System.currentTimeMillis();
@@ -55,11 +55,11 @@ long start = System.currentTimeMillis();
                  <div class="radiobuttons">
                       case
                       <span class="radio-container">
-                           <input name="isSensitive" type="radio" class="radiobutton" value="1" checked>
+                           <input name="isSensitive" type="radio" class="radiobutton" value="yes" checked>
                            <span class="round"></span>
                       </span> sensitive
                       <span class="radio-container">
-                           <input name="isSensitive" type="radio" class="radiobutton" value="0">
+                           <input name="isSensitive" type="radio" class="radiobutton" value="no">
                            <span class="round"></span>
                       </span> insensitive
                  </div>
