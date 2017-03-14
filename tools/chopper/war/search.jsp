@@ -55,11 +55,11 @@ long start = System.currentTimeMillis();
                  <div class="radiobuttons">
                       case
                       <span class="radio-container">
-                           <input name="isSensitive" type="radio" class="radiobutton" value="yes" checked>
+                           <input name="isSensitive" type="radio" class="radiobutton" value="yes" ${isSensitive ? 'checked':''}>
                            <span class="round"></span>
                       </span> sensitive
                       <span class="radio-container">
-                           <input name="isSensitive" type="radio" class="radiobutton" value="no">
+                           <input name="isSensitive" type="radio" class="radiobutton" value="no" ${not isSensitive ? 'checked':''}>
                            <span class="round"></span>
                       </span> insensitive
                  </div>
