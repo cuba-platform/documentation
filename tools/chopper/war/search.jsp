@@ -20,9 +20,9 @@
 <%
 String searchTerms = request.getParameter("searchTerms");
 String htmlSearchTerms = StringEscapeUtils.escapeHtml4(searchTerms);
-boolean isSensitive = false;
-if (request.getParameter("isSensitive").equals("yes")) {
-    isSensitive = true;
+boolean caseSensitive = false;
+if ("yes".equals(request.getParameter("caseSensitive"))) {
+    caseSensitive = true;
 }
 long start = System.currentTimeMillis();
 %>
@@ -55,11 +55,11 @@ long start = System.currentTimeMillis();
                  <div class="radiobuttons">
                       case
                       <span class="radio-container">
-                           <input name="isSensitive" type="radio" class="radiobutton" value="yes" ${isSensitive ? 'checked':''}>
+                           <input name="caseSensitive" type="radio" class="radiobutton" value="yes" <%= caseSensitive ? "checked": "" %>>
                            <span class="round"></span>
                       </span> sensitive
                       <span class="radio-container">
-                           <input name="isSensitive" type="radio" class="radiobutton" value="no" ${not isSensitive ? 'checked':''}>
+                           <input name="caseSensitive" type="radio" class="radiobutton" value="no" <%= !caseSensitive ? "checked": "" %>>
                            <span class="round"></span>
                       </span> insensitive
                  </div>
@@ -82,11 +82,7 @@ long start = System.currentTimeMillis();
 	} else if (searchTerms.length() < 3) {
 		out.println("<p>{{searchTermIsTooShort}}</p>");
 	} else {
-	    if (!isSensitive)
-		    out.println("<p>{{searchResultsCaseInsensitive}}</p>");
-		else
-		    out.println("<p>{{searchResultsMatchCase}}</p>");
-		List<SearchResult> results = search.search(searchTerms);
+		List<SearchResult> results = search.search(searchTerms, caseSensitive);
 		out.println("<p>" + results.size() + " {{searchResultsMsg}} " + htmlSearchTerms + "</p>");
 		for (SearchResult result : results) {
 			%>
