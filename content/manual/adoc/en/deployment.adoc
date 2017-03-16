@@ -563,7 +563,7 @@ Find *`Heroku Postgres`* block and click it. Follow the instruction on the scree
 *OR* +
 type command in Heroku CLI:
 
-[source, ruby]
+[source, groovy]
 ----
 heroku addons:create heroku-postgresql:hobby-dev --app morning-beach-4895
 ----
@@ -576,7 +576,7 @@ Now you can find a new database mention appears on Resources tab. New database i
 
 To obtain database credentials go to Administartion section of your Postgres database in Heroku dashboard and click `View credentials` button: +
 
-[source, ruby]
+[source, bash]
 ----
 Host compute.amazonaws.com
 Database d2tk
@@ -655,7 +655,7 @@ OR
 
 * run shell command from $PROJECT_FOLDER
 
-[source, ruby]
+[source, groovy]
 ----
 gradle buildWar
 ----
@@ -664,7 +664,7 @@ gradle buildWar
 
 Add a *Procfile* to your CUBA application folder in order to define its process types:
 
-[source, ruby]
+[source, groovy]
 ----
 web: java $JAVA_OPTS -cp webapp-runner.jar:libs/* webapp.runner.launch.Main --enable-naming --port $PORT --context-xml modules/core/web/META-INF/war-context.xml build/distributions/war/app.war
 ----
@@ -673,7 +673,7 @@ web: java $JAVA_OPTS -cp webapp-runner.jar:libs/* webapp.runner.launch.Main --en
 
 Open local command line utility. Navigate to `$PROJECT_FOLDER`. Run commands listed below:
 
-[source, ruby]
+[source, groovy]
 ----
 git init
 heroku git:remote -a morning-beach-4895
@@ -686,13 +686,13 @@ git commit -am "first commit"
 Open local command line utility. Navigate to your CUBA project folder and run deploy command:
 
 `Linux`
-[source, ruby]
+[source, groovy]
 ----
 heroku jar:deploy webapp-runner.jar --includes libs/postgresql.jar:libs/tomcat-dbcp.jar:modules/core/web/META-INF/war-context.xml:build/distributions/war/app.war
 ----
 
 `Windows`
-[source, ruby]
+[source, groovy]
 ----
 heroku jar:deploy webapp-runner.jar --includes libs\postgresql.jar;libs\tomcat-dbcp.jar;modules\core\web\META-INF\war-context.xml;build\distributions\war\app.war
 ----
@@ -736,9 +736,9 @@ This tutorial covers Heroku cloud deployment for CUBA project using PostgreSQL d
 
 . *CUBA* project
 . *Github* repo
+. *Git* installed on your computer
 . *Heroku account*
 . *Heroku CLI* https://devcenter.heroku.com/articles/heroku-command-line
-. *Git* installed on your computer
 
 *Git*
 
@@ -788,7 +788,7 @@ heroku login
 *OR* +
 . Type command in Heroku CLI:
 
-[source, ruby]
+[source, groovy]
 ----
 heroku addons:create heroku-postgresql:hobby-dev --app space-sheep-02453
 ----
@@ -801,7 +801,7 @@ Now you can find a new database mention appears on Resources tab. New database i
 
 To obtain database credentials go to Administartion section of your Postgres database in Heroku dashboard and click 'View credentials' button +
 
-[source, ruby]
+[source, bash]
 ----
 Host compute.amazonaws.com
 Database zodt
@@ -842,53 +842,25 @@ URI postgres://artd:367f@compute.amazonaws.com:5432/zodt
 
 *build.gradle*
 
-Append following gradle task to your `$PROJECT_FOLDER/build.gradle`
+Add following gradle task to your `$PROJECT_FOLDER/build.gradle`
 
-[source, ruby]
+[source, groovy]
 ----
-task stage(dependsOn: ['setupTomcat', ':app-core:deploy', ':app-web:deploy']) {
-    doLast {
-        // replace context.xml with heroku-context.xml
-        def src = new File('modules/core/web/META-INF/heroku-context.xml')
-        def dst = new File('deploy/tomcat/webapps/app-core/META-INF/context.xml')
-        dst.delete()
-        dst << src.text
-
-        // change port from 8080 to heroku $PORT
-        def file = new File('deploy/tomcat/conf/server.xml')
-        file.text = file.text.replace('8080', '${port.http}')
-
-        // add local.app.properties for core application
-        def coreConfDir = new File('deploy/tomcat/conf/app-core/')
-        coreConfDir.mkdirs()
-        def coreProperties = new File(coreConfDir, 'local.app.properties')
-        coreProperties.text = '''
-cuba.automaticDatabaseUpdate = true
-        '''
-
-        // rename deploy/tomcat/webapps/app to deploy/tomcat/webapps/ROOT
-        def rootFolder = new File('deploy/tomcat/webapps/ROOT')
-        if (rootFolder.exists()) {
-            rootFolder.deleteDir()
-        }
-
-        def webAppDir = new File('deploy/tomcat/webapps/app')
-        webAppDir.renameTo( new File('deploy/tomcat/webapps/ROOT') )
-
-        // add local.app.properties for web application
-        def webConfDir = new File('deploy/tomcat/conf/ROOT/')
-        webConfDir.mkdirs()
-        def webProperties = new File(webConfDir, 'local.app.properties')
-        webProperties.text = '''
-cuba.webContextName = /
-        '''
-    }
-}
+include::{sourcesdir}/deployment/heroku_buildGradle.groovy[]
 ----
 
 *Gradle Wrapper*
 
 Your project requires gradle wrapper. To add it you can use Cuba Studio, a command from menu 'Build/Create' or update gradle wrapper
+
+. Check that gradlew, gradlew.bat and gradle are not in .gitignore
+. Add the files to repository and commit it
+
+[source, bash]
+----
+git add gradlew gradlew.bat gradle/*
+git commit -am "Gradle Wrapper added"
+----
 
 image::heroku_gradlew_create.png[align="center"]
 
@@ -898,7 +870,7 @@ This action adds gradlew/gradlew.bat file into the project. Because Heroku uses 
 
 A command that launches the application on Heroku side is passed by special file `Procfile`. Create `Procfile` in $PROJECT_FOLDER with following text:
 
-[source, ruby]
+[source, groovy]
 ----
 web: cd ./deploy/tomcat/bin && export 'JAVA_OPTS=-Dport.http=$PORT' && ./catalina.sh run
 ----
@@ -930,12 +902,12 @@ image::heroku_open_app.png[align="center"]
 
 Heroku application log is shown by console command:
 
-[source, ruby]
+[source, groovy]
 ----
 heroku logs --tail --app space-sheep-02453
 ----
 
-Tomcat logs are available in web application:
+Tomcat logs are also available in web application:
 
 image::heroku_tomcat_logs_menu.png[align="center"]
 
