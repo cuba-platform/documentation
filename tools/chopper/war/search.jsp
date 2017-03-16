@@ -20,6 +20,10 @@
 <%
 String searchTerms = request.getParameter("searchTerms");
 String htmlSearchTerms = StringEscapeUtils.escapeHtml4(searchTerms);
+boolean caseSensitive = false;
+if ("yes".equals(request.getParameter("caseSensitive"))) {
+    caseSensitive = true;
+}
 long start = System.currentTimeMillis();
 %>
 <!doctype html>
@@ -33,17 +37,41 @@ long start = System.currentTimeMillis();
 </head>
 <body class="book toc2 toc-left">
 <div id="header">
-    <div id="toc" class="toc2">
-        <form action="search.jsp" class="search">
-            <input type="text" name="searchTerms" value="<%= htmlSearchTerms %>" autofocus>
-            <input type="submit" value="{{search}}">
-        </form>
-        {{toc}}
-    </div>
-    <div id="top">
+<div id="top">
+    <div id="menubutton"></div>
+    <div id="title-version">
         <div id="title">{{title}}</div>
         <div id="version">{{version}}</div>
-        <div id="copyright">{{copyright}}</div>
+    </div>
+    <div id="copyright">{{copyright}}</div>
+    </div>
+    <div id="toc" class="toc2">
+    <div class="searchfield">
+        <form action="search.jsp" class="search">
+        <div class="searchbar">
+            <input type="text" id="searchTerms" name="searchTerms" value="<%= htmlSearchTerms %>" autofocus>
+            <input type="submit" class="submit" value="">
+            </div>
+                 <div class="radiobuttons">
+                      case
+                      <span class="radio-container">
+                           <input name="caseSensitive" type="radio" class="radiobutton" value="yes" <%= caseSensitive ? "checked": "" %>>
+                           <span class="round"></span>
+                      </span> sensitive
+                      <span class="radio-container">
+                           <input name="caseSensitive" type="radio" class="radiobutton" value="no" <%= !caseSensitive ? "checked": "" %>>
+                           <span class="round"></span>
+                      </span> insensitive
+                 </div>
+        </form>
+        </div>
+        <div class="desktop-toc">
+            {{toc}}
+        </div>
+        <div class="mobile-toc">
+            <div id="closemenu">Close</div>
+            {{toc}}
+        </div>
     </div>
 </div>
 <div id="content">
@@ -54,11 +82,7 @@ long start = System.currentTimeMillis();
 	} else if (searchTerms.length() < 3) {
 		out.println("<p>{{searchTermIsTooShort}}</p>");
 	} else {
-	    if (search.isIgnoreCase(searchTerms))
-		    out.println("<p>{{searchResultsCaseInsensitive}}</p>");
-		else
-		    out.println("<p>{{searchResultsMatchCase}}</p>");
-		List<SearchResult> results = search.search(searchTerms);
+		List<SearchResult> results = search.search(searchTerms, caseSensitive);
 		out.println("<p>" + results.size() + " {{searchResultsMsg}} " + htmlSearchTerms + "</p>");
 		for (SearchResult result : results) {
 			%>

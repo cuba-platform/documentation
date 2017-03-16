@@ -53,21 +53,12 @@ public class Search {
         }
     }
 
-    public boolean isIgnoreCase(String term) {
-        for (int i = 0; i < term.length(); i++) {
-            if (Character.isLetter(term.charAt(i)) && Character.isUpperCase(term.charAt(i))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public List<SearchResult> search(String term) {
+    public List<SearchResult> search(String term, boolean caseSensitive) {
         List<SearchResult> results = new ArrayList<>();
 
         for (Sect sect : sections) {
             String text;
-            if (isIgnoreCase(term)) {
+            if (!caseSensitive) {
                 term = term.toLowerCase();
                 text = sect.lcText;
             } else {
