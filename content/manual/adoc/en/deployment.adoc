@@ -498,85 +498,74 @@ cf logs cuba-app --recent
 
 
 [[heroku_deployment]]
-==== WAR deployment to Heroku
+==== WAR Deployment to Heroku
 
-The document describes how to build WAR to run CUBA on https://www.heroku.com/[Heroku®].
+The section describes how to build WAR file and run it on https://www.heroku.com/[Heroku®] cloud platform.
 
 [TIP]
 ====
-This tutorial covers Heroku cloud deployment for CUBA project using PostgreSQL database.
+This tutorial covers deployment of a CUBA project using PostgreSQL database.
 ====
 
-*Prerequisities*
-
-. *Heroku account*
-. *CUBA Studio* installed on your computer
-. *Heroku CLI* https://devcenter.heroku.com/articles/heroku-command-line
-. *Heroku CLI deploy* plugin
-. Install *Git* on your computer or use built-in in Heroku CLI
-. Tomcat *Webapp Runner* +
-  https://mvnrepository.com/artifact/com.github.jsimone/webapp-runner +
-  The version of Webapp Runner is pinned to the version of the underlying Tomcat server. +
-  Thus, version 8.5.11.3 of Webapp Runner uses version 8.5.11 of Tomcat. +
-  Put it into root of CUBA project *./webapp-runner.jar*
-. *Tomcat DBCP* +
-  https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-dbcp +
-  Version 8.5.11 tested, use the same as Webapp Runner +
-  Put it into *libs/tomcat-dbcp.jar*
-. *PostgreSQL driver* actual for your database +
-  https://mvnrepository.com/artifact/org.postgresql/postgresql/9.4.1212 +
-  Version 9.4.1212 tested with Heroku PostgreSQL 9.6.1 +
-  Put it into *libs/postgresql.jar*
-
-*Heroku account*
-
-First create an account on https://www.heroku.com/[Heroku®] using the web browser, free account `hobby-dev` is enough. Then login to Heroku account and create new application using 'New' button at the top of the page.
+Heroku account::
++
+--
+First create an account on Heroku using the web browser, free account `hobby-dev` is enough. Then login to the account and create new application using *New* button at the top of the page.
 
 image::heroku_new_app.png[align="center"]
 
-Select unique name (or left the field blank to assign automatically) and choose server location. Now you have an application, for example `morning-beach-4895`, this is a Heroku application name.
+Select unique name (or left the field blank to assign automatically) and choose a server location. Now you have an application, for example `morning-beach-4895`, this is the Heroku application name.
 
-First time you will be redirected to `Deploy` tab. Use Heroku Git deployment method. This tutorial does not cover Github integration.
+First time you will be redirected to the *Deploy* tab. Use Heroku Git deployment method.
 
 image::heroku_create_app.png[align="center"]
+--
 
-*Heroku CLI*
+Heroku CLI::
++
+--
+. Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI].
 
-. Open command line utility on your computer (Cmd, PowerShell, Bash etc)
-. Create an empty folder for CUBA project
-. Navigate to this folder `$PROJECT_FOLDER` and type command `heroku login`
-. Enter your credentials when prompted. From this moment you won't needed to enter credentials for this project anymore
-. Install Heroku CLI deployment plugin
+. Open command prompt on your computer.
 
-[source, bash]
+. Create an empty folder for CUBA project. Further on we will use `$PROJECT_FOLDER` for it.
+
+. Navigate to `$PROJECT_FOLDER` and type:
++
+[source]
 ----
 heroku login
-...
-heroku plugins:install heroku-cli-deploy
 ----
 
+. Enter your credentials when prompted. From now on you don't need to enter credentials for this project anymore.
 
-*Postgres Database*
+. Install Heroku CLI deployment plugin:
++
+[source]
+----
+heroku plugins:install heroku-cli-deploy
+----
+--
 
-Return to web browser with Heroku https://dashboard.heroku.com[dashboard], go to Resources tab and click `Find more add-ons` button to find the database add-on.
-Find *`Heroku Postgres`* block and click it. Follow the instruction on the screen, click `Login to install / Install Heroku Postgres` +
-*OR* +
-type command in Heroku CLI:
+PostgreSQL database::
++
+--
+Open https://dashboard.heroku.com[Heroku dashboard] in your web browser, go to *Resources* tab and click *Find more add-ons* button to find the database add-on.
+Find *Heroku Postgres* block and click on it. Follow the instruction on the screen, click *Login to install / Install Heroku Postgres*.
 
-[source, groovy]
+Alternatively, you can install PostgreSQL using Heroku CLI:
+
+[source]
 ----
 heroku addons:create heroku-postgresql:hobby-dev --app morning-beach-4895
 ----
-where `morning-beach-4895` is your Heroku application name.
 
-Now you can find a new database mention appears on Resources tab. New database is connected to Heroku application.
+Here `morning-beach-4895` is your Heroku application name.
 
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application.
 
-*Database administration*
+To obtain database credentials go to the *Administration* section of your PostgreSQL database in the dashboard and click *View credentials* button:
 
-To obtain database credentials go to Administartion section of your Postgres database in Heroku dashboard and click `View credentials` button: +
-
-[source, bash]
 ----
 Host compute.amazonaws.com
 Database d2tk
@@ -585,24 +574,25 @@ Port 5432
 Password 9c05
 URI postgres://nmmd:9c05@compute.amazonaws.com:5432/d2tk
 ----
+--
 
-*Project deployment settings*
+Project deployment settings::
++
+--
+Create new CUBA project in `$PROJECT_FOLDER` using CUBA Studio.
 
-. Create new `CUBA project` located in `$PROJECT_FOLDER` in CUBA Studio.
-. Open deployment settings and configure options as described below.
+Open *Deployment settings* and configure options as described below.
 
 image::heroku_war_settings.png[align="center"]
 
-* Tick `Build WAR` +
-* Point application home directory as '.' (dot) +
-* Tick `Include Tomcat's context.xml` +
-* Point `Custom context.xml path` as `modules/core/web/META-INF/war-context.xml`. Click `Generate`
-* Open local file `modules/core/web/META-INF/war-context.xml` and fill connection details using your database connection params and credentials like shown below:
-
+* Select *Build WAR*
+* Set application home directory to '.' (dot)
+* Select *Include Tomcat's context.xml*
+* Click *Generate* button next to the *Custom context.xml path* field. Then open the generated `modules/core/web/META-INF/war-context.xml` file and enter connection details using your database connection params and credentials:
++
 [source, xml]
 ----
 <Context>
-
     <!-- Database connection -->
     <Resource
       name="jdbc/CubaDS"
@@ -615,113 +605,120 @@ image::heroku_war_settings.png[align="center"]
       username="nmmd"
       password="9c05"/>
 
-    <!-- Switch off session serialization -->
-    <Manager pathname=""/>
-
+      <!-- ... -->
 </Context>
 ----
 
-* Tick `Single WAR for Middleware and Web Client`
-* Fulfil `Custom context.xml path` as `modules/web/web/WEB-INF/single-war-web.xml`. Click `Generate` to create a file.
+* Select *Single WAR for Middleware and Web Client*.
 
-*App properties*
+* Click *Generate* button next to the *Custom context.xml path* field.
 
-Copy text from example below and paste it to `App properties` field:
-
-[source, json]
+* Copy the code shown below and paste it into the *App properties* field:
++
+[source, groovy]
 ----
 [
-    'cuba.automaticDatabaseUpdate' : true,
-    'cuba.logDir' : './logs',
-    'cuba.confDir' : './${cuba.webContextName}/conf',
-    'cuba.tempDir' : './${cuba.webContextName}/temp',
-    'cuba.dataDir' : './${cuba.webContextName}/work',
-    'cuba.download.directories' : '${cuba.tempDir};${cuba.logDir}',
-    'cuba.dbDir' : 'web-inf:db'
+  'cuba.automaticDatabaseUpdate' : true,
+  'cuba.logDir' : './logs',
+  'cuba.confDir' : './${cuba.webContextName}/conf',
+  'cuba.tempDir' : './${cuba.webContextName}/temp',
+  'cuba.dataDir' : './${cuba.webContextName}/work',
+  'cuba.download.directories' : '${cuba.tempDir};${cuba.logDir}',
+  'cuba.dbDir' : 'web-inf:db'
 ]
 ----
 
-Click OK.
+Save deployment settings.
+--
 
-*Build WAR*
-
-Build WAR one of two ways.
-
-* Run command from Studio. Click `Search command` button and type `bu`, then choose `buildWar - gradle task` from dropdown list
-
-image::heroku_war_build.png[align="center"]
-
-OR
-
-* run shell command from $PROJECT_FOLDER
+Build WAR file::
++
+--
+Build WAR file by executing the `buildWar` Gradle task. You can do it right from the Studio *Search* dialog or from the command line:
 
 [source, groovy]
 ----
-gradle buildWar
+gradlew buildWar
 ----
 
-*Application settings*
+In order to use `gradlew` command in the command line, create Gradle wrapper using Studio *Build* menu command beforehand.
+--
 
-Add a *Procfile* to your CUBA application folder in order to define its process types:
+Application setup::
++
+--
 
+* Download Tomcat Webapp Runner from https://mvnrepository.com/artifact/com.github.jsimone/webapp-runner. The version of Webapp Runner must conform to the Tomcat version in use. For example, version 8.5.11.3 of Webapp Runner is suitable for Tomcat version 8.5.11. Rename JAR to `webapp-runner.jar` and place it into `$PROJECT_FOLDER`.
+
+* Download Tomcat DBCP from https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-dbcp.
+  Use the version corresponding to your Tomcat version, for example 8.5.11. Rename JAR to `tomcat-dbcp.jar` and place it into the `$PROJECT_FOLDER/libs` folder.
+
+* Download PostgreSQL JDBC driver from https://mvnrepository.com/artifact/org.postgresql/postgresql/9.4.1212, rename JAR to `postgresql.jar` and place it into the `$PROJECT_FOLDER/libs` folder.
+
+* Create a file named `Procfile` in `$PROJECT_FOLDER`. The file should contain the following text:
++
 [source, bash]
 ----
 web: java $JAVA_OPTS -cp webapp-runner.jar:libs/* webapp.runner.launch.Main --enable-naming --port $PORT --context-xml modules/core/web/META-INF/war-context.xml build/distributions/war/app.war
 ----
+--
 
-*Git setup*
+Git setup::
++
+--
+Open the command prompt in `$PROJECT_FOLDER` and run the commands listed below:
 
-Open local command line utility. Navigate to `$PROJECT_FOLDER`. Run commands listed below:
-
-[source, groovy]
+[source]
 ----
 git init
 heroku git:remote -a morning-beach-4895
 git add .
-git commit -am "first commit"
+git commit -am "Initial commit"
 ----
+--
 
-*Deploy application*
+Application deployment::
++
+--
+Open the command prompt in `$PROJECT_FOLDER` and run the following command:
 
-Open local command line utility. Navigate to your CUBA project folder and run deploy command:
+On *nix:
 
-`Linux`
-[source, groovy]
+[source]
 ----
 heroku jar:deploy webapp-runner.jar --includes libs/postgresql.jar:libs/tomcat-dbcp.jar:modules/core/web/META-INF/war-context.xml:build/distributions/war/app.war
 ----
 
-`Windows`
-[source, groovy]
+On Windows:
+
+[source]
 ----
 heroku jar:deploy webapp-runner.jar --includes libs\postgresql.jar;libs\tomcat-dbcp.jar;modules\core\web\META-INF\war-context.xml;build\distributions\war\app.war
 ----
 
-Open Heroku dashboard, Resources tab. A new Dyno should appear with a command from Procfile:
+Open the *Resources* tab in Heroku dashboard. A new Dyno should appear with a command from your `Procfile`:
 
 image::heroku_dyno.png[align="center"]
 
-The application is deploying now. Monitor logs to track the process.
+The application is deploying now. You can monitor logs to track the process.
+--
 
-*Check logs*
+Logs monitoring::
++
+--
+Wait for a message `++https://morning-beach-4895.herokuapp.com/  deployed to Heroku++`.
 
-Wait for a message `https://morning-beach-4895.herokuapp.com/  deployed to Heroku` +
-Now you can open the application in a web browser.
+In order to track application logs, run the following command in the command line:
 
-To track heroku application logs type a shell command:
-
-[source, bash]
+[source]
 ----
 heroku logs --tail
 ----
+--
 
-After the deployment process is completed, your application will become accessible in browser using the https://morning-beach-4895.herokuapp.com/.
+After the deployment process is completed your application will be accessible in web browser by an URL like `++https://morning-beach-4895.herokuapp.com++`.
 
-You can open the application from Heroku dashboard using 'Open app' button.
-
-image::heroku_open_app_full.png[align="center"]
-
-Done.
+You can also open the application from the Heroku dashboard using the *Open app* button.
 
 ==== Tomcat deployment to Heroku
 
