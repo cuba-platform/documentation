@@ -1,5 +1,6 @@
 package chopper.server;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
 
 import java.io.BufferedReader;
@@ -67,6 +68,10 @@ public class Search {
             int idx = text.indexOf(term);
             if (idx > -1) {
                 SearchResult result = new SearchResult(sect.fileName, sect.captionPath, sect.captionName);
+
+                String caption = caseSensitive ? sect.captionName : sect.captionName.toLowerCase();
+                result.setCaptionWeight(StringUtils.countMatches(caption, term));
+
                 int start = 0;
                 while (idx > -1) {
                     StringBuilder hit = new StringBuilder("<div class=\"hit-info\">");
@@ -83,6 +88,9 @@ public class Search {
                     start = idx + 1;
                     idx = text.indexOf(term, start);
                 }
+
+                result.setBodyWeight(result.hits.size());
+
                 if (result.hits.size() > 10) {
                     int more = result.hits.size() - 10;
                     while (result.hits.size() > 10) {
@@ -90,10 +98,12 @@ public class Search {
                     }
                     result.hits.add("<div class=\"hit-info\">" + "And " + more + " more" + "</div>");
                 }
+
                 results.add(result);
             }
         }
 
+        results.sort(null);
         return results;
     }
 
