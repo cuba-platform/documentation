@@ -526,11 +526,9 @@ Heroku CLI::
 --
 . Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI].
 
-. Open command prompt on your computer.
-
 . Create an empty folder for CUBA project. Further on we will use `$PROJECT_FOLDER` for it.
 
-. Navigate to `$PROJECT_FOLDER` and type:
+. Open command prompt at any folder of your computer and type:
 +
 [source]
 ----
@@ -550,8 +548,9 @@ heroku plugins:install heroku-cli-deploy
 PostgreSQL database::
 +
 --
-Open https://dashboard.heroku.com[Heroku dashboard] in your web browser, go to *Resources* tab and click *Find more add-ons* button to find the database add-on.
 Find *Heroku Postgres* block and click on it. Follow the instruction on the screen, click *Login to install / Install Heroku Postgres*.
+
+
 
 Alternatively, you can install PostgreSQL using Heroku CLI:
 
@@ -562,9 +561,13 @@ heroku addons:create heroku-postgresql:hobby-dev --app morning-beach-4895
 
 Here `morning-beach-4895` is your Heroku application name.
 
-Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application.
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application. Click on Postgres database link:
+
+image::heroku_view_postgres_creds_1.png[align="center"]
 
 To obtain database credentials go to the *Administration* section of your PostgreSQL database in the dashboard and click *View credentials* button:
+
+image::heroku_view_postgres_creds_2.png[align="center"]
 
 ----
 Host compute.amazonaws.com
@@ -583,12 +586,15 @@ Create new CUBA project in `$PROJECT_FOLDER` using CUBA Studio.
 
 Open *Deployment settings* and configure options as described below.
 
-image::heroku_war_settings.png[align="center"]
-
 * Select *Build WAR*
 * Set application home directory to '.' (dot)
 * Select *Include Tomcat's context.xml*
-* Click *Generate* button next to the *Custom context.xml path* field. Then open the generated `modules/core/web/META-INF/war-context.xml` file and enter connection details using your database connection params and credentials:
++
+image::heroku_war_deployment_settings_1.png[align="center"]
++
+* Click *Generate* button next to the *Custom context.xml path* field. Fill your database connection details in modal window. Then open the generated `modules/core/web/META-INF/war-context.xml` file and check connection params and credentials
++
+image::heroku_fill_database_creds.png[align="center"]
 +
 [source, xml]
 ----
@@ -611,22 +617,18 @@ image::heroku_war_settings.png[align="center"]
 
 * Select *Single WAR for Middleware and Web Client*.
 
-* Click *Generate* button next to the *Custom context.xml path* field.
+* Click *Generate* button next to the *Custom web.xml path* field.
 
 * Copy the code shown below and paste it into the *App properties* field:
 +
 [source, groovy]
 ----
 [
-  'cuba.automaticDatabaseUpdate' : true,
-  'cuba.logDir' : './logs',
-  'cuba.confDir' : './${cuba.webContextName}/conf',
-  'cuba.tempDir' : './${cuba.webContextName}/temp',
-  'cuba.dataDir' : './${cuba.webContextName}/work',
-  'cuba.download.directories' : '${cuba.tempDir};${cuba.logDir}',
-  'cuba.dbDir' : 'web-inf:db'
+  'cuba.automaticDatabaseUpdate' : true
 ]
 ----
+
+image::heroku_war_deployment_settings_2.png[align="center"]
 
 Save deployment settings.
 --
@@ -651,7 +653,7 @@ Application setup::
 * Download Tomcat Webapp Runner from https://mvnrepository.com/artifact/com.github.jsimone/webapp-runner. The version of Webapp Runner must conform to the Tomcat version in use. For example, version 8.5.11.3 of Webapp Runner is suitable for Tomcat version 8.5.11. Rename JAR to `webapp-runner.jar` and place it into `$PROJECT_FOLDER`.
 
 * Download Tomcat DBCP from https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-dbcp.
-  Use the version corresponding to your Tomcat version, for example 8.5.11. Rename JAR to `tomcat-dbcp.jar` and place it into the `$PROJECT_FOLDER/libs` folder.
+  Use the version corresponding to your Tomcat version, for example 8.5.11. Create `$PROJECT_FOLDER/libs`, rename JAR to `tomcat-dbcp.jar` and place it into the `$PROJECT_FOLDER/libs` folder.
 
 * Download PostgreSQL JDBC driver from https://mvnrepository.com/artifact/org.postgresql/postgresql/9.4.1212, rename JAR to `postgresql.jar` and place it into the `$PROJECT_FOLDER/libs` folder.
 
@@ -680,20 +682,20 @@ git commit -am "Initial commit"
 Application deployment::
 +
 --
-Open the command prompt in `$PROJECT_FOLDER` and run the following command:
+Open the command prompt and run the following command:
 
 On *nix:
 
 [source]
 ----
-heroku jar:deploy webapp-runner.jar --includes libs/postgresql.jar:libs/tomcat-dbcp.jar:modules/core/web/META-INF/war-context.xml:build/distributions/war/app.war
+heroku jar:deploy webapp-runner.jar --includes libs/postgresql.jar:libs/tomcat-dbcp.jar:modules/core/web/META-INF/war-context.xml:build/distributions/war/app.war --app morning-beach-4895
 ----
 
 On Windows:
 
 [source]
 ----
-heroku jar:deploy webapp-runner.jar --includes libs\postgresql.jar;libs\tomcat-dbcp.jar;modules\core\web\META-INF\war-context.xml;build\distributions\war\app.war
+heroku jar:deploy webapp-runner.jar --includes libs\postgresql.jar;libs\tomcat-dbcp.jar;modules\core\web\META-INF\war-context.xml;build\distributions\war\app.war --app morning-beach-4895
 ----
 
 Open the *Resources* tab in Heroku dashboard. A new Dyno should appear with a command from your `Procfile`:
