@@ -21,6 +21,14 @@ class PostProcessDocHtml extends DefaultTask {
             it.text(text)
         }
 
+
+        doc.select("a").each {
+            final URI uri = new URI(it.attr("href"));
+            if (uri.isAbsolute()) {
+                it.attr("target", "_blank")
+            }
+        }
+
         def hideCaption = docLang == 'ru' ? 'Скрыть панель' : 'Hide panel';
 
         def treeControl = toc.prependElement("div")
