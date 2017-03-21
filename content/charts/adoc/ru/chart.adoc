@@ -17,10 +17,9 @@ http://www.amcharts.com/online-store/[купить^] лицензию на AmCha
 [[chart_configuration]]
 === Конфигурация диаграмм
 
-Для отображения диаграмм используется компонент `Chart`, являющийся универсальным холстом. Вид диаграммы задается его
-свойством `configuration` типа `AbstractChart`.
+Для отображения диаграмм используется компонент `Chart`, являющийся универсальным холстом. Вид диаграммы задается с помощью конкретного интерфейса <<chart_types,типа диаграммы>>, унаследованного от `Chart`.
 
-Диаграммы можно описывать в XML-дескрипторе экрана. Для этого необходимо подключить соответствующий `namespace`:
+Диаграммы можно описывать как в XML-дескрипторе, так и в контроллере экрана. Для описания в дескрипторе необходимо подключить соответствующий `namespace`:
 
 [source, xml]
 ----
@@ -39,12 +38,17 @@ http://www.amcharts.com/online-store/[купить^] лицензию на AmCha
 * `chart:radarChart` - RadarChart
 * `chart:ganttChart` - GanttChart
 
-Каждый вид диаграммы имеет свой набор атрибутов и методов, которые повторяют функционал соответствующих диаграмм
-библиотеки AmCharts. Документация по свойствам и методам диаграмм находится по адресу
+Каждый вид диаграммы имеет свой набор атрибутов и методов, которые повторяют функционал соответствующих диаграмм библиотеки AmCharts. Документация по свойствам и методам диаграмм находится по адресу
 http://docs.amcharts.com/3/javascriptcharts[docs.amcharts.com/3/javascriptcharts^].
 
-Все атрибуты конфигурации могут иметь значение `null`, вместо таких значений будут использоваться значения по умолчанию
-(кроме случаев, указанных в документации AmCharts).
+Все атрибуты конфигурации могут иметь значение `null`, вместо таких значений будут использоваться значения по умолчанию (кроме случаев, указанных в документации AmCharts).
+
+Таким же образом можно описывать диаграммы в контроллере экрана. Можно как указывать отдельные свойства, так и добавлять составные объекты:
+
+[source,java]
+----
+include::{sourcesdir}/chart/chart_configure.java[]
+----
 
 Диаграммы могут быть экспортированы из работающего приложения в формате изображения или исходных данных. Для создания меню экспорта используется элемент `chart:export`, включающий по умолчанию следующие атрибуты:
 
@@ -69,10 +73,9 @@ image::chart/charts_export_menu_2.png[align="center"]
 [[chart_data_binding]]
 === Связь с данными
 
-Реализовано два варианта передачи данных в диаграмму: через интерфейс `DataProvider` или через механизм источников данных. 
+Реализовано три варианта передачи данных в диаграмму: через интерфейс `DataProvider`, через механизм источников данных, или с использованием <<chart_data_simplified,упрощённого API>>, позволяющего привязывать данные напрямую при помощи метода `addData()` и удобных конструкторов класса `MapDataItem`. Последний способ подходит для диаграмм, не привязанных к какому-либо источнику данных.
 
-* Интерфейс `DataProvider` имеет стандартную реализацию: класс `ListDataProvider`. Он содержит список экземпляров
-`DataItem` из которых будут браться данные для диаграммы. Существует несколько стандартных реализаций интерфейса `DataItem`:
+* Интерфейс `DataProvider` имеет стандартную реализацию: класс `ListDataProvider`. Он содержит список экземпляров `DataItem` из которых будут браться данные для диаграммы. Существует несколько стандартных реализаций интерфейса `DataItem`:
  ** `EntityDataItem` принимает экземпляр сущности.
  ** `MapDataItem` содержит набор пар ключ-значение.
  ** `SimpleDataItem` принимает экземпляр любого `public` класса.
@@ -85,7 +88,7 @@ image::chart/charts_export_menu_2.png[align="center"]
 Данный вариант требует наличия сущности, представляющей данные диаграммы. Он удобен, когда такая сущность уже есть в
 модели данных приложения, а также когда данные диаграммы нужно отобразить и в виде таблицы.
 
-В главе <<chart_example>> проиллюстрированы оба способа получения данных.
+В главе <<chart_example>> проиллюстрированы все три способа получения данных.
 
 Используемые для отображения свойства сущности или значения, содержащиеся в экземпляре `DataProvider`, задаются в
 атрибутах диаграммы, причем атрибуты различаются для разных типов диаграмм. Например для компонента `chart:pieChart`
@@ -97,25 +100,108 @@ image::chart/charts_export_menu_2.png[align="center"]
 [[chart_listeners]]
 === События
 
-Имеется возможность настроить реакцию на различные типы событий. Доступны следующие типы слушателей событий:
+Имеется возможность настроить реакцию на различные типы событий. Следующие типы слушателей событий доступны для всех видов диаграмм:
 
+* `LegendItemHideListener` - скрытие элемента легенды.
+* `LegendItemShowListener` - показ элемента легенды.
+* `LegendLabelClickListener` - щелчок по ярлыку легенды.
+* `LegendMarkerClickListener` - щелчок по маркеру легенды.
+
+Для каждого вида диаграмм также доступны свои типы слушателей:
+
+AngularGaugeChart::
+* `ChartClickListener` - щелчок по холсту.
+* `ChartRightClickListener` - щелчок по холсту правой клавишей мыши.
+
+FunnelChart::
+* `SliceClickListener` - щелчок по элементу круговой диаграммы.
+* `SlicePullInListener` - элемент круговой диаграммы соединён с диаграммой.
+* `SlicePullOutListener` - элемент круговой диаграммы отсоединён от диаграммы.
+* `SliceRightClickListener` - щелчок по элементу круговой диаграммы правой клавишей мыши.
+
+GanttChart::
 * `AxisZoomListener` - масштабирование оси графика.
 * `ChartClickListener` - щелчок по холсту.
-* `RightClickListener` - щелчок по холсту правой клавишей мыши.
+* `ChartRightClickListener` - щелчок по холсту правой клавишей мыши.
 * `CursorPeriodSelectListener` - выбор периода отображения курсором.
 * `CursorZoomListener` - масштабирование области графика курсором.
 * `GraphClickListener` - щелчок по графику.
 * `GraphItemClickListener` - щелчок по элементу графика.
-* `LegendItemHideListener` - скрытие элемента легенды.
-* `LegendItemShowListener` - показ элемента легенды.
-* `LegendItemClickListener` - щелчок по элементу легенды.
-* `SliceClickListener` - щелчок по элементу круговой диаграммы.
-* `SliceRightClickListener` - щелчок по элементу круговой диаграммы правой клавишей мыши.
-* `SlicePullInListener` - элемент круговой диаграммы соединён с диаграммой.
-* `SlicePullOutListener` - элемент круговой диаграммы отсоединён от диаграммы.
+* `GraphItemRightClickListener` - щелчок по элементу графика правой клавишей мыши.
 * `ZoomListener` - масштабирование холста.
 
-Пример использования событий проиллюстрирован в разделе <<section_use_of_events,>>.
+PieChart::
+* `ChartClickListener` - щелчок по холсту.
+* `ChartRightClickListener` - щелчок по холсту правой клавишей мыши.
+* `SliceClickListener` - щелчок по элементу круговой диаграммы.
+* `SlicePullInListener` - элемент круговой диаграммы соединён с диаграммой.
+* `SlicePullOutListener` - элемент круговой диаграммы отсоединён от диаграммы.
+* `SliceRightClickListener` - щелчок по элементу круговой диаграммы правой клавишей мыши.
+
+RadarChart::
+* `AxisZoomListener` - масштабирование оси графика.
+* `ChartClickListener` - щелчок по холсту.
+* `ChartRightClickListener` - щелчок по холсту правой клавишей мыши.
+* `GraphClickListener` - щелчок по графику.
+* `GraphItemClickListener` - щелчок по элементу графика.
+* `GraphItemRightClickListener` - щелчок по элементу графика правой клавишей мыши.
+
+SerialChart::
+* `AxisZoomListener` - масштабирование оси графика.
+* `ChartClickListener` - щелчок по холсту.
+* `ChartRightClickListener` - щелчок по холсту правой клавишей мыши.
+* `CursorPeriodSelectListener` - выбор периода отображения курсором.
+* `CursorZoomListener` - масштабирование области графика курсором.
+* `GraphClickListener` - щелчок по графику.
+* `GraphItemClickListener` - щелчок по элементу графика.
+* `GraphItemRightClickListener` - щелчок по элементу графика правой клавишей мыши.
+* `ZoomListener` - масштабирование холста.
+
+StockChartGroup::
+* `DataSetSelectorCompareListener` - сравнение селекторов наборов данных.
+* `DataSetSelectorSelectListener` - выбор селектора набора данных.
+* `DataSetSelectorUnCompareListener` - отмена сравнения селекторов наборов данных.
+* `PeriodSelectorChangeListener` - выбор периода отображения при помощи селектора.
+* `StockChartClickListener` - щелчок по холсту фондовой диаграммы.
+* `StockChartRightClickListener` - щелчок по холсту фондовой диаграммы правой клавишей мыши.
+* `StockEventClickListener` - щелчок по событию фондовой диаграммы.
+* `StockEventRollOutListener` - разворачивание события фондовой диаграммы.
+* `StockEventRollOverListener` - сворачивание события фондовой диаграммы.
+* `StockGraphClickListener` - щелчок по фондовой диаграмме.
+* `StockGraphItemClickListener` - щелчок по элементу фондовой диаграммы.
+* `StockGraphItemRightClickListener` -  щелчок по элементу фондовой диаграммы правой клавишей мыши.
+* `StockGraphItemRollOutListener` - разворачивание элемента фондовой диаграммы.
+* `StockGraphItemRollOverListener` - сворачивание элемента фондовой диаграммы.
+* `StockGraphRollOutListener` - разворачивание фондовой диаграммы.
+* `StockGraphRollOverListener` - сворачивание элемента фондовой диаграммы.
+* `ZoomListener` - масштабирование холста.
+
+
+XYChart::
+* `AxisZoomListener` - масштабирование оси графика.
+* `ChartClickListener` - щелчок по холсту.
+* `CursorPeriodSelectListener` - выбор периода отображения курсором.
+* `CursorZoomListener` - масштабирование области графика курсором.
+* `GraphClickListener` - щелчок по графику.
+* `GraphItemClickListener` - щелчок по элементу графика.
+* `GraphItemRightClickListener` - щелчок по элементу графика правой клавишей мыши.
+
+Пример использования событий проиллюстрирован в разделе <<section_use_of_events>>.
+
+Чтобы мигрировать старый код, в котором используются слушатели событий, на новую версию платформы, необходимо привести компонент `Chart` к конкретному типу диаграммы или заново инжектировать его с конкретным типом диаграммы:
+[source,java]
+----
+@Inject
+private Chart pieChart;
+----
+[source,java]
+----
+((PieChart)pieChart).addSliceClickListener(event -> {});
+----
+
+Кроме обработки событий, интерфейс `SeriesBasedChart` содержит методы `zoomOut`, `zoomToIndexes` и `zoomToDates` для манипуляций с осями диаграммы.
+
+Подобные методы для управления осями значений также есть и в интерфейсе `CoordinateChart`: `zoomOutValueAxes`, `zoomOutValueAxis`, `zoomOutValueAxis`, `zoomValueAxisToValues` и `zoomValueAxisToValues`.
 
 [[chart_example]]
 === Пример работы с диаграммами
@@ -125,7 +211,7 @@ image::chart/charts_export_menu_2.png[align="center"]
 [[chart_project_setup]]
 ==== Настройка проекта приложения
 
-. Запустите *CUBA Studio*, создайте новй проект и назовите его `sampler`.
+. Запустите *CUBA Studio*, создайте новый проект и назовите его `sampler`.
 
 . Откройте окно свойств проекта *Project properties* -> *Edit* и в списке *App components* включите проект *charts*,
 затем сохраните изменения. Studio предложит пересоздать скрипты Gradle - согласитесь.
@@ -137,10 +223,36 @@ Tomcat в подкаталоге `build/tomcat`.
 
 После выполнения вышеописанных действий функциональность для отображения диаграмм подключена к приложению и готова к работе. 
 
+[[chart_data_simplified]]
+==== Создание диаграммы с использованием Data Binding API
+
+Для первого примера мы создадим максимально простую диаграмму, используя упрощённый API.
+
+Добавим компонент `chart` к экрану. Чтобы наполнить диаграмму данными, используем метод `addData()`. В качестве параметра передадим экземпляры класса `MapDataItem`, содержащие пары ключ-значение:
+
+[source,xml]
+----
+<chart:pieChart id="pieChart"
+                titleField="key"
+                valueField="value"/>
+----
+
+[source,java]
+----
+pieChart.addData(MapDataItem.of("key", "piece of apple pie",
+                                "value", 75),
+                MapDataItem.of("key", "piece of blueberry pie",
+                                "value", 20),
+                MapDataItem.of("key", "piece of cherry pie",
+                                "value", 10));
+----
+
+image::chart/chart_simple.png[align="center"]
+
 [[chart_data_from_entity]]
 ==== Создание диаграммы с данными из сущности
 
-Для первого примера мы создадим диаграмму похожую на
+В этом примере мы создадим диаграмму похожую на
 https://www.amcharts.com/demos/3d-stacked-column-chart/[3D Stacked Column Chart^] из демо AmCharts. `JavaScript` код
 выглядит следующим образом:
 
@@ -269,7 +381,7 @@ include::{sourcesdir}/chart/Column3dChart.java[]
 
 . Выполните комманду *Run* -> *Start application server*.
 
-После входа в приложение и открытия экрана из меню приложения, вы увидите диаграмму, как показано ниже:
+После входа в приложение и открытия экрана из меню приложения вы увидите диаграмму, как показано ниже:
 
 .Трехмерная гистограмма
 image::chart/column3d-chart.svg[align="center", width="800"]
@@ -374,7 +486,7 @@ include::{sourcesdir}/chart/StackedAreaChart.java[]
 
 . Выполните комманду *Run* -> *Start application server*.
 
-После входа в приложение и открытия экрана из меню приложения, вы увидите диаграмму, как показано ниже:
+После входа в приложение и открытия экрана из меню приложения вы увидите диаграмму, как показано ниже:
 
 .Диаграмма с накоплением
 image::chart/stackedarea-chart.svg[align="center", width="800"]
@@ -388,7 +500,7 @@ image::chart/stackedarea-chart.svg[align="center", width="800"]
 [source, java]
 ----
 @Inject
-private Chart chart;
+private SerialChart chart;
 ----
 
 Далее добавьте слушателя в конце метода `init(Map<String, Object> params)`:
@@ -446,7 +558,19 @@ include::{sourcesdir}/chart/custom_json_4.xml[]
 Существует несколько типов диаграмм, поддерживаемых платформой.
 
 .Иерархия видов диаграмм
-image::chart/charts-hierarchy-dia.svg[align="center"]
+image::chart/charts_hierarchy_diagram.png[align="center"]
+
+Эти интерфейсы представлены в виде готовых компонентов:
+
+* <<gauge_chart,AngularGaugeChart>>,
+* <<funnel_chart,FunnelChart>>,
+* <<gantt_chart,GanttChart>>,
+* <<pie_chart,PieChart>>,
+* <<radar_chart,RadarChart>>,
+* <<serial_chart,SerialChart>>,
+* <<xy_chart,XYChart>>.
+
+Все компоненты содержат константу `NAME`, таким образом, поддерживается их создание с помощью `ComponentsFactory`.
 
 [[serial_chart]]
 ==== SerialChart
@@ -587,7 +711,7 @@ image::chart/stock-chart-with-datasets.svg[align="center", width="800"]
 image::chart/stock-chart-with-stockevents.svg[align="center", width="800"]
 
 Фондовые диаграммы поддерживают любое количество панелей. Каждая панель может иметь любое количество графов. Каждая
-панель - это отдельная диаграмма и базируется на SerialChart. Другими словами панель может все то же самое, что и эта
+панель - это отдельная диаграмма и базируется на SerialChart. Другими словами, панель может все то же самое, что и эта
 диаграмма.
 
 ++++
