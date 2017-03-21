@@ -1,0 +1,1 @@
+See https://confluence.haulmont.come/display/PLAT/Asciidoc
