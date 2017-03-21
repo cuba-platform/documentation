@@ -1,4 +1,4 @@
-chart.addGraphItemClickListener(event -> {
+serialChart.addGraphItemClickListener(event -> {
         CountryGrowth countryGrowth = (CountryGrowth) event.getItem();
         String message = String.format("GDP grow in %s (%s): %.1f%%",
         countryGrowth.getCountry(),

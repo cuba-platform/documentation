@@ -12,6 +12,5 @@ public void init(Map<String, Object> params) {
         serialChartDataProvider.addItem(graphData(serialChartChartData[i]));
     }
 
-    SerialChart serialChartConfiguration = (SerialChart) serialChart.getConfiguration();
     serialChartConfiguration.setDataProvider(serialChartDataProvider);
 }

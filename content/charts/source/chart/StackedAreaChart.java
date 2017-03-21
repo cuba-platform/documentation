@@ -39,7 +39,6 @@ public class StackedAreaChart extends AbstractWindow {
         dataProvider.addItem(transportCount(2011, 1180, 285, 87));
         dataProvider.addItem(transportCount(2012, 1159, 277, 71));
 
-        SerialChart serialChart = (SerialChart) chart.getConfiguration();
         serialChart.setDataProvider(dataProvider);
     }
 
