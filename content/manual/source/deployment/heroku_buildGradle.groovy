@@ -25,7 +25,7 @@ cuba.automaticDatabaseUpdate = true
         }
 
         def webAppDir = new File('deploy/tomcat/webapps/app')
-        webAppDir.renameTo( new File(rootFolder) )
+        webAppDir.renameTo( new File(rootFolder.path) )
 
         // add local.app.properties for web application
         def webConfDir = new File('deploy/tomcat/conf/ROOT/')
