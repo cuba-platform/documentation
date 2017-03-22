@@ -499,6 +499,397 @@ cf logs cuba-app --recent
 
 . По завершению процесса развёртывания CUBA-приложение будет доступно в облаке Bluemix. Чтобы его открыть, воспользуйтесь URL `host.domain` в браузере. Этот URL будет отображаться в поле *ROUTE* таблицы ваших приложений *Cloud Foundry Apps*.
 
+
+[[heroku_deployment]]
+==== Развертывание в облаке Heroku
+
+Данный раздел описывает порядок развертывания приложения CUBA в облаке https://www.heroku.com/[Heroku®].
+
+[TIP]
+=====
+Это руководство охватывает процесс развертывания проекта с использованием базы данных PostgreSQL.
+=====
+
+[[heroku_war_deployment]]
+===== Развертывание WAR-файла в Heroku
+
+Аккаунт Heroku::
++
+--
+Создайте учетную запись в Heroku с помощью веб-браузера, будет достаточно бесплатного аккаунта `hobby-dev`. Затем войдите в аккаунт и создайте новое приложение с помощью кнопки *New* в верхней части страницы.
+
+Задайте уникальное имя приложения (либо оставьте поле пустым, чтобы имя назначилось автоматически) и выберите подходящее геоположение сервера. Вы зарегистрировали приложение, например `morning-beach-4895`, это будет название приложения Heroku.
+
+Сначала вас переадресует на вкладку *Deploy*. Выберите там метод развертывания *Heroku Git*.
+--
+
+Командная строка Heroku (CLI)::
++
+--
+. Установите на компьютер программное обеспечение https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI].
+
+. Создайте пустую папку для проекта CUBA. В дальнейшем для этой папки будет использоваться переменная `$PROJECT_FOLDER`.
+
+. Откройте командную строку в любой папке вашего компьютера и наберите команду:
++
+[source]
+----
+heroku login
+----
+
+. По запросу введите логин и пароль для Heroku. Начиная с текущего момента от вас больше не потребуется вводить логин и пароль для команд heroku.
+
+. Установите плагин *Heroku CLI deployment plugin*:
++
+[source]
+----
+heroku plugins:install heroku-cli-deploy
+----
+--
+
+База данных PostgreSQL::
++
+--
+С помощью браузера пройдите на страницу https://data.heroku.com/[Heroku data]
+
+Вы можете использовать существующую базу Postgres или создать новую. Далее описываются шщаги по созданию новой БД.
+. Найдите на странице блок *Heroku Postgres* и нажмите кнопку *Create one*
+. На следующем экране нажмите кнопку *Install Heroku Postgr...*
+. Далее подключите базу к приложению Heroku, выбрав его из выпадающего списка
+. Далее выберите тарифный план (например, бесплатный `hobby-dev`)
+
+Как вариант, вы можете установить PostgreSQL с помощью Heroku CLI:
+
+[source]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app morning-beach-4895
+----
+
+Здесь `morning-beach-4895` это название вашего приложения Heroku.
+
+Теперь вы можете увидеть новую БД на вкладке *Resources*. База соединена с приложением Heroku. Чтобы получить детали для подключения к сервису БД, перейдите на страницу *Datasource* вашей БД в Heroku, опуститесь вниз до секции *Administration* и нажмите кнопку *View credentials*.
+
+----
+Host compute.amazonaws.com
+Database d2tk
+User nmmd
+Port 5432
+Password 9c05
+URI postgres://nmmd:9c05@compute.amazonaws.com:5432/d2tk
+----
+--
+
+Настройки проекта для развертывания::
++
+--
+. Создайте новый проект CUBA в папке `$PROJECT_FOLDER` с помощью CUBA Studio.
+. В Студии перейдите к секции *Project Properties*, нажмите *Edit*, установите в поле *Database type* в качестве БД *PostgreSQL*, а затем сохраните настройки.
+. Перейдите к секции *Data Model*, выполните действие, нажав сначала *Create DB scripts* и затем *Save and close*.
+
+Выполните дейтвие *Deployment settings*, перейдите на вкладку *WAR* и отредактируйте настройки, как описано ниже.
+
+* Включите *Build WAR*
+* Задайте точку '.' в качестве домашнего каталога приложения в поле *Application home directory*
+* Включите *Include JDBC driver*
+* Включите *Include Tomcat's context.xml*
+* Нажмите кнопку *Generate*, находящуюся справа от поля *Custom context.xml path*. Во всплывающем окне заполните параметры подключения к БД
+* Откройте сгенерированный файл `modules/core/web/META-INF/war-context.xml` и проверьте детали подключения:
++
+[source, xml]
+----
+<Context>
+    <!-- Database connection -->
+    <Resource
+      name="jdbc/CubaDS"
+      type="javax.sql.DataSource"
+      maxTotal="20"
+      maxIdle="2"
+      maxWaitMillis="5000"
+      driverClassName="org.postgresql.Driver"
+      url="jdbc:postgresql://compute.amazonaws.com/d2tk"
+      username="nmmd"
+      password="9c05"/>
+
+      <!-- ... -->
+</Context>
+----
+* Отметьте галочкой *Single WAR for Middleware and Web Client*
+* Нажмите кнопку *Generate* справа от поля *Custom web.xml path*
+* Скопируйте код, приведенный ниже, в поле *App properties*:
++
+[source]
+----
+[
+  'cuba.automaticDatabaseUpdate' : true
+]
+----
+Сохраните настройки.
+--
+
+Сборка WAR-файла::
++
+--
+Соберите WAR-файл, выполнив команду `buildWar` в Gradle. Вы можете сделать это прямо в Студии, открыв диалог *Search*, или из командной строки:
+
+[source]
+----
+gradlew buildWar
+----
+
+Чтобы иметь возможность работать с командой `gradlew`, заранее создайте Gradle wrapper, использовав команду меню *Build*.
+--
+
+Настройка приложения::
++
+--
+
+* Загрузите JAR-файл Tomcat Webapp Runner из репозитория https://mvnrepository.com/artifact/com.github.jsimone/webapp-runner. Версия Webapp Runner должна соответствовать используемой версии Tomcat. К примеру, Webapp Runner версии 8.5.11.3 подходит для Tomcat версии 8.5.11. Переименуйте JAR-файл в `webapp-runner.jar` и поместите его в корень проекта `$PROJECT_FOLDER`.
+
+* Загрузите JAR-файл Tomcat DBCP из репозитория https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-dbcp.
+  Используйте версию, соответствующую вашему Tomcat, например 8.5.11. Создайте папку `$PROJECT_FOLDER/libs`, переименуйте JAR-файл в `tomcat-dbcp.jar` и поместите его в папку `$PROJECT_FOLDER/libs`.
+
+* Создайте файл с названием `Procfile` в `$PROJECT_FOLDER`. Файл должен содержать следующий текст:
++
+[source, bash]
+----
+web: java $JAVA_OPTS -cp webapp-runner.jar:libs/* webapp.runner.launch.Main --enable-naming --port $PORT build/distributions/war/app.war
+----
+--
+
+Настройка Git::
++
+--
+Откройте командную строку в папке `$PROJECT_FOLDER` и запустите команды, указанные ниже:
+
+[source]
+----
+git init
+heroku git:remote -a morning-beach-4895
+git add .
+git commit -am "Initial commit"
+----
+--
+
+Развертывание приложения::
++
+--
+Откройте командную строку в папке `$PROJECT_FOLDER` и запустите команды, указанные ниже:
+
+Для *nix:
+
+[source]
+----
+heroku jar:deploy webapp-runner.jar --includes libs/tomcat-dbcp.jar:build/distributions/war/app.war --app morning-beach-4895
+----
+
+Для Windows:
+
+[source]
+----
+heroku jar:deploy webapp-runner.jar --includes libs\tomcat-dbcp.jar;build\distributions\war\app.war --app morning-beach-4895
+----
+
+Откройте вкладку *Resources* в панели управления Heroku. Должна появиться новая сущность Dyno с командой из вашего `Procfile`:
+
+image::heroku_dyno.png[align="center"]
+
+Приложение в данный момент разворачивается. Вы можете мониторить процесс по логам.
+--
+
+Мониторинг логов::
++
+--
+Дождитесь сообщения в командной строке `++https://morning-beach-4895.herokuapp.com/  deployed to Heroku++`.
+
+Чтоюы отслеживать данные в логах, запускайте в командной строке следующую команду:
+
+[source]
+----
+heroku logs --tail --morning-beach-4895
+----
+--
+
+После завершения процесса развертывания ваше приложение будет доступно в браузере по ссылке `++https://morning-beach-4895.herokuapp.com++`.
+
+Вы также можете открыть приложение с помощью кнопки *Open app*, расположенной на панели Heroku.
+
+
+[[heroku_tomcat_deployment]]
+===== Tomcat Deployment to Heroku
+
+This guide is intended for users who have a CUBA project located on GitHub.
+To initiate Heroku application deployment you need the ability to perform push to your remote Git repository. For that reason you need Git installed on your computer. As an option, you can install built-in Git during Heroku CLI installation. Also you need to have GitHub repository containing your CUBA project.
+
+Heroku account::
++
+--
+Create an account on Heroku using the web browser, free account `hobby-dev` is enough. Then login to the account and create new application using *New* button at the top of the page.
+
+Select unique name (or left the field blank to assign automatically) and choose a server location. Now you have an application, for example `space-sheep-02453`, this is a Heroku application name.
+
+First time you will be redirected to *Deploy* tab. Use *GitHub* deployment method. Follow the screen instructions how to authorize your GitHub account.
+Click *Search* button to list all available Git repositories then connect to desired repo. When your Heroku application is connected to GitHub you are able to activate *Automatic Deploys*. This allows to redeploy Heroku application automatically on each Git push event. In this tutorial the option is enabled.
+--
+
+Heroku CLI::
++
+--
+. Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI]
+. Open command prompt at any folder of your computer and type:
++
+[source]
+----
+heroku login
+----
++
+. Enter your credentials when prompted. From now on you don't need to enter credentials for this project.
+--
+
+PostgreSQL database::
++
+--
+. Return to web browser with Heroku https://dashboard.heroku.com[dashboard]
+. Go to *Resources* tab
+. Click *Find more add-ons* button to find the database add-on
+. Find *Heroku Postgres* block and click it. Follow the instruction on the screen, click *Login to install* / *Install Heroku Postgres*.
+
+Alternatively, you can install PostgreSQL using Heroku CLI:
+
+[source]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app space-sheep-02453
+----
+where `space-sheep-02453` is your Heroku application name.
+
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application. To obtain database credentials go to the *Datasource* page of your Heroku database, scroll down to *Administration* section and click *View credentials* button.
+
+----
+Host compute.amazonaws.com
+Database zodt
+User artd
+Port 5432
+Password 367f
+URI postgres://artd:367f@compute.amazonaws.com:5432/zodt
+----
+--
+
+Project deployment settings::
++
+--
+. Navigate to your local CUBA project folder (`$PROJECT_FOLDER`)
+. Copy the content of `modules/core/web/META-INF/context.xml` to `modules/core/web/META-INF/heroku-context.xml`
+. Fill `heroku-context.xml` with your actual database connection details (see example below):
++
+[source, xml]
+----
+<Context>
+    <Resource driverClassName="org.postgresql.Driver"
+              maxIdle="2"
+              maxTotal="20"
+              maxWaitMillis="5000"
+              name="jdbc/CubaDS"
+              password="367f"
+              type="javax.sql.DataSource"
+              url="jdbc:postgresql://compute.amazonaws.com/zodt"
+              username="artd"/>
+
+    <Manager pathname=""/>
+</Context>
+----
+--
+
+Build configuration::
++
+--
+Add following Gradle task to your `$PROJECT_FOLDER/build.gradle`
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/heroku_buildGradle.groovy[]
+----
+--
+
+Procfile::
++
+--
+A command that launches the application on Heroku side is passed by special file `Procfile`. Create a file named `Procfile` in `$PROJECT_FOLDER` with following text:
+
+[source]
+----
+web: cd ./deploy/tomcat/bin && export 'JAVA_OPTS=-Dport.http=$PORT' && ./catalina.sh run
+----
+
+This provides JAVA_OPTS environment setting to Tomcat which starts by catalina script.
+--
+
+Premium addons::
++
+--
+If your project uses CUBA Premium Add-ons, set additional variables for the Heroku application.
+
+. Open the Heroku dashboard.
+. Go to the *Settings* tab.
+. Expand the *Config Variables* section clicking the *Reveal Config Vars* button.
+. Add new *Config Vars* using your license key parts (separated by dash) as *username* and *password*:
+[source]
+----
+CUBA_PREMIUIM_USER    | username
+CUBA_PREMIUM_PASSWORD | password
+----
+--
+
+Gradle wrapper::
++
+--
+Your project requires Gradle wrapper. You can use CUBA Studio to add it: see the *Build > Create or update Gradle wrapper* main menu command.
+
+. Create a file `system.properties` in `$PROJECT_FOLDER` with following content (example corresponds to local JDK 1.8.0_121 installed):
++
+[source]
+----
+java.runtime.version=1.8.0_121
+----
++
+. Check that files `Procfile`, `system.properties`, `gradlew`, `gradlew.bat` and `gradle` are not in `.gitignore`
+. Add these files to repository and commit it
+
+[source]
+----
+git add gradlew gradlew.bat gradle/* system.properties Procfile
+git commit -am "Gradle Wrapper, Procfile added"
+----
+--
+
+Application deployment::
++
+--
+Once you commit and push all changes to GitHub, Heroku starts redeploying the application.
+
+[source]
+----
+git push
+----
+
+Building process is available in the dashboard on the *Activity* tab. Click *View build log* link to track the build log.
+
+After building process is completed, your application will become accessible in browser using the `++https://space-sheep-02453.herokuapp.com/++`. You can open the application from Heroku dashboard using the *Open app* button.
+--
+
+Logs monitoring::
++
+--
+Heroku application log is shown by console command:
+
+[source]
+----
+heroku logs --tail --app space-sheep-02453
+----
+
+Tomcat logs are also available in web application: *Menu > Administration > Server Log*
+--
+
+
+
 [[scaling]]
 === Масштабирование приложения
 
