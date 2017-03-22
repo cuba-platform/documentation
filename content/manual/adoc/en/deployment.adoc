@@ -5,7 +5,7 @@ This chapter describes different aspects of CUBA applications deployment and ope
 
 image::DeploymentStructure.png[align="center"]
 
-In the example above, the application prevents a single point of failure existence, provides load balancing and various client types connection. In the simplest case, however, the server part of an application can be installed on one computer that includes the database. Various deployment options depending on load and fault tolerance requirements are described in detail in <<scaling,>>. 
+In the example above, the application prevents a single point of failure existence, provides load balancing and various client types connection. In the simplest case, however, the server part of an application can be installed on one computer that includes the database. Various deployment options depending on load and fault tolerance requirements are described in detail in <<scaling,>>.
 
 [[app_dirs]]
 === Application Directories
@@ -183,7 +183,7 @@ You can use this Tomcat instance in production just by copying the `tomcat` dire
 ----
 cuba.webHostName = myserver
 cuba.webAppUrl = http://myserver:8080/app
----- 
+----
 
 Besides, set up the connection to you production database. You can do it in the <<context.xml>> file of your web application (`webapps/app-core/META-INF/context.xml`), or copy this file to `conf/Catalina/localhost/app-core.xml` as described in the previous section to separate development and production settings.
 
@@ -219,7 +219,7 @@ and use `/` as the web context name in `conf/ROOT/local.app.properties`:
 [source, properties]
 ----
 cuba.webContextName = /
----- 
+----
 
 [[war_deployment]]
 ==== WAR deployment to Jetty
@@ -497,6 +497,394 @@ cf logs cuba-app --recent
 . After the deployment process is completed, your application will become accessible in browser using the URL `host.domain`. This URL will be displayed in the *ROUTE* field in the table of your *Cloud Foundry Apps*.
 
 
+[[heroku_deployment]]
+==== Deployment to Heroku Cloud
+
+The section describes how to deploy CUBA applications to the https://www.heroku.com/[Heroku®] cloud platform.
+
+[TIP]
+=====
+This tutorial covers deployment of a project using PostgreSQL database.
+=====
+
+[[heroku_war_deployment]]
+===== WAR Deployment to Heroku
+
+Heroku account::
++
+--
+First, create an account on Heroku using the web browser, free account `hobby-dev` is enough. Then login to the account and create new application using *New* button at the top of the page.
+
+Select unique name (or left the field blank to assign automatically) and choose a server location. Now you have an application, for example `morning-beach-4895`, this is the Heroku application name.
+
+First time you will be redirected to the *Deploy* tab. Use Heroku Git deployment method.
+--
+
+Heroku CLI::
++
+--
+. Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI].
+
+. Create an empty folder for CUBA project. Further on we will use `$PROJECT_FOLDER` for it.
+
+. Open command prompt at any folder of your computer and type:
++
+[source]
+----
+heroku login
+----
+
+. Enter your credentials when prompted. From now on you don't need to enter credentials for this project anymore.
+
+. Install Heroku CLI deployment plugin:
++
+[source]
+----
+heroku plugins:install heroku-cli-deploy
+----
+--
+
+PostgreSQL database::
++
+--
+Using the web browser go to Heroku data https://data.heroku.com/[page]
+
+You can choose existent Postgres database or create one. Next steps describe how to create a new database.
+. Find *Heroku Postgres* block and click *Create one*
+. On next screen click *Install Heroku Postgr...*
+. Next connect the database to Heroku application selected from a dropdown list
+. Next select your Plan (for ex. `hobby-dev`)
+
+Alternatively, you can install PostgreSQL using Heroku CLI:
+
+[source]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app morning-beach-4895
+----
+
+Here `morning-beach-4895` is your Heroku application name.
+
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application. To obtain database credentials go to the *Datasource* page of your Heroku database, scroll down to *Administration* section and click *View credentials* button.
+
+----
+Host compute.amazonaws.com
+Database d2tk
+User nmmd
+Port 5432
+Password 9c05
+URI postgres://nmmd:9c05@compute.amazonaws.com:5432/d2tk
+----
+--
+
+Project deployment settings::
++
+--
+. Create new CUBA project in `$PROJECT_FOLDER` using CUBA Studio.
+. In Studio, go to *Project Properties* section, click *Edit* and set *Database type* to *PostgreSQL* then save options.
+. Go to *Data Model* section, click *Create DB scripts* then click *Save and close*.
+
+Open *Deployment settings*, go to *WAR* tab and configure options as described below.
+
+* Select *Build WAR*
+* Set application home directory to '.' (dot)
+* Select *Include JDBC driver*
+* Select *Include Tomcat's context.xml*
+* Click *Generate* button next to the *Custom context.xml path* field. Fill your database connection details in modal window.
+* Open the file generated `modules/core/web/META-INF/war-context.xml` and check connection params and credentials:
++
+[source, xml]
+----
+<Context>
+    <!-- Database connection -->
+    <Resource
+      name="jdbc/CubaDS"
+      type="javax.sql.DataSource"
+      maxTotal="20"
+      maxIdle="2"
+      maxWaitMillis="5000"
+      driverClassName="org.postgresql.Driver"
+      url="jdbc:postgresql://compute.amazonaws.com/d2tk"
+      username="nmmd"
+      password="9c05"/>
+
+      <!-- ... -->
+</Context>
+----
+* Select *Single WAR for Middleware and Web Client*
+* Click *Generate* button next to the *Custom web.xml path* field
+* Copy the code shown below and paste it into the *App properties* field:
++
+[source]
+----
+[
+  'cuba.automaticDatabaseUpdate' : true
+]
+----
+Save deployment settings.
+--
+
+Build WAR file::
++
+--
+Build WAR file by executing the `buildWar` Gradle task. You can do it right from the Studio *Search* dialog or from the command line:
+
+[source]
+----
+gradlew buildWar
+----
+
+In order to use `gradlew` command in the command line, create Gradle wrapper using Studio *Build* menu command beforehand.
+--
+
+Application setup::
++
+--
+
+* Download Tomcat Webapp Runner from https://mvnrepository.com/artifact/com.github.jsimone/webapp-runner. The version of Webapp Runner must conform to the Tomcat version in use. For example, version 8.5.11.3 of Webapp Runner is suitable for Tomcat version 8.5.11. Rename JAR to `webapp-runner.jar` and place it into `$PROJECT_FOLDER`.
+
+* Download Tomcat DBCP from https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-dbcp.
+  Use the version corresponding to your Tomcat version, for example 8.5.11. Create `$PROJECT_FOLDER/libs`, rename JAR to `tomcat-dbcp.jar` and place it into the `$PROJECT_FOLDER/libs` folder.
+
+* Create a file named `Procfile` in `$PROJECT_FOLDER`. The file should contain the following text:
++
+[source, bash]
+----
+web: java $JAVA_OPTS -cp webapp-runner.jar:libs/* webapp.runner.launch.Main --enable-naming --port $PORT build/distributions/war/app.war
+----
+--
+
+Git setup::
++
+--
+Open the command prompt in `$PROJECT_FOLDER` and run the commands listed below:
+
+[source]
+----
+git init
+heroku git:remote -a morning-beach-4895
+git add .
+git commit -am "Initial commit"
+----
+--
+
+Application deployment::
++
+--
+Open the command prompt and run the following command:
+
+On *nix:
+
+[source]
+----
+heroku jar:deploy webapp-runner.jar --includes libs/tomcat-dbcp.jar:build/distributions/war/app.war --app morning-beach-4895
+----
+
+On Windows:
+
+[source]
+----
+heroku jar:deploy webapp-runner.jar --includes libs\tomcat-dbcp.jar;build\distributions\war\app.war --app morning-beach-4895
+----
+
+Open the *Resources* tab in Heroku dashboard. A new Dyno should appear with a command from your `Procfile`:
+
+image::heroku_dyno.png[align="center"]
+
+The application is deploying now. You can monitor logs to track the process.
+--
+
+Logs monitoring::
++
+--
+Wait for a message `++https://morning-beach-4895.herokuapp.com/  deployed to Heroku++` in command window.
+
+In order to track application logs, run the following command in the command line:
+
+[source]
+----
+heroku logs --tail --app morning-beach-4895
+----
+--
+
+After the deployment process is completed your application will be accessible in web browser by an URL like `++https://morning-beach-4895.herokuapp.com++`.
+
+You can also open the application from the Heroku dashboard using the *Open app* button.
+
+
+[[heroku_tomcat_deployment]]
+===== Tomcat Deployment to Heroku
+
+This guide is intended for users who have a CUBA project located on GitHub.
+To initiate Heroku application deployment you need the ability to perform push to your remote Git repository. For that reason you need Git installed on your computer. As an option, you can install built-in Git during Heroku CLI installation. Also you need to have GitHub repository containing your CUBA project.
+
+Heroku account::
++
+--
+Create an account on Heroku using the web browser, free account `hobby-dev` is enough. Then login to the account and create new application using *New* button at the top of the page.
+
+Select unique name (or left the field blank to assign automatically) and choose a server location. Now you have an application, for example `space-sheep-02453`, this is a Heroku application name.
+
+First time you will be redirected to *Deploy* tab. Use *GitHub* deployment method. Follow the screen instructions how to authorize your GitHub account.
+Click *Search* button to list all available Git repositories then connect to desired repo. When your Heroku application is connected to GitHub you are able to activate *Automatic Deploys*. This allows to redeploy Heroku application automatically on each Git push event. In this tutorial the option is enabled.
+--
+
+Heroku CLI::
++
+--
+. Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI]
+. Open command prompt at any folder of your computer and type:
++
+[source]
+----
+heroku login
+----
++
+. Enter your credentials when prompted. From now on you don't need to enter credentials for this project.
+--
+
+PostgreSQL database::
++
+--
+. Return to web browser with Heroku https://dashboard.heroku.com[dashboard]
+. Go to *Resources* tab
+. Click *Find more add-ons* button to find the database add-on
+. Find *Heroku Postgres* block and click it. Follow the instruction on the screen, click *Login to install* / *Install Heroku Postgres*.
+
+Alternatively, you can install PostgreSQL using Heroku CLI:
+
+[source]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app space-sheep-02453
+----
+where `space-sheep-02453` is your Heroku application name.
+
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application. To obtain database credentials go to the *Datasource* page of your Heroku database, scroll down to *Administration* section and click *View credentials* button.
+
+----
+Host compute.amazonaws.com
+Database zodt
+User artd
+Port 5432
+Password 367f
+URI postgres://artd:367f@compute.amazonaws.com:5432/zodt
+----
+--
+
+Project deployment settings::
++
+--
+. Navigate to your local CUBA project folder (`$PROJECT_FOLDER`)
+. Copy the content of `modules/core/web/META-INF/context.xml` to `modules/core/web/META-INF/heroku-context.xml`
+. Fill `heroku-context.xml` with your actual database connection details (see example below):
++
+[source, xml]
+----
+<Context>
+    <Resource driverClassName="org.postgresql.Driver"
+              maxIdle="2"
+              maxTotal="20"
+              maxWaitMillis="5000"
+              name="jdbc/CubaDS"
+              password="367f"
+              type="javax.sql.DataSource"
+              url="jdbc:postgresql://compute.amazonaws.com/zodt"
+              username="artd"/>
+
+    <Manager pathname=""/>
+</Context>
+----
+--
+
+Build configuration::
++
+--
+Add following Gradle task to your `$PROJECT_FOLDER/build.gradle`
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/heroku_buildGradle.groovy[]
+----
+--
+
+Procfile::
++
+--
+A command that launches the application on Heroku side is passed by special file `Procfile`. Create a file named `Procfile` in `$PROJECT_FOLDER` with following text:
+
+[source]
+----
+web: cd ./deploy/tomcat/bin && export 'JAVA_OPTS=-Dport.http=$PORT' && ./catalina.sh run
+----
+
+This provides JAVA_OPTS environment setting to Tomcat which starts by catalina script.
+--
+
+Premium addons::
++
+--
+If your project uses CUBA Premium Add-ons, set additional variables for the Heroku application.
+
+. Open the Heroku dashboard.
+. Go to the *Settings* tab.
+. Expand the *Config Variables* section clicking the *Reveal Config Vars* button.
+. Add new *Config Vars* using your license key parts (separated by dash) as *username* and *password*:
+[source]
+----
+CUBA_PREMIUIM_USER    | username
+CUBA_PREMIUM_PASSWORD | password
+----
+--
+
+Gradle wrapper::
++
+--
+Your project requires Gradle wrapper. You can use CUBA Studio to add it: see the *Build > Create or update Gradle wrapper* main menu command.
+
+. Create a file `system.properties` in `$PROJECT_FOLDER` with following content (example corresponds to local JDK 1.8.0_121 installed):
++
+[source]
+----
+java.runtime.version=1.8.0_121
+----
++
+. Check that files `Procfile`, `system.properties`, `gradlew`, `gradlew.bat` and `gradle` are not in `.gitignore`
+. Add these files to repository and commit it
+
+[source]
+----
+git add gradlew gradlew.bat gradle/* system.properties Procfile
+git commit -am "Gradle Wrapper, Procfile added"
+----
+--
+
+Application deployment::
++
+--
+Once you commit and push all changes to GitHub, Heroku starts redeploying the application.
+
+[source]
+----
+git push
+----
+
+Building process is available in the dashboard on the *Activity* tab. Click *View build log* link to track the build log.
+
+After building process is completed, your application will become accessible in browser using the `++https://space-sheep-02453.herokuapp.com/++`. You can open the application from Heroku dashboard using the *Open app* button.
+--
+
+Logs monitoring::
++
+--
+Heroku application log is shown by console command:
+
+[source]
+----
+heroku logs --tail --app space-sheep-02453
+----
+
+Tomcat logs are also available in web application: *Menu > Administration > Server Log*
+--
+
 [[scaling]]
 === Application Scaling
 
@@ -613,7 +1001,7 @@ worker.jkstatus.type=status
     JkMount /app/* loadbalancer
 
 </VirtualHost>
----- 
+----
 
 . Restart the Apache HTTP service:
 +
@@ -714,7 +1102,7 @@ tezis.haulmont.com:80/app-core
 192.168.44.55:8080/app-core
 ----
 
-The identifier is formed based on the configuration parameters <<cuba.webHostName,cuba.webHostName>>, <<cuba.webPort,cuba.webPort>>, <<cuba.webContextName,cuba.webContextName>>, therefore it is very important to specify these parameters for the Middleware blocks working within the cluster. 
+The identifier is formed based on the configuration parameters <<cuba.webHostName,cuba.webHostName>>, <<cuba.webPort,cuba.webPort>>, <<cuba.webContextName,cuba.webContextName>>, therefore it is very important to specify these parameters for the Middleware blocks working within the cluster.
 
 Server ID can be obtained using the `ServerInfoAPI` bean or via the <<serverInfoMBean,ServerInfoMBean>> JMX interface.
 
@@ -728,11 +1116,11 @@ This section describes various aspects of using *Java Management Extensions* in 
 
 The Web Client module of the *cuba* <<app_components,application component>> contains JMX objects viewing and editing tool. The entry point for this tool is `com/haulmont/cuba/web/app/ui/jmxcontrol/browse/display-mbeans.xml` screen registered under the `jmxConsole` identifier and accessible via *Administration* > *JMX Console* in the standard application menu.
 
-Without extra configuration, the console shows all JMX objects registered in the JVM where the Web Client block of the current user is running. Therefore, in the simplest case, when all application blocks are deployed to one web container instance, the console has access to the JMX beans of all tiers as well as the JMX objects of the JVM itself and the web container. 
+Without extra configuration, the console shows all JMX objects registered in the JVM where the Web Client block of the current user is running. Therefore, in the simplest case, when all application blocks are deployed to one web container instance, the console has access to the JMX beans of all tiers as well as the JMX objects of the JVM itself and the web container.
 
 Names of the application beans have a prefix corresponding to the name of the web-app that contains them. For example, the `app-core.cuba:type=CachingFacade` bean has been loaded by the *app-core* web-app implementing the Middleware block, while the `app.cuba:type=CachingFacade` bean has been loaded by the *app* web-app implementing the Web Client block.
 
-JMX console can also work with the JMX objects of a remote JVM. This is useful when application blocks are deployed over several instances of a web container, for example separate Web Client and Middleware. 
+JMX console can also work with the JMX objects of a remote JVM. This is useful when application blocks are deployed over several instances of a web container, for example separate Web Client and Middleware.
 
 To connect to a remote JVM, a previously created connection should be selected in the *JMX Connection* field of the console, or a new connection can be created:
 
