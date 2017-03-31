@@ -779,6 +779,47 @@ include::{sourcesdir}/features/rest-services-config.xml[]
 
 Пример конфигурирования и вызова сервиса можно увидеть в разделе <<rest_api_v2_ex_service_get>>.
 
+[[rest_api_v2_data_model_versioning]]
+===== Версионирование модели данных
+
+REST API поддерживает работу с различными версиями модели данных. Это может быть полезно в случае, например, когда имя атрибута сущности было изменено, но клиент REST API не знает об этом изменении и ожидает, что атрибут все еще имеет старое имя.
+
+Для подобных случаев вы можете описать правила трасформации JSON сущностей. Если клиентское приложение посылает версию модели данных в параметре запроса, то JSON ответа, сформированном REST API, или тело запроса к REST API будут трансформированы согласно правилам, объявленным для конкретной версии модели данных.
+
+Правила трансформации JSON должны быть объявлены в файлах, зарегистрированных в свойстве приложения <<cuba.rest.jsonTransformationConfig, cuba.rest.jsonTransformationConfig>> для модуля *web* или *portal* (например, в файле `web-app.properties`):
+
+[source,properties]
+----
+cuba.rest.jsonTransformationConfig = +com/company/myapp/rest-json-transformations.xml
+----
+
+Файл `rest-json-transformations.xml` должен быть расположен в модуле *web* или *portal* (например, в пакете `com.company.myapp`). Содержимое файла определяется схемой {xsd_url}/rest-json-transformations.xsd[rest-json-transformations.xsd]. Пример файла:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-json-transformations.xml[]
+----
+
+Стандартные трансформеры, определяемые в конфигурационном файле, могут осуществлять следующие типы трансформаций JSON:
+
+* переименование сущности
+
+* переименование атрибута сущности
+
+* удаление атрибута сущности
+
+Трансформация JSON работает для следующих адресов REST API:
+
+* */entities* - получение списка сущностей, одной сущности, создание сущности, изменение сущности, удаление сущности
+
+* */queries* - JSON с сущностями, возращаемыми методом, будет трансформирован
+
+* */services* - трансформации JSON применяются как к сущностям, возращаемым методом сервиса, так и к сущностям, переданным в качестве параметра метода.
+
+Трансформации JSON применяются, если запрос к REST API содержит параметр `modelVersion` со значением версии модели данных в URL.
+
+Раздел <<rest_api_v2_ex_json_transformations>> содержит примеры настройки версионирования модели данных и использования его из клиентских приложений.
+
 [[rest_api_v2_cors]]
 ===== Настройки CORS
 
@@ -1190,6 +1231,151 @@ include::{sourcesdir}/features/rest-user-messages-response.json[]
   http://localhost:8080/app/rest/v2/messages/enums/com.haulmont.cuba.security.entity.RoleType
 
 Если из URL убрать часть с именем сущности или перечисления, то будут возвращены локализованные сообщения для всех сущностей или перечислений.
+
+[[rest_api_v2_ex_json_transformations]]
+====== Примеры версионирования модели данных
+
+Атрибут сущнщости переименован::
++
+--
+Предположим, атрибут `oldNumber` сущности `sales$Order` был переименован в `newNumber`, а атрибут `date` был переименован в `deliveryDate`. В этом случае конфигурация трансформации будет выглядеть следующим образом:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-attr-renamed-config.xml[]
+----
+
+Если клиентскому приложению необходимо работать со старой версии сущности `sales$Order`, то приложение должно передать значение версии модели данных в параметре URL `modelVersion`:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.0
+
+Будет возвращен следующий результат:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-renamed-response.json[]
+----
+
+Видим, что ответ содержит атрибуты `oldNumber` и `date`, хотя сущность в последней версии приложения уже имеет переименованне атрибуты `newNumber` и `deliveryDate`.
+--
+
+Имя сущности изменено::
++
+--
+Предположим, что в одном из следующих релизов приложения имя сущности `sales$Order` также было изменено. Новое имя сущности теперь `sales$NewOrder`.
+
+Конфиг трансформации для версии `1.1` выглядит так:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-config.xml[]
+----
+
+В дополнение к конфигу из предыдущего примера здесь появился атрибут `oldEntityName`. Он описывает имя сущности, действительное для версии модели данных `1.1`. Атрибут `currentEntityName` описывает текущее имя сущности.
+
+Хотя сущность с именем `sales$Order` более не существует, следующий запрос будет работать:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+Контроллер REST API поймет, что поиск должен быть осуществлен среди экземпляров сущности `sales$NewOrder`, и после того, как сущность с заданным ID будет найдена, имя сущности и имя атрибута `newNumber` будут заменены в JSON:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
+----
+
+Клиентское приложение также может использовать старую версию модели данных для создания или изменения сущности.
+
+Этот *POST* запрос использует старое имя сущности и имеет JSON в старом формате в теле запроса, однако, запрос будет работать:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
+----
+--
+
+Атрибут должен быть удален из JSON::
++
+--
+Иногда может возникнуть ситуация, когда в сущность был добавлен новый атрибут, но клиент, работающий со старой версией модели данных, не должен получать этот атрибут при запросе к сущности. В этом случае стандартный JSON трансформер может удалить атрибут из результата.
+
+Конфиг трансформации для данного случае выглядит примерно так:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-config.xml[]
+----
+
+Описание трансформации здесь содержит тег `toVersion` с вложенной командой `removeAttribute`. Это значит, что при выполнении трасформации из текущей версии модели данных к определенной версии (например, при запросе списка сущностей) атрибут `discount` будет удален из JSON.
+
+Если выполнить запрос к REST API без атрибута `modelVersion`, то атрибут `discount` будет возвращен.
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-response-2.json[]
+----
+
+Если указать `modelVersion` в запросе, то атрибут `discount` будет удален:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-response.json[]
+----
+--
+
+Использование кастомных трансформеров::
++
+--
+Вы также можете создать и зарегистрировать свой собственный трасформер JSON. В качестве примера рассмотрим следующую ситуацию.
+
+Сущность `sales$OldOrder` была переименована в `sales$NewOrder`. В сущности имеется поле `orderDate` с типом дата. В старой версии сущности это поле содержало часть со временем, в новой версии сущности часть со временем в поле отсутствует. Клиент REST API, запрашивающий сущность со старой версией модели данных `1.0` ожидает, что дата будет иметь часть со временем. Получается, что JSON трансформер должен изменить значение в JSON.
+
+Так будет выглядеть конфиг трансформации для данного случая:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-custom-config.xml[]
+----
+
+Конфиг содержит элемент `custom` с вложенными элементами `toVersion` и `fromVersion`. Эти элементы содержат ссылки на бины, т.е. кастомный трансформер должен быть зарегистрирован как Spring bean.
+
+Важная деталь: в кастомном трансформере возможно потребуется использовать бин платформы `RestTransformations` (он предоставляет доступ к транформерам для других сущностей). Но бин `RestTransformations` зарегистрирован в Spring контексте сервлета REST API, а не в главном контексте веб-приложения. Это значит, что бин кастомного трансформера также должен быть зарегистрирован в контексте REST API.
+
+Как это сделать. Во-первых, создайте файл `rest-dispatcher-spring.xml` в модуле *web* или *portal* (например в пакете `com.company.test`).
+
+Затем зарегистрируйте этот файл в файле свойств `app.properties` соответствующего модуля.
+
+[source, properties]
+----
+cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+----
+
+Файл `rest-dispatcher-spring.xml` должен содержать определения бинов для кастомных трансформеров:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-dispatcher-spring.xml[]
+----
+
+Исходный код бина `sales_OrderJsonTransformerToVersion`:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderJsonTransformerToVersion.java[]
+----
+
+Данный трансформер находит элемент `orderDate` в JSON и изменяет значение элемента, добавляя к нему часть со временем.
+
+Когда сущность `sales$Order` будет запрошена с версией модели данных `1.0`, то JSON результат будет содержать сущность, поле `orderDate` которой содержит часть со временем, хотя текущий тип поля сущности - дата без времени.
+
+Еще пара слов о кастомных трансформерах. Они должны реализовывать интерфейс `EntityJsonTransformer`. Вы также можете отнаследоваться от класса `AbstractEntityJsonTransformer` и переопрделить его метод `doCustomTransformations`. Класс `AbstractEntityJsonTransformer` содержит функциональность стандартных трансформеров.
+--
 
 [[scheduled_tasks]]
 ==== Выполнение задач по расписанию
