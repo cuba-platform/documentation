@@ -1,10 +1,11 @@
 package com.company.addondemo.web.customer;
 
-import com.company.addondemo.entity.Customer;
 import com.haulmont.cuba.gui.components.AbstractEditor;
+import com.company.addondemo.entity.Customer;
 import com.haulmont.cuba.gui.components.Component;
 import com.haulmont.cuba.gui.components.FieldGroup;
 import com.haulmont.cuba.gui.components.VBoxLayout;
+import com.haulmont.cuba.gui.data.Datasource;
 import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
 import com.haulmont.cuba.web.gui.components.WebComponentsHelper;
 import com.vaadin.ui.Layout;
@@ -17,24 +18,26 @@ public class CustomerEdit extends AbstractEditor<Customer> {
 
     @Inject
     private ComponentsFactory componentsFactory;
+
     @Inject
     private FieldGroup fieldGroup;
+
+    @Inject
+    private Datasource<Customer> customerDs;
 
     private IntStepper stepper = new IntStepper();
 
     @Override
     public void init(Map<String, Object> params) {
-        fieldGroup.addCustomField("score", (datasource, propertyId) -> {
-            Component box = componentsFactory.createComponent(VBoxLayout.class);
-            Layout layout = (Layout) WebComponentsHelper.unwrap(box);
-            layout.addComponent(stepper);
-            stepper.setSizeFull();
-
-            stepper.addValueChangeListener(event ->
-                    datasource.getItem().setValue(propertyId, event.getProperty().getValue()));
-
-            return box;
-        });
+        fieldGroup.createField("score");
+        Component box = componentsFactory.createComponent(VBoxLayout.class);
+        fieldGroup.getFieldNN("score").setComponent(box);
+        Layout layout = (Layout) WebComponentsHelper.unwrap(box);
+        layout.addComponent(stepper);
+        stepper.setSizeFull();
+        stepper.addValueChangeListener(event ->
+                customerDs.getItem().setValue("score", event.getProperty().getValue())
+        );
     }
 
     @Override
