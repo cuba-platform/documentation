@@ -583,23 +583,30 @@ Typical build tasks in their normal usage sequence are provided below.
 * <<build.gradle_restart,restart>> – sequentially run the `stop`, `deploy`, `start` tasks.
 
 [[setup_artifact_repository]]
-==== Setting Up Isolated Artifact Repository
+==== Setting Up a Private Artifact Repository
 
-This topic describes how to set up a personal Nexus maven repository. There is a case when the user have to develop an application in the network isolated from Internet. Therefore a personal repository is required. CUBA Studio supports isolated maven repositories.
+This section describes how to set up a private Maven repository and use it instead of the CUBA public repository for storing the platform artifacts and other dependencies. It is recommended in the following cases:
 
-First you need to setup the local maven repository on the machine connected to Internet.
+- You have an unstable or slow connection to the internet. In spite of the fact that Gradle caches downloaded artifacts on the developer's machine, you may need to connect to the artifact repository from time to time, for example when you run build for the first time or switch to a newer version of the platform.
+-  You cannot have direct access to the internet due to a security policy of your organization.
+-  You are not going to prolong your subscription to CUBA Premium Add-ons, but you need to be able to build your application in the future using the downloaded version of the artifacts.
 
-===== Setting up proxy repository
+The process of setting up a private repository consists of the following steps:
+
+- Install the repository manager software in a network connected to the internet.
+- Configure the private repository as a proxy for the CUBA public repository.
+- Make your project build script use the private repository. It can be done in Studio or right in `build.gradle`.
+- Perform full build of your project to cache all required artifacts in the private repository.
+
+===== Install the Repository Manager
+
+For the purpose of this example, we will use Sonatype Nexus OSS repository manager and Microsoft Windows operating system.
 
 - link:http://www.sonatype.org/downloads/nexus-latest-bundle.zip[Download] Sonatype Nexus OSS version 2.x (2.14.3 tested)
 - Unpack zip file to the directory `c:\nexus-2.14.3-02`
 - Navigate to the folder `c:\nexus-2.14.3-02\bin`
-+
---
-Modify settings are located in file `c:\nexus-2.14.3-02\conf\nexus.properties`
---
-+
-- You may configure server port, default is *8081*
+- Modify settings are located in file `c:\nexus-2.14.3-02\conf\nexus.properties`
+- You may configure server port; default is *8081*
 - Configure repository data folder:
 +
 --
@@ -612,15 +619,15 @@ nexus-work=${bundleBasedir}/../sonatype-work/nexus
 ----
 +
 --
-to
+with any convenient path to cached data, for example
 --
 +
 [source]
 ----
-nexus-work=${bundleBasedir}/nexus/sonatype-work/nexus
+nexus-work=${bundleBasedir}/nexus/sonatype-work/content
 ----
 +
-- Install the wrapper to able start and stop nexus as a service, run a command:
+- To start and stop Nexus as a service, install the wrapper:
 +
 [source]
 ----
@@ -628,82 +635,83 @@ nexus.bat install
 ----
 +
 --
-and wait for the command message:
---
-+
---
-[source]
-----
-mwrapper  | nexus installed.
-----
---
-
-===== Launch Online Repository
-
-- Open Windows Services:
-+
---
-a) press *Win+R*
-
-b) type *services.msc*
-
-c) then press *Enter*
---
-
-- You may see *nexus* service appears in the list
-- Right click *nexus* line
-+
---
-a) choose *Start* from the menu, you will see a progress bar indicating the server is starting
-
-b) wait for the step completes
-
-c) then open the address http://localhost:8081/nexus/ in the web browser
-
-d) browse to the right top angle of the screen and perform log in, use default login *admin* and password *admin123*
+- Launch *nexus* service.
+- Open http://localhost:8081/nexus/ in the web browser and log in with the default credentials: login *admin* and password *admin123*.
 --
 
 ===== Configure the Proxy Repository
 
-Browse the instance tree at the left side of the screen. Navigate to *Repositories* page.
+Click to the *Repositories* link on the left panel.
 
-Click the button *Add*, then choose *Proxy Repository*. A new repository will be added. Fill required fields:
+On the opened *Repositories* page click the *Add* button, then choose *Proxy Repository*. A new repository will be added. Fill required fields at *Configuration* tab:
 
-- Repository ID: *proxy-releases*
-- Repository Name: *proxy-releases*
+- Provider: Maven2
+- Repository ID: *cuba-releases*
+- Repository Name: *cuba-releases*
 - Remote Storage Location: https://repo.cuba-platform.com/content/groups/work
+- Auto Blocking Enabled: *false*
+- Enable Authentication, set Username: *cuba*
+- Set Password: *cuba123*
 - Click *Save*
 
-Now proxy repository ready to use.
+Create a Repository Group, in Nexus click *Add*, then choose *Repository Group*, add the repository previously created to this group and fill the following fields:
 
-- Find the new repository URL at the top of the screen
+- Group ID: cuba-group
+- Group Name: cuba-group
+- Provider: Maven2
+- Ordered Group Repositories: first *Central*, then *cuba-releases*
+
+Now proxy repository is ready to use. Use the URL of this group `http://localhost:8081/nexus/content/groups/cuba-group/` with credentials *admin/admin123* as a repository link in Studio or your build file.
+
+If you have a subscription to the *Premium Add-ons*, then create the same repository *cuba-premium* with the following settings:
+
+- Provider: Maven2
+- Repository ID: *cuba-premium*
+- Repository Name: *cuba-premium*
+- Remote Storage Location: https://repo.cuba-platform.com/content/groups/premium
+- Auto Blocking Enabled: *false*
+- Enable Authentication, set Username: *The first part of your license key*
+- Set Password: *The second part of your license key*
+- Click *Save*
+- Add the repository previously created to the group *cuba-group*.
+
+Find the new repository URL at the top of the screen:
 ----
-http://localhost:8081/nexus/content/repositories/proxy-releases
+http://localhost:8081/nexus/content/groups/cuba-group
 ----
-- copy and paste it to CUBA Studio launcher window
-- start Studio
-- open your project
-- build the project
+- Copy and paste it to CUBA Studio launcher window.
+- Fill login and password fields with actual values; defaults are *admin/admin123*.
+- Start Studio.
+- Open your project.
+- Build the project.
 
-During the first build your Nexus server downloads necessary artifacts and keeps it in the cache for the next usage.
-You may find them in `c:\nexus-2.14.3-02\sonatype-work\nexus` folder.
+During the first build your Nexus server downloads necessary artifacts and keeps it in the cache for the next usage. You may find them in `c:\nexus-2.14.3-02\sonatype-work` folder.
 
-==== Isolated Repository
+===== Repository in an Isolated Network
 
-You may install the same repository in the isolated network without Internet connection using the settings above. To make isolated repo operable you need to copy following folder from the first server
+If you need to develop on CUBA in an isolated network, do the following steps on the isolated machine:
+
+- Install another copy of the repository manager in the target network and copy the contents of the downloaded cache into it.
+- Download https://services.gradle.org/distributions/[Gradle] (version 3.1 is required) and copy the archive to the isolated machine.
+- Install `gradle` program to the specific folder, for example, `c:\gradle-3.1`, the path will be called `$GRADLE_HOME`.
+
+To make isolated repository operable, you need to copy the following folder from the first server (the path may differ according to your custom settings)
 ----
-c:\nexus-2.14.3-02\sonatype-work\nexus
+c:\nexus-2.14.3-02\sonatype-work
 ----
-to the same place on the second server. Then restart the service *nexus* via Windows services as described above. The repository URL will be the same as on the first server.
+to the same place on the second server. Then restart the service *nexus*. The repository URL will be the same as on the first server.
 
-Now you may open CUBA Studio in isolated network:
+Now you may open CUBA Studio in the isolated network:
 
-- fill your actual repository URL in the CUBA launcher window
-- start Studio
-- open your project
-- build the project
+- Open CUBA Studio launcher window.
+- Press *Advanced* button and set $GRADLE_HOME.
+- Fill your actual Repository URL in the Studio launcher window, for example, `http://localhost:8081/nexus/content/groups/cuba-group`.
+- Fill login and password fields with actual values; defaults are *admin/admin123*.
+- Start Studio.
+- Open your project.
+- Build the project.
 
-To add new artifacts to the isolated repository you need to repeat all steps from this topic from the beginning.
+If you need to add artifacts of a new platform version to the isolated repository, go to the environment connected to the internet, make a build through its repository and then copy the contents to the isolated environment again.
 
 [[project_creation]]
 === Creating a Project
