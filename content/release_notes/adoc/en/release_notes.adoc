@@ -16,6 +16,7 @@
 :revnumber: 6.5
 :version-label: Version
 :revremark: Copyright (c) 2017 Haulmont
+:youtrack: https://youtrack.cuba-platform.com
 
 :!sectnums:
 
@@ -24,7 +25,7 @@ WARNING: This document is now work in progress!
 [[overview]]
 == Overview
 
-This document covers major changes in CUBA Platform and Studio version {revnumber}. The full list of resolved issues is available in YouTrack:
+This document highlights major changes in CUBA Platform and Studio version {revnumber}. The full list of resolved issues is available in YouTrack:
 
 * https://youtrack.cuba-platform.com/issues/PL?q=Milestone%3A+%7BRelease+6.5%7D+State%3A+Fixed%2C+Verified+Affected+versions%3A+-SNAPSHOT+sort+by%3A+created+asc[Platform Resolved Issues]
 
@@ -35,6 +36,43 @@ This document covers major changes in CUBA Platform and Studio version {revnumbe
 
 [[platform_breaking_changes]]
 === Breaking Changes
+
+. The structure of storing references to entities in Entity Log, Entity Snapshots and Dynamic Attributes has been changed. If you have accessed internals of these mechanisms from your application code, you may need to change it accordingly. See {youtrack}/issue/PL-8461[PL-8461] for details.
+
+. Now we use default behavior of Vaadin's Valo theme:
+
+* `HBox` and `VBox` use `overflow: auto` CSS mode. If a `HBox` or `VBox` has a child with 0 height then the layout will have non-zero height.
+* Font size is inherited using normal CSS rules instead of explicit setting for components.
+
+. The `fileExists()` method of `FileStorageAPI` now declares `FileStorageException`. If you invoke this method, add a `catch` block.
+
+. Validation for input parameters of 'UniqueNumbersAPI' methods has been added. A sequence name can contain only alphanumeric characters and underscores, otherwise `IllegalArgumentException` is thrown.
+
+. Due to cluster improvements explained <<cluster,below>>, pay attention to the following:
+
+* If you don't use Studio migration procedure, edit `spring.xml` files of all client modules used in your project, find the `xyz_proxyCreator` bean definitions and replace:
++
+--
+[source, xml]
+----
+<property name="clusterInvocationSupport" ref="cuba_clusterInvocationSupport"/>
+----
+
+with
+
+[source, xml]
+----
+<property name="serverSelector" ref="cuba_ServerSelector"/>
+----
+--
+
+* `jgroups.xml` has been split into two files: `jgroups.xml` (UDP stack) and `jgroups_tcp.xml` (TCP stack). Use `cuba.cluster.jgroupsConfig` application property to select the stack.
+
+. *Reporting*. If no screens are specified for a report, it is not shown on pop-up window of screen reporting actions.
+
+. *Charts and Maps*. Chart API has been reworked, see <<chart_api,below>>.
+
+. *Charts and Maps*. The `GoogleMapViewer` interface has been deprecated, use the `MapViewer` component directly.
 
 [[uber_jar]]
 === Uber JAR
@@ -69,6 +107,7 @@ Inline Edit::
 [[charts]]
 === Charts
 
+[[chart_api]]
 Simplified Chart API::
 
 [[polymer]]
