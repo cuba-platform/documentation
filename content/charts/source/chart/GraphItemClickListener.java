@@ -1,5 +1,5 @@
 serialChart.addGraphItemClickListener(event -> {
-        CountryGrowth countryGrowth = (CountryGrowth) event.getItem();
+        CountryGrowth countryGrowth = (CountryGrowth) event.getEntityNN();
         String message = String.format("GDP grow in %s (%s): %.1f%%",
         countryGrowth.getCountry(),
         event.getGraphId().substring(5),
