@@ -5,30 +5,25 @@ private boolean detailsInitialized, historyInitialized;
 
 @Override
 public void init(Map<String, Object> params) {
-    tabsheet.addListener(
-        new TabSheet.TabChangeListener() {
-            @Override
-            public void tabChanged(TabSheet.Tab newTab) {
-                if ("detailsTab".equals(newTab.getName())){
-                    initDetails();
-                } else if ("historyTab".equals(newTab.getName())){
-                    initHistory();
-                }
-            }
+    tabsheet.addSelectedTabChangeListener(event -> {
+        if ("detailsTab".equals(event.getSelectedTab().getName())) {
+            initDetails();
+        } else if ("historyTab".equals(event.getSelectedTab().getName())) {
+            initHistory();
         }
-    );
+    });
 }
 
-private void initDetails() {
-    if (detailsInitialized){
+private void initDetails(){
+    if (detailsInitialized) {
         return;
     }
     // use getComponentNN("comp_id") here to get tab's components
-    detailsInitialized = true;
+    detailsInitialized=true;
 }
 
-private void initHistory() {
-    if (historyInitialized){
+private void initHistory(){
+    if (historyInitialized) {
         return;
     }
     // use getComponentNN("comp_id") here to get tab's components
