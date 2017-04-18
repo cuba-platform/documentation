@@ -38,16 +38,16 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 [[platform_breaking_changes]]
 === Breaking Changes
 
-. The structure of storing references to entities in Entity Log, Entity Snapshots and Dynamic Attributes has been changed. If you have accessed internals of these mechanisms from your application code, you may need to change it accordingly. See {youtrack}/issue/PL-8461[PL-8461] for details.
+. The structure of storing references to entities in Entity Log, Entity Snapshots and Dynamic Attributes has been changed. If you have accessed internals of these mechanisms from your application code, you may need to change it accordingly. {youtrack}/issue/PL-8461[PL-8461].
 
-. Now we use default behavior of Vaadin's Valo theme:
+. Now we use default behavior of Vaadin's Valo theme ({youtrack}/issue/PL-8267[PL-8267]) :
 
 * `HBox` and `VBox` use `overflow: auto` CSS mode. If a `HBox` or `VBox` has a child with 0 height then the layout will have non-zero height.
 * Font size is inherited using normal CSS rules instead of explicit setting for components.
 
-. The `fileExists()` method of `FileStorageAPI` now declares `FileStorageException`. If you invoke this method, add a `catch` block.
+. The `fileExists()` method of `FileStorageAPI` now declares `FileStorageException`. If you invoke this method, add a `catch` block. {youtrack}/issue/PL-8866[PL-8866].
 
-. Validation for input parameters of 'UniqueNumbersAPI' methods has been added. A sequence name can contain only alphanumeric characters and underscores, otherwise `IllegalArgumentException` is thrown.
+. Validation for input parameters of `UniqueNumbersAPI` methods has been added. A sequence name can contain only alphanumeric characters and underscores, otherwise `IllegalArgumentException` is thrown. {youtrack}/issue/PL-8724[PL-8724].
 
 . Due to cluster improvements explained <<cluster,below>>, pay attention to the following:
 
@@ -69,11 +69,15 @@ with
 
 * `jgroups.xml` has been split into two files: `jgroups.xml` (UDP stack) and `jgroups_tcp.xml` (TCP stack). Use `cuba.cluster.jgroupsConfig` application property to select the stack.
 
-. *Reporting*. If no screens are specified for a report, it is not shown on pop-up window of screen reporting actions.
+. Option dialogs opened with `showOptionDialog()` method of screen controllers are always closed after selecting an option, even if an exception occurs in `actionPerform()`. {youtrack}/issue/PL-8610[PL-8610].
 
-. *Charts and Maps*. Chart API has been reworked, see <<chart_api,below>>.
+. Microsoft's JDBC driver is now used instead of jTDS if the project uses Microsoft SQLServer database. Studio performs automatic migration when upgrading the project to platform 6.5. {youtrack}/issue/PL-8826[PL-8826].
 
-. *Charts and Maps*. The `GoogleMapViewer` interface has been deprecated, use the `MapViewer` component directly.
+. *Reporting*. If no screens are specified for a report, it is not shown on pop-up window of screen reporting actions. {youtrack}/issue/PL-8618[PL-8618].
+
+. *Charts and Maps*. Chart API has been reworked, see <<chart_api,below>>. {youtrack}/issue/PL-7754[PL-7754].
+
+. *Charts and Maps*. The `GoogleMapViewer` interface has been deprecated, use the `MapViewer` component directly. {youtrack}/issue/PL-8787[PL-8787].
 
 [[uber_jar]]
 === Uber JAR
@@ -86,9 +90,29 @@ CUBA applications can now be deployed as executable JAR files containing the app
 
 [[cluster_load_balancing]]
 Middleware Load Balancing::
++
+--
+Previously, the web client blocks did not perform balancing when worked with multiple middleware blocks. They chose a middleware server from the list specified in the `cuba.connectionUrlList` at startup and didn't change it until it became unavailable. So the load balancing was possible only between multiple web blocks (and if `cuba.randomServerPriority` was set to true): first web block works with first middleware, second web with another middleware and so on. If `cuba.randomServerPriority` was set to false, each client block selected a middleware block that was first in its `cuba.connectionUrlList`.
+
+Now the balancing is much more granular - on the user session level. A middleware server is randomly determined on the first remote connection for a user session, and it is fixed for the whole session life time ("sticky session"). Requests from anonymous session and without session do not stick to a server and go to random servers.
+
+The algorithm of selecting a middleware server is provided by the `cuba_ServerSorter` bean which is by default implemented by the `RandomServerSorter` class. You can provide your own implementation in the project or use `NoopServerSorter` to revert to the old behavior when client always selects the first available server from its `cuba.connectionUrlList`.
+--
 
 [[cluster_zookeeper]]
 Coordination Using ZooKeeper::
++
+--
+Application blocks interact in a cluster in two ways: middleware blocks interact with each other, web blocks send requests to middleware. These channels of communication are based on different mechanisms (JGroups for inter-middleware interaction, Spring HTTPInvoker for requesting middleware from clients), however they both require discovering of current cluster topology - what middleware servers are up now and how to connect to them. By default, the following approaches are used:
+
+* For communication between middleware blocks you set up UDP or TCP stack with some discovery methods. In case of UDP stack the discovery can be automatic as it is based on broadcasting UDP messages. However, broadcasting is often disabled in production environments, so the only reliable method of discovery is to specify the list of server addresses for TCPPING protocol in `jgroups.xml`. It means that the topology is static - you have to know it in advance when starting a middleware server.
+
+* For requesting middleware from client blocks, you have to specify addresses of the middleware blocks in the `cuba.connectionUrlList` application property. It also makes the configuration static - you have to know addresses of the middleware servers when starting a client block.
+
+Now we provide an application component that enables dynamic discovery of middleware servers for both communication channels. It is based on integration with https://zookeeper.apache.org[Apache ZooKeeper] - a centralized service for maintaining configuration information. When this component is included in your project, you need to specify only one static address when running your application blocks - the address of ZooKeeper. Middleware servers will advertise themselves by publishing their addresses on the ZooKeeper directory and discovery mechanisms will request ZooKeeper for addresses of available servers. If a middleware server goes down, it will be automatically removed from the directory immediately or after a timeout.
+
+The source code of application component is available on https://github.com/cuba-platform/cuba-zk[GitHub], the binary artifacts are published in the standard CUBA repositories. See https://github.com/cuba-platform/cuba-zk[README] for information about including and configuring the component.
+--
 
 [[rest_api]]
 === REST API Improvements
@@ -107,6 +131,9 @@ Persistent Token Store::
 
 [[data_grid_inline_edit]]
 Inline Edit::
+
+[[field_group]]
+FieldGroup API
 
 [[charts]]
 === Charts
