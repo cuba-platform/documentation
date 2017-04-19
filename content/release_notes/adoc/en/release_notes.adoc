@@ -139,18 +139,159 @@ The new `FileLoader` interface allows you to work with files contained in {manua
 [[field_group]]
 === FieldGroup API
 
+Motivation::
++
+--
+In previous versions of the platform FieldGroup component had a lot of limitations and poor API. In this version we have reworked API and deprecated old procedural methods and supported dynamic field set changes.
+--
+
+Breaking changes::
++
+--
+Class `FieldGroup.FieldConfig` has been refactored to interface. Now you cannot create `FieldConfig` instance using constructor since it became a Java interface. Use `FieldGroup.createField(id)` instead.
+
+`FieldConfig.setDatasource` now does not trigger creation of Field components. Use an additional FieldGroup.bind() call.
+--
+
+Deprecated::
++
+--
+All methods `setField<SomeThing>(fieldId, value)` and `set<SomeThing>(fieldId, value)` have been deprecated. Use `FieldConfig` APIs instead:
+[source, java]
+----
+fieldGroup.getFieldNN("login").setVisible(false);
+----
+
+Method `FieldGroup.addCustomField` has been deprecated. Now, it is recommended that you obtain `FieldConfig` and call `setComponent(Component)`:
+[source, java]
+----
+LookupField languageLookup = factory.createComponent(LookupField.class);
+...
+fieldGroupRight.getFieldNN("language").setComponent(languageLookup);
+----
+--
+
+New features::
++
+--
+You can specify separate property attribute in XML for data binding:
+[source, xml]
+----
+<fieldGroup id="fieldGroup" datasource="userDs" width="AUTO">
+    <field id="position1x" property="position"/>
+</fieldGroup>
+----
+
+Introduced `FieldGroupFieldFactory` bean that can be replaced globally or for the concrete FieldGroup instance using `fieldFactoryBean` XML attribute or `FieldGroup.setFieldFactory` method
+
+Now you can add/remove fields on the fly using methods: `addField(FieldConfig)`, `addField(FieldConfig, colIndex)`, `addField(FieldConfig, colIndex, rowIndex)`, `removeField(fieldId)`
+--
+
+*YouTrack issue:* {youtrack}/issue/PL-8776[PL-8776]
 
 [[data_grid]]
 === DataGrid Component
 
 [[data_grid_inline_edit]]
 Inline Edit::
++
+--
+Introduced support of inline editor for DataGrid component. DataGrid supports line-based editing, where double-clicking(or using Enter key) a row opens the row editor. In the editor, the input fields can be edited, as well as navigated with Tab and Shift+Tab keys. If validation fails, an error is displayed and the user can correct the inputs. It enables you to edit rows inside of DataGrid using a special editable representation of a row.
+
+See {manual}/gui_DataGrid.html#gui_DataGrid_inline_editor[Usage of DataGrid inline editor]
+--
 
 [[charts]]
 === Charts
 
 [[chart_api]]
 Simplified Chart API::
++
+--
+Charts API has been simplified:
+
+* Introduced separate component interfaces for all charts: AngularGaugeChart, FunnelChart, GanttChart, PieChart, RadarChart, SerialChart, XYChart. They contain methods that are relevant for a concrete chart implementation.
+* Improved data binding. Now you can simply call `addData` method to add items to a chart.
+
+*Note:* charts XML markup fully compatible with the previous version.
+
+New API usage example:
+[source, java]
+----
+public class OrderBrowse extends AbstractLookup {
+    @Inject
+    private PieChart pieChart;  // we can inject typed Chart interface
+
+    @Override
+    public void init(Map<String, Object> params) {
+        super.init(params);
+
+        // no need to obtain configuration object and cast it to PieChart
+        pieChart.setDepth3D(15)
+                .setAngle(15)
+                .setBalloon(
+                        new Balloon()
+                                .setColor(Color.AQUA)
+                );
+
+        // just add data, no need to create and set ListDataProvider
+        pieChart.addData(MapDataItem.of("name", "Some String",
+                                        "value", 75));
+        pieChart.addData(MapDataItem.of("name", "Another String",
+                                        "value", 12));
+    }
+}
+----
+
+*Removed:*
+
+* `Chart.setConfiguration()` - now you have to use concrete Chart interface inheritor.
+* `Chart.isByDate` and `Chart.setByDate` - now you have to use SeriesBasedChart interface and assign value to `CategoryAxis.parseDates` property.
+
+*Moved:*
+
+* `Chart.add<SomeEvent>Listener` methods now are available only for concrete Chart interfaces.
+* Methods `zoomOut`, `zoomToIndexes`, `zoomToDates` have been moved to SeriesBasedChart interface.
+* Methods `zoomOutValueAxes`, `zoomOutValueAxis`, `zoomOutValueAxis`, `zoomValueAxisToValues`, `zoomValueAxisToValues` have been moved to CoordinateChart interface.
+
+*Deprecated:*
+
+* Constant `Chart.NAME` no more corresponds to concrete Component class.
+* `Chart.getConfiguration()` - now you can use concrete Chart inheritor instead, but you still can configure chart using old code based on configuration object.
+
+If you declare charts in XML then concrete chart components will be created and you can inject them to your controller:
+[source, java]
+----
+@Inject
+private SerialChart columnChart;
+@Inject
+private GanttChart ganttChart;
+----
+
+To migrate old code that uses event listeners you have to add type casts (or use the new chart interface):
+[source, java]
+----
+@Inject
+private Chart pieChart;
+...
+((PieChart) pieChart).addSliceClickListener(event -> {
+});
+----
+
+*Simplified data binding API:*
+
+* Added convenient constructors to MapDataItem
+* New `addData` method is available from any Chart interface
+[source, java]
+----
+pieChart.addData(MapDataItem.of("name", "Some String",
+                                "value", 75));
+pieChart.addData(MapDataItem.of("name:", "Another String",
+                                "value", 12));
+----
+
+*YouTrack issue:* {youtrack}/issue/PL-7754[PL-7754]
+--
 
 [[polymer]]
 === Polymer UI
@@ -167,7 +308,20 @@ File Upload Field::
 [[platform_other]]
 === Other Notable Changes
 
-TabSheet Not Unloading Content::
+New mode of main window TabSheet::
++
+--
+New "cuba.web.mainTabSheetMode" property defines which component will be used for Tabbed mode of main window:
+
+. Default TabSheet component.
+. Managed TabSheet component that doesn't unload tab content from a client side when user selects another tab.
+
+This property can have one of two string values: DEFAULT / MANAGED
+
+*MANAGED* option is useful when you integrate some thirdparty web based UI to your application as HTML iframe using Embedded component. In case of *DEFAULT* mode content of a tab and embedded iframe will be completely reloaded on each selected tab switch. If you use *MANAGED* option then content of a tab remains in a browser memory and will not be reloaded when user switches tabs.
+
+*YouTrack issue:* {youtrack}/issue//PL-8464[PL-8464]
+--
 
 [[studio]]
 == Studio
