@@ -1,9 +1,9 @@
 suggestionPickerField.setArrowDownActionHandler(currentSearchString -> {
-    List suggestions = findSuggestions();
+    List<Customer> suggestions = findSuggestions();
     suggestionPickerField.showSuggestions(suggestions);
 });
 
 suggestionPickerField.setEnterActionHandler(currentSearchString -> {
-    List suggestions = getDefaultSuggestions();
+    List<Customer> suggestions = getDefaultSuggestions();
     suggestionPickerField.showSuggestions(suggestions);
 });

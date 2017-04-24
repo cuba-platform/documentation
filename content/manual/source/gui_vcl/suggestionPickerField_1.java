@@ -1,11 +1,11 @@
-suggestionPickerField.setSearchExecutor(new SuggestionField.ParametrizedSearchExecutor(){
+suggestionPickerField.setSearchExecutor(new SuggestionField.ParametrizedSearchExecutor<Customer>(){
     @Override
-    public Map<String, Object> getParams(){
+    public Map<String, Object> getParams() {
         return ParamsMap.of(...);
     }
 
     @Override
-    public List search(String searchString,Map searchParams){
-        return executeSearch(searchString,searchParams);
+    public List<Customer> search(String searchString, Map<String, Object> searchParams) {
+        return executeSearch(searchString, searchParams);
     }
 });

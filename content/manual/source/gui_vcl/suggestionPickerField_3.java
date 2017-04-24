@@ -2,19 +2,15 @@ public class OrderEdit extends AbstractEditor<Order> {
 
     @Inject
     private SuggestionPickerField suggestionPickerField;
+
     @Inject
-    private CollectionDatasource<Customer, UUID> customersDs;
+    private DataManager dataManager;
 
     @Override
-    protected void initNewItem(Order item) {
-        super.initNewItem(item);
-
-        customersDs.refresh();
-
-        List<Customer> customers = new ArrayList<>(customersDs.getItems());
+    public void init(Map<String, Object> params) {
         suggestionPickerField.setSearchExecutor((searchString, searchParams) ->
-                customers.stream()
-                        .filter(customer -> customer.getName().contains(searchString))
-                        .collect(Collectors.toList()));
+                dataManager.loadList(LoadContext.create(Customer.class).setQuery(
+                    LoadContext.createQuery("select c from sample$Customer c where c.name like :name order by c.name")
+                        .setParameter("name", "%" + searchParams + "%"))));
     }
 }
