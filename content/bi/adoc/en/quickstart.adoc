@@ -1,28 +1,28 @@
 [[quick_start]]
 == Quick Start
 
-We have created a small project to demonstrate how to enrich your CUBA application with BI reports. As an illustration we will embed a Pentaho report in a small demo application for customers and orders management.
+We have created a small project to demonstrate how to enrich your CUBA application with BI reports. This demo application for customers and orders management contains an embedded Pentaho report.
 
-In order to start, please setup the BI Add-on following the <<setup_addon,instruction>>.
+[[qs_setup_sample]]
+=== Setup Sample CUBA Application
 
-=== Setup CUBA sample application
+. Clone or download the sample project from https://github.com/cuba-platform/cuba-bi-demo.git
 
-. Clone sample project from https://git.haulmont.com/platform/bi-demo.git
+. Open the project in an IDE or in CUBA Studio, run the `createDb` command and start the application server.
 
-. Open the project in IDE or in Studio, run the `createDb` command and start the application server.
-
+[[qs_setup_pentaho]]
 === Setup Pentaho
 
-. Download and install Pentaho: http://www.pentaho.com/download
+. Download and install Pentaho from http://www.pentaho.com/download
 
-. Stop _Pentaho Server_, _Pentaho Solution Repository_ background processes in Windows Services or its equivalent.
+. Stop _Pentaho Server_ and _Pentaho Solution Repository_ background processes in Windows Services or its equivalent.
 
-. Change Pentaho default port to 8081:
+. Change Pentaho default port to 8081.
 +
 --
-* Navigate to _$PENTAHO_HOME$/server/pentaho-server/tomcat/conf_, where $PENTAHO_HOME$ is the directory where Pentaho is installed
+* Navigate to `$PENTAHO_HOME/server/pentaho-server/tomcat/conf`, where `$PENTAHO_HOME` is the directory where Pentaho is installed.
 
-* Change default tomcat port to 8081 in the `server.xml`:
+* Change default Tomcat port to 8081 in the `server.xml`:
 
 [source,xml]
 ----
@@ -30,48 +30,56 @@ include::{sourcesdir}/bi_port.xml[]
 ----
 --
 
-. Setup authentication of CUBA users in Pentaho:
+. Setup authentication of CUBA users in Pentaho.
 +
 --
-* open the directory _$BI_PROJECT$/com/haulmont/addon/bi/pentaho_, where $BI_PROJECT$ is the directory where BI Add-on project is located
+* Download https://dl.bintray.com/cuba-platform/main/com/haulmont/addon/bi/cuba-bi-pentaho/{addonVer}/cuba-bi-pentaho-{addonVer}.jar and copy it to `$PENTAHO_HOME$/server/pentaho-server/tomcat/webapps/pentaho/WEB-INF/lib`.
 
-* copy `cuba-pentaho-authentication.xml` to _$PENTAHO_HOME$/server/pentaho-server/pentaho-solutions/system_
+* Create new `cuba-pentaho-authentication.xml` file in the `$PENTAHO_HOME/server/pentaho-server/pentaho-solutions/system` folder with the following content:
++
+[source,xml]
+----
+include::{sourcesdir}/cuba-pentaho-authentication.xml[]
+----
 
-* edit `pentaho-spring-beans.xml` in _/pentaho-solutions/system_ and add the line `<import resource="cuba-pentaho-authentication.xml" />` after the `<import resource="applicationContext-spring-security.xml" />` line.
+* Edit `pentaho-spring-beans.xml` in `pentaho-solutions/system` and add the line `<import resource="cuba-pentaho-authentication.xml" />` after the `<import resource="applicationContext-spring-security.xml" />` line:
 +
 [source,xml]
 ----
 include::{sourcesdir}/bi_beans.xml[]
 ----
-
-* open _$BI_PROJECT$/modules/pentaho/build/libs_
-
-* copy `cuba-bi-pentaho-0.1-SNAPSHOT.jar` to _$PENTAHO_HOME$/server/pentaho-server/tomcat/webapps/pentaho/WEB-INF/lib_
 --
 
-. Start Pentaho Server, Pentaho Solution Repository background processes in Windows Services or its equivalent.
+. Start _Pentaho Server_ and _Pentaho Solution Repository_ background processes in Windows Services or its equivalent.
 
-=== Load Data to Star Schema
+[[qs_load_data]]
+=== Loading Data to Star Schema
 
 In our Pentaho report we will use aggregated data from multiple database tables. This data will be stored in additional tables and then loaded to the Star Schema. In our case, the Star Schema will consist of one fact table (Orders) and two dimension tables (Customer and Product), providing the ability to drill into the report hierarchy.
 
-==== Lazy workaround
+[[qs_load_data_for_impatient]]
+==== Loading Data For the Impatient
 
 You can use the ready star schema delivered with the demo project.
 
-. Open _$BI_DEMO_PROJECT$/modules/core/src/com/haulmont/bidemo/core/kettle/bidemo.kjb_, where $BI_DEMO_PROJECT$ is the directory where  BI Demo project is located.
+. Make sure you have the demo project opened in Studio. The import procedure explained below will access the project's HSQL database.
+
+. Run _Pentaho Data Integration_ tool.
+
+. Open `$BI_DEMO_PROJECT/demo/kettle/bidemo.kjb`, where `$BI_DEMO_PROJECT` is the directory where the demo project is located.
 
 . Click *Run* to update the Star Schema.
 +
-image::bi_star_schema.png[align="center"]
+image::bi_star_schema.png[]
 
-Now you can pass to <<analysis_report,creating the Analysis Report>>.
+Now you can proceed to <<qs_analysis_report,creating the analysis report>>.
 
-==== Create Database connection
+[[qs_db_connection]]
+==== Create Database Connection
 
 If you want to create the star schema yourself, follow the steps below. For the detailed instructions consult the http://wiki.pentaho.com/display/EAI/.03+Database+Connections[Pentaho wiki].
 
-. Start Pentaho Data Integration using spoon.bat from _$PENTAHO_HOME$/design-tools/data-integration_
+. Start _Pentaho Data Integration_ using `spoon.bat` from `$PENTAHO_HOME$/design-tools/data-integration`.
 
 . Create new transformation.
 
@@ -94,9 +102,10 @@ If you want to create the star schema yourself, follow the steps below. For the 
 
 * Leave the Password field empty
 
-image::star-schema.png[align="center"]
+image::star-schema.png[]
 --
 
+[[qs_dimensions]]
 ==== Create Dimensions
 
 For the dimensions, we will use Products and Customers. Each product refers to some product line, that is the type of product, e.g. _Ford T_ belongs to the _Vintage Cars_ product line.
@@ -105,149 +114,166 @@ Customers belong to certain cities, they, in turn, refer to some countries, the 
 
 . First, create the Product transformation. Drag and drop the *Table input* node onto the worksheet and define the fields we need for the report: product `id`, `name` and `product_line_id`.
 +
-image::star-schema_2.png[align="center"]
+image::star-schema_2.png[]
 
 . Then create an Insert/Update node for products:
 +
-image::star-schema_3.png[align="center"]
+image::star-schema_3.png[]
 
 . Create the transformation for product lines:
 +
-image::star-schema_4.png[align="center"]
+image::star-schema_4.png[]
 
 . Finalize the first transformation with the *Update* node:
 +
-image::star-schema_5.png[align="center"]
+image::star-schema_5.png[]
 
 . Create the Customer transformation in the same way, including City and Territory levels, and add it to the Product one:
 +
-image::star-schema_6.png[align="center"]
+image::star-schema_6.png[]
 
 . When the transformation is ready, wrap it in the corresponding job, using the *START* and *Success* nodes and the *Abort job* exit node in case of an error:
 +
-image::star-schema_12.png[align="center"]
+image::star-schema_12.png[]
 
+[[qs_facts]]
 ==== Create Facts
 
 For the Facts measure we will take the Orders and Order Lines.
 
 . First, create the Order Line transformation. Drag and drop the *Table input* node onto the worksheet and define the fields we need for the report: `id`, `product_id`, `quantity` and `order_id`:
 +
-image::star-schema_7.png[align="center"]
+image::star-schema_7.png[]
 
 . Then create an Insert/Update node for order lines:
 +
-image::star-schema_8.png[align="center"]
+image::star-schema_8.png[]
 
 . Create the transformation for orders:
 +
-image::star-schema_9.png[align="center"]
+image::star-schema_9.png[]
 
 . Finally, update the customers IDs in the table:
 +
-image::star-schema_10.png[align="center"]
+image::star-schema_10.png[]
 
 . The Facts transformation is now ready:
 +
-image::star-schema_11.png[align="center"]
+image::star-schema_11.png[]
 
 . Wrap the transformation in the corresponding job:
 +
-image::star-schema_13.png[align="center"]
+image::star-schema_13.png[]
 
+[[qs_star_schema]]
 ==== Create Star Schema
 
 Now let's assemble the dimensions and facts jobs into the complete star schema:
 
-. Add the *START* node to start the job
+. Add the *START* node to start the job.
 
-. Start the job with the *Check Db connections* condition
+. Start the job with the *Check Db connections* condition.
 
-. In case the DB is not connected, add the *Abort job* node for the job
+. In case the DB is not connected, add the *Abort job* node for the job.
 
-. Then add consequently *Update Dimensions* and *Update Facts* jobs that we have designed earlier
+. Then add consequently *Update Dimensions* and *Update Facts* jobs that we have designed earlier.
 
 . Finalize the job with the *Success* node and run the job:
 +
-image::star-schema_14.png[align="center"]
+image::star-schema_14.png[]
 
 . Save all the job and transformation files in the project folder for further use.
 
-[[analysis_report]]
+[[qs_analysis_report]]
 === Configure Pentaho Analysis Report
 
-You can either use the analysis report delivered with the demo project or create it yourself following the steps below.
+. Open Pentaho console: http://localhost:8081/pentaho and login as `Admin/password`.
 
-. Open Pentaho console: _http://localhost:8081/pentaho/_ and login as _Admin/password_
+. Click *File → Manage Data Sources*.
 
-. Click *File → Manage Data Sources*
-
-. Click *New Connection*
+. Click *New Connection*:
 +
-image::bi_pentaho.png[align="center"]
+image::bi_pentaho.png[]
 
-. Create connection to HSQLDB
+. Create connection to HSQLDB:
 +
-image::bi_pentaho_2.png[align="center"]
+--
+* Host Name: `localhost`
+* Database Name: `bidemo`
+* Port Number: `19001`
+* User Name: `sa`
 
-==== Lazy workaround
+image::bi_pentaho_2.png[]
+--
 
-Below is the easiest way to see what the Pentaho report looks like, you only have to import .zip-files with the analysis and the report structure.
+Now you can either use the analysis report <<qs_demo_report,delivered with the demo project>> or create it yourself following the steps <<qs_create_report,below>>.
 
-. Click *Import Analysis*
 
-. Select Data Source *BIDemo* and mondrian file _$BI_DEMO_PROJECT$/modules/core/src/com/haulmont/bidemo/core/pentaho/BiDemo.zip_
+[[qs_demo_report]]
+==== Using Demo Report
+
+Below is the easiest way to see what the Pentaho report looks like, you only have to import ZIP-files with the analysis and the report structure.
+
+. Click *Import Analysis*.
+
+. Select `BIDemo` Data Source and `$BI_DEMO_PROJECT/demo/pentaho/BiDemo.zip` Mondrian File.
 +
-image::bi_pentaho_3.png[align="center"]
+image::bi_pentaho_3.png[]
 
-. Click Browse Files on main window. Select home/Admin folder and click *Upload*.
+. Click *Browse Files* on main window. Select `home/Admin` folder and click *Upload*.
 
-. Select _$BI_DEMO_PROJECT$/modules/core/src/com/haulmont/bidemo/core/pentaho/ProductsByTypeAndLocation.xanalyzer.zip_ and upload it.
+. Select `$BI_DEMO_PROJECT/demo/pentaho/ProductsByTypeAndLocation.xanalyzer.zip` and upload it.
 +
-image::bi_pentaho_4.png[align="center"]
+image::bi_pentaho_4.png[]
 
-Now you can already open the Pentaho report in the <<bi_widget,CUBA application>>.
+Now you can open the Pentaho report in the <<bi_widget,CUBA application>>.
 
+[[qs_create_report]]
 ==== Create Data Source and Analysis Report
 
-===== Create Data Source
+Create Data Source::
++
+--
+. Click *New Data Source*.
 
-. Click *New Data Source*
+. Select the Source Type: *Database Table(s)*.
 
-. Select the Source Type: *Database Table(s)
-
-. Select the new *BIDemo* connection in the list of available connections
+. Select the new `BIDemo` connection in the list of available connections.
 
 . Select *Reporting and Analysis* as the aim of this data source.
 +
-image::pentaho_console.png[align="center"]
+image::pentaho_console.png[]
 
-. Select the dimensions and the fact tables we have created in Spoon: _"PENTAHO_DIM_CUSTOMER"_, _"PENTAHO_DIM_PRODUCT"_, _"PENTAHO_FACT_ORDER_LINE"_:
+. Select the dimensions and the fact tables we have created in Spoon: `"PENTAHO_DIM_CUSTOMER"`, `"PENTAHO_DIM_PRODUCT"`, `"PENTAHO_FACT_ORDER_LINE"`:
 +
-image::pentaho_console_2.png[align="center"]
+image::pentaho_console_2.png[]
 
 . Define Joins for selected tables:
 +
-image::pentaho_console_3.png[align="center"]
+image::pentaho_console_3.png[]
 
 . Save the data source. Select it in the list of available datasources and export the created analysis for the further use:
 +
-image::pentaho_console_4.png[align="center"]
+image::pentaho_console_4.png[]
+--
 
-===== Create Analysis Report
+Create Analysis Report::
++
+--
+. On the Pentaho Console home page click *New* -> *Analysis Report*.
 
-. On the Pentaho Console home page click *New* -> *Analysis Report*
-
-. Select the *BIDemo* data source
+. Select the `BIDemo` data source.
+--
 
 [[bi_widget]]
 === Open BI Widget in CUBA Sample Application
 
-. Open http://localhost:8080/app
+. Go to http://localhost:8080/app
 
-. Open Shop → BI
+. Open *Shop → BI* main menu item:
+
 ++++
-      <table border="0" cellpadding="0" style="text-align:center;margin:auto" width="1096" align="center">
+      <table border="0" cellpadding="0" style="text-align:center;margin:auto" width="1096" >
         <tr>
           <td ><script type="text/javascript">
           var oeTags = '<img src="img/pentaho.gif" width="1094" height="406" alt=""/>';
