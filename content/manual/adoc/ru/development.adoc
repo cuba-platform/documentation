@@ -238,60 +238,61 @@ include::{sourcesdir}/development/build_gradle_2.groovy[]
 
 Исполняемыми единицами в Gradle являются _задачи_ (tasks). Они задаются как внутри плагинов, так и в самом скрипте сборки. Рассмотрим специфические для CUBA задачи, параметры которых могут быть сконфигурированы в `build.gradle`. 
 
-[[build.gradle_enhance]]
-===== enhance
+[[build.gradle_buildUberJar]]
+===== buildUberJar
 
-`enhance` - задача типа `CubaEnhancing`, выполняющая bytecode enhancement (weaving) классов сущностей. Объявляется в <<app_modules,модуле>> *global*.
+`buildUberJar` – задача типа `CubaUberJarBuilding`, выполняющая сборку приложения и его зависимостей в JAR-файл вместе со встроенным HTTP-сервером Jetty. Для каждого <<app_tiers,блока>> приложения создаётся отдельный JAR-файл, например, `app-core.jar` для Middleware и `app.jar` для Web Client.
 
-Например:
+Задача должна быть объявлена в корне скрипта `build.gradle`. Собранные JAR-файлы находятся в подкаталоге `build/distributions` проекта. Руководство по запуску собранных JAR-файлов смотрите в разделе  <<uberjar_deployment>>.
 
-[source, java]
-----
-task enhance(type: CubaEnhancing)
-----
+TIP: Эту задачу можно настроить на вкладке *Deployment settings > Uber JAR* в Studio.
 
-Optional parameters:
+Параметры задачи:
 
-* `persistenceConfig` - позволяет явно указать набор файлов <<persistence.xml, persistence.xml>>. Если не установлено, задача будет обрабатывать все персистентные сущности, перечисленные в файлах `*persistence.xml`, найденных в CLASSPATH.
+* `coreJettyEnvPath` - обязательный параметр, содержащий относительный путь к файлу, в котором содержатся определения ресурсов JNDI для HTTP-сервера Jetty. Как минимум, этот файл должен содержать определение источника данных JDBC для основной базы данных. Studio может сгенерировать этот файл, используя установленные параметры подключения к базе данных. Может быть задан во время работы приложения с помощью аргумента <<uberjar_deployment,командной строки>> `-jettyEnvPath`.
 
-* `metadataXml` - позволяет явно указать файл <<metadata.xml, metadata.xml>> проекта. Если не установлено, задача будет обрабатывать все неперсистентные сущности, перечисленные в файле `*metadata.xml`, найденном в дереве исходных текстов модуля.
+* `appProperties` - опциональный мэп <<app_properties,свойств приложения>>. Эти свойства будут добавлены в файлы `/WEB-INF/local.app.properties` внутри создаваемых JAR.
 
-[[build.gradle_setupTomcat]]
-===== setupTomcat
+* `corePort` - порт для core JAR на встроенном HTTP-сервере. Если не установлен, имеет значение `8079`. Может быть задан во время работы приложения с помощью аргумента командной строки `-port`.
 
-`setupTomcat` - задача типа `CubaSetupTomcat`, выполняющая установку и инициализацию локального сервера Tomcat для последующего <<fast_deployment,быстрого развертывания>> приложения. Эта задача автоматически добавляется в проект при подключении плагина сборки *cuba*, поэтому объявлять ее в `build.gradle` не нужно. Каталог установки Tomcat задается свойством `tomcat.dir` секции `cuba`. По умолчанию это подкаталог `build/tomcat` проекта.
+* `webPort` - порт для web JAR на встроенном HTTP-сервере. Если не установлен, имеет значение `8080`. Может быть задан во время работы приложения с помощью аргумента командной строки `-port`.
 
-[[build.gradle_deploy]]
-===== deploy
+* `portalPort` - порт для portal JAR на встроенном HTTP-сервере. Если не установлен, имеет значение `8081`. Может быть задан во время работы приложения с помощью аргумента командной строки `-port`.
 
-`deploy` - задача типа `CubaDeployment`, выполняющая <<fast_deployment,быстрое развертывание>> модуля в Tomcat. Объявляется в модулях *core*, *web*, *portal*. Параметры:
-
-* `appName` - имя веб-приложения, которое будет создано из модуля. Фактически это имя подкаталога внутри `tomcat/webapps`.
-
-* `jarNames` - список имен JAR файлов (без версии), получающихся в результате сборки модуля, которые надо поместить в каталог `WEB-INF/lib` веб-приложения. Все остальные артефакты модуля и зависимостей будут записаны в `tomcat/shared/lib`.
-
-Например:
-
-[source, java]
-----
-task deploy(dependsOn: assemble, type: CubaDeployment) {
-    appName = 'app-core'
-    jarNames = ['cuba-global', 'cuba-core', 'app-global', 'app-core']
-}
-----
-
-[[build.gradle_deployThemes]]
-===== deployThemes
-
-`deployThemes` - задача типа `CubaDeployThemeTask`, выполняющая сборку и развертывание определенных в проекте <<web_theme,тем>> в запущенное веб-приложение, развернутое задачей <<build.gradle_deploy,deploy>>. Изменения в темах применяются без рестарта сервера.
-
-Например:
-
+* `appName` - имя приложения, по умолчанию `app`. Его можно изменить для всего проекта, заполнив поле *Module prefix* на вкладке *Project Properties > Advanced* в Studio, либо установить его только для задачи `buildUberJar`, использовав этот параметр, например:
++
 [source, groovy]
 ----
-task deployThemes(type: CubaDeployThemeTask, dependsOn: buildScssThemes) {
+task buildUberJar(type: CubaUberJarBuilding) {
+    coreJettyEnvPath = 'modules/core/web/META-INF/jetty-env.xml'
+    appProperties = ['cuba.automaticDatabaseUpdate' : true]
+    appName = 'sales'
 }
 ----
++
+После изменения имени приложения на `sales` задача создаст файлы `sales-core.jar` и `sales.jar`, и веб-клиент будет доступен по адресу `++http://localhost:8080/sales++`. Вы также можете изменить веб-контекст (последнюю часть URL после /) во время работы приложения, не изменяя имени приложения, с помощью аргумента командной строки `-contextName`.
++
+WARNING: Следует иметь в виду, что текущая реализация Polymer UI требует ручного указания тега `<base>` для текущего веб-контекста, доступного во время работы приложения. Таким образом, после изменения контекста с помощью *Module prefix*, параметра задачи `appName` или аргумента командной строки `-frontContextName` Polymer UI может стать недоступным.
+
+* `coreProject` - проект Gradle, представляющий модуль *core* (Middleware). Если не установлено, используется стандартный модуль *core* проекта.
+
+* `webProject` - проект Gradle, представляющий модуль *web* (Web Client). Если не установлено, используется стандартный модуль *web* проекта.
+
+* `portalProject` - проект Gradle, представляющий модуль *portal* (Web Portal). Если не установлено, используется стандартный модуль *portal* проекта.
+
+* `polymerProject` - проект Gradle, представляющий модуль Polymer UI. Если не установлено, используется стандартный модуль *polymer-client* проекта.
+
+* `coreWebXmlPath` - относительный путь к файлу, который будет использован в качестве `web.xml` для core JAR.
+
+* `webWebXmlPath` - относительный путь к файлу, который будет использован в качестве `web.xml` для web JAR.
+
+* `portalWebXmlPath` - относительный путь к файлу, который будет использован в качестве `web.xml` для portal JAR.
+
+* `excludeResources` - шаблон файлов ресурсов, которые не должны быть включены в JAR.
+
+* `mergeResources` - шаблон файлов ресурсов, которые необходимо объединить в JAR.
+
+* `webContentExclude` - шаблон файлов ресурсов, которые не должны быть включены в web JAR.
 
 [[build.gradle_buildWar]]
 ===== buildWar
@@ -362,6 +363,26 @@ include::{sourcesdir}/development/build_gradle_buildWar_3.xml[]
 
 В разделе <<war_deployment>> содержатся пошаговые инструкции по некоторым вариантам развертывания WAR-файлов.
 
+[[build.gradle_buildWidgetSet]]
+===== buildWidgetSet
+
+`buildWidgetSet` - задача типа `CubaWidgetSetBuilding`, которая собирает кастомный GWT widgetset если в проекте есть модуль `web-toolkit`. Данный модуль позволяет разрабатывать <<own_components,собственные визуальные компоненты>>.
+
+Доступные параметры:
+
+* `style` - стиль вывода скрипта: `OBF`, `PRETTY` или `DETAILED`. По умолчанию `OBF`.
+
+* `logLevel` - уровень логгирования: `ERROR`, `WARN`, `INFO`, `TRACE`, `DEBUG`, `SPAM`, or `ALL`. По умолчанию `INFO`.
+
+* `draft` - компилировать быстро с минимумом оптимизаций. По умолчанию `false`.
+
+Пример использования:
+
+[source, groovy]
+----
+include::{sourcesdir}/development/build_gradle_buildWidgetSet_1.groovy[]
+----
+
 [[build.gradle_createDb]]
 ===== createDb
 
@@ -429,10 +450,91 @@ task createDb(dependsOn: assemble, description: 'Creates database', type: CubaDb
 }
 ----
 
-[[build.gradle_updateDb]]
-===== updateDb
+[[build.gradle_debugWidgetSet]]
+===== debugWidgetSet
 
-`updateDb` - задача типа `CubaDbUpdate`, обновляющая базу данных приложения путем выполнения соответствующих <<db_scripts,скриптов>>. Аналогична задаче `createDb`, за исключением отсутствия параметров `dropDbSql` и `createDbSql`.
+`debugWidgetSet` - задача типа `CubaWidgetSetDebug`, которая запускает GWT Code Server для отладки виджетов в веб-браузере.
+
+Пример использования:
+
+[source, java]
+----
+include::{sourcesdir}/development/build_gradle_debugWidgetSet_1.groovy[]
+----
+
+Убедитесь, что кофигурация `runtime` модуля `web-toolkit` содержит зависимость от библиотеки Servlet API:
+
+[source, java]
+----
+include::{sourcesdir}/development/build_gradle_debugWidgetSet_2.groovy[]
+----
+
+См. <<debug_widgets,Отладка виджетов в веб-браузере>> для получения информации о том как отлаживать код в веб-браузере.
+
+[[build.gradle_deploy]]
+===== deploy
+
+`deploy` - задача типа `CubaDeployment`, выполняющая <<fast_deployment,быстрое развертывание>> модуля в Tomcat. Объявляется в модулях *core*, *web*, *portal*. Параметры:
+
+* `appName` - имя веб-приложения, которое будет создано из модуля. Фактически это имя подкаталога внутри `tomcat/webapps`.
+
+* `jarNames` - список имен JAR файлов (без версии), получающихся в результате сборки модуля, которые надо поместить в каталог `WEB-INF/lib` веб-приложения. Все остальные артефакты модуля и зависимостей будут записаны в `tomcat/shared/lib`.
+
+Например:
+
+[source, java]
+----
+task deploy(dependsOn: assemble, type: CubaDeployment) {
+    appName = 'app-core'
+    jarNames = ['cuba-global', 'cuba-core', 'app-global', 'app-core']
+}
+----
+
+[[build.gradle_deployThemes]]
+===== deployThemes
+
+`deployThemes` - задача типа `CubaDeployThemeTask`, выполняющая сборку и развертывание определенных в проекте <<web_theme,тем>> в запущенное веб-приложение, развернутое задачей <<build.gradle_deploy,deploy>>. Изменения в темах применяются без рестарта сервера.
+
+Например:
+
+[source, groovy]
+----
+task deployThemes(type: CubaDeployThemeTask, dependsOn: buildScssThemes) {
+}
+----
+
+[[build.gradle_enhance]]
+===== enhance
+
+`enhance` - задача типа `CubaEnhancing`, выполняющая bytecode enhancement (weaving) классов сущностей. Объявляется в <<app_modules,модуле>> *global*.
+
+Например:
+
+[source, java]
+----
+task enhance(type: CubaEnhancing)
+----
+
+Optional parameters:
+
+* `persistenceConfig` - позволяет явно указать набор файлов <<persistence.xml, persistence.xml>>. Если не установлено, задача будет обрабатывать все персистентные сущности, перечисленные в файлах `*persistence.xml`, найденных в CLASSPATH.
+
+* `metadataXml` - позволяет явно указать файл <<metadata.xml, metadata.xml>> проекта. Если не установлено, задача будет обрабатывать все неперсистентные сущности, перечисленные в файле `*metadata.xml`, найденном в дереве исходных текстов модуля.
+
+[[build.gradle_restart]]
+===== restart
+
+`restart` - задача, выполняющая остановку, <<fast_deployment,быстрое развертывание>> и старт локального сервера Tomcat.
+
+[[build.gradle_setupTomcat]]
+===== setupTomcat
+
+`setupTomcat` - задача типа `CubaSetupTomcat`, выполняющая установку и инициализацию локального сервера Tomcat для последующего <<fast_deployment,быстрого развертывания>> приложения. Эта задача автоматически добавляется в проект при подключении плагина сборки *cuba*, поэтому объявлять ее в `build.gradle` не нужно. Каталог установки Tomcat задается свойством `tomcat.dir` секции `cuba`. По умолчанию это подкаталог `build/tomcat` проекта.
+
+[[build.gradle_start]]
+===== start
+
+`start` - задача типа `CubaStartTomcat`, выполняющая запуск локального сервера Tomcat, установленного задачей <<build.gradle_setupTomcat,setupTomcat>>. Эта задача автоматически добавляется в проект при подключении плагина *cuba*, поэтому объявлять ее в `build.gradle` не нужно.
 
 [[build.gradle_startDb]]
 ===== startDb
@@ -445,73 +547,27 @@ task createDb(dependsOn: assemble, description: 'Creates database', type: CubaDb
 
 * `dbPort` - порт сервера, по умолчанию 9001.
 
-Например: 
+Например:
 
 [source, java]
 ----
 include::{sourcesdir}/development/build_gradle_startDb_1.groovy[]
----- 
-
-[[build.gradle_stopDb]]
-===== stopDb
-
-`stopDb` - задача типа `CubaHsqlStop`, выполняющая остановку локального сервера HSQLDB. Параметры аналогичны задаче `startDb`.
-
-[[build.gradle_start]]
-===== start
-
-`start` - задача типа `CubaStartTomcat`, выполняющая запуск локального сервера Tomcat, установленного задачей <<build.gradle_setupTomcat,setupTomcat>>. Эта задача автоматически добавляется в проект при подключении плагина *cuba*, поэтому объявлять ее в `build.gradle` не нужно.
+----
 
 [[build.gradle_stop]]
 ===== stop
 
 `stop` - задача типа `CubaStopTomcat`, выполняющая остановку локального сервера Tomcat, установленного задачей <<build.gradle_setupTomcat,setupTomcat>>. Эта задача автоматически добавляется в проект при подключении плагина *cuba*, поэтому объявлять ее в `build.gradle` не нужно.
 
-[[build.gradle_restart]]
-===== restart
+[[build.gradle_stopDb]]
+===== stopDb
 
-`restart` - задача, выполняющая остановку, <<fast_deployment,быстрое развертывание>> и старт локального сервера Tomcat.
+`stopDb` - задача типа `CubaHsqlStop`, выполняющая остановку локального сервера HSQLDB. Параметры аналогичны задаче `startDb`.
 
-[[build.gradle_buildWidgetSet]]
-===== buildWidgetSet
+[[build.gradle_updateDb]]
+===== updateDb
 
-`buildWidgetSet` - задача типа `CubaWidgetSetBuilding`, которая собирает кастомный GWT widgetset если в проекте есть модуль `web-toolkit`. Данный модуль позволяет разрабатывать <<own_components,собственные визуальные компоненты>>.
-
-Доступные параметры:
-
-* `style` - стиль вывода скрипта: `OBF`, `PRETTY` или `DETAILED`. По умолчанию `OBF`.
-
-* `logLevel` - уровень логгирования: `ERROR`, `WARN`, `INFO`, `TRACE`, `DEBUG`, `SPAM`, or `ALL`. По умолчанию `INFO`.
-
-* `draft` - компилировать быстро с минимумом оптимизаций. По умолчанию `false`.
-
-Пример использования:
-
-[source, groovy]
-----
-include::{sourcesdir}/development/build_gradle_buildWidgetSet_1.groovy[]
-----
-
-[[build.gradle_debugWidgetSet]]
-===== debugWidgetSet
-
-`debugWidgetSet` - задача типа `CubaWidgetSetDebug`, которая запускает GWT Code Server для отладки виджетов в веб-браузере.
-
-Пример использования: 
-
-[source, java]
-----
-include::{sourcesdir}/development/build_gradle_debugWidgetSet_1.groovy[]
----- 
-
-Убедитесь, что кофигурация `runtime` модуля `web-toolkit` содержит зависимость от библиотеки Servlet API: 
-
-[source, java]
-----
-include::{sourcesdir}/development/build_gradle_debugWidgetSet_2.groovy[]
----- 
-
-См. <<debug_widgets,Отладка виджетов в веб-браузере>> для получения информации о том как отлаживать код в веб-браузере.
+`updateDb` - задача типа `CubaDbUpdate`, обновляющая базу данных приложения путем выполнения соответствующих <<db_scripts,скриптов>>. Аналогична задаче `createDb`, за исключением отсутствия параметров `dropDbSql` и `createDbSql`.
 
 [[build.gradle_zipProject]]
 ===== zipProject
