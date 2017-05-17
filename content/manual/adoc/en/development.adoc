@@ -1491,57 +1491,21 @@ Entity class with a link to the image file:
 
 [source, java]
 ----
-@Table(name = "SAMPLE_EMPLOYEE")
-@Entity(name = "sample$Employee")
-public class Employee extends StandardEntity {
-...
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "IMAGE_FILE_ID")
-    protected FileDescriptor imageFile;
-
-    public void setImageFile(FileDescriptor imageFile) {
-        this.imageFile = imageFile;
-    }
-
-    public FileDescriptor getImageFile() {
-        return imageFile;
-    }
-}
+include::{sourcesdir}/development/images_1.java[]
 ----
 
 A <<views,view>> for loading an `Employee` together with `FileDescriptor` should include all local attributes of `FileDescriptor`:
 
 [source, xml]
 ----
-<view class="com.company.sample.entity.Employee"
-      name="employee-edit">
-    <property name="name"/>
-    ...
-    <property name="imageFile"
-              view="_local">
-    </property>
-</view>
+include::{sourcesdir}/development/images_2.xml[]
 ----
 
 A fragment of the `Employee` edit screen XML descriptor:
 
 [source, xml]
 ----
-<groupBox caption="Photo" spacing="true"
-          height="250px" width="250px" expand="embeddedImage">
-        <embedded id="embeddedImage" width="100%"
-                  align="MIDDLE_CENTER"/>
-    <hbox align="BOTTOM_LEFT"
-          spacing="true">
-        <upload id="uploadField"/>
-        <button id="downloadImageBtn"
-                caption="Download"
-                invoke="onDownloadImageBtnClick"/>
-        <button id="clearImageBtn"
-                caption="Clear"
-                invoke="onClearImageBtnClick"/>
-    </hbox>
-</groupBox>
+include::{sourcesdir}/development/images_3.xml[]
 ----
 
 Components used to display, upload and download images are contained within the <<gui_GroupBoxLayout,groupBox>> container. Its top part shows a picture using the <<gui_Embedded,embedded>> component, while its bottom part from left to right contains the <<gui_FileUploadField,upload>> component and <<gui_Button,buttons>> to download and clear the image. As a result, this part of the screen should look like this:
@@ -1552,113 +1516,7 @@ Now, let us have a look at the <<abstractEditor,edit screen controller>>.
 
 [source, java]
 ----
-public class EmployeeEdit extends AbstractEditor<Employee> {
-
-    private Logger log = LoggerFactory.getLogger(EmployeeEdit.class);
-
-    @Inject
-    private DataSupplier dataSupplier;
-    @Inject
-    private FileStorageService fileStorageService;
-    @Inject
-    private FileUploadingAPI fileUploadingAPI;
-    @Inject
-    private ExportDisplay exportDisplay;
-
-    @Inject
-    private Embedded embeddedImage;
-    @Inject
-    private FileUploadField uploadField;
-    @Inject
-    private Button downloadImageBtn;
-    @Inject
-    private Button clearImageBtn;
-    @Inject
-    private Datasource<Employee> employeeDs;
-
-    private static final int IMG_HEIGHT = 190;
-    private static final int IMG_WIDTH = 220;
-
-    @Override
-    public void init(Map<String, Object> params) {
-        uploadField.addFileUploadSucceedListener(event -> {
-            FileDescriptor fd = uploadField.getFileDescriptor();
-            try {
-                fileUploadingAPI.putFileIntoStorage(uploadField.getFileId(), fd);
-            } catch (FileStorageException e) {
-                throw new RuntimeException("Error saving file to FileStorage", e);
-            }
-            getItem().setImageFile(dataSupplier.commit(fd));
-            displayImage();
-        });
-
-        uploadField.addFileUploadErrorListener(event ->
-                showNotification("File upload error", NotificationType.HUMANIZED));
-
-        employeeDs.addItemPropertyChangeListener(event -> {
-            if ("imageFile".equals(event.getProperty()))
-                updateImageButtons(event.getValue() != null);
-        });
-    }
-
-    @Override
-    protected void postInit() {
-        displayImage();
-        updateImageButtons(getItem().getImageFile() != null);
-    }
-
-    public void onDownloadImageBtnClick() {
-        if (getItem().getImageFile() != null)
-            exportDisplay.show(getItem().getImageFile(), ExportFormat.OCTET_STREAM);
-    }
-
-    public void onClearImageBtnClick() {
-        getItem().setImageFile(null);
-        displayImage();
-    }
-
-    private void updateImageButtons(boolean enable) {
-        downloadImageBtn.setEnabled(enable);
-        clearImageBtn.setEnabled(enable);
-    }
-
-    private void displayImage() {
-        byte[] bytes = null;
-        if (getItem().getImageFile() != null) {
-            try {
-                bytes = fileStorageService.loadFile(getItem().getImageFile());
-            } catch (FileStorageException e) {
-                log.error("Unable to load image file", e);
-                showNotification("Unable to load image file", NotificationType.HUMANIZED);
-            }
-        }
-        if (bytes != null) {
-            embeddedImage.setSource(getItem().getImageFile().getName(), new ByteArrayInputStream(bytes));
-            embeddedImage.setType(Embedded.Type.IMAGE);
-            BufferedImage image;
-            try {
-                image = ImageIO.read(new ByteArrayInputStream(bytes));
-                int width = image.getWidth();
-                int height = image.getHeight();
-
-                if (((double) height / (double) width) > ((double) IMG_HEIGHT / (double) IMG_WIDTH)) {
-                    embeddedImage.setHeight(String.valueOf(IMG_HEIGHT));
-                    embeddedImage.setWidth(String.valueOf(width * IMG_HEIGHT / height));
-                } else {
-                    embeddedImage.setWidth(String.valueOf(IMG_WIDTH));
-                    embeddedImage.setHeight(String.valueOf(height * IMG_WIDTH / width));
-                }
-            } catch (IOException e) {
-                log.error("Unable to resize image", e);
-            }
-            // refresh image
-            embeddedImage.setVisible(false);
-            embeddedImage.setVisible(true);
-        } else {
-            embeddedImage.setVisible(false);
-        }
-    }
-}
+include::{sourcesdir}/development/images.java[]
 ----
 
 * The `init()` method first initializes the `uploadField` component that is used for uploading new images. In the case of a successful upload, a new `FileDescriptor` instance is retrieved from the component and the corresponding files are sent from the temporary client storage to `FileStorage` by invoking `FileUploadingAPI.putFileIntoStorage()`. After that, the `FileDescriptor` is saved to the database by invoking  <<dataSupplier,DataSupplier.commit()>>, and the saved instance is assigned to the `imageFile` attribute of the edited `Employee` entity. Then, the controller's `displayImage()` method is invoked to display the uploaded image.
@@ -1674,6 +1532,41 @@ After that, a listener is added in the `init()` method to the datasource contain
 * `displayImage()` loads the file from storage into a byte array, sets the content of the `embeddedImage` component and recalculates its size to preserve image height to width ratio.
 +
 It should be noted that loading files into byte arrays is acceptable for small files only. If the file size is not predictable, you should only download it using <<file_download,ExportDisplay>>, which sends the file through input and output streams and never keeps the entire file in memory.
+
+[[images_in_table]]
+===== Displaying Images in a Table Column
+
+To amplify the previous task, let's add pictures to the table as employees' icons on the `Employee` browse screen.
+
+The pictures can be displayed in a separate column or inside any existing column. In both cases the <<gui_Table_addGeneratedColumn,Table.ColumnGenerator>> interface is used.
+
+Below is a fragment of the `Employee` browse screen XML descriptor:
+
+[source, xml]
+----
+include::{sourcesdir}/development/images_4.xml[]
+----
+
+To display pictures inline with an employee's name in the `name` column, let's change the standard representation of data in this column. We will use the <<gui_BoxLayout,HBoxLayout>> container and place the <<gui_Embedded,Embedded>> component into it:
+
+[source, java]
+----
+include::{sourcesdir}/development/images_5.java[]
+----
+
+* The `init()` method invokes the `addGeneratedColumn()` method that takes two parameters: an identifier of the column and an implementation of the `Table.ColumnGenerator` interface. The latter is used to define the custom representation of data in the `name` column.
+
+* Inside this method we create an `Embedded` component using the `ComponentsFactory` interface. We set the <<gui_Embedded_type,type>> of the component (`IMAGE`) and its size parameters.
+
+* Then we get the `FileDescriptor` instance with the picture stored in the <<file_storage,File Storage>>. The link to this picture is stored in the `imageFile` attribute of the `Employee` entity. Data provider for `FileDescriptor` is used to set the source for the `Embedded` component.
+
+* We will display the `name` attribute in the `Label` component alongside the embedded picture.
+
+* We will wrap both `Embedded` and `Label` components into the `HBoxLayout` container, and make the `addGeneratedColumn()` method return this container as the new table cell layout.
+
+image::image_recipe.png[align="center"]
+
+You can also use a more declarative approach with the <<gui_Table_column_generator,generator>> XML attribute.
 
 [[sending_emails_recipe]]
 ==== Sending Emails
