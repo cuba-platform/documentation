@@ -15,23 +15,23 @@ public class StepperLoader extends AbstractFieldLoader<Stepper> {
 
         String manualInput = element.attributeValue("manualInput");
         if (manualInput != null) {
-            resultComponent.setManualInputAllowed(Boolean.valueOf(manualInput));
+            resultComponent.setManualInputAllowed(Boolean.parseBoolean(manualInput));
         }
         String mouseWheel = element.attributeValue("mouseWheel");
         if (mouseWheel != null) {
-            resultComponent.setMouseWheelEnabled(Boolean.valueOf(mouseWheel));
+            resultComponent.setMouseWheelEnabled(Boolean.parseBoolean(mouseWheel));
         }
         String stepAmount = element.attributeValue("stepAmount");
         if (stepAmount != null) {
-            resultComponent.setStepAmount(Integer.valueOf(stepAmount));
+            resultComponent.setStepAmount(Integer.parseInt(stepAmount));
         }
         String maxValue = element.attributeValue("maxValue");
         if (maxValue != null) {
-            resultComponent.setMaxValue(Integer.valueOf(maxValue));
+            resultComponent.setMaxValue(Integer.parseInt(maxValue));
         }
         String minValue = element.attributeValue("minValue");
         if (minValue != null) {
-            resultComponent.setMinValue(Integer.valueOf(minValue));
+            resultComponent.setMinValue(Integer.parseInt(minValue));
         }
     }
 }
