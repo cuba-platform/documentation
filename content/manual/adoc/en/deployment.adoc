@@ -85,7 +85,7 @@ This section describes different ways to deploy CUBA applications:
 [[fast_deployment]]
 ==== Fast Deployment in Tomcat
 
-Fast deployment is used by default when developing an application, as it provides minimum time for building, installation and starting the application. This option is also convenient when using the application in production.
+Fast deployment is used by default when developing an application, as it provides minimum time for building, installation and starting the application. This option can also be used in production.
 
 Fast deployment is performed using the <<build.gradle_deploy,deploy>> task that is declared for *core* and *web* modules in the `build.gradle` file. Before the first execution of `deploy`, a local Tomcat server should be set up and initialized using the <<build.gradle_setupTomcat,setupTomcat>> task.
 
@@ -982,9 +982,9 @@ Configuration of this option is described in <<cluster_webclient,>>.
 
 | *Stage 4. A cluster of Web Client servers working with a cluster of Middleware servers.*
 
-This is the maximum deployment option, which provides fault tolerance and load balancing for the Middleware and the Web Client.
+This is the most powerful deployment option providing fault tolerance and load balancing for the Middleware and the Web Client.
 
-Connection of users to the Web Client servers is performed through a load balancer. The Web Client servers work with a cluster of Middleware servers. They do not need an additional load balancer – it is sufficient to determine the list of URLs for the Middleware servers in the <<cuba.connectionUrlList,cuba.connectionUrlList>> application property.
+Connection of users to the Web Client servers is performed through a load balancer. The Web Client servers work with a cluster of Middleware servers. They do not need an additional load balancer – it is sufficient to determine the list of URLs for the Middleware servers in the <<cuba.connectionUrlList,cuba.connectionUrlList>> application property. Another option is to use <<cluster_mw_zk,Apache ZooKeeper Integration Add-on>> for dynamic discovery of middleware servers.
 
 Middleware servers exchange the information about user sessions, locks, etc. In this case, full fault tolerance of the Middleware is provided – in case of an outage of one of the servers, execution of requests from client blocks will continue on an available server without affecting users.
 
@@ -1065,6 +1065,8 @@ worker.jkstatus.type=status
 [[cluster_webclient_tomcat]]
 ===== Setting up Web Client Servers
 
+TIP: In the examples below, we provide paths to configuration files as if <<fast_deployment>> is used.
+
 On the Tomcat 1 and Tomcat 2 servers, the following settings should be applied:
 
 . In `tomcat/conf/server.xml`, add the `jvmRoute` parameter equivalent to the name of the worker specified in the load balancer settings for `tomcat1` and `tomcat2`:
@@ -1103,12 +1105,14 @@ This section describes the following deployment configuration:
 
 image::cluster_mw.png[align="center"]
 
-Servers `host1` and `host2` host Tomcat instances with the `app` web-app implementing the Web Client block. Cluster configuration for these servers is described in the <<cluster_webclient,previous section>>. Servers `host3` and `host4` host Tomcat instances with the `app-core` web-app implementing the Middleware block. They are configured to interact and share information about user sessions, locks, cash flushes, etc.
+Servers `host1` and `host2` host Tomcat instances with the `app` web application implementing the Web Client block. Cluster configuration for these servers is described in the <<cluster_webclient,previous section>>. Servers `host3` and `host4` host Tomcat instances with the `app-core` web application implementing the Middleware block. They are configured to interact and share information about user sessions, locks, cash flushes, etc.
+
+TIP: In the examples below, we provide paths to configuration files as if <<fast_deployment>> is used.
 
 [[cluster_mw_client]]
 ===== Setting up Connection to the Middleware Cluster
 
-In order for the client blocks to be able to work with multiple Middleware servers, the list of URLs should be specified to these servers in the <<cuba.connectionUrlList,cuba.connectionUrl>> application property. For the Web Client, this can be done in `tomcat/conf/app/local.app.properties`:
+In order for the client blocks to be able to work with multiple Middleware servers, the list of server URLs should be specified in the <<cuba.connectionUrlList,cuba.connectionUrl>> application property. For the Web Client, this can be done in `tomcat/conf/app/local.app.properties`:
 
 [source, properties]
 ----
@@ -1120,7 +1124,9 @@ cuba.webPort = 8080
 cuba.webContextName = app
 ----
 
-The order of servers in `cuba.connectionUrl` defines priority and order for the client to send the requests. In the example above, the client will first attempt to access `host3`, and then, if it is not available, `host4`. If a request to `host4` completes successfully, the client will save `host4` as the first server in the list and will continue working with this server. Restarting a client will reset the initial values. Uniform distribution of clients among all servers can be achieved using the <<cuba.randomServerPriority,cuba.randomServerPriority>> property.
+A middleware server is randomly determined on the first remote connection for a <<userSession,user session>>, and it is fixed for the whole session life time ("sticky session"). Requests from anonymous session and without session do not stick to a server and go to random servers.
+
+The algorithm of selecting a middleware server is provided by the `cuba_ServerSorter` bean which is by default implemented by the `RandomServerSorter` class. You can provide your own implementation in your project.
 
 [[cluster_mw_server]]
 ===== Configuring Interaction between Middleware Servers
@@ -1138,9 +1144,22 @@ cuba.webContextName = app-core
 
 For the Middleware servers, correct values of the <<cuba.webHostName,cuba.webHostName>>, <<cuba.webPort,cuba.webPort>> and <<cuba.webContextName,cuba.webContextName>> properties should be specified to form a unique <<serverId,Server ID>>.
 
-Interaction mechanism is based on link:http://www.jgroups.org[JGroups]. It is possible to fine-tune the interaction using the `jgroups.xml` file located in the root of cuba-core-<version>.jar. It can be copied to `tomcat/conf/app-core` and configured as needed.
+Interaction mechanism is based on link:http://www.jgroups.org[JGroups]. The platform provides two configuration files for JGroups:
 
-`ClusterManagerAPI` bean provides the program interface for servers interaction in the Middleware cluster. It can be used in the application – see JavaDocs and examples in the platform code.
+* `jgroups.xml` - UDP-based stack of protocols which is suitable for local network with enabled broadcast communication. This configuration is used by default when the cluster is turned on.
+
+* `jgroups_tcp.xml` - TCP-based stack of protocols which is suitable for any network. It requires explicit setting of cluster members addresses in `TCP.bind_addr` and `TCPPING.initial_hosts` parameters. In order to use this configuration, set <<cuba.cluster.jgroupsConfig,cuba.cluster.jgroupsConfig>> application property.
+
+In order to set up JGroups parameters for your environment, copy the appropriate `jgroups.xml` file from the root of `cuba-core-<version>.jar` to your project *core* module or to `tomcat/conf/app-core` and modify it.
+
+`ClusterManagerAPI` bean provides the program interface for interaction between servers in the Middleware cluster. It can be used in the application – see JavaDocs and usages in the platform code.
+
+[[cluster_mw_zk]]
+===== Using ZooKeeper for Cluster Coordination
+
+There is an <<app_components,application component>> that enables dynamic discovery of middleware servers for communication between middleware blocks and for requesting middleware from client blocks. It is based on integration with https://zookeeper.apache.org[Apache ZooKeeper] - a centralized service for maintaining configuration information. When this component is included in your project, you need to specify only one static address when running your application blocks - the address of ZooKeeper. Middleware servers will advertise themselves by publishing their addresses on the ZooKeeper directory and discovery mechanisms will request ZooKeeper for addresses of available servers. If a middleware server goes down, it will be automatically removed from the directory immediately or after a timeout.
+
+The source code of application component is available on https://github.com/cuba-platform/cuba-zk[GitHub], the binary artifacts are published in the standard CUBA repositories. See https://github.com/cuba-platform/cuba-zk[README] for information about including and configuring the component.
 
 [[serverId]]
 ==== Server ID
