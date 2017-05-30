@@ -41,7 +41,7 @@ public class FileLoaderScreen extends AbstractWindow {
         try {
             fileLoader.saveStream(fileDescriptor, () -> new ByteArrayInputStream(bytes));
         } catch (FileStorageException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
 
         dataManager.commit(fileDescriptor);
@@ -52,7 +52,7 @@ public class FileLoaderScreen extends AbstractWindow {
             InputStream inputStream = fileLoader.openStream(fileDescriptor);
             textAreaOut.setValue(IOUtils.toString(inputStream));
         } catch (FileStorageException | IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
     }
 }
