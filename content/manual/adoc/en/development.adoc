@@ -1519,10 +1519,73 @@ As a result, the `applicationStarted()` method of this bean will be invoked imme
 
 The `onBeforeUpdate()` method of the `UserEntityListener` class will be invoked every time before the changes in the `User` instances are saved to the database. The method checks if the `name` attribute exists among the updated attributes. If yes, a related `Employee` instance is loaded and its `name` is updated with the new value.
 
+[[fileLoader_recipe]]
+==== Loading Files to FileStorage
+
+`FileLoader` interface provides a convenient way of loading files to the <<file_storage,FileStorage>> using the same methods on both middle and client tiers of an application.
+
+Let's consider a simple task of saving a user input into the text file and displaying the file content in another field on the screen.
+
+The screen contains two `textArea` fields. Suppose the user inputs text in the first `textArea`, clicks the `buttonIn` below, and the text is saved to the `FileStorage`. The second `textArea` will display the content of the saved file also on `buttonOut` click.
+
+Below is the fragment of the screen XML descriptor:
+
+[source, xml]
+----
+include::{sourcesdir}/development/fileLoader_recipe.xml[]
+----
+
+The screen controller contains two methods invoked on buttons click:
+
+* In the `onButtonInClick()` method we firstly create a byte array from the first `textArea` input. Then we create a `FileDescriptor` object and define the new file name, extension, size, and creation date with its attributes.
++
+Then we save the new file with the `saveStream()` method of `FileLoader`, passing the `FileDescriptor` to it and providing the file content with an `InputStream` supplier. We also commit the `FileDescriptor` to the data store using the `DataManager` interface.
+
+* In the `onButtonOutClick()` method we extract the content of the saved file using the `openStream()` method of the `FileLoader`. Then we display the content of the file in the second `textArea`.
+
+[source, java]
+----
+include::{sourcesdir}/development/fileLoader_recipe.java[]
+----
+
+image::fileLoader_recipe.png[align="center"]
+
+This was an example of using the `FileLoader` on the client tier. In the next example we'll consider the task of saving some data to files on the core tier.
+
+[[fileLoader_recipe_core]]
+===== Saving Data to FileStorage on Core
+
+Suppose that we have an entity `DailyReport` with nothing but one attribute `inputValue`, and the user inputs some values in an editor screen. These inputs are stored in the database. Once a day we want these values to be exported in a CSV file with the input date and time. The CSV files should be saved to the `FileStorage` from the middleware as a <<scheduled_tasks_cuba, scheduled task>>.
+
+Let's start with creating a <<jmx_beans,JMX bean>> interface with the `createDailyReport()` method:
+
+[source, java]
+----
+include::{sourcesdir}/development/fileLoader_recipe_1.java[]
+----
+
+In the JMX bean class we implement the logic of report saving. Firstly, we load the list of entities selected by the database query using the <<dataManager,DataManager>> interface. Based on this list, we prepare the data for the report, appending `createTs` and `inputValue` attributes values and separating them by commas and line breaks. Then we transform the data into a byte array.
+
+Next, we create a `FileDescriptor` for the report file, setting its name, extension, size, and creation date. The `saveStream()` method of the `FileLoader` interface will save the byte array to the file. Finally, we commit the `FileDescriptor` to the data store using `DataManager`.
+
+[source, java]
+----
+include::{sourcesdir}/development/fileLoader_recipe_2.java[]
+----
+
+The JMX bean should be registered in `spring.xml`:
+
+[source, xml]
+----
+include::{sourcesdir}/development/fileLoader_recipe_3.xml[]
+----
+
+Now we can <<scheduled_tasks_cuba_reg,schedule>> the `createDailyReport()` method using the *Administration → Scheduled Tasks* web interface or invoke it intentionally from the <<jmx_console,JMX console>>. The saved CSV reports will be available through the *Administration → External Files* screen.
+
 [[images_recipe]]
 ==== Loading and Displaying Images
 
-Let us consider a task of loading, storing and displaying employee photos:
+Let's consider a task of loading, storing and displaying employee photos:
 
 * An employee is represented by `Employee` entity.
 
