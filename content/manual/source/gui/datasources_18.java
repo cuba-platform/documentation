@@ -1,0 +1,1 @@
+openWindow("sales$Order.lookup", WindowManager.OpenType.DIALOG, ParamsMap.of("customer", customersTable.getSingleSelected()));
