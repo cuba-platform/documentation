@@ -216,6 +216,7 @@ image::Controllers.png[align="center"]
 
 `AbstractFrame` является корнем иерархии классов контроллеров. Рассмотрим его основные методы:
 
+[[abstractFrame_init]]
 * `init()` - вызывается фреймворком после создания всего дерева компонентов, описанного XML-дескриптором, но до отображения экрана.
 +
 В метод `init()` из вызывающего кода передается мэп параметров, которые могут быть использованы внутри контроллера. Эти параметры могут быть переданы как из кода контроллера вызывающего экрана (в методе `openWindow()`, `openLookup()` или `openEditor()`), так и установлены в файле регистрации экранов `<<screens.xml,screens.xml>>`.
@@ -227,8 +228,10 @@ image::Controllers.png[align="center"]
 include::{sourcesdir}/gui/abstractframe_1.java[]
 ----
 
+[[abstractFrame_getMessage]]
 * `getMessage()`, `formatMessage()` - методы получения локализованных сообщений из <<message_packs,пакета>>, заданного для экрана в XML-дескрипторе. Представляют собой просто короткие варианты вызова одноименных методов интерфейса `<<messages,Messages>>`.
 
+[[abstractFrame_openFrame]]
 * `openFrame()` - загрузить фрейм по идентификатору, зарегистрированному в <<screens.xml,screens.xml>>, и, если в метод передан компонент-контейнер, отобразить его внутри контейнера. Возвращается контроллер фрейма. Например:
 +
 [source, java]
@@ -243,6 +246,7 @@ include::{sourcesdir}/gui/abstractframe_3.java[]
 include::{sourcesdir}/gui/abstractframe_4.java[]
 ----
 
+[[abstractFrame_openWindow]]
 * `openWindow()`, `openLookup()`, `openEditor()` - открыть соответственно простой экран, экран выбора или редактирования. Методы возвращают контроллер созданного экрана.
 +
 При открытии экрана в режиме диалога метод `openWindow()` может быть вызван с параметрами, к примеру:
@@ -272,8 +276,10 @@ include::{sourcesdir}/gui/abstractframe_5.java[]
 include::{sourcesdir}/gui/abstractframe_5_1.java[]
 ----
 
+[[abstractFrame_showMessageDialog]]
 * `showMessageDialog()` - отобразить диалоговое окно с сообщением.
 
+[[abstractFrame_showOptionDialog]]
 * `showOptionDialog()` - отобразить диалоговое окно с сообщением и возможностью выбора пользователем некоторых действий. Действия задаются массивом объектов типа `<<gui_Action,Action>>`, которые в диалоге отображаются посредством соответствующих кнопок.
 +
 Для отображения стандартных кнопок типа *OK*, *Cancel* и других рекомендуется использовать объекты типа `DialogAction`, например:
@@ -283,9 +289,28 @@ include::{sourcesdir}/gui/abstractframe_5_1.java[]
 include::{sourcesdir}/gui/abstractframe_6.java[]
 ----
 
+[[abstractFrame_showNotification]]
 * `showNotification()` - отобразить всплывающее окно с сообщением.
 
+[[abstractFrame_showWebPage]]
 * `showWebPage()` - открыть указанную веб-страницу в браузере.
+
+'''
+
+API::
+<<abstractFrame_getMessage,formatMessage()>> -
+<<abstractFrame_getMessage,getMessage()>> -
+<<abstractFrame_init,init()>> -
+<<abstractFrame_openFrame,openFrame()>> -
+<<abstractFrame_openWindow,openEditor()>> -
+<<abstractFrame_openWindow,openLookup()>> -
+<<abstractFrame_openWindow,openWindow()>> -
+<<abstractFrame_showMessageDialog,showMessageDialog()>> -
+<<abstractFrame_showNotification,showNotification()>> -
+<<abstractFrame_showOptionDialog,showOptionDialog()>> -
+<<abstractFrame_showWebPage,showWebPage()>>
+
+'''
 
 [[abstractWindow]]
 ====== AbstractWindow
@@ -316,12 +341,28 @@ include::{sourcesdir}/gui/abstractwindow_3.java[]
 include::{sourcesdir}/gui/abstractwindow_4.java[]
 ----
 
+[[abstractWindow_saveSettings]]
+* `saveSettings()` - сохраняет настройки экрана для текущего пользователя в базе данных при закрытии экрана.
+
+[[abstractWindow_applySettings]]
+* `applySettings()` - восстанавливает настройки экрана из базы данных при открытии экрана.
++
+Метод можно переопределить, чтобы изменить стандартную процедуру восстановления настроек, например:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_5.java[]
+----
+
+[[abstractWindow_ready]]
 * `ready()` - шаблонный метод, который можно имплементировать в контроллере для перехвата момента открытия экрана. Метод `ready()` вызывается фреймворком после метода `init()` непосредственно перед показом экрана в главном окне приложения.
 
+[[abstractWindow_validateAll]]
 * `validateAll()` - валидация экрана. Реализация по умолчанию вызывает метод `validate()` у всех компонентов экрана, реализующих интерфейс `Component.Validatable`, накапливает информацию об исключениях, и если таковые имеются, выводит соответствующее сообщение и возвращает `false`, иначе возвращает `true`.
 +
 Данный метод следует переопределять только в том случае, если необходимо полностью заменить стандартную процедуру валидации экрана. Если же нужно только дополнить ее, достаточно определить специальный шаблонный метод `postValidate()`.
 
+[[abstractWindow_postValidate]]
 * `postValidate()` - шаблонный метод, который можно имплементировать в контроллере для дополнительной валидации экрана. Получаемый методом объект `ValidationErrors` используется для добавления информации об ошибках валидации, которая будет отображена совместно с ошибками стандартной валидации. Например:
 +
 [source, java]
@@ -329,6 +370,7 @@ include::{sourcesdir}/gui/abstractwindow_4.java[]
 include::{sourcesdir}/gui/abstractwindow_1.java[]
 ----
 
+[[abstractWindow_close]]
 * `close()` - закрыть данный экран. 
 +
 Метод принимает строковое значение, передаваемое далее в шаблонный метод `preClose()` и слушателям `CloseListener`. Таким образом, заинтересованный код может получить информацию о причине закрытия экрана от кода, инициирующего закрытие. В частности, в экранах редактирования сущностей при закрытии экрана после коммита изменений рекомендуется использовать константу `++Window.COMMIT_ACTION_ID++`, без коммита изменений - константу `++Window.CLOSE_ACTION_ID++`.
@@ -339,22 +381,47 @@ include::{sourcesdir}/gui/abstractwindow_1.java[]
 +
 Метод `close()` возвращает `true`, если экран был успешно закрыт, и `false` - если закрытие было прервано.
 
+[[abstractWindow_preClose]]
 * `preClose()` - шаблонный метод, который можно имплементировать в контроллере для перехвата момента закрытия экрана. Метод получает строковое значение, указанное инициатором закрытия при вызове метода `close()`.
 +
 Если метод `preClose()` возвращает `false`, то процесс закрытия экрана прерывается.
+
+'''
+
+API::
+<<abstractWindow_applySettings,applySettings()>> -
+<<abstractWindow_close,close()>> -
+<<dialogOptions,getDialogOptions()>> -
+<<abstractWindow_postValidate,postValidate()>> -
+<<abstractWindow_preClose,preClose()>> -
+<<abstractWindow_ready,ready()>> -
+<<abstractWindow_saveSettings,saveSettings()>> -
+<<abstractWindow_validateAll,validateAll()>>
+
+'''
 
 [[abstractLookup]]
 ====== AbstractLookup
 
 `AbstractLookup` базовый класс контроллеров <<screen_lookup,экранов выбора>>, является наследником `<<abstractWindow,AbstractWindow>>`, и определяет следующие собственные методы:
 
+[[abstractLookup_setLookupComponent]]
 * `setLookupComponent()` - установить компонент, из которого будет производиться выбор экземпляров сущности.
 +
 Как правило, компонент выбора устанавливается в XML-дескрипторе экрана, и вызывать данный метод в прикладном коде нет необходимости.
 
+[[abstractLookup_setLookupValidator]]
 * `setLookupValidator()` - установить для экрана объект типа `Window.Lookup.Validator`, метод `validate()` которого вызывается фреймворком перед тем как вернуть выбранные экземпляры сущностей. Если `validate()` возвращает `false`, процесс выбора и закрытия экрана прерывается.
 +
 По умолчанию валидатор не установлен.
+
+'''
+
+API::
+<<abstractLookup_setLookupComponent,setLookupComponent()>> -
+<<abstractLookup_setLookupValidator,setLookupValidator()>>
+
+'''
 
 [[abstractEditor]]
 ====== AbstractEditor
@@ -370,6 +437,7 @@ include::{sourcesdir}/gui/abstracteditor_1.java[]
 
 `AbstractEditor` определяет следующие собственные методы:
 
+[[abstractEditor_getItem]]
 * `getItem()` - возвращает экземпляр редактируемой сущности, установленный в главном источнике данных экрана (т.е. указанном в атрибуте `datasource` корневого элемента XML-дескриптора).
 +
 Если редактируется не новый экземпляр, то в момент открытия экрана он перезагружается из базы данных с необходимым <<views,представлением>>, указанным для главного источника данных. 
@@ -392,6 +460,7 @@ include::{sourcesdir}/gui/abstracteditor_2.java[]
 В обоих случаях полученный экземпляр сущности, если он не новый, будет впоследствии перезагружен, и вносить в него изменения или сохранять в поле для последующего использования не имеет смысла.
 ====
 
+[[abstractEditor_setItem]]
 * `setItem()` - вызывается фреймворком при открытии экрана методом `openEditor()` для установки редактируемого экземпляра сущности в главном источнике данных. В момент вызова созданы все компоненты и источники данных экрана, и отработал метод `init()` контроллера.
 +
 Для инициализации экрана редактирования вместо переопределения `setItem()` рекомендуется имплементировать специальные шаблонные методы `initNewItem()` и `postInit()`.
@@ -413,6 +482,7 @@ include::{sourcesdir}/gui/abstracteditor_3.java[]
 +
 Более сложный пример использования `initNewItem()` приведен в разделе <<init_values_in_initNewItem,рецептов разработки>>.
 
+[[abstractEditor_postInit]]
 * `postInit()` - шаблонный метод, вызываемый фреймворком сразу после установки редактируемого экземпляра сущности в главном источнике данных. Во время выполнения данного метода можно вызывать `getItem()`, который будет возвращать новый или перезагруженный при инициализации экрана экземпляр сущности.
 +
 Данный метод можно имплементировать в контроллере для окончательной инициализации экрана, например:
@@ -422,16 +492,19 @@ include::{sourcesdir}/gui/abstracteditor_3.java[]
 include::{sourcesdir}/gui/abstracteditor_4.java[]
 ----
 
+[[abstractEditor_commit]]
 * `commit()` - валидировать экран и отправить изменения через `<<dataSupplier,DataSupplier>>` на *Middleware*.
 +
 Если используется вариант метода с параметром `validate = false`, то валидация перед коммитом не производится.
 +
 Данный метод не рекомендуется переопределять, лучше использовать специальные шаблонные методы `postValidate()`, `preCommit()` и `postCommit()`.
 
+[[abstractEditor_commitAndClose]]
 * `commitAndClose()` - валидировать экран, отправить изменения на *Middleware* и закрыть экран. В метод `preClose()` и зарегистрированным слушателям `CloseListener` будет передано значение константы `++Window.COMMIT_ACTION_ID++`.
 +
 Данный метод не рекомендуется переопределять, лучше использовать специальные шаблонные методы `postValidate()`, `preCommit()` и `postCommit()`.
 
+[[abstractEditor_preCommit]]
 * `preCommit()` - шаблонный метод, вызываемый фреймворком в процессе коммита изменений, после того как валидация завершена успешно и перед отправкой данных на *Middleware*.
 +
 Данный метод можно имплементировать в контроллере. Если метод возвращает `false`, процесс коммита (и закрытия экрана, если был вызван `commitAndClose()`), прерывается. Например:
@@ -441,6 +514,7 @@ include::{sourcesdir}/gui/abstracteditor_4.java[]
 include::{sourcesdir}/gui/abstracteditor_5.java[]
 ----
 
+[[abstractEditor_postCommit]]
 * `postCommit()` - шаблонный метод, вызываемый фреймворком на финальной стадии коммита изменений. Параметры метода:
 
 ** `committed` - установлен в `true`, если в экране действительно были изменения, и они отправлены на *Middleware*;
@@ -469,6 +543,21 @@ image::ExtendedEditorCommit.png[align="center"]
 
 .Коммит и закрытие экрана с фреймом extendedEditWindowActions
 image::ExtendedEditorCommitAndClose.png[align="center"]
+
+'''
+
+API::
+
+<<abstractEditor_commit,commit()>> -
+<<abstractEditor_commitAndClose,commitAndClose()>> -
+<<abstractEditor_getItem,getItem()>> -
+<<initNewItem,initNewItem()>> -
+<<abstractEditor_postCommit,postCommit()>> -
+<<abstractEditor_postInit,postInit()>> -
+<<abstractEditor_preCommit,preCommit()>> -
+<<abstractEditor_setItem,setItem()>>
+
+'''
 
 [[screen_controller_injection]]
 ====== Инжекция зависимостей контроллеров

@@ -212,6 +212,7 @@ image::Controllers.png[align="center"]
 
 `AbstractFrame` is the root of the controller classes hierarchy. Below is the description of its main methods:
 
+[[abstractFrame_init]]
 * `init()` is called by the framework after creating components tree described by an XML-descriptor, but before a screen is displayed.
 +
 init() method accepts a map of parameters that can be used in controller. These parameters can be passed both from the controller of the calling screen (using `openWindow()`, `openLookup()` or `openEditor()` methods) or defined in the screen registration file <<screens.xml,screens.xml>>.
@@ -223,8 +224,10 @@ init() method accepts a map of parameters that can be used in controller. These 
 include::{sourcesdir}/gui/abstractframe_1.java[]
 ---- 
 
+[[abstractFrame_getMessage]]
 * `getMessage()`, `formatMessage()` – methods for retrieving localized messages from a <<message_packs,pack>>, defined for a screen in the XML-descriptor. They work as shortcuts for calling the corresponding methods of the <<messages,Messages>> interface.
 
+[[abstractFrame_openFrame]]
 * `openFrame()` – loads a frame according to an identifier registered in <<screens.xml,screens.xml>> file. If the method receives a container component from the invoking code, the frame is shown within the container. The method returns frame controller. For example:
 +
 [source, java]
@@ -239,6 +242,7 @@ It is not required to pass the container immediately via `openFrame()` method, i
 include::{sourcesdir}/gui/abstractframe_4.java[]
 ---- 
 
+[[abstractFrame_openWindow]]
 * `openWindow()`, `openLookup()`, `openEditor()` – open a simple screen, a lookup screen, or an edit screen respectively. Methods return a controller of the created screen.
 +
 For the dialog mode, the method `openWindow()` can be called with parameters, for example:
@@ -268,8 +272,10 @@ Use `CloseWithCommitListener` to be notified only when the invoked screen closes
 include::{sourcesdir}/gui/abstractframe_5_1.java[]
 ----
 
+[[abstractFrame_showMessageDialog]]
 * `showMessageDialog()` – shows a dialog box with a message.
 
+[[abstractFrame_showOptionDialog]]
 * `showOptionDialog()` – shows a dialog box with a message and an option for user to invoke certain actions. Actions are defined by an array of <<gui_Action,Action>> type items displayed as buttons in the dialog.
 +
 It is recommended to use `DialogAction` objects for display of standard buttons such as *OK*, *Cancel* and other, for example:
@@ -279,10 +285,28 @@ It is recommended to use `DialogAction` objects for display of standard buttons 
 include::{sourcesdir}/gui/abstractframe_6.java[]
 ---- 
 
+[[abstractFrame_showNotification]]
 * `showNotification()` – shows a pop up notification.
 
+[[abstractFrame_showWebPage]]
 * `showWebPage()` – opens specified web page in a browser.
 
+'''
+
+API::
+<<abstractFrame_getMessage,formatMessage()>> -
+<<abstractFrame_getMessage,getMessage()>> -
+<<abstractFrame_init,init()>> -
+<<abstractFrame_openFrame,openFrame()>> -
+<<abstractFrame_openWindow,openEditor()>> -
+<<abstractFrame_openWindow,openLookup()>> -
+<<abstractFrame_openWindow,openWindow()>> -
+<<abstractFrame_showMessageDialog,showMessageDialog()>> -
+<<abstractFrame_showNotification,showNotification()>> -
+<<abstractFrame_showOptionDialog,showOptionDialog()>> -
+<<abstractFrame_showWebPage,showWebPage()>>
+
+'''
 [[abstractWindow]]
 ====== AbstractWindow
 
@@ -312,12 +336,28 @@ Specifying that the screen should always be opened as a dialog regardless of wha
 include::{sourcesdir}/gui/abstractwindow_4.java[]
 ----
 
+[[abstractWindow_saveSettings]]
+* `saveSettings()` - saves the screen settings to the database when the screen is closed.
+
+[[abstractWindow_applySettings]]
+* `applySettings()` - restores settings saved in the database for the current user when the screen is opened.
++
+This method can be overridden to restore custom settings, for example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_5.java[]
+----
+
+[[abstractWindow_ready]]
 * `ready()` - a template method that can be implemented in controller to intercept the moment of screen opening. It is invoked when the screen is fully initialized and opened.
 
+[[abstractWindow_validateAll]]
 * `validateAll()` – validates a screen. The default implementation calls `validate()` for all screen components implementing the `Component.Validatable` interface, collects information about exceptions and displays corresponding message. Method returns `false`, if any exceptions were found; and `true` otherwise.
 +
 This method should be overridden only if it is required to override screen validation procedure completely. It is sufficient to implement a special template method – `postValidate()`, if validation should be just supplemented.
 
+[[abstractWindow_postValidate]]
 * `postValidate()` – a template method that can be implemented in controller for additional screen validation. The method stores validation errors information in `ValidationErrors` object which is passed to it. Afterwards this information is displayed together with the errors of standard validation. For example: 
 +
 [source, java]
@@ -325,6 +365,7 @@ This method should be overridden only if it is required to override screen valid
 include::{sourcesdir}/gui/abstractwindow_1.java[]
 ---- 
 
+[[abstractWindow_close]]
 * `close()` – closes this screen. 
 +
 The method accepts string value, which is then passed to `preClose()` template method and to `CloseListener` listeners. Thus, the information about the reason why the window was closed can be obtained from the code that initiated the closing event. It is recommended to use the following constants for closing edit screens: `++Window.COMMIT_ACTION_ID++` after committing changes, `++Window.CLOSE_ACTION_ID++` – without committing changes.
@@ -335,22 +376,47 @@ A variant of `close()` method with `force = true` parameter closes the screen wi
 +
 `close()` method returns `true`, if the screen is closed successfully, and `false` – if closing procedure was interrupted.
 
+[[abstractWindow_preClose]]
 * `preClose()` is a template method which can be implemented in a controller to intercept the moment when the window closes. The method receives a string value provided by the closing initiator when invoking `close()` method.
 +
 If the `preClose()` method returns `false`, the window closing process is interrupted.
+
+'''
+
+API::
+<<abstractWindow_applySettings,applySettings()>> -
+<<abstractWindow_close,close()>> -
+<<dialogOptions,getDialogOptions()>> -
+<<abstractWindow_postValidate,postValidate()>> -
+<<abstractWindow_preClose,preClose()>> -
+<<abstractWindow_ready,ready()>> -
+<<abstractWindow_saveSettings,saveSettings()>> -
+<<abstractWindow_validateAll,validateAll()>>
+
+'''
 
 [[abstractLookup]]
 ====== AbstractLookup
 
 `AbstractLookup` is the base class for <<screen_lookup,lookup screen>> controllers. It is a subclass of <<abstractWindow,AbstractWindow>> and defines the following own methods:
 
+[[abstractLookup_setLookupComponent]]
 * `setLookupComponent()` – sets the component, which will be used to select entity instances.
 +
 As a rule, component for selection is defined in screen XML-descriptor and there is no need to call this method in the application code.
 
+[[abstractLookup_setLookupValidator]]
 * `setLookupValidator()` – sets `Window.Lookup.Validator` object to the screen, which `validate()` method is invoked by the framework before returning selected entity instances. If `validate()` method returns `false`, the lookup and window closing process is interrupted.
 +
 By default, the validator is not set.
+
+'''
+
+API::
+<<abstractLookup_setLookupComponent,setLookupComponent()>> -
+<<abstractLookup_setLookupValidator,setLookupValidator()>>
+
+'''
 
 [[abstractEditor]]
 ====== AbstractEditor
@@ -366,6 +432,7 @@ include::{sourcesdir}/gui/abstracteditor_1.java[]
 
 `AbstractEditor` defines the following own methods:
 
+[[abstractEditor_getItem]]
 * `getItem()` – returns an instance of the entity being edited, which is set in the main <<datasources,datasource>> of the screen (i.e. specified in the `datasource` attribute of the root element of the XML-descriptor).
 +
 If the instance being edited is not a new one, screen opening procedure will reload the instance from the database with the required <<views,view>> as set for the main datasource.
@@ -388,6 +455,7 @@ The `initNewItem()` method receives an instance as a parameter of the appropriat
 In both cases the obtained entity instance will be reloaded afterwards unless it is a new one. Therefore you should not change it or save it in a field for future use.
 ====
 
+[[abstractEditor_setItem]]
 * `setItem()` – invoked by the framework when a window is opened using `openEditor()` to set the instance being edited to the main datasource. By the moment of invocation all screen components and datasources will have been created and the controller's `init()` method will have been executed.
 +
 It is recommended to use template methods `initNewItem()` and `postInit()`, instead of overriding `setItem()` in order to initialize a screen. 
@@ -404,6 +472,7 @@ include::{sourcesdir}/gui/abstracteditor_3.java[]
 +
 A more complex example of using the `initNewItem()` method can be found in <<dev_recipes,development recipes>> section. 
 
+[[abstractEditor_postInit]]
 * `postInit()` – a template method invoked by the framework immediately after the edited entity instance is set to the main datasource. In this method, `getItem()` can be called to return a new entity instance or an instance re-loaded during screen initialization.
 +
 This method can be implemented in controller for final screen initialization, for example: 
@@ -413,16 +482,19 @@ This method can be implemented in controller for final screen initialization, fo
 include::{sourcesdir}/gui/abstracteditor_4.java[]
 ---- 
 
+[[abstractEditor_commit]]
 * `commit()` – validates the screen and submits changes to the Middleware via <<dataSupplier,DataSupplier>>.
 +
 If a method is used with `validate = false`, commit does not perform a validation.
 +
 It is recommended to use specialized template methods – `postValidate()`, `preCommit()` and `postCommit()` instead of overriding this method.
 
+[[abstractEditor_commitAndClose]]
 * `commitAndClose()` – validates the screen, submits changes to the Middleware and closes the screen. The value of the `++Window.COMMIT_ACTION_ID++` will be passed to the `preClose()` method and registered `CloseListener` listeners. 
 +
 It is recommended to use specialized template methods – `postValidate()`, `preCommit()` and `postCommit()` instead of overriding this method.
 
+[[abstractEditor_preCommit]]
 * `preCommit()` – a template method invoked by the framework during the commit process, after a successful validation, but before the data is submitted to the Middleware.
 +
 This method can be implemented in controller. If the method returns `false`, commit process gets interrupted, as well as window closing process (if `commitAndClose()` was invoked). For example: 
@@ -432,6 +504,7 @@ This method can be implemented in controller. If the method returns `false`, com
 include::{sourcesdir}/gui/abstracteditor_5.java[]
 ---- 
 
+[[abstractEditor_postCommit]]
 * `postCommit()` – a template method invoked by the framework at the final stage of committing changes. Method parameters are:
 
 ** `committed` – set to `true`, if the screen had changes and they have been submitted to Middleware.
@@ -460,6 +533,21 @@ image::ExtendedEditorCommit.png[align="center"]
 
 .Committing a Screen With an extendedEditWindowActions Frame
 image::ExtendedEditorCommitAndClose.png[align="center"]
+
+'''
+
+API::
+
+<<abstractEditor_commit,commit()>> -
+<<abstractEditor_commitAndClose,commitAndClose()>> -
+<<abstractEditor_getItem,getItem()>> -
+<<initNewItem,initNewItem()>> -
+<<abstractEditor_postCommit,postCommit()>> -
+<<abstractEditor_postInit,postInit()>> -
+<<abstractEditor_preCommit,preCommit()>> -
+<<abstractEditor_setItem,setItem()>>
+
+'''
 
 [[screen_controller_injection]]
 ====== Controller Dependency Injection
