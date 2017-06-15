@@ -129,48 +129,9 @@ buildscript::
 
 * Версия платформы, на которой основан данный проект.
 
-* Набор репозиториев, из которых будут загружаться зависимости проекта. Когда вы создаете новый проект в CUBA Studio, он содержит ссылку на репозиторий, который указан в окне сервера Studio. По умолчанию это публичный репозиторий:
-+
-[source]
-----
-https://repo.cuba-platform.com/content/groups/work
-----
-+
-Если ваш проект использует Премиум Дополнения, Studio добавляет еще один репозиторий:
-+
-[source]
-----
-https://repo.cuba-platform.com/content/groups/premium
-----
-+
-Оба репозитория требуют указания имени пользователя и пароля. В то время как публичный репозиторий использует общеизвестные параметры, указанные прямо в скрипте сборки (`cuba` / `cuba123`), параметры подключения к репозиторию дополнений предоставляются по подписке на разработчика. Первая часть лицензионного ключа до тире представляет собой имя пользователя, вторая часть после тире - пароль. Например, если ваш ключ `111111222222-abcdefabcdef`, то имя - `111111222222`, пароль - `abcdefabcdef`
-+
-Studio передает Gradle параметры подключения когда запускает скрипт сборки. При сборке проекта вне Studio передайте `premiumRepoUser` и `premiumRepoPass` в командной строке в аргументах `-P`:
-+
-[source]
-----
-gradle assemble -PpremiumRepoUser=111111222222 -PpremiumRepoPass=abcdefabcdef
-----
-+
-Чтобы не передавать ключ каждый раз при сборке проекта из командной строки, можно однократно задать имя и пароль в переменных среды:
-+
-[source, properties]
-----
-CUBA_PREMIUM_USER = первая часть ключа,
-CUBA_PREMIUM_PASSWORD = вторая часть ключа.
-----
+* Набор репозиториев, из которых будут загружаться зависимости проекта. Настройка доступа к репозиториям описана <<access_to_repo,ниже>>.
 
-* Зависимости, используемые системой сборки. Они включают в себя CUBA Gradle плагин и набор <<app_components,компонентов приложения>>, используемых в проекте. Компоненты указываются координатами артефакта их модуля *global*. В примере ниже используются два компонента: `com.haulmont.cuba` (компонент *cuba* платформы) и `com.company.base` (кастомный компонент):
-+
-[source, groovy]
-----
-dependencies {
-    classpath "com.haulmont.gradle:cuba-plugin:$cubaVersion"
-
-    classpath "com.haulmont.cuba:cuba-global:$cubaVersion"
-    classpath "com.company.base:base-global:0.1-SNAPSHOT"
-}
-----
+* Зависимости, используемые системой сборки, включая плагин CUBA для Gradle.
 
 После секции `buildscript` обявляются несколько переменных, используемых далее в скрипте.
 --
@@ -228,6 +189,21 @@ gradlew uploadArchives -PuploadUrl=http://myrepo.com/content/repositories/snapsh
 ----
 --
 
+dependencies::
++
+--
+Данная секция описывает набор <<app_components,компонентов приложения>>, используемых в проекте. Компоненты указываются координатами артефакта их модуля *global*. В примере ниже используются три компонента: `com.haulmont.cuba` (компонент *cuba* платформы), `com.haulmont.reports` (премиум-дополнение *reports*) и `com.company.base` (кастомный компонент):
+
+[source, groovy]
+----
+dependencies {
+  appComponent("com.haulmont.cuba:cuba-global:$cubaVersion")
+  appComponent("com.haulmont.reports:reports-global:$cubaVersion")
+  appComponent("com.company.base:base-global:0.1-SNAPSHOT")
+}
+----
+--
+
 configure::
 +
 --
@@ -240,6 +216,49 @@ include::{sourcesdir}/development/build_gradle_2.groovy[]
 
 Нестандартные зависимости модулей можно задавать в Studio на вкладке *Project properties > Advanced*. См. также контекстную помощь Studio.
 --
+
+[[access_to_repo]]
+==== Настройка доступа к репозиторию
+
+Окно сервера CUBA Studio содержит поле для выбора репозитория артефактов. По умолчанию оно содержит два элемента:
+
+* `++https://repo.cuba-platform.com/content/groups/work++` - репозиторий, расположенный на сервере Haulmont. Он требует передачи общих имени и пароля, которые указываются прямо в скрипте сборки (`cuba` / `cuba123`).
+
+* `++https://dl.bintray.com/cuba-platform/main++` - репозиторий, находящийся в https://bintray.com[JFrog Bintray]. Он предоставляет анонимный доступ.
+
+Оба репозитория имеют идентичное содержимое для последних версий платформы. Мы предполагаем что Bintray является более надежным для доступа из любой точки мира.
+
+Когда вы создаете новый проект в CUBA Studio, его `build.gradle` содержит ссылку на репозиторий, который указан в окне сервера Studio. В случае Bintray, скрипт сборки сконфигурирован также для использования репозиториев Maven Central, JCenter и Vaadin Add-ons по отдельности.
+
+Если ваш проект использует Премиум Дополнения, Studio добавляет еще один репозиторий:
+
+* В случае `repo.cuba-platform.com` это `++https://repo.cuba-platform.com/content/groups/premium++`
+
+* В случае Bintray это `++https://cuba-platform.bintray.com/premium++`
+
+Оба репозитория премиум-дополнений требуют указания имени пользователя и пароля, которые предоставляются по подписке на разработчика. Первая часть лицензионного ключа до тире представляет собой имя пользователя, вторая часть после тире - пароль. Например, если ваш ключ `111111222222-abcdefabcdef`, то имя - `111111222222`, пароль - `abcdefabcdef`
+
+Studio передает Gradle параметры подключения когда запускает скрипт сборки. При сборке проекта вне Studio передайте `premiumRepoUser` и `premiumRepoPass` в командной строке в аргументах `-P`. В случае Bintray, к имени пользователя нужно в конце добавить `@cuba-platform`.
+
+Пример сборки используя `repo.cuba-platform.com`:
+
+[source]
+----
+gradlew assemble -PpremiumRepoUser=111111222222 -PpremiumRepoPass=abcdefabcdef
+----
+
+Пример сборки используя Bintray:
+
+[source]
+----
+gradlew assemble -PpremiumRepoUser=111111222222@cuba-platform -PpremiumRepoPass=abcdefabcdef
+----
+
+Чтобы при сборке проекта из командной строки не передавать имя и пароль каждый раз, можно однократно задать их в переменных среды:
+
+* `CUBA_PREMIUM_USER` - используется если не передан `premiumRepoUser`.
+
+* `CUBA_PREMIUM_PASSWORD` - используется если не передан `premiumRepoPass`.
 
 [[build.gradle_tasks]]
 ==== Задачи сборки

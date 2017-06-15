@@ -129,48 +129,9 @@ The `buildscript` section of the script defines the following:
 
 * A version of the platform.
 
-* A set of <<artifact_repository, repositories>> for loading project dependencies. When you create a new project in CUBA Studio, it contains the link to the repository which is selected in the Studio server window. By default it is the public repository:
-+
-[source]
-----
-https://repo.cuba-platform.com/content/groups/work
-----
-+
-If your project uses Premium Add-ons, Studio adds one more repository:
-+
-[source]
-----
-https://repo.cuba-platform.com/content/groups/premium
-----
-+
-Both repositories require a user name and a password. While the public repository uses common credentials which are specified right in the build script (`cuba` / `cuba123`), the Premium Add-ons repository credentials are provided by per-developer subscription. The first part of your license key before dash is the repository user name, the part after dash is the password. For example, if your key is `111111222222-abcdefabcdef`, then the user name is `111111222222` and the password is `abcdefabcdef`.
-+
-Studio passes to Gradle credentials for repositories when executes the build script. If you want to build the project outside Studio, you can pass `premiumRepoUser` and `premiumRepoPass` in the command line arguments with `-P` prefix:
-+
-[source]
-----
-gradle assemble -PpremiumRepoUser=111111222222 -PpremiumRepoPass=abcdefabcdef
-----
-+
-Instead of passing the credentials each time you build the project from the command line, you can once set the environment variables:
-+
-[source, properties]
-----
-CUBA_PREMIUM_USER = the first part of your license key,
-CUBA_PREMIUM_PASSWORD = the second part of your license key.
-----
+* A set of <<artifact_repository, repositories>> for loading project dependencies. See how to configure access to the repositories <<access_to_repo,below>>.
 
-* Dependencies used by the build system. The dependecies include the CUBA Gradle plugin and a set of <<app_components,application components>> used by the project. Components are specified by their *global* module artifact. In the following example, two components are used: `com.haulmont.cuba` (*cuba* component of the platform) and `com.company.base` (a custom component):
-+
-[source, groovy]
-----
-dependencies {
-    classpath "com.haulmont.gradle:cuba-plugin:$cubaVersion"
-
-    classpath "com.haulmont.cuba:cuba-global:$cubaVersion"
-    classpath "com.company.base:base-global:0.1-SNAPSHOT"
-}
-----
+* Dependencies used by the build system, including the CUBA Gradle plugin.
 
 Below the `buildscript` section, a few variables are defined. They are used in the script later.
 --
@@ -228,6 +189,21 @@ gradlew uploadArchives -PuploadUrl=http://myrepo.com/content/repositories/snapsh
 ----
 --
 
+dependencies::
++
+--
+This section contains a set of <<app_components,application components>> used by the project. Components are specified by their *global* module artifact. In the following example, three components are used: `com.haulmont.cuba` (*cuba* component of the platform), `com.haulmont.reports` (*reports* premium add-on) and `com.company.base` (a custom component):
+
+[source, groovy]
+----
+dependencies {
+  appComponent("com.haulmont.cuba:cuba-global:$cubaVersion")
+  appComponent("com.haulmont.reports:reports-global:$cubaVersion")
+  appComponent("com.company.base:base-global:0.1-SNAPSHOT")
+}
+----
+--
+
 configure::
 +
 --
@@ -240,6 +216,49 @@ include::{sourcesdir}/development/build_gradle_2.groovy[]
 
 Non-standard module dependencies can be specified in Studio on the *Project properties > Advanced* tab. See Studio context help for details.
 --
+
+[[access_to_repo]]
+==== Configuring Access to Repository
+
+CUBA Studio Server window contains a field where you can select an artifact repository. By default, it contains two entries:
+
+* `++https://repo.cuba-platform.com/content/groups/work++` - a repository located at Haulmont's server. It requires common credentials which are specified right in the build script (`cuba` / `cuba123`).
+
+* `++https://dl.bintray.com/cuba-platform/main++` - a repository hosted at https://bintray.com[JFrog Bintray]. It has anonymous access.
+
+Both repositories have identical contents for the latest platform versions. We assume that Bintray is more reliable for worldwide access.
+
+When you create a new project in CUBA Studio, it's `build.gradle` contains the link to the repository which is selected in the Studio server window. In case of Bintray, the build script is also configured to use Maven Central, JCenter and Vaadin Add-ons repositories separately.
+
+If your project uses CUBA Premium Add-ons, Studio adds one more repository:
+
+* In case of `repo.cuba-platform.com` it is `++https://repo.cuba-platform.com/content/groups/premium++`
+
+* In case of Bintray it is `++https://cuba-platform.bintray.com/premium++`
+
+Both Premium Add-ons repositories require a user name and a password which are provided by per-developer subscription. The first part of your license key before dash is the repository user name, the part after dash is the password. For example, if your key is `111111222222-abcdefabcdef`, then the user name is `111111222222` and the password is `abcdefabcdef`.
+
+When you build the project from Studio, it passes repository credentials to Gradle automatically. If you want to build the project outside Studio, you can pass `premiumRepoUser` and `premiumRepoPass` in the command line arguments with `-P` prefix. In case of Bintray, the user name must be followed by `@cuba-platform`.
+
+Example of building with `repo.cuba-platform.com`:
+
+[source]
+----
+gradlew assemble -PpremiumRepoUser=111111222222 -PpremiumRepoPass=abcdefabcdef
+----
+
+Example of building with Bintray:
+
+[source]
+----
+gradlew assemble -PpremiumRepoUser=111111222222@cuba-platform -PpremiumRepoPass=abcdefabcdef
+----
+
+Instead of passing credentials each time you build the project from the command line, you can once set the following environment variables:
+
+* `CUBA_PREMIUM_USER` - will be used if `premiumRepoUser` is not passed.
+
+* `CUBA_PREMIUM_PASSWORD` - will be used if `premiumRepoPass` is not passed.
 
 [[build.gradle_tasks]]
 ==== Build Tasks
