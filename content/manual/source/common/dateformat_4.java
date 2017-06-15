@@ -1,5 +1,4 @@
 @Inject
-private DateField dateField;
+private DatatypeFormatter formatter;
 ...
-DatatypeFormatter formatter = AppBeans.get(DatatypeFormatter.class);
 String localDate = formatter.formatDate(dateField.getValue());
