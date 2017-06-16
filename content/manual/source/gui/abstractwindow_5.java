@@ -1,6 +1,7 @@
+@Override
 public void applySettings(Settings settings) {
     super.applySettings(settings);
-    String visible = settings.get(hintBox.getId()).attributeValue("visible");
-    if (visible != null)
-        hintBox.setVisible(Boolean.valueOf(visible));
+    if (settings.get(showPanel.getId()).attribute("showPanel") != null) {
+        showPanel.setValue(Boolean.parseBoolean(settings.get().attributeValue("showPanel")));
+    }
 }
