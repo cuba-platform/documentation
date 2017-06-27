@@ -1,0 +1,1 @@
+image.setSource(FileDescriptorImageResource.class).setFileDescriptor(avatar);

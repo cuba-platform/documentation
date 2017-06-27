@@ -1,11 +1,12 @@
 import com.haulmont.cuba.core.entity.FileDescriptor;
 import com.haulmont.cuba.gui.components.*;
 import com.company.employeeimages.entity.Employee;
-import com.haulmont.cuba.gui.export.FileDataProvider;
 import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
 
 import javax.inject.Inject;
 import java.util.Map;
+
+import static com.haulmont.cuba.gui.components.Image.*;
 
 public class EmployeeBrowse extends AbstractLookup {
 
@@ -19,15 +20,13 @@ public class EmployeeBrowse extends AbstractLookup {
     public void init(Map<String, Object> params) {
 
         employeesTable.addGeneratedColumn("name", entity -> {
-            Embedded embedded = componentsFactory.createComponent(Embedded.class);
-
-            embedded.setType(Embedded.Type.IMAGE);
-            embedded.setWidth("40px");
-            embedded.setHeight("40px");
+            Image image = componentsFactory.createComponent(Image.class);
+            image.setScaleMode(ScaleMode.CONTAIN);
+            image.setHeight("40");
+            image.setWidth("40");
 
             FileDescriptor userImageFile = entity.getImageFile();
-            FileDataProvider dataProvider = new FileDataProvider(userImageFile);
-            embedded.setSource(userImageFile.getId() + "." + userImageFile.getExtension(), dataProvider);
+            image.setSource(FileDescriptorImageResource.class).setFileDescriptor(userImageFile);
 
             Label userLogin = componentsFactory.createComponent(Label.class);
             userLogin.setValue(entity.getName());
@@ -35,7 +34,7 @@ public class EmployeeBrowse extends AbstractLookup {
 
             HBoxLayout hBox = componentsFactory.createComponent(HBoxLayout.class);
             hBox.setSpacing(true);
-            hBox.add(embedded);
+            hBox.add(image);
             hBox.add(userLogin);
 
             return hBox;
