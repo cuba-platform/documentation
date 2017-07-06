@@ -841,6 +841,8 @@ As the examples show, `grade` attribute corresponds to the `Integer` type value 
 
 A call to `getGrade()` method will simply return `null`, if the value in the database does not correspond to any of the enumeration values. In order to add a new value, for example, `HIGHER`, between `HIGH` and `PREMIUM`, it is sufficient to add new enumeration value with `id = 15`, which ensures that sorting by `Customer.grade` field remains correct.
 
+The `Integer` field type provides the ordered list of constants and enables sorting in JPQL and SQL queries (`>`, `<`, `>=`, `<=`, `order` `by`), not to mention the negligible issue of database space and performance. On the other hand, `Integer` values are not self-explanatory in query results, that complicates debugging and using raw data from the database or in serialized formats. In this regard, the `String` type is more convenient.
+
 Enumerations can be created in CUBA Studio on the *DATA MODEL* tab (New -> Enumeration). To be used as an entity attribute, choose `ENUM` in the *Attribute type* field of the attribute editor and select the Enumeration class in the *Type* field. Enumeration values can be associated with <<enum_localization,localized names>> that will be displayed in the user interface of the application.
 
 [[soft_deletion]]
@@ -976,13 +978,28 @@ protected Role role;
 
 Implementation notes:
 
+. Related entities policy is processed on Middleware when saving entities to the database.
+
 . Be careful when using `@OnDeleteInverse` together with `CASCADE` and `UNLINK` policies. During this process, all instances of the related objects are fetched from the database, modified and then saved.
 +
 For example, if `@OnDeleteInverse(CASCADE)` policy is set on `Job.customer` attribute in a `Customer` – `Job` association with many jobs to one customer, if you set `@OnDeleteInverse(CASCADE)` policy on `Job.customer` attribute, all jobs will be retrieved and modified when deleting a Customer instance. This may overload the application server or the database.
 +
 On the other hand, using `@OnDeleteInverse(DENY)` is safe, as it only involves counting the number of the related objects. If there are more than `0`, an exception is thrown. This makes use of `@OnDeleteInverse(DENY)` suitable for `Job.customer` attribute.
 
-. Related entities processing is implemented at Middleware using <<entity_listeners,Entity Listeners>>.
+. The `UNLINK` policy for one-to-many and many-to-many collection attributes is not supported: `UnsupportedOperationException` will be thrown if you try to delete an entity instance on the owner side of the association. For example, the following delete policy will not work:
++
+`Owner.java`
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_OWNER_SUBORDINATE_LINK",
+    joinColumns = @JoinColumn(name = "OWNER_ID"),
+    inverseJoinColumns = @JoinColumn(name = "SUBORDINATE_ID"))
+@OnDelete(DeletePolicy.UNLINK)
+@ManyToMany
+protected List<Subordinate> subordinate;
+----
+
 
 [[soft_deletion_unique_constr]]
 ====== Unique Constraints at Database Level
@@ -1725,7 +1742,7 @@ include::{sourcesdir}/common/configuration_3.java[]
 
 `Messages` interface provides methods to get <<localization,localized message strings>>.
 
-Let us consider interface methods in detail.
+Let's consider interface methods in detail.
 
 * `getMessage()` – returns the localized message by key, pack name and required locale. There are several modifications of this method with different sets of parameters. If locale is not specified in the method parameter, the current user locale is used. 
 +
