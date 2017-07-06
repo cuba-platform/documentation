@@ -422,13 +422,13 @@ Queries that change data (`update`, `delete`) cause flush of the current persist
 
 The table below describes the JPQL functions supported and not supported by CUBA Platform.
 
-[cols="2,1,7",width="100%"]
+[cols="1,1,5",width="100%"]
 |===
 |Function |Support |Query
 
 //Aggregate functions with scalar expression
 
-.2+|Aggregate functions with scalar expression
+.2+|Aggregate Functions
 
 (EclipseLink feature)
 
@@ -436,7 +436,7 @@ The table below describes the JPQL functions supported and not supported by CUBA
 
 m|SELECT AVG(o.quantity) FROM app$Order o
 
-|Not supported
+|Not supported: aggregate functions with scalar expression
 
 m|SELECT AVG(o.quantity)/2.0 FROM app$Order o
 
@@ -468,14 +468,14 @@ m|SELECT w.name FROM app$Course c JOIN c.studentWaitlist w WHERE c.name = 'Calcu
 
 //CASE Expression in UPDATE query
 
-.2+|CASE Expression in UPDATE query
+.2+|CASE Expressions in UPDATE query
 
 |Supported
 
 m|SELECT e.name, f.name, CONCAT(CASE WHEN f.annualMiles > 50000 THEN 'Platinum ' WHEN f.annualMiles > 25000 THEN 'Gold ' ELSE '' END, 'Frequent Flyer')
   FROM app$Employee e JOIN e.frequentFlierPlan f
 
-|Not supported
+|Not supported: CASE in UPDATE query
 
 m|UPDATE app$Employee e SET e.salary = CASE e.rating WHEN 1 THEN e.salary * 1.1 WHEN 2 THEN e.salary * 1.05 ELSE e.salary * 1.01 END
 
@@ -503,11 +503,11 @@ m|SELECT EXTRACT(YEAR FROM e.createTs) FROM app$MyEntity e WHERE EXTRACT(YEAR FR
 
 .2+|Entity Type Expression
 
-|Supported
+|Supported: entity type passed as a parameter
 
 m|SELECT e FROM app$Employee e WHERE TYPE(e) IN (:empType1, :empType2)
 
-|Not supported
+|Not supported: direct link to an entity type
 
 m|SELECT e FROM app$Employee e WHERE TYPE(e) IN (app$Exempt, app$Contractor)
 
@@ -515,11 +515,11 @@ m|SELECT e FROM app$Employee e WHERE TYPE(e) IN (app$Exempt, app$Contractor)
 
 .2+|Function Invocation
 
-|Supported
+|Supported: function result in comparison clauses
 
 m|SELECT u FROM sec$User u WHERE function('DAYOFMONTH', u.createTs) = 1
 
-|Not supported
+|Not supported: function result as is
 
 m|SELECT u FROM sec$User u WHERE function('hasRoles', u.createdBy, u.login)
 
@@ -564,7 +564,7 @@ m|SELECT e FROM app$Employee e WHERE e.name = 'Bob'
 
   SELECT e FROM app$Employee e WHERE e.active = TRUE
 
-|Not supported
+|Not supported: date and time literals
 
 m|SELECT e FROM app$Employee e WHERE e.startDate = {d'2012-01-03'}
 
@@ -576,11 +576,11 @@ m|SELECT e FROM app$Employee e WHERE e.startDate = {d'2012-01-03'}
 
 .2+|MEMBER OF
 
-|Supported
+|Supported: fields or query results
 
 m|SELECT d FROM app$Department d WHERE (select e from app$Employee e where e.id = :eParam) MEMBER OF e.employees
 
-|Not supported
+|Not supported: literals
 
 m|SELECT e FROM app$Employee e WHERE 'write code' MEMBER OF e.codes
 
@@ -612,7 +612,7 @@ m|SELECT h FROM sec$GroupHierarchy h ORDER BY h.level DESC NULLS FIRST
 
 //String Functions (CONCAT, SUBSTRING, TRIM, LOWER, UPPER, LENGTH, LOCATE)
 
-.3+|String Functions (CONCAT, SUBSTRING, TRIM, LOWER, UPPER, LENGTH, LOCATE)
+.2+|String Functions (CONCAT, SUBSTRING, TRIM, LOWER, UPPER, LENGTH, LOCATE)
 
 |Supported
 
@@ -628,22 +628,20 @@ m|SELECT x FROM app$Magazine x WHERE CONCAT(x.title, 's') = 'JDJs'
 
   SELECT x FROM app$Magazine x WHERE LOCATE('A', x.title, 4) = 6
 
-|TRIM is not supported with trim char
+  SELECT x FROM app$Magazine x WHERE TRIM(TRAILING FROM x.title) = 'D'
+
+|Not supported: TRIM with trim char
 
 m|SELECT x FROM app$Magazine x WHERE TRIM(TRAILING 'J' FROM x.title) = 'D'
-
-|Supported TRIM
-
-m|SELECT x FROM app$Magazine x WHERE TRIM(TRAILING FROM x.title) = 'D'
 
 //Subquery
 .2+|Subquery
 
-|Supported subquery
+|Supported
 
 m|SELECT goodCustomer FROM app$Customer goodCustomer WHERE goodCustomer.balanceOwed < (SELECT AVG(c.balanceOwed) FROM app$Customer c)
 
-|Not supported: subquery with path variable
+|Not supported: path expression instead of entity name in FROM subquery
 
 m|SELECT c FROM app$Customer c WHERE (SELECT AVG(o.price) FROM c.orders o) > 100
 
@@ -654,7 +652,7 @@ m|SELECT c FROM app$Customer c WHERE (SELECT AVG(o.price) FROM c.orders o) > 100
 
 m|SELECT e FROM app$Employee e JOIN TREAT(e.projects AS app$LargeProject) p WHERE p.budget > 1000000
 
-|Not supported
+|Not supported: TREAT in WHERE clauses
 
 m|SELECT e FROM Employee e JOIN e.projects p WHERE TREAT(p as LargeProject).budget > 1000000
 
