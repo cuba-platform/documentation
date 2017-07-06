@@ -3,1226 +3,960 @@
 
 This section provides overview on various optional features provided by the platform.
 
-[[rest_api]]
-==== REST API Version 1
+[[dynamic_attributes]]
+==== Dynamic Attributes
 
-[TIP]
-====
-We recommend using the <<rest_api_v2,REST API Version 2>> for new projects. Version 1 exists for backward compatibilty only.
-====
+_Dynamic attributes_ are additional entity attributes, that can be added without changing the database schema and restarting the application. Dynamic attributes are usually used to define new entity properties at deployment or production stage.
 
-The universal REST API of the platform enables loading and saving any entities defined in the application data model by sending simple HTTP requests. This provides easy way to integrate with a wide range of third-party applications – from the JavaScript code executed in the browser to arbitrary systems running on Java, .NET, PHP or any other platform.
+CUBA dynamic attributes implement the link:$$http://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model$$[Entity-Attribute-Value] model.
 
-Key API features:
+.Dynamic Attributes Classes Diagram
+image::dynamic_attributes.png[align="center"]
 
-* Loading entity instances from the database by identifier or by JPQL query with parameters.
-
-* Saving new and modified instances, deleting instances.
-
-* Obtaining a description of the data model in HTML format.
-
-* Data representation in JSON and XML formats.
-
-* Middleware service calls.
-
-* User authentication.
-
-[[rest_api_adding]]
-===== Including in a Project
-
-REST API is included as a dependency to the *web* and *portal* modules of the *cuba* application component.
-
-For the *web* module the REST API functions will be available by default at the `{host:port}/app/dispatch/api` URL.
-
-To create the *portal* module in your application project, open the project in CUBA Studio and click the *Create portal module* link on the *Project properties* navigator panel. After that, the REST API functions will be available at the `{host:port}/app-portal/api` URL.
-
-REST API controllers are registered in the Spring context defined by the <<dispatcher-spring.xml,dispatcher-spring.xml>> file of of the corresponding module (`portal-dispatcher-spring.xml` or `web-dispatcher-spring.xml`):
-
-[source, xml]
-----
-<context:component-scan base-package="com.haulmont.cuba.restapi"/>
-----
-
-[[rest_api_func]]
-===== Describing Functions
-
-Here we suppose that you use REST API included in the *portal* module, so all requests have the URL starting with `{host:port}/app-portal/api`. If you use REST API in *web* module, the URL should start with `{host:port}/app/dispatch/api`.
-
-All functions require an authenticated user session, which means that you must perform the login first and then pass the resulting session identifier to subsequent requests.
-
-[[rest_api.login]]
-====== Login
-
-Login can be performed by either GET or POST request.
-
-GET request::
+*  `Category` - defines a _category_ of objects and the corresponding set of dynamic attributes. The category must be assigned to some entity type.
 +
---
-For GET request, create the URL `{host:port}/app-portal/api/login` with the following parameters:
+For example, there is an entity of the Car type. We can define two categories for it: Truck and Passenger. The Truck category will contain Load Capacity and Body Type attributes, and the Passenger category – Number of Seats and Child Seat.
 
-* *u* − user login
+*  `CategoryAttribute` - defines a dynamic attribute related to some category. Each attribute describes a single field of a definite type. The required `Code` field contains the system name of the attribute. The `Name` field contains the human-readable attribute name.
 
-* *p* − user password
+*  `CategoryAttributeValue` - dynamic attribute value for a particular entity instance. Dynamic attribute values are physically stored in the dedicated `++SYS_ATTR_VALUE++` table. Each table record has a reference to some entity (`++ENTITY_ID++` column).
 
-* *l* − user locale (optional)
+An entity instance can have dynamic attributes of all categories related to the entity type. So if you create two categories of the Car entity mentioned above, you will be able to specify any dynamic attribute from both categories for a Car instance. If you want to be able to classify an entity instance as belonging to a single category (a car can be either truck or passenger), the entity must implement <<categorized_entity,Categorized>> interface. In this case an entity instance will have the reference to a category, and dynamic attributes from this category only.
 
-For example:
+Loading and saving of dynamic attribute values is handled by <<dataManager,DataManager>>. The `LoadContext.setLoadDynamicAttributes()` method is used to indicate that dynamic attributes should be loaded for entity instances. By default, dynamic attributes are not loaded. At the same time, `DataManager` always saves dynamic attributes contained in entity instances passed to `commit()`.
 
-[source, url]
-----
-http://localhost:8080/app-portal/api/login?u=admin&p=admin&l=ru
-----
---
+Dynamic attribute values are available through `getValue()` / `setValue()` methods for any persistent entity inherited from `BaseGenericIdEntity`. An attribute code with the `+++++` prefix should be passed to these methods, for example:
 
-POST request::
-+
---
-To perform login using POST, execute request by `{host:port}/app-portal/api/login` address, passing JSON (`Content-Type` header has the value `application/json`) or form (`Content-Type` header has the value `application/x-www-form-urlencoded`) in request body.
-
-Example of the JSON format:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_1.json[]
-----
-
-Example of the form:
-
-[source, json]
-----
-username: admin
-password: admin
-locale: en
-----
---
-
-The service will return `userSessionId` in response body and status 200 or status 401 if the authentication fails.
-
-To login through REST API, the user must have `cuba.restApi.enabled` specific <<permissions,permission>>. Notice that the user will have the permission if there are no <<roles,roles>> explicitly revoking it.
-
-[[rest_api.logout]]
-====== Logout
-
-Logout can also be performed by either GET or POST request.
-
-GET request::
-+
---
-To perform login using GET, construct the URL `{host:port}/app-portal/api/logout` with the *session* parameter containing the current session ID obtained by calling `login`.
-
-For example:
-
-[source, url]
-----
-http://localhost:8080/app-portal/api/logout?session=64f7d59d-2cf5-acfb-f4d3-f55b7882da72
-----
---
-
-POST request::
-+
---
-To perform login using POST, send request to `{host:port}/app-portal/api/logout` URL, passing JSON (`Content-Type` header has the value `application/json`) or form (`Content-Type` header has the value `application/x-www-form-urlencoded`) in the request body.
-
-Example of the JSON format:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_2.json[]
-----
-
-Example of the form:
-
-[source, json]
-----
-session: 64f7d59d-2cf5-acfb-f4d3-f55b7882da72
-----
---
-
-The service will return status 200.
-
-[[rest_api.find]]
-====== Loading a Persistent Object Instance From the Database by Identifier
-
-To load an object, you should perform GET request `{host:port}/app-portal/api/find.<format>` with the following parameters:
-
-* *e* − the description of the required object in `<entity-id>` or `<entity-id-view>` format (see <<link_to_screen,EntityLoadInfo>>). For example, `++sales$Order-43c61345-d23c-48fe-ab26-567504072f05-_local++`. Thus, the format allows you to specify required <<views,view>> of the loaded object.
-
-* *s* − current session identifier.
-
-*format* element of the request specifies the result format. It takes two values: `xml` and `json`.
-
-Example of a request, which returns the result in `xml` format:
-
-[source, url]
-----
-http://localhost:8080/app-portal/api/find.xml?e=sales$Order-60885987-1b61-4247-94c7-dff348347f93-orderWithCustomer&s=c38f6bf4-fae7-4ee6-a412-9d93ff243f23
-----
-
-Example of request, which returns the result in `json` format:
-
-[source, url]
-----
-http://localhost:8080/app-portal/api/find.json?e=sales$Order-60885987-1b61-4247-94c7-dff348347f93-orderWithCustomer&s=c38f6bf4-fae7-4ee6-a412-9d93ff243f23
-----
-
-[[rest_api.query]]
-====== Executing JPQL Query to Retrieve Data
-
-To execute a query, the `{host:port}/app-portal/api/query.<format>` GET request should be performed with the following parameters:
-
-* *e* − the name of the entity.
-
-* *q* − a <<jpql,JPQL>> data query. The request may contain parameters. Their values are provided as values of same-named parameters of HTTP query.
-
-* *s* − the identifier of the current session.
-
-* *view* (optional) − the <<views,view>>, which should be used to load data.
-
-* *max* (optional) − maximum number of rows in resulting dataset (similar to JPA `setMaxResults`).
-
-* *first* (optional) − number of the first row of resulting dataset (similar to JPA `setFirstResult`).
-
-*format* specifies the format of obtaining the result. It takes two values: `xml` or `json`.
-
-Examples:
-
-[source, url]
-----
-http://localhost:8080/app-portal/api/query.json?e=sales$Customer&q=select+c+from+sales$Customer+c&s=748e5d3f-1eaf-4b38-bf9d-8d838587367d&view=_local
-----
-
-[source, url]
-----
-http://localhost:8080/app-portal/api/query.json?e=sales$Customer&q=select+c+from+sales$Customer+c+where+c.name=:name&s=748e5d3f-1eaf-4b38-bf9d-8d838587367d&name=Smith
-----
-
-For each of the passed parameters, the type can be explicitly specified by adding the parameter of the same name and the `++_type++` suffix to the request. For example:
-
-[source, url]
-----
-http://localhost:8080/app-portal/api/query.json?e=sales$Customer&q=select+c+from+sales$Customer+c+where+c.name=:name&s=748e5d3f-1eaf-4b38-bf9d-8d838587367d&name=Smith&name_type=string
-----
-
-Specifying parameter type is optional, however it allows you to avoid parsing errors if the system cannot determine the type automatically. Normally, the type should be specified only for string parameters, which for some reason have a more specific format types (dates, numbers, UUID), but must be interpreted as strings. The list of available types can be found in meta-model description (*Help > Data Model*) or by obtaining the <<getHTMLModel,HTML-description of the model>>.
-
-A query can also be executed using POST request to the `{host:port}/app-portal/api/query.<format>?s=<sessionId>` URL, where `<sessionId>` is the identifier of the current session. In this case, the query and its parameters are passed in the request body as follows.
-
-Example POST request of JSON format, the `Content-Type` header must be set to `application/json`:
-
-[source,plain]
-----
-http://localhost:8080/app-portal/api/query.json?s=748e5d3f-1eaf-4b38-bf9d-8d838587367d
-----
-
-The request body:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_20.json[]
-----
-
-Example POST request of XML format, the `Content-Type` header must be set to `text/xml`:
-
-[source,plain]
-----
-http://localhost:8080/app-portal/api/query.xml?s=748e5d3f-1eaf-4b38-bf9d-8d838587367d
-----
-
-The request body:
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_21.xml[]
-----
-
-
-[[rest_api.commit]]
-====== Committing New and Modified Instances, Removal
-
-The commit function enables performing operations on objects passed to it and returning their new state. The format of the result depends on format (JSON or XML) used for the request (the `Content-Type` header).
-
-JSON format::
-+
---
-`application/json` should be used as the value of the `Content-Type` header.
-
-Creating a `Customer` entity with an automatically generated identifier:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_3.json[]
-----
-
-Creating a `Customer` entity with a specified identifier:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_4.json[]
-----
-
-Creating the `Order` entity, specifying a link to a new `Customer` entity and filling the `Customer` entity with attributes:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_5.json[]
-----
-
-Changing two `Customer` entities simultaneously:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_6.json[]
-----
-
-Removing the `Customer` entity with <<soft_deletion,soft deletion>> support:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_7.json[]
-----
-
-* The `commitInstances` array contains created and modified entities.
-
-** When creating an entity, `id` or `NEW-<entityName>` should be specified as the value of the `NEW-<entityName>-<uuid>` field.
-
-** When changing an entity, `<entityName>-<uuid>` should be specified as the value of the `id` field.
-
-** Next, attribute names and values for created or modified entity should be provided in the list of elements, separated by commas.
-+
-If any attribute should be set to `null` while editing the entity, you must specify the view that includes this attribute, in the identifier. For example:
-+
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_8.json[]
-----
-+
-Here, the `customer-edit` view must contain the `channel` attribute, otherwise the value will not change.
-
-* The `removeInstances` array contains removed entities. When removing an entity, you must specify the value of the `id` field. Before deletion, `merge()` will be executed for the provided object, which enables checking if the version of the removed object has changed.
-
-* The `softDeletion` field controls <<soft_deletion,soft deletion>> mode.
-
-The function is called by a POST request to `{host:port}/app-portal/api/commit?s=<sessionId>`. JSON is passed in the request body. The function returns a JSON objects array. For example, the following JSON objects array will be returned when the `email` field of the `Customer` entity is changed:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_9.json[]
-----
---
-
-XML format::
-+
---
-`text/xml` should be used as the value of `Content-Type` header.
-
-XML format example:
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_10.xml[]
-----
-
-XML document fields semantics is defined in {xsd_url}/restapi-commit-v2.xsd scheme.
-
-In case of an XML request, fields are set to null with the help of the `null="true"` attribute. In addition to that, the identifier must contain the <<views,view>>, which contains the attribute. For example:
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_11.xml[]
-----
-
-The function is called with a POST request to `{host:port}/app-portal/api/commit?s=<sessionId>`. XML is passed in the request body. The request returns array of XML objects similar to the one below:
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_12.xml[]
-----
-
-The schema containing the description of the function call result is located at {xsd_url}/restapi-instance-v2.xsd
---
-
-[[rest_upload_file]]
-====== Uploading Files to Storage
-
-To upload a file to <<file_storage,FileStorage>>, use the POST request `{host:port}/app-portal/api/upload` with the following parameters:
-
-* *s* − current session ID.
-
-* *name* - file name
-
-* *ext* - file extension
-
-* *size* - file size in bytes
-
-File is sent in the request body.
-
-[[rest_download_file]]
-====== Downloading Files from Storage
-
-To download a file from <<file_storage,FileStorage>>, use the GET request `{host:port}/app-portal/api/download` with the following parameters:
-
-* *f* − the ID of the corresponding `FileDescriptor` instance.
-
-* *s* − current session ID.
-
-For example:
-
-[source, xml]
-----
-http://localhost:8080/app-portal/api/download?s=abbfb51c-715d-ced5-cc00-ee355278ea21&f=dbea7543-7761-3680-9b6c-c06f7fdb3738
-----
-
-
-[[getHTMLModel]]
-====== Obtaining Data Model Description in HTML Format
-
-The `/printDomain?s=<sessionId>` GET request allows a developer to obtain data model description. The service returns a simple HTML, which contains basic data types list and description of all meta-model entities, their attributes and <<views,views>> defined for entities.
-
-[[rest_api.deployViews]]
-====== Creating New Views on Server
-
-The `/deployViews?s=<sessionId>` POST request enables loading to middleware descriptions of <<views,view>> objects, required for the client. The view objects are sent as standard XML description of a view used in the platform. XML is placed in the request body. For more information about the format, see <<views>>.
-
-[[rest_api.invokeService]]
-====== Service Calls
-
-<<services,Service>> methods available for API calls are listed in a configuration file. The name of the file is defined by the <<cuba.restServicesConfig,cuba.restServicesConfig>> property.
-
-A sample REST API services configuration file:
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_13.xml[]
-----
-
-Service method call can be performed both by GET and POST requests. Additionally, POST requests allow passing entities or entity collections to the invoked method.
-
-*Service Call by GET Request*
-
-Request format:
-
-[source, url]
-----
-{host:port}/app-portal/api/service.<format>?service=<serviceName>&method=<methodName>&view=<view>&param0=<value 0>&paramN=<value N>&param0_type=<type 0>&paramN_type=<type N>&s=<sessionId>
-----
-
-* `format` - defines the output format. Two values are accepted: `xml` or `json`.
-
-* `service` - the name of the service called.
-
-* `method` - the name of the method invoked.
-
-* `param0 .. paramN` - parameter values of the method.
-
-* `++param0_type .. paramN_type++` - parameter types of the method.
-
-* `s` - the current session identifier.
-
-If a service has a single method with the specified name and number of parameters, explicit parameter type definition is not required. In other cases, parameter type must be specified.
-
-*Service Call by POST Request*
-
-Request format:
-
-[source, url]
-----
-{host:port}/app-portal/api/service?s=<sessionId>
-----
-
-* `s` - the current session identifier.
-
-JSON or XML with the description of the method call is passed in the request body.
-
-JSON format::
-+
---
-The `Content-Type` header value is `application/json`.
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_14.json[]
-----
-
-Properties of the passed object:
-
-* `service` - the name of the service called.
-
-* `method` - the name of the method invoked.
-
-* `param0 .. paramN` - method parameter values.
-
-* `++param0_type .. paramN_type++` - method parameter types.
-
---
-
-XML format::
-+
---
-The `Content-Type` header value is `text/xml`.
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_15.xml[]
-----
-
-The main elements of the passed document are:
-
-* `service` - the name of the service called.
-
-* `method` - the name of the method invoked.
-
-* `param` - the value of the parameter method or the parameter type. The name of the parameter (`name` attribute) must have the format `param0 .. paramN` or `++param0_type .. paramN_type++`.
-
-If a service has a single method with the specified name and number of parameters, explicit parameter type definition is not required. In other cases, parameter types must be specified.
-
-`<param>` element may contain both plain text (for setting primitive type values) and nested `<instance>` elements for entities or `<instances>` for entity collections.
-
-The XSD of the request is available at {xsd_url}/restapi-service-v2.xsd.
---
-
-*Supported Service Method Parameter Types*
-
-* primitive Java types. `long`, `int`, `boolean`, etc. should be specified as the type name.
-
-* primitive Java type wrappers. The full class name should be specified as the type name: `java.lang.Boolean`, `java.lang.Integer`, etc.
-
-* string (`java.lang.String`).
-
-* date (`java.util.Date`).
-
-* UUID (`java.util.UUID`).
-
-* BigDecimal (`java.math.BigDecimal`)
-
-* entity (for POST requests only). The full class name should be specified as the type name, e.g. `com.haulmont.cuba.security.entity.User`.
-
-* entity collections (for POST requests only). The full class or collection interface name should be specified as the type name, e.g. `java.util.List`.
-
-*Service Call Result*
-
-The result may be in JSON or XML, depending on the method call declaration. Currently, methods can return primitive data types, entities and entity collections.
-
-Example of a JSON result:::
-+
---
-Primitive data type:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_16.json[]
-----
-
-Entity:
-
-[source, json]
-----
-include::{sourcesdir}/portal/restapi_17.json[]
-----
---
-
-Example of XML result:::
-+
---
-Primitive data type:
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_18.xml[]
-----
-
-Entity:
-
-[source, xml]
-----
-include::{sourcesdir}/portal/restapi_19.xml[]
-----
-
-The XSD of the result is available at {xsd_url}/restapi-service-v2.xsd.
---
-
-[[rest_api_cors_settings]]
-===== CORS Settings
-
-By default, all CORS requests to the REST API are allowed. To restrict the origins list you can define a global CORS configuration in the Spring configuration file. If the REST API is attached to the *portal* module then modify the `portal-dispatcher-spring.xml`, if the REST API is included in the *web* module then modify the `web-spring.xml`.
-
-[source, xml]
-----
-include::{sourcesdir}/features/cors_config.xml[]
-----
-
-[[rest_api_v2]]
-==== REST API Version 2
-
-Version 2 of the universal REST API provides the following functionality:
-
-* CRUD operations on entities.
-* Execution of predefined JPQL queries.
-* Execution of service methods.
-* Getting metadata (entities, views, enumerations, datatypes).
-* Getting current user permissions (access to entities, attributes, specific permissions).
-* Getting current user information (name, language, time zone, etc.).
-* Uploading and downloading files.
-
-REST API Version 2 uses the OAuth2 protocol for authentication and supports anonymous access.
-
-[TIP]
-====
-The detailed documentation for the API is written according to http://swagger.io/specification[Swagger specification] and is available at the following URL: http://files.cuba-platform.com/swagger.
-====
-
-Any running CUBA application also exports the swagger documentation at the URLs `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.yaml` and  `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.json`.
-
-[[rest_api_v2_queries_config]]
-===== Predefined JPQL Queries Configuration
-
-In the CUBA application, predefined JPQL queries must be specified in files registered in the <<cuba.rest.queriesConfig, cuba.rest.queriesConfig>> application property of the *web* or *portal* module (e.g in the `web-app.properties file`):
-
-[source,properties]
-----
-cuba.rest.queriesConfig = +com/company/myapp/rest-queries.xml
-----
-
-The `rest-queries.xml` file must be placed in the root package of the *web* or *portal* module (e.g. `com.company.myapp`). Its content is defined by the http://schemas.haulmont.com/cuba/{revnumber}/rest-queries.xsd[rest-queries.xsd] schema, for example:
-
-[source, xml]
-----
-include::{sourcesdir}/features/rest-queries-config.xml[]
-----
-
-An example of how to configure and execute a query can be found in the <<rest_api_v2_ex_query>> chapter.
-
-The platform also provides the predefined `all` query for getting all instances of a specified entity type. It can be used with `/count` to receive the total number of entity instances, for example:
-
-  http://localhost:8080/app/rest/v2/queries/sales$Order/all/count
-
-[[rest_api_v2_services_config]]
-===== Services Configuration
-
-The list of service methods that are available via the REST API must be configured in the CUBA application in files registered in the <<cuba.rest.servicesConfig, cuba.rest.servicesConfig>> application property of the *web* or *portal* module (e.g in the `web-app.properties file`):
-
-[source,properties]
-----
-cuba.rest.servicesConfig = +com/company/myapp/rest-services.xml
-----
-
-The content of the `rest-services.xml` must be placed in the root package of the *web* or *portal* module (e.g. `com.company.myapp`). Its content is defined by the http://schemas.haulmont.com/cuba/{revnumber}/rest-services-v2.xsd[rest-services-v2.xsd] schema, for example:
-
-[source, xml]
-----
-include::{sourcesdir}/features/rest-services-config.xml[]
-----
-
-Method parameter types can be omitted if the service doesn't contain an overloaded method with the same number of parameters. Otherwise, types must be defined.
-
-An example of how to configure and invoke a service can be found in the <<rest_api_v2_ex_service_get>> chapter.
-
-[[rest_api_v2_data_model_versioning]]
-===== Data Model Versioning
-
-REST API can handle data model changes. It is useful when, for example, some entity attribute was renamed, but REST API client doesn't know about this modification and expects the attribute to have an old name.
-
-For such cases REST API allows you to define transformation rules for entities JSON. If the client application sends the data model version in the request query parameter then the JSON in REST API method response or request body will be transformed according to transformation rules defined for that particular domain model version.
-
-JSON transformation rules must be specified in files registered in <<cuba.rest.jsonTransformationConfig, cuba.rest.jsonTransformationConfig>> application property of the *web* or *portal* module (e.g in the `web-app.properties` file):
-
-[source,properties]
-----
-cuba.rest.jsonTransformationConfig = +com/company/myapp/rest-json-transformations.xml
-----
-
-The `rest-json-transformations.xml` file must be placed in the *web* or *portal* module (e.g. in package `com.company.myapp`). Its content is defined by the {xsd_url}/rest-json-transformations.xsd[rest-json-transformations.xsd] schema. File example:
-
-[source, xml]
-----
-include::{sourcesdir}/features/rest-json-transformations.xml[]
-----
-
-Standard transformers configured in the config file can perform the following transformations of entity JSON:
-
-* rename entity
-
-* rename entity attribute
-
-* remove entity attribute
-
-JSON transformation works for the following REST API endpoints:
-
-* */entities* - getting entities list, getting a single entity, entity create, entity update, entity delete
-
-* */queries* - entities JSON returned by the query will be transformed
-
-* */services* - JSON transformations will be applied both to entities returned by the service method and to entities passed as a service method argument
-
-JSON transformations are applied if the request to the REST API contains the `modelVersion` URL parameter with the data model version number.
-
-See the <<rest_api_v2_ex_json_transformations>> to understand how to configure data model versioning and use it from the client application.
-
-[[rest_api_v2_cors]]
-===== CORS Settings
-
-By default, all CORS requests to the REST API are allowed. To restrict the origins list you can define the <<cuba.rest.allowedOrigins, cuba.rest.allowedOrigins>> application property.
-
-[[rest_api_v2_anonymous]]
-===== Anonymous Access
-
-By default, anonymous access is disabled. To enable it, use the <<cuba.rest.anonymousEnabled, cuba.rest.anonymousEnabled>> application property. A request is considered to be anonymous if it doesn't contain an `Authentication` header. In this case, the <<securityContext, SecurityContext>> will contain an anonymous user session.
-
-To set up permissions for anonymous user you must define <<roles, roles>> for the user specified by the <<cuba.anonymousLogin, cuba.anonymousLogin>> application property.
-
-[[rest_api_v2_settings]]
-===== Other REST API Settings
-
-<<cuba.rest.client.id, cuba.rest.client.id>> - defines a default REST API client id.
-
-<<cuba.rest.client.secret, cuba.rest.client.secret>> - defines a default REST API client secret.
-
-<<cuba.rest.client.tokenExpirationTimeSec, cuba.rest.client.tokenExpirationTimeSec>> - defines a token expiration time for the default client in seconds.
-
-<<cuba.rest.maxUploadSize, cuba.rest.maxUploadSize>> - defines a maximum file size that can be uploaded with the REST API.
-
-[[rest_api_v2_custom_controllers]]
-===== Creating Custom OAuth2 Protected Controllers
-
-If you need to create a custom REST controller protected with the OAuth2 authentication then you have to do the following:
-
-. Suppose you have the following REST controller:
-+
 [source, java]
 ----
-include::{sourcesdir}/features/MyController.java[]
+include::{sourcesdir}/features/dynamicAttr_1.java[]
 ----
 
-. Create a new Spring configuration file with name `rest-dispatcher-spring.xml` under the root package (`com.company.test`) of *web* or *portal* module. The content of the file must be as follows:
+In fact, the direct access to attribute values in the application code is rarely needed. Any dynamic attribute can be automatically displayed in any <<gui_Table,Table>> or <<gui_FieldGroup,FieldGroup>> component bound to a datasource containing the entity, for which the dynamic attribute was created. The attribute editor described below allows you to specify screens and components that should show the attribute.
+
+User <<permissions,permissions>> to access dynamic attributes can be set in the <<roles,security role>> editor in the same way as for regular attributes. Dynamic attributes are displayed with the `+++++` prefix.
+
+[[dynamic_attributes_mgmt]]
+===== Managing Dynamic Attributes
+
+Managing attributes categories and descriptions is done via special screens available in *Administration > Dynamic Attributes* menu.
+
+The category browser shows the list of all registered categories.
+
+.Categories Browser
+image::categoryBrowser.png[align="center"]
+
+The category editor allows you to create a new category for an entity and define a set of dynamic attributes. The category name and the related entity type fields are mandatory. The *Default* checkbox indicates that this category will be automatically selected for a new instance of an entity implementing `Categorized` interface.
+
+.Category Editor
+image::categoryEditor.png[align="center"]
+
+Dynamic attribute editor enables setting the name, system code, value type and the default value of the attribute.
+
+.Dynamic Attribute Editor
+image::runtimePropertyEditor.png[align="center"]
+
+For all value types, except `Boolean`, there is  a *Width* field available to set up the field width in `FieldGroup` in pixels or as a percentage. If the *Width* field is empty, its assumed value is 100%.
+
+For all value types, except `Boolean` and `Enumeration`, there is also an *Is* *collection* checkbox available. It allows you to create multi-valued dynamic attributes of a selected type.
+
+For the `Enumeration` value type, the set of named values is defined in the *Enumeration* field via the list editor.
+
+.Dynamic Attribute Editor for `Enumeration` type
+image::runtimePropertyEnum.png[align="center"]
+
+A dynamic attribute also has visibility settings, which define the screens where it should be displayed. By default, the attribute is invisible on any screen.
+
+.Dynamic Attribute Visibility Settings
+image::runtimePropertyVisibility.png[align="center"]
+
+In addition to the screen, you can also specify a component in which the attribute is to appear (for example, for screens, where several <<gui_FieldGroup,FieldGroup>> components show the fields of the same entity).
+
+If the attribute is marked as visible on a screen, it will automatically appear in all field groups and tables displaying entities of the corresponding type on the screen.
+
+Access to dynamic attributes can also be restricted by <<roles,user role>> settings. Security settings for dynamic attributes are similar to those for regular attributes.
+
+In order for changes in attribute and visibility settings to take effect, click *Apply settings* in the categories browser. Changes can also be applied via *Administration > JMX Console* by calling the `clearDynamicAttributesCache()` method of the `app-core.cuba:type=CachingFacade` JMX bean.
+
+The dynamic attribute added to the screen automatically by specifying visibility settings is shown below:
+
+image::runtimePropsApplyChanges.png[align="center"]
+
+Dynamic attributes can be added to a screen manually. To do this, follow these steps:
+
+* In the `dsContext` section of the screen XML-descriptor, set the `loadDynamicAttributes` property to `true` for a datasource that loads the entity (entities), for example:
 +
 [source, xml]
 ----
-include::{sourcesdir}/features/rest-dispatcher-spring.xml[]
+<dsContext>
+    <datasource id="carDs" class="com.company.sample.entity.Car" view="_local" loadDynamicAttributes="true"/>
+</dsContext>
 ----
 
-. Define an <<additive_app_properties,additive>> application property `cuba.restSpringContextConfig` in the properties file of the module,.e.g. `portal-app.properties`:
+* Specify the dynamic attribute code with the `+++++` prefix in the `property` XML attribute of a component definition:
 +
-[source, properties]
+[source, xml]
 ----
-cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+<textField id="numberOfSeats" datasource="carDs" property="+numberOfSeats"/>
 ----
 
-. The new controller runs in the context of the `CubaRestApiServlet`. So the URL for controller methods will start with the `/rest`, i.e. the doSmth() method will be accesed by the URL: `http://localhost:8080/app-portal/rest/myapi/dosmth`.
+[[categorized_entity]]
+===== Categorized Entities
+
+If an entity implements `com.haulmont.cuba.core.entity.Categorized` interface, you can use `com.haulmont.cuba.gui.components.RuntimePropertiesFrame` component for displaying dynamic attributes of this entity. This component allows a user to select a category for the particular entity instance and specify values of dynamic attributes of this category.
+
+In order to use the `RuntimePropertiesFrame` component in an edit screen, do the following:
+
+* Two <<datasources,datasources>> should be declared in the `dsContext` section:
 +
-[WARNING]
-====
-URL of the custom controller MUST NOT start with the `/rest/v2`.
-====
+--
+**  `runtimePropsDatasource` - a specific datasource to load the `CategoryAttributeValue` instances. The `mainDs` attribute must refer to the main datasource, which contains the edited entity.
 
-[[rest_api_v2_security_constraints]]
-===== Security Constraints for Collection Attributes
-
-If an entity that is returned by the REST API has a collection attribute and entities in the collection are restricted by any <<constraints,constraint>> then a system attribute `+__securityToken+` may be returned in the result JSON. When you send such entity to REST API methods for update you have to specify the `+__securityToken+` property (the one you got on entity read) in the JSON object. Otherwise, the collection property may be saved incorrectly.
+** A regular `collectionDatasource` to load the list of categories of this entity type.
 
 Example:
 
-[source, json]
+[source, xml]
 ----
-include::{sourcesdir}/features/securityToken.json[]
+<dsContext>
+  <datasource id="carDs"
+      class="com.company.sample.entity.Car"
+      view="carEdit"/>
+
+  <runtimePropsDatasource id="runtimePropsDs"
+      mainDs="carDs"/>
+
+  <collectionDatasource id="categories"
+      class="com.haulmont.cuba.core.entity.Category"
+      view="_local">
+    <query>
+         select c from sys$Category c where c.entityType='sample$Car'
+    </query>
+  </collectionDatasource>
+</dsContext>
 ----
+--
 
-[[rest_api_v2_persistent_token_store]]
-===== Persistent Token Store
-
-By default, OAuth tokens are stored in memory only. If you want to persist them in the database as well, you should set the <<cuba.rest.storeTokensInDb,cuba.rest.storeTokensInDb>> application property to `true`. The property value is stored in the database, so you can change its value in the *Administration > Application Properties* screen.
-
-Expired tokens in the database store must be periodically deleted. The cron expression for scheduled removing of expired tokens is specified in the <<cuba.rest.deleteExpiredTokensCron,cuba.rest.deleteExpiredTokensCron>> application property.
-
-[[rest_api_v2_usage_example]]
-===== REST API Usage Examples
-
-This section contains REST API usage examples.
-
-As mentioned earlier, a detailed information about REST API methods is written according to http://swagger.io/specification[Swagger] specification and is available at address http://files.cuba-platform.com/swagger.
-
-[[rest_api_v2_ex_get_token]]
-====== Getting an OAuth Token
-
-An OAuth token is required for any REST API method (except when you are using an <<rest_api_v2_anonymous, anonymous access>>). A token can be obtained by the POST request on the address:
-
-  http://localhost:8080/app/rest/v2/oauth/token
-
-An access to this endpoint is protected with a basic authentication. REST API client identifier and password is used for basic authentication. Please note that these are not an application user login and password. REST API client id and password are defined in the application properties <<cuba.rest.client.id, cuba.rest.client.id>> and <<cuba.rest.client.secret, cuba.rest.client.secret>> (the default values are `client` and `secret`). You must pass the client id and secret, separated by a single colon (":") character, within a base64 encoded string in the `Authorization` header.
-
-
-The request type must be `application/x-www-form-urlencoded`, the encoding is `UTF-8`.
-
-The requst must contain the following parameters:
-
-* `grant_type` - always `password`.
-* `username` - application user login.
-* `password` - application user password.
-
-[source, httprequest]
+* Now, the `runtimeProperties` visual component may be included in the XML-descriptor of the screen:
++
+[source, xml]
 ----
-include::{sourcesdir}/features/rest-access-token-request.txt[]
+<runtimeProperties id="runtimePropsFrame"
+  runtimeDs="runtimePropsDs"
+  categoriesDs="categories"/>
 ----
 
-Method returns a JSON object:
+[[email_sending]]
+==== Email Sending
 
-[source, json]
-----
-include::{sourcesdir}/features/rest-access-token-response.json[]
-----
+The platform provides email sending facilities with the following features:
 
-A token value is in the `access_token` property.
+* Synchronous or asynchronous sending. In case of synchronous sending, the calling code waits till the message is sent to the SMTP server. In case of asynchronous sending, the message is persisted to the database and the control is returned immediately to the calling code. The actual sending is done later by a <<scheduled_tasks,scheduled task>>.
 
-[[rest_api_v2_ex_get_entities_list]]
-====== Getting an Entity Instances List
+* Reliable tracking of message sending timestamp or errors in the database for both synchronous and asynchronous modes.
 
-Let's suppose that the system has a `sales$Order` entity and we need to get a list of this entity instances. Besides, we need to get not all the records, but only 50 records, starting with the 100th one. A response must contain not only simple properties of the `sales$Order` entity but also an information about the order customer (a reference field named `customer`). Orders must be sorted by date.
+* User interface to search and view information about sent messages, including all message attributes and content, sending status and the number of attempts.
 
-A base URL for getting all instances of the `sales$Order` entity is as follows:
+See an example of using this mechanism in the <<sending_emails_recipe,Sending Emails>> development recipe.
 
-  http://localhost:8080/app/rest/v2/entities/sales$Order
+[[email_sending_methods]]
+===== Sending Methods
 
-To implement all the conditions described above the following request parameters must be specified:
+To send an email, the `EmailerAPI` bean should be used at the Middleware, and the `EmailService` service – at the client tier.
 
-* *view* - a <<views, view>>, that will be used for loading entities. In our case the `order-edit-view` contains a `customer` reference.
-* *limit* - a number of instances to be returned.
-* *offset* - a position of the first extracted record.
-* *sort* - an entity attribute name that will be used for sorting.
+The basic methods of these components are described below:
 
-An OAuth token must be placed in the `Authorization` header with the `Bearer` type:
+* `sendEmail()` – synchronous message sending. The calling code is blocked while sending the message to the SMTP server.
++
+The message can be transmitted in the form of a set of parameters (the comma-separated list of recipients, subject, content, array of attachments), and in the form of a special `EmailInfo` object, which encapsulates all this information and allows you to explicitly set the sender's address and to form the message body using a *FreeMarker* template.
++
+`EmailException` may be thrown during synchronous sending, containing the information on the recipient addresses, where delivery has failed, and the corresponding error messages.
++
+During the execution of the method, a `SendingMessage` instance is created in the database for each recipient. It has the initial `SendingStatus.SENDING` status, and `SendingStatus.SENT` after successful sending. In case of a message sending error, the message status changes to `SendingStatus.NOTSENT`.
 
-  Authorization: Bearer 29bc6b45-83cd-4050-8c7a-2a8a60adf251
+* `sendEmailAsync()` – asynchronous message sending. This method returns the list (by the number of recipients) of `SendingMessage` instances in `SendingStatus.QUEUE` status, which were created in the database. The actual sending is performed with the subsequent call of the `EmailerAPI.processQueuedEmails()` method, which should be invoked from a <<scheduled_tasks,scheduled task>> with the desired frequency.
 
-As a result, we get the following *GET* request URL:
+[[email_attachments]]
+===== Email Attachments
 
-  http://localhost:8080/app/rest/v2/entities/sales$Order?view=order-edit-view&limit=50&offset=100&sort=date
+The `EmailAttachment` object is a wrapper that holds the attachment as a byte array (the `data` field), the file name (the `name` field), and, if necessary, the attachment identifier which is unique for this message (the optional but useful `contentId` field).
 
-The response will be like this:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-orders-list-response.json[]
-----
-
-Please note, that every entity in the response has a `_entityName` attribute with the entity name and an `_instanceName` attribute with the entity <<namePattern_annotation, instance name>>.
-
-[[rest_api_v2_ex_create_entity]]
-====== New Entity Instance Creation
-
-New `sales$Order` entity instance can be created with the *POST* request on the address:
-
-  http://localhost:8080/app/rest/v2/entities/sales$Order
-
-An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
-
-The request body must contain a JSON object that describes a new entity instance, e.g.:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-create-order-request.json[]
-----
-
-A collection of order items (`items`) and a `customer` reference are passed in the request body. Let's examine how these attributes will be processed.
-
-First, let's have a quick look to the `Order` class:
-
-[source, java]
-----
-include::{sourcesdir}/features/Order.java[]
-----
-
-The `items` collection property is annotated with the <<composition_annotation, @Composition>>. REST API methods for entity creation and update will create a new entity instances for all members of such collections. In our case, two instances of `OrderItem` entity will be created with the `Order` entity.
-
-The `customer` reference doesn't have a `@Composition` annotation, that's why the REST API will try to find a client with the given id and set it to the `customer` field. If the client is not found then an order won't be created and the method will return an error.
-
-In case of successful method execution a full object graph of the created entity is returned:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-create-order-response.json[]
-----
-
-[[rest_api_v2_ex_update_entity]]
-====== Existing Entity Instance Update
-
-An existing `sales$Order` entity instance can be updated with the *PUT* request on the address:
-
-  http://localhost:8080/app/rest/v2/entities/sales$Order/5d7ff8e3-7828-ba94-d6ba-155c5c4f2a50
-
-The last part of the query here is the entity identifier.
-
-An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
-
-The request body must contain a JSON object containing only fields we want to update, e.g.:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-update-order-request.json[]
-----
-
-The response body will contain a modified entity:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-update-order-response.json[]
-----
-
-[[rest_api_v2_ex_query]]
-====== Executing a JPQL Query
-
-Before the execution with the REST API a query must be described in the <<rest_api_v2_queries_config, configuration file>>. The `rest-queries.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
-
-[source, properties]
-----
-cuba.rest.queriesConfig = +com/company/sales/rest-queries.xml
-----
-
-`rest-queries.xml` contents:
+The attachment identifier may be used to insert images in the message body. For this, a unique `contentId` (for example, `myPic`) is specified when creating `EmailAttachment`. Expression like `cid:myPic` can be used as a path to insert the attachment in the message body. So, to insert an image you can specify the following HTML element:
 
 [source, xml]
 ----
-include::{sourcesdir}/features/sales-rest-queries.xml[]
+<img src="cid:myPic"/>
 ----
 
-To execute a JPQL query the following *GET* request must be executed:
+[[email_sending_properties]]
+===== Configuring Email Sending Parameters
 
-  http://localhost:8080/app/rest/v2/queries/sales$Order/ordersAfterDate?startDate=2016-11-01&endDate=2017-11-01
+Email sending parameters can be configured using the <<app_properties,application properties>> listed below. All of them are runtime parameters and are stored in the database, but can be overridden for a specific *Middleware* block in its `app.properties` file.
 
-The request URL parts:
+All email sending parameters are available via the `EmailerConfig` configuration interface.
 
-* `sales$Order` - extracted entity name.
-* `ordersAfterDate` - a query name from the configuration file.
-* `startDate` and `endDate` - request parameters with the values.
+* `cuba.email.fromAddress` – the default sender's address. It is used if the `EmailInfo.from` attribute is not specified.
++
+Default value: `DoNotReply@localhost`
 
-An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+* `cuba.email.smtpHost` – the address of the SMTP server.
++
+Default value: `test.host`
 
-The method returns a JSON array of extracted entity instances:
+* `cuba.email.smtpPort` – the port of the SMTP server.
++
+Default value: `25`
 
-[source, json]
-----
-include::{sourcesdir}/features/rest-ordersAfterDate-query-response.json[]
-----
+* `cuba.email.smtpAuthRequired` flags whether the SMTP server requires authentication. It corresponds to the `mail.smtp.auth` parameter, which is passed at the creation of the `javax.mail.Session` object.
++
+Default value: `false`
 
-A full list of possible request parameters is available in the http://files.cuba-platform.com/swagger[Swagger documentation].
+* `cuba.email.smtpSslEnabled` flags whether `SSL` protocol is enabled. It corresponds to the `mail.transport.protocol` parameter with the `smtps` value, which is passed at the creation of the `javax.mail.Session` object.
++
+Default value: `false`
 
-[[rest_api_v2_ex_service_get]]
-====== Service Method Invocation (GET)
+* `cuba.email.smtpStarttlsEnable` – flags the use of the `STARTTLS` command when authenticating on the SMTP server. It corresponds to the `mail.smtp.starttls.enable` parameter, which is passed at the creation of the `javax.mail.Session` object.
++
+Default value: `false`
 
-Suppose there is an `OrderService` <<services, service>> in the system. The implementation looks as follows:
+* `cuba.email.smtpUser` – the user name for SMTP server authentication.
 
-[source, java]
-----
-include::{sourcesdir}/features/OrderServiceBean.java[]
-----
+* `cuba.email.smtpPassword` – the user password for SMTP server authentication.
 
-Before the execution with the REST API a service method invocation must be allowed in the <<rest_api_v2_services_config, configuration file>>. The `rest-services.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
+* `cuba.email.delayCallCount` – is used in asynchronous sending of emails to skip first few calls of `EmailManager.queueEmailsToSend()` after server startup to reduce the load during application initialization. Email sending will start with the next call.
++
+Default value: `2`
 
-[source, properties]
-----
-cuba.rest.servicesConfig = +com/company/sales/rest-services.xml
-----
+* `cuba.email.messageQueueCapacity` – for asynchronous sending, the maximum number of messages read from the queue and sent in one call of `EmailManager.queueEmailsToSend()`.
++
+Default value: `100`
 
-`rest-services.xml` content:
+* `cuba.email.defaultSendingAttemptsCount` for asynchronous sending, the default number of attempts to send an email. It is used if the `attemptsCount` parameter is not specified when calling `Emailer.sendEmailAsync()`.
++
+Default value: `10`
+
+* `cuba.email.maxSendingTimeSec` – the maximum expected time in seconds, which is required to send an email to the SMTP server. It is used for asynchronous sending to optimize the selection of `SendingMessage` objects from the DB queue.
++
+Default value: 120
+
+* `cuba.email.sendAllToAdmin` – indicates that all messages should be sent to the cuba.email.adminAddress address, regardless of the specified recipient's address. It is recommended to use this parameter during system development and debugging.
++
+Default value: `false`
+
+* `cuba.email.adminAddress` – the address, to which all messages are sent if the `cuba.email.sendAllToAdmin` property is switched on.
++
+Default value: `admin@localhost`
+
+* `cuba.emailerUserLogin` – the login of system user, used by asynchronous email sending code to be able to persist the information to the database. It is recommended to create a separate user (for example, `emailer`) without a password, so that it will be impossible to log in under his name via user interface. This is also convenient to search for messages related to email sending in the server log.
++
+Default value: `admin`
+
+You can also use properties from JavaMail API, adding them to the `app.properties` file of the *core* module. The `mail.*` properties are passed at the creation of the `javax.mail.Session` object.
+
+You can view the current parameter values and send a test message using the `app-core.cuba:type=Emailer` JMX bean.
+
+[[entity_inspector]]
+==== Entity Inspector
+
+The entity inspector enables working with any application objects without having to create dedicated screens. The inspector dynamically generates the screens to browse and edit the instances of the selected entity.
+
+This gives the system administrator an opportunity to review and edit the data that is not accessible from standard screens due to their design, and to create the data model and main menu sections linked to the entity inspector only, at prototyping stage.
+
+The entry point for the inspector is the `com/haulmont/cuba/gui/app/core/entityinspector/entity-inspector-browse.xml` screen.
+
+If a `String`-type parameter named `entity` with an entity name has been passed to the screen, the inspector will show a list of entities with the abilities for filtering, selection and editing. The parameter can be specified when registering the screen in <<screens.xml,screens.xml>>, for example:
+
+`screens.xml`
 
 [source, xml]
 ----
-include::{sourcesdir}/features/sales-rest-services.xml[]
+<screen id="sales$Product.lookup"
+      template="/com/haulmont/cuba/gui/app/core/entityinspector/entity-inspector-browse.xml">
+  <param name="entity"
+         value="sales$Product"/>
+</screen>
 ----
 
-To invoke the service method the following *GET* request must be executed:
+`menu.xml`
 
-  http://localhost:8080/app/rest/v2/services/sales_OrderService/calculatePrice?orderNumber=00001
+[source, xml]
+----
+<item id="sales$Product.lookup"/>
+----
 
-The request URL parts:
+Screen identifier defined as `++{entity_name}.lookup++` allows <<gui_PickerField,PickerField>> and <<gui_LookupPickerField,LookupPickerField>> components to use this screen within the `PickerField.LookupAction` standard action.
 
-* `sales_OrderService` - a service name.
-* `calculatePrice` - a method name.
-* `orderNumber` - an argument name with the value.
+Generally, the screen may be called without any parameters. In this case, the top part will contain an entity selection field. In the *cuba* application component, the inspector screen is registered with the `entityInspector.browse` identifier, so it can be simply referenced in a menu item:
 
-An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+[source, xml]
+----
+<item id="entityInspector.browse"/>
+----
 
-A service method may return a result of  simple datatype, an entity, an entities collection or a serializable POJO. In our case a BigDecimal is returned, so the response body contains just a number:
+[[entity_log]]
+==== Entity Log
 
-  39.2
+This mechanism tracks entity persistence at the <<entity_listeners,entity listeners>> level, i.e. it is guaranteed to track all changes passing through persistent context of the <<entityManager,EntityManager>>. Direct changes to entities in the database using SQL, including the ones performed using <<nativeQuery,NativeQuery>> or <<queryRunner,QueryRunner>>, are not tracked.
 
-[[rest_api_v2_ex_service_post]]
-====== Service Method Invocation (POST)
+Modified entity instances are passed to `registerCreate()`, `registerModify()` and `registerDelete()` methods of the `EntityLogAPI` bean before they are saved to the database. Each method has `auto` parameter, allowing separation of automatic logs added by entity listeners from manual logs added by calling these methods from the application code. When these methods are called from entity listeners the value of `auto` parameter is `true`.
 
-REST API allows execution not only of methods that have arguments of simple datatypes, but also of methods with the following arguments:
+The logs contain information about the time of modification, the user who has modified the entity, and the new values of the changed attributes. Log entries are stored in the *SEC_ENTITY_LOG* table corresponding to the `EntityLogItem` entity. Changed attribute values are stored in the *CHANGES* column and are converted to instances of `EntityLogAttr` entity when they are loaded by the Middleware.
 
-* entities
-* entities collections
-* POJOs
+[[entity_log_setup]]
+===== Setting Up Entity Log
 
-Suppose we added a new method to the `OrderService` created in the previous section:
+The simplest way to set up the entity log is using the *Administration > Entity Log > Setup* application screen.
+
+You can also set up Entity Log by entering some records in the database, if you want to include the configuration to the <<db_scripts,database initialization scripts>>.
+
+Logging is configured using the `LoggedEntity` and `LoggedAttribute` entities corresponding to *SEC_LOGGED_ENTITY* and *SEC_LOGGED_ATTR* tables.
+
+`LoggedEntity` defines the types of entities that should be logged. `LoggedEntity` has the following attributes:
+
+* `name` (*NAME* column) – the name of the entity <<metaClass,meta-class>>, for example, `sales$Customer`.
+
+* `auto` (*AUTO* column) – defines if the system should log the changes when EntityLogAPI is called with `auto = true` parameter (i.e. called by <<entity_listeners,entity listeners>>).
+
+* `manual` (*MANUAL* column) – defines if the system should log the changes when `EntityLogAPI` is called with `auto = false` parameter.
+
+`LoggedAttribute` defines the entity attribute to be logged and contains a link to the `LoggedEntity` and the attribute name.
+
+To set up logging for a certain entity, the corresponding entries should be added into the *SEC_LOGGED_ENTITY* and *SEC_LOGGED_ATTR* tables. For example, logging the changes to `name` and `grade` attributes of the `Customer` entity can be enabled using:
+
+[source, sql]
+----
+insert into SEC_LOGGED_ENTITY (ID, CREATE_TS, CREATED_BY, NAME, AUTO, MANUAL)
+values ('25eeb644-e609-11e1-9ada-3860770d7eaf', now(), 'admin', 'sales$Customer', true, true);
+
+insert into SEC_LOGGED_ATTR (ID, CREATE_TS, CREATED_BY, ENTITY_ID, NAME)
+values (newid(), now(), 'admin', '25eeb644-e609-11e1-9ada-3860770d7eaf', 'name');
+
+insert into SEC_LOGGED_ATTR (ID, CREATE_TS, CREATED_BY, ENTITY_ID, NAME)
+values (newid(), now(), 'admin', '25eeb644-e609-11e1-9ada-3860770d7eaf', 'grade');
+----
+
+The logging mechanism is activated by default. If you want to stop it, set the `Enabled` attribute of the `app-core.cuba:type=EntityLog` JMX bean `false` and then invoke the its `invalidateCache()` operation. Alternatively, set the <<cuba.entityLog.enabled,cuba.entityLog.enabled>> application property to `false` and restart the server.
+
+[[entity_log_view]]
+===== Viewing the Entity Log
+
+The entity log content can be viewed on a dedicated screen available at *Administration > Entity Log*.
+
+The change log for a certain entity can also be accessed from any application screen by loading a collection of `EntityLogItem` and the associated `EntityLogAttr` instances into the datasources and creating the visual components connected to these datasources. For example:
+
+[source, xml]
+----
+include::{sourcesdir}/features/entity_log.xml[]
+----
+
+Logged attributes should contain the <<localizedValue_annotation,@LocalizedValue>> annotation in order to display localized values. When annotated, the logging mechanism populates the `EntityLogAttr.messagesPack` field, and the table in the example above is able to use `locValue` column instead of `value`:
+
+[source, xml]
+----
+<table id="logAttrTable" width="100%" height="100%">
+  <columns>
+      <column id="name"/>
+      <column id="locValue"/>
+  </columns>
+  <rows datasource="logAttrDs"/>
+</table>
+----
+
+[[entity_snapshots]]
+==== Entity Snapshots
+
+The entity saving mechanism, much like the <<entity_log,entity log>>, is intended to track data changes at runtime. It has the following distinct features:
+
+* The whole state (or snapshot) of a graph of entities defined by a specified <<views,view>> is saved.
+
+* Snapshot saving mechanism is explicitly called from the application code.
+
+* The platform allows the snapshots to be viewed and compared.
+
+[[entity_snapshots_save]]
+===== Saving Snapshots
+
+In order to save a snapshot of a given graph of entities, you need to call the `EntitySnapshotService.createSnapshot()` method passing the entity which is an entry point to the graph and the <<views,view>> describing the graph. The snapshot will be created using the loaded entities without any calls to the database. As a result, the snapshot will not contain the fields that are not included in the view used to load the entity.
+
+The graph of Java objects is converted into XML and saved in the *SYS_ENTITY_SNAPSHOT* table (corresponding to the `EntitySnapshot` enitity) together with the link to the primary entity.
+
+Usually, snapshots need to be saved after <<screen_edit,editor screen>> commit. This may be achieved by overriding the `postCommit()` method of the screen controller, for example:
 
 [source, java]
 ----
-@Override
-public OrderValidationResult validateOrder(Order order, Date validationDate){
-    OrderValidationResult result=new OrderValidationResult();
-    result.setSuccess(false);
-    result.setErrorMessage("Validation of order "+order.getNumber()+" failed. validationDate parameter is: "+validationDate);
-    return result;
+public class CustomerEditor extends AbstractEditor<Customer> {
+
+  @Inject
+  protected Datasource<Customer> customerDs;
+
+  @Inject
+  protected EntitySnapshotService entitySnapshotService;
+
+...
+  @Override
+  protected boolean postCommit(boolean committed, boolean close) {
+      if (committed) {
+          entitySnapshotService.createSnapshot(customerDs.getItem(), customerDs.getView());
+      }
+      return super.postCommit(committed, close);
+  }
 }
 ----
 
-`OrderValidationResult` class looks as follows:
+[[entity_snapshots_view]]
+===== Viewing Snapshots
+
+Viewing snapshots for arbitrary entities is possible using the `com/haulmont/cuba/gui/app/core/entitydiff/diff-view.xml` frame. For example:
+
+[source, xml]
+----
+<frame id="diffFrame"
+      src="/com/haulmont/cuba/gui/app/core/entitydiff/diff-view.xml"
+      width="100%"
+      height="100%"/>
+----
+
+The snapshots should be loaded into the frame from the edit screen controller:
 
 [source, java]
 ----
-include::{sourcesdir}/features/OrderValidationResult.java[]
+public class CustomerEditor extends AbstractEditor<Customer> {
+
+  @Inject
+  protected EntityDiffViewer diffFrame;
+
+...
+  @Override
+  protected void postInit() {
+      if (!PersistenceHelper.isNew(getItem())) {
+          diffFrame.loadVersions(getItem());
+      }
+  }
+}
 ----
 
-The new method has an `Order` entity in the arguments list and returns a POJO.
+The `diff-view.xml` frame shows the list of snapshots for the given entity, with an ability to compare them. The view for each snapshot includes the user, date and time. When a snapshot is selected from the list, the changes will be displayed compared to the previous snapshot. All attributes are marked as changed for the first snapshot. Selecting two snapshots shows the results of the comparison in a table.
 
-Before the invocation with the REST API the method must be allowed, so we add a record to the `rest-services.xml` configuration file (it was described in the <<rest_api_v2_ex_service_get>>).
+The comparison table shows attribute names and their new values. When a row is selected, the detailed information on attribute changes across two snapshots is shown. Reference fields are displayed according to their <<namePattern_annotation,instance name>>. When comparing collections, the new and removed elements are highlighted with green and red color respectively. Collection elements with changed attributes are displayed without highlighting. Changes to element positions are not recorded.
 
-[source, xml]
-----
-include::{sourcesdir}/features/sales-rest-services-2.xml[]
-----
+[[entity_statistics]]
+==== Entity Statistics
 
-The `validateOrder` service method may be called with the *POST* request on the address:
+The entity statistics mechanism provides the information on the current number of entity instances in the database. This data is used to automatically select the best lookup strategy for linked entities and to limit the size of search results displayed in UI screens.
 
-  http://localhost:8080/app/rest/v2/services/sales_OrderService/validateOrder
+Statistics are stored in the *SYS_ENTITY_STATISTICS* table, corresponding to the `EntityStatistics` entity. Statistics can be updated manually by adding the the necessary records to the table, as well as automatically by using the `refreshStatistics()` method of the <<persistenceManagerMBean,PersistenceManagerMBean>> JMX bean. When passing the entity name as a parameter, the statistics will be collected only for the corresponding entity; otherwise, the statistics will be collected for all entities. Collecting statistics may take a considerable amount of time and put excessive load on the database. Thus, it is better to do it manually or by using a <<scheduled_tasks_cuba,scheduled task>> at an appropriate time.
 
-In case of the POST request parameters are passed in the request body. The request body must contain a JSON object, each field of this object corresponds to the service method argument.
+Programmatic access to entity statistics is available via `PersistenceManagerAPI` interface on the middle tier and `PersistenceManagerService` on the the client tier. Statistics get cached into memory, and as a result, any direct changes to statistics in the database will only be applied after the server restart or after a calling to the `PersistenceManagerMBean.flushStatisticsCache()` method.
 
-[source, json]
-----
-include::{sourcesdir}/features/rest-validateOrder-service-request.json[]
-----
+The description of the `EntityStatistics` attributes and their impact on the system behaviour is provided below:
 
-An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+* `name` (*NAME* column) – the name of the entity <<metaClass,meta-class>>, for example, `sales$Customer`.
 
-The REST API method returns a serialized POJO:
+* `instanceCount` (*INSTANCE_COUNT* column) – the approximate number of entity instances.
 
-[source, json]
-----
-include::{sourcesdir}/features/rest-validateOrder-service-response.json[]
-----
-
-[[rest_api_v2_ex_file_download]]
-====== Files Downloading
-
-When downloading a file, passing a security token in the request header is often inconvenient. It is desirable to have a URL for downloading that may be put to the *src* attribute of the *img* tag.
-
-As a solution, an OAuth token can also be passed in the request URL as a parameter with the *access_token* name.
-
-For example, an image is uploaded to the application. Its FileDescriptor id is `44809679-e81c-e5ae-dd81-f56f223761d6`.
-
-In this case a URL for downloading the image will look like this:
-
-  http://localhost:8080/app/rest/v2/files/44809679-e81c-e5ae-dd81-f56f223761d6?access_token=a2f0bb4e-773f-6b59-3450-3934cbf0a2d6
-
-[[rest_api_v2_ex_javascript_usage]]
-====== JavaScript Usage Example
-
-This section contains an example of using REST API v2 from JavaScript running on a HTML page. The page initially shows login form, and after successful login displays a message and a list of entities.
-
-For simplicity, we will use `modules/web/web/VAADIN` folder for storing HTML/CSS/JavaScript files, as the corresponding folder in the deployed web application is used for serving static resources by default. So you will not need to make any configuration of your Tomcat application server. The resulting URL will start from `++http://localhost:8080/app/VAADIN++`, so do not use this approach in a real world application - create a separate web application with its own context instead.
-
-Download https://jquery.com/download[jQuery] and http://getbootstrap.com/getting-started/#download[Bootstrap] and copy to `modules/web/web/VAADIN` folder of your project. Create `customers.html` and `customers.js` files, so the content of the folder should look as follows:
-
-[source, plain]
-----
-bootstrap.min.css
-customers.html
-customers.js
-jquery-3.1.1.min.js
-----
-
-`customers.html` file content:
-
-[source, html]
-----
-include::{sourcesdir}/features/rest_customers.html[]
-----
-
-`customers.js` file content:
-
-[source, javascript]
-----
-include::{sourcesdir}/features/rest_customers_script.js[]
-----
-
-Login and password from the user input are sent to the server by the POST request with the Base64-encoded client credentials in the `Authorization` header as explained in <<rest_api_v2_ex_get_token>> section. If the authentication is successful, the web page receives an access token value from the server, the token is stored in the `oauthToken` variable, the `loginForm` div is hidden and the `loggedInStatus` div is shown.
-
-To show the list of customers, the request is sent to the server <<rest_api_v2_ex_get_entities_list,to get the instances>> of the `sales$Customer` entity, passing the `oauthToken` value in the `Authorization` header.
-
-In case the request is processed successfully, the `customers` div is shown, and the `customersList` element is filled with items containing customer names and emails.
-
-image::rest_js_1.png[align="center"]
-
-image::rest_js_2.png[align="center"]
-
-[[rest_api_v2_ex_localized_messages]]
-====== Getting Localized Messages
-
-There are methods in the REST API for getting localized messages for entities, their properties and enums.
-
-For example, to get a list of localized messages for the `sec$User` entity you have to execute the following *GET* request:
-
-  http://localhost:8080/app/rest/v2/messages/entities/sec$User
-
-An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
-
-You can explicitly specify the desired locale using the *Accept-Language* http header.
-
-The response will be like this:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-user-messages-response.json[]
-----
-
-To get the localization for enum, use the following URL:
-
-  http://localhost:8080/app/rest/v2/messages/enums/com.haulmont.cuba.security.entity.RoleType
-
-If you omit the entity name or enum name part in the URL, you'll get the localization for all entities or enums.
-
-[[rest_api_v2_ex_json_transformations]]
-====== Data Model Versioning Example
-
-Entity attribute was renamed::
+* `fetchUI` (*FETCH_UI* column) – the size of the data displayed on a page when extracting entity lists.
 +
---
-Let's suppose that the `oldNumber` attribute of the `sales$Order` entity was renamed to `newNumber` and `date` was renamed to `deliveryDate`. In this case transformation config will be like this:
+For example, the <<gui_Filter,Filter>> component uses this number in the *Show N rows* field.
 
-[source, xml]
-----
-include::{sourcesdir}/features/rest-transform-attr-renamed-config.xml[]
-----
-
-If the client app needs to work with the old version of the `sales$Order` entity then it must pass the `modelVersion` value in the URL parameter:
-
-  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.0
-
-The following result will be returned:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-transform-attr-renamed-response.json[]
-----
-
-The response JSON contains an `oldNumber` and `date` attributes although the entity in the CUBA application has `newNumber` and `deliveryDate` attributes.
---
-
-Entity name was changed::
+* `maxFetchUI` (*MAX_FETCH_UI* column) – the maximum number of entity instances that can be extracted and passed to the client tier.
 +
---
-Next, let's imagine, that in some next release of the application a name of the `sales$Order` entity was also changed. The new name is `sales$NewOrder`.
+This limit is applied when showing entity lists in such components as <<gui_LookupField,LookupField>> or <<gui_LookupPickerField,LookupPickerField>>, as well as tables without a <<gui_Filter,filter>>, when no limitations are applied to the connected <<datasources,datasource>> via `CollectionDatasource.setMaxResults()`. In this case the data source itself limits the number of extracted instances to `maxFetchUI`.
 
-Transformation config for version `1.1` will be like this:
-
-[source, xml]
-----
-include::{sourcesdir}/features/rest-transform-entity-name-changed-config.xml[]
-----
-
-In addition to the config from the previous example an `oldEntityName` attribute is added here. It specifies the entity name that was valid for model version `1.1`. The `currentEntityName` attribute specifies the current entity name.
-
-Although an entity with a name `sales$Order` doesn't exist anymore, the following request will work:
-
-  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
-
-The REST API controller will understand that it must search among `sales$NewOrder` entities and after the entity with given id is found names of the entity and of the `newNumber` attribute will be replaced in the result JSON:
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
-----
-
-The client app can also use the old version of data model for entity update and creation.
-
-This *POST* request that uses old entity name and has old JSON in the request body will work:
-
-  http://localhost:8080/app/rest/v2/entities/sales$Order
-
-[source, json]
-----
-include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
-----
---
-
-Entity attribute must be removed from JSON::
+* `lookupScreenThreshold` (*LOOKUP_SCREEN_THRESHOLD* column) – the threshold, measured in number of entities, which determines when <<screen_lookup,lookup screens>> should be used instead of dropdowns for entity searches.
 +
---
-If some attribute was added to the entity, but the client that works with the old version of data model doesn't expect this new attribute, then the new attribute can be removed from the result JSON.
+The <<gui_Filter,Filter>> component takes this parameter into account when choosing filter parameters. Until the threshold is reached, the system uses the <<gui_LookupField,LookupField>> component, and once the threshold is exceeded, the <<gui_PickerField,PickerField>> component is used. Hence, if lookup screens should be used for a specific entity in a filter parameter, it is possible to set the value of `lookupScreenThreshold` to a value lower than `instanceCount`.
 
-Transformation configuration for this case will look like this:
+`PersistenceManagerMBean` JMX bean enables setting default values for all of the parameters mentioned above via `DefaultFetchUI`, `DefaultMaxFetchUI`, `DefaultLookupScreenThreshold` attributes. The system will use the corresponding default values when an entity has no statistics, which is a common case.
 
-[source, xml]
-----
-include::{sourcesdir}/features/rest-transform-attr-removed-config.xml[]
-----
-
-Transformation in this config file contains a `toVersion` tag with a nested `removeAttribute` command. This means that when the transformation from the current state to specific version is performed (i.e. when you request a list of entities) then a `discount` attribute must be removed from the result JSON.
-
-In this case if you perform the request without the `modelVersion` attribute, the discount attribute will be returned:
-
-  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93
+Besides, `PersistenceManagerMBean.enterStatistics()` method allows a user to enter statistics data for an entity. For example, the following parameters should be passed to the method to set a default page size to 1,000 and maximum number of loaded into <<gui_LookupField,LookupField>> instances to 30,000:
 
 [source, json]
 ----
-include::{sourcesdir}/features/rest-transform-attr-removed-response-2.json[]
+entityName: sales$Customer
+fetchUI: 1000
+maxFetchUI: 30000
 ----
 
-If you specify the `modelVersion` then `discount` attribute will be removed
+[[entityImportExport]]
+==== Export and Import Entities in JSON
 
-  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+The platform provides an API for exporting and importing graphs of entities in JSON format. It is available on Middleware via the `EntityImportExportAPI` interface and on the client tier via `EntityImportExportService`. These interfaces have an identical set of methods which are described below. The export/import implementation delegates to the `EntitySerializationAPI` interface which can also be used directly.
 
-[source, json]
-----
-include::{sourcesdir}/features/rest-transform-attr-removed-response.json[]
-----
---
-
-Using custom transformer::
+* `exportEntitiesToJSON()` - serializes a collection of entities to JSON.
 +
---
-You can also create and register a custom JSON transformer. As an example let's examine the following situation: there was an entity `sales$OldOrder` that was renamed to `sales$NewOrder`. This entity has an `orderDate` field. In the previous version, this date field contained a time part, but in the latest version of the entity, the time part is removed. REST API client that request the entity with an old model version `1.0` expects the date field to have the time part, so the transformer must modify the value in the JSON.
+[source, java]
+----
+include::{sourcesdir}/common/entityImportExportService_1.java[]
+----
 
-First, that's how the transformer configuration must look like:
+* `exportEntitiesToZIP()` - serializes a collection of entities to JSON and packs the JSON file into ZIP archive. In the following example, the ZIP archive is saved to the file storage using the <<fileLoader,FileLoader>> interface:
++
+[source, java]
+----
+include::{sourcesdir}/common/entityImportExportService_2.java[]
+----
+
+* `importEntitiesFromJSON()` - deserializes the JSON and persists deserialized entities according to the rules, described by the `entityImportView` parameter (see JavaDocs on the `EntityImportView` class). If an entity is not present in the database, it will be created. Otherwise the fields of the existing entity that are specified in the `entityImportView` will be updated.
+
+* `importEntitiesFromZIP()` - reads a ZIP archive that contains a JSON file, deserializes the JSON and persists deserialized entities like the `importEntitiesFromJSON()` method.
++
+[source, java]
+----
+include::{sourcesdir}/common/entityImportExportService_3.java[]
+----
+
+[[file_storage]]
+==== File Storage
+
+File storage enables uploading, storing and downloading arbitrary files associated with the entities. In the standard implementation, the files are stored outside of the main database using a specialized structure within the file system.
+
+File storage mechanism includes the following parts:
+
+* `FileDescriptor` entity – the descriptor of the uploaded file (not to be confused with `java.io.FileDescriptor`) enables referencing the file from the data model objects.
+
+* `FileStorageAPI` interface – provides access to the file storage at the middle <<app_tiers,tier>>. Its main methods are:
+
+** `saveStream()` – saves the contents of the file passed as the `InputStream` according to the specified `FileDescriptor`.
+
+** `openStream()` – returns the contents of the file defined by the `FileDescriptor` in the form of an opened `InputStream`.
+
+* `FileUploadController` class – a Spring MVC controller, which enables sending files from the Client to the Middleware with HTTP POST requests.
+
+* `FileDownloadController` class – Spring MVC controller which enables retrieving files from the Middleware to the Client with HTTP GET requests.
+
+*  <<gui_FileUploadField,FileUpload>> and <<gui_FileMultiUploadField,FileMultiUpload>> visual components – enable uploading files from the user's computer to the client tier of the application and then transferring them to the Middleware.
+
+* `FileUploadingAPI` interface – temporary storage for files uploaded to the client tier. It is used for uploading files to the client tier by the visual components mentioned above. The application code can use `putFileIntoStorage()` method for moving a file into the persistent storage of the Middleware.
+
+* <<fileLoader,FileLoader>> - an interface for working with the file storage using the same set of methods on both middle and client tiers.
+
+* `ExportDisplay` – client tier interface allowing downloading various application resources to the user's computer. Files can be retrieved from persistent storage using the `show()` method, which requires a `FileDescriptor`. An instance of `ExportDisplay` may be obtained either by calling the `AppConfig.createExportDisplay()` static method, or through <<screen_controller_injection,injection>> into the controller class.
+
+[TIP]
+====
+File transfer between the user's computer and the storage in both directions is always performed by copying data between input and output streams. Files are never fully loaded into memory at any application level, which enables transferring files of almost any size.
+====
+
+[[file_upload]]
+===== Uploading Files
+
+Files from the user's computer can be uploaded into the storage using the <<gui_FileUploadField,FileUpload>> and <<gui_FileMultiUploadField,FileMultiUpload>> components. Usage examples are provided in this manual in the appropriate component descriptions, as well as in <<images_recipe>>.
+
+`FileUpload` component is also available within the ready-to-use <<dialogs_fileUploadDialog,FileUploadDialog>> window designed to load files in the temporary storage.
+
+The temporary client-level storage (`FileUploadingAPI`) stores temporary files in the folder defined by <<cuba.tempDir,cuba.tempDir>> application property. Temporary files can remain in the folder in case of any failures. The `clearTempDirectory()` method of the `cuba_FileUploading` bean is invoked periodically by the scheduler defined in the <<spring.xml,cuba-web-spring.xml>> file.
+
+[[file_download]]
+===== Downloading Files
+
+Files can be downloaded from the file storage to the user's computer by using the `ExportDisplay` interface. It can be obtained by calling the `AppConfig.createExportDisplay()` static method or via <<screen_controller_injection,injection>> in the controller class. For example:
+
+[source, java]
+----
+AppConfig.createExportDisplay(this).show(fileDescriptor);
+----
+
+The `show()` method accepts an optional `ExportFormat` type parameter, which defines the type of the content and the file extension. If the format has not been provided, the extension is retrieved from the `FileDescriptor`, and the content type is set to `application/octet-stream`.
+
+The file extension defines whether the file is downloaded via the browser's standard open/save dialog (`Content-Disposition = attachment`), or if the browser will attempt to show the file in the browser window (`Content-Disposition = inline`). The list of extensions for files that should be shown in the browser window is defined by the <<cuba.web.viewFileExtensions,cuba.web.viewFileExtensions>> application property.
+
+`ExportDisplay` also enables downloading of arbitrary data if `ByteArrayDataProvider` is used as a parameter of the `show()` method. For example:
+
+[source, java]
+----
+include::{sourcesdir}/features/exportDisplay_1.java[]
+----
+
+[[fileLoader]]
+===== FileLoader Interface
+
+The `FileLoader` interface allows you to work with file storage using the same set of methods on both middle and client tiers. Uploading and downloading of files is performed using streams:
+
+* `saveStream()` – saves an `InputStream` contents into file storage.
+
+* `openStream()` – returns an input stream to load a file contents from file storage.
+
+[TIP]
+====
+Both client-side and server-side implementations of `FileLoader` follow the common rule: file transfer is always performed by copying data between input and output streams. Files are never fully loaded into memory at any application level, which enables transferring files of almost any size.
+====
+
+As an example of using `FileLoader` let's consider a simple task of saving a user input into the text file and displaying the file content in another field on the same screen.
+
+The screen contains two `textArea` fields. Suppose the user inputs text in the first `textArea`, clicks the `buttonIn` below, and the text is saved to the `FileStorage`. The second `textArea` will display the content of the saved file on `buttonOut` click.
+
+Below is the fragment of the screen XML descriptor:
 
 [source, xml]
 ----
-include::{sourcesdir}/features/rest-transform-custom-config.xml[]
+include::{sourcesdir}/features/fileLoader_1.xml[]
 ----
 
-There are a `custom` element and nested `toVersion` and `fromVersion` elements. These elements have a reference to the transformer bean. This means that custom transformer must be registered as a Spring bean. There is one important thing here: a custom transformer may use the `RestTransformations` platform bean (this bean gives an access to other entities transformers if it is required). But the `RestTransformations` bean is registered in the Spring context of the REST API servlet, not in the main context of the web application. This means that custom transformer beans must be registered in the REST API Spring context as well.
+The screen controller contains two methods invoked on buttons click:
 
-That's how we can do that.
+* In the `onButtonInClick()` method we create a byte array from the first `textArea` input. Then we create a `FileDescriptor` object and define the new file name, extension, size, and creation date with its attributes.
++
+Then we save the new file with the `saveStream()` method of `FileLoader`, passing the `FileDescriptor` to it and providing the file content with an `InputStream` supplier. We also commit the `FileDescriptor` to the data store using the `DataManager` interface.
 
-First, create a `rest-dispatcher-spring.xml` in the *web* or *portal* module (e.g. in package `com.company.test`).
+* In the `onButtonOutClick()` method we extract the content of the saved file using the `openStream()` method of the `FileLoader`. Then we display the content of the file in the second `textArea`.
 
-Next, register this file in the `app.properties` of the web or portal module:
+[source, java]
+----
+include::{sourcesdir}/features/fileLoader_1.java[]
+----
+
+image::fileLoader_recipe.png[align="center"]
+
+[[file_storage_impl]]
+===== Standard File Storage Implementation
+
+The standard implementation stores files in a dedicated folder structure within one or several file locations.
+
+The roots of the structure can be defined in the <<cuba.fileStorageDir,cuba.fileStorageDir>> application property in the format of comma-separated paths list. For example:
 
 [source, properties]
 ----
-cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+cuba.fileStorageDir=/work/sales/filestorage,/mnt/backup/filestorage
 ----
 
-The `rest-dispatcher-spring.xml` must contain custom transformer bean definitions:
+If the property is not defined, the storage will be located in the `filestorage` sub-folder of the Middleware's <<work_dir,work directory>>. This folder is `tomcat/work/app-core/filestorage` in standard Tomcat deployment.
+
+With several locations defined, the storage behaves as follows:
+
+* First folder in the list is considered as _primary_, others – as _backup_.
+
+* Stored files are first placed in the primary folder, and then copied to all of the backup directories.
++
+The system checks that each folder is accessible before storing a file. If the primary directory is not accessible, the system throws an exception without storing the file. If any of the backup directories are not accessible, the file gets stored in available ones and the corresponding error is logged.
+
+* The files are read from the primary directory.
++
+If the primary directory is not accessible, the system reads files from the first available backup directory containing the required files. A corresponding error is logged.
+
+The storage folder structure is organized in the following way:
+
+* There are three levels of subdirectories representing the files upload date – year, month, and day.
+
+* The actual files are saved in the `day` directory. The file names match the identifiers of the corresponding `FileDescriptor` objects. The file extension matches that of the source file.
+
+* The root folder of the structure contains a `storage.log` file with the information on each stored file, including the user and upload time. This log is not required for operation of the storage mechanism, but it could be useful for troubleshooting.
+
+The `app-core.cuba:type=FileStorage` JMX bean displays the current set of storage roots and offers the following methods for troubleshooting:
+
+* `findOrphanDescriptors()` – finds all instances of `FileDescriptor` in the database that do not have a matching file in the storage.
+
+* `findOrphanFiles()` – finds all files in the storage that do not have a corresponding `FileDescriptor` instance in the database.
+
+[[folders_pane]]
+==== Folders Panel
+
+The folders panel provides quick access to frequently used information. It is a panel on the left side of the main application window containing a hierarchical structure of folders. Clicking on folders shows the corresponding system screens with certain parameters.
+
+At the moment of this writing, the panel is available for the *Web Client* only.
+
+The platform supports three types of folders: _application folders_, _search folders_ and _record sets_. Application folders are displayed at the top of the panel as a separate folder tree. Search folders and record sets are displayed at the bottom of the panel in a combined tree.
+
+* Application folders:
+
+** Open screens with or without a <<gui_Filter,filter>>.
+
+** The set of folders depend on the current user session. Folder visibility is defined by a Groovy script.
+
+** Application folders can be created and changed only by users with special <<permissions,permissions>>.
+
+** Folder headers may show the record count calculated by a Groovy script.
+
+** Folder headers are updated on timer events, which means that record count and display style for each folder can be updated.
+
+* Search folders:
+
+** Open screens with a <<gui_Filter,filter>>.
+
+** Search folders can be local or global, accessible only by the user who created them or by all users, respectively.
+
+** Local folders can be created by any user, while global are created only by users with special permissions.
+
+* Record sets:
+
+** Open screens with a <<gui_Filter,filter>> containing a condition to select specific records by their identifiers.
+
+** Record set content can be edited using the dedicated table <<gui_Action,actions>>: Add to set and Remove from set.
+
+** Record sets are available only to the user who created them.
+
+The following application properties can influence the functionality of the folder panel:
+
+* <<cuba.web.foldersPaneEnabled,cuba.web.foldersPaneEnabled>>
+
+* <<cuba.web.foldersPaneVisibleByDefault,cuba.web.foldersPaneVisibleByDefault>>
+
+* <<cuba.web.foldersPaneDefaultWidth,cuba.web.foldersPaneDefaultWidth>>
+
+* <<cuba.web.appFoldersRefreshPeriodSec,cuba.web.appFoldersRefreshPeriodSec>>
+
+* <<cuba.web.showFolderIcons,cuba.web.showFolderIcons>>
+
+[[application_folder]]
+===== Application Folders
+
+Creating application folders requires special <<permissions,permissions>> to create/edit application folders (`cuba.gui.appFolder.global`).
+
+A simple application folder can be created via the folder panel context menu. Such folder will not be connected to the system screens and can be only used to group other folders within a folder tree.
+
+A folder that opens a screen with a filter can be created as follows:
+
+* Open a screen and filter the records as necessary.
+
+* Select *Save as application folder* option in the *Filter...* button menu.
+
+* Fill in the folder attributes in the *Add* dialog:
+
+** *Folder name*.
+
+** *Window title* – a string to be added to the window title when opening it from the folder.
+
+** *Parent folder* – determines the location of the new folder in the folder tree.
+
+** *Visibility script* – a Groovy script defining folder visibility, executed at the start of user session.
++
+The script should return a `Boolean`. The folder is visible, if the script is not defined or returns `true` or `null`. Example of a Groovy script:
++
+[source, groovy]
+----
+userSession.currentOrSubstitutedUser.login == 'admin'
+----
+
+** *Count script* – a Groovy script defining the record count and display style for a folder. Executed at the start of the user session and on timer.
++
+The script should return a numeric value, the integer part of which will be used as the record count value. If the script is not defined or returns `null`, the counter will not be displayed. In addition to the returned value, the script can also set the `style` variable, which will be used as folder display style. Example of a Groovy script:
++
+[source, java]
+----
+def em = persistence.getEntityManager()
+def q = em.createQuery('select count(o) from sales$Order o')
+def count = q.getSingleResult()
+
+style = count > 0 ? 'emphasized' : null
+return count
+----
++
+In order for the style to be displayed, the application theme should contain this style for the `v-tree-node` element in `cuba-folders-pane`, for example:
++
+[source, css]
+----
+.cuba-folders-pane .v-tree-node.emphasized {
+  font-weight: bold;
+}
+----
+
+Scripts can use the following variables defined in the `groovy.lang.Binding` context:
+
+* `folder` – an instance of `AppFolder` entity for which the script is executed.
+
+* `userSession` – instance of <<userSession,UserSession>> for current user session.
+
+* `persistence` – implementation of the <<persistence,Persistence>> interface.
+
+* `metadata` – implementation of the <<metadata,Metadata>> interface.
+
+The platform uses the same instance of `groovy.lang.Binding` for all scripts when the folders are being updated. So it is possible to pass variables between them in order to eliminate duplicate requests and increase performance.
+
+Script sources can be stored within the attributes of the `AppFolder` entity or in separate files. In the latter case, the attribute should include a file path with a mandatory ".groovy" extension, as required by the <<resources,Resources>> interface. If an attribute contains a string ending with ".groovy", the script will be loaded from the corresponding file; otherwise, the attribute content itself will be used as a script.
+
+Application folders are instances of the `AppFolder` entity and are stored in the related *SYS_FOLDER* and *SYS_APP_FOLDER* tables.
+
+[[search_folder]]
+===== Search Folders
+
+Search folders can be created by the users similar to application folders. Group folders are created directly via the context menu of the folder panel. The folders connected to screens are created from the *Filter...* button menu, using the Save as search folder option.
+
+Creating global search folders, requires the user to have *Create/edit global search folders* permission (`cuba.gui.searchFolder.global`).
+
+Search folder's filter can be edited once the folder is created by opening the folder and changing the *Folder:{folder name}* filter. Saving the filter will change the folder filter as well.
+
+Search folders are instances of the `SearchFolder` entity stored in the related *SYS_FOLDER* and *SEC_SEARCH_FOLDER* tables.
+
+[[record_set]]
+===== Record Sets
+
+Using records sets within a screen is possible, if the <<gui_Filter,Filter>> has a corresponding <<gui_Table,Table>> component defined in the `applyTo` attribute. For example:
 
 [source, xml]
 ----
-include::{sourcesdir}/features/rest-transform-dispatcher-spring.xml[]
+<layout>
+  <filter id="customerFilter"
+          datasource="customersDs"
+          applyTo="customersTable"/>
+
+  <groupTable id="customersTable"
+              width="100%">
+      <buttonsPanel>
+          <button action="customersTable.create"/>
+...
+      </buttonsPanel>
+...
 ----
 
-The content of the `sales_OrderJsonTransformerToVersion` transformer is as follows:
+*Add to set* or *Add to current set* / *Remove from set* buttons should now appear in table context menu. If a table includes a `buttonsPanel` (as in the example above), the corresponding table buttons will also be added.
+
+Record sets are the instances of the `SearchFolder` entity stored in the related *SYS_FOLDER* and *SEC_SEARCH_FOLDER* tables.
+
+[[credits]]
+==== Information about Software Components
+
+The platform provides an ability to register the information about third party software components used in the application (credits) and to display this information in the UI. The information includes a software component name, a website link and the license text.
+
+<<app_components,Application components>> of the platform contain their own files with descriptions, like `cuba-credits.xml`, `reports-credits.xml`. The <<cuba.creditsConfig,cuba.creditsConfig>> application property can be used to specify a description file of the application.
+
+The structure of the `credits.xml` file is as follows:
+
+* The `items` element lists the used libraries with license texts included either as an embedded `license` element, or as a `license` attribute with a link to the text in the `licenses` section.
++
+It is possible to reference licenses declared in the current file as well as any other file declared in `cuba.creditsConfig` variable prior to the current one.
+
+* The `licenses` element lists the texts of general licenses used (e.g. LGPL).
+
+The entire list of third-party software components can be displayed using the `com/haulmont/cuba/gui/app/core/credits/credits-frame.xml` frame, which loads the information from the files defined in the `cuba.creditsConfig` property. An example of the frame within a screen:
+
+[source, xml]
+----
+<dialogMode width="500" height="400"/>
+<layout expand="creditsBox">
+  <groupBox id="creditsBox"
+            caption="msg://credits"
+            width="100%">
+      <frame id="credits"
+              src="/com/haulmont/cuba/gui/app/core/credits/credits-frame.xml"
+              width="100%"
+              height="100%"/>
+  </groupBox>
+</layout>
+----
+
+If the dialog mode (`WindowManager.OpenType.DIALOG`) is used when opening the screen that contains the frame, the height must be specified; otherwise, the scrolling may work not correctly. See the `dialogMode` element in the example above.
+
+[[myBatis]]
+==== Integration with MyBatis
+
+The platform includes *MyBatis* framework, which offers wider capabilities for running SQL and mapping query results to objects compared to ORM <<nativeQuery,native query>> or <<queryRunner,QueryRunner>>.
+
+The following beans must be added into <<spring.xml,spring.xml>> file of the *core* module to use MyBatis in the project:
+
+[source, xml]
+----
+<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+  <property name="cubaDataSource" ref="cubaDataSource"/>
+  <property name="configLocation" value="cuba-mybatis.xml"/>
+  <property name="mapperLocations" value="classpath*:com/sample/sales/core/sqlmap/*.xml"/>
+</bean>
+
+<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
+  <constructor-arg index="0" ref="sqlSessionFactory" />
+</bean>
+----
+
+The `MapperLocations` parameter defines a path to `mapperLocations` mapping files (according to the rules of `ResourceLoader` Spring interface).
+
+Below is the an example of a mapping file for loading an instance of `Order` together with a related `Customer` and a collection of `Order` items:
+
+[source, xml]
+----
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+      PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+      "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.sample.sales">
+
+  <select id="selectOrder" resultMap="orderResultMap">
+      select
+          o.ID as order_id,
+          o.DATE as order_date,
+          o.AMOUNT as order_amount,
+          c.ID as customer_id,
+          c.NAME as customer_name,
+          c.EMAIL as customer_email,
+          i.ID as item_id,
+          i.QUANTITY as item_quantity,
+          p.ID as product_id,
+          p.NAME as product_name
+      from
+          SALES_ORDER o
+          left join SALES_CUSTOMER c on c.ID = o.CUSTOMER_ID
+          left join SALES_ITEM i on i.ORDER_ID = o.id and i.DELETE_TS is null
+          left join SALES_PRODUCT p on p.ID = i.PRODUCT_ID
+      where
+          c.id = #{id}
+  </select>
+
+  <resultMap id="orderResultMap" type="com.sample.sales.entity.Order">
+      <id property="id" column="order_id"/>
+      <result property="date" column="order_date"/>
+      <result property="amount" column="order_amount"/>
+
+      <association property="customer" column="customer_id" javaType="com.sample.sales.entity.Customer">
+          <id property="id" column="customer_id"/>
+          <result property="name" column="customer_name"/>
+          <result property="email" column="customer_email"/>
+      </association>
+
+      <collection property="items" ofType="com.sample.sales.entity.Item">
+          <id property="id" column="item_id"/>
+          <result property="quantity" column="item_quantity"/>
+          <association property="product" column="product_id" javaType="com.sample.sales.entity.Product">
+              <id property="id" column="product_id"/>
+              <result property="name" column="product_name"/>
+          </association>
+      </collection>
+  </resultMap>
+
+</mapper>
+----
+
+The following code can be used to retrieve query results from the example above:
 
 [source, java]
 ----
-include::{sourcesdir}/features/OrderJsonTransformerToVersion.java[]
+Transaction tx = persistence.createTransaction();
+try {
+  SqlSession sqlSession = AppBeans.get("sqlSession");
+  Order order = (Order) sqlSession.selectOne("com.sample.sales.selectOrder", orderId);
+  tx.commit();
+} finally {
+  tx.end();
+}
 ----
 
-This transformer finds the `orderDate` node in the JSON object and modifies its value by adding the time part to the value.
+[[pessimistic_locking]]
+==== Pessimistic Locking
 
-When the `sales$OldOrder` entity with a data model version `1.0` is requested, the result JSON will contain entities with `orderDate` fields that contain time part, although it is not stored in the database anymore.
+Pessimistic locking should be used when there is a high probability of simultaneous editing of a single entity instance. In such cases the standard <<optimistic_locking,optimistic locking>>, based on entity versioning, usually creates too many collisions.
 
-A couple more words about custom transformers. They must implement the `EntityJsonTransformer` interface. You can also extend the `AbstractEntityJsonTransformer` class and override its `doCustomTransformations` method. The `AbstractEntityJsonTransformer` contains all functionality of the standard transformer.
+Pessimistic locking explicitly locks an entity instance when it is opened in the <<screen_edit,editor>>. As a result, only one user can edit this particular entity instance in a given moment of time.
+
+Pessimistic locking mechanism can also be used to manage simultaneous execution of arbitrary processes. The key benefit is that the locks are distributed, since they are replicated in the Middleware cluster. More information is available in JavaDocs for the `LockManagerAPI` and `LockService` interfaces.
+
+Pessimistic locking can be enabled for any entity class on application development or production stage using *Administration > Locks > Setup* screen, or as follows:
+
+* Insert a new record with the following field values into the *SYS_LOCK_CONFIG* table with the following field values:
++
 --
+** *ID* – an arbitrary UUID-type identifier.
+
+** *NAME* – the name of the object to be locked. For an entity, it should be the name of its <<metaClass,meta class>>.
+
+** *TIMEOUT_SEC* – lock expiration timeout in seconds.
+
+Example:
+
+[source, sql]
+----
+insert into sys_lock_config (id, create_ts, name, timeout_sec) values (newid(), current_timestamp, 'sales$Order', 300)
+----
+--
+
+* Restart the server or call `reloadConfiguration()` method of the `app-core.cuba:type=LockManager` JMX bean.
+
+Current state of locks can be tracked via the `app-core.cuba:type=LockManager` JMX bean or through the *Administration > Locks* screen. This screen also enables unlocking of any object.
 
 [[scheduled_tasks]]
 ==== Scheduled Tasks Execution
@@ -1408,629 +1142,45 @@ The method can be invoked automatically. Create a new task with the following pa
 Precise time synchronization of Middleware servers is required for correct execution of singleton tasks!
 ====
 
-[[email_sending]]
-==== Email Sending
+[[link_to_screen]]
+==== Screen Links
 
-The platform provides email sending facilities with the following features:
+The Web Client <<app_tiers,block>> enables opening application screens via commands embedded into a URL. If the browser does not have an active application session with the registered user, the application will show the login screen first, and then, after successful authentication, proceed to the main application window with the requested screen.
 
-* Synchronous or asynchronous sending. In case of synchronous sending, the calling code waits till the message is sent to the SMTP server. In case of asynchronous sending, the message is persisted to the database and the control is returned immediately to the calling code. The actual sending is done later by a <<scheduled_tasks,scheduled task>>. 
+The list of supported commands is defined in the <<cuba.web.linkHandlerActions,cuba.web.linkHandlerActions>> application property. By default, these are `open` and `o`. When the HTTP request is being processed, the last part of the URL is analyzed, and if a match with one of the commands is detected, control is handed over to the `LinkHandler` <<managed_beans,bean>>. The standard implementation of this bean accepts the following parameters:
 
-* Reliable tracking of message sending timestamp or errors in the database for both synchronous and asynchronous modes.
-
-* User interface to search and view information about sent messages, including all message attributes and content, sending status and the number of attempts.
-
-See an example of using this mechanism in the <<sending_emails_recipe,Sending Emails>> development recipe.
-
-[[email_sending_methods]]
-===== Sending Methods
-
-To send an email, the `EmailerAPI` bean should be used at the Middleware, and the `EmailService` service – at the client tier.
-
-The basic methods of these components are described below:
-
-* `sendEmail()` – synchronous message sending. The calling code is blocked while sending the message to the SMTP server.
+* `screen` – name of the screen defined in <<screens.xml,screens.xml>>, for example:
 +
-The message can be transmitted in the form of a set of parameters (the comma-separated list of recipients, subject, content, array of attachments), and in the form of a special `EmailInfo` object, which encapsulates all this information and allows you to explicitly set the sender's address and to form the message body using a *FreeMarker* template.
-+
-`EmailException` may be thrown during synchronous sending, containing the information on the recipient addresses, where delivery has failed, and the corresponding error messages.
-+
-During the execution of the method, a `SendingMessage` instance is created in the database for each recipient. It has the initial `SendingStatus.SENDING` status, and `SendingStatus.SENT` after successful sending. In case of a message sending error, the message status changes to `SendingStatus.NOTSENT`.
-
-* `sendEmailAsync()` – asynchronous message sending. This method returns the list (by the number of recipients) of `SendingMessage` instances in `SendingStatus.QUEUE` status, which were created in the database. The actual sending is performed with the subsequent call of the `EmailerAPI.processQueuedEmails()` method, which should be invoked from a <<scheduled_tasks,scheduled task>> with the desired frequency.
-
-[[email_attachments]]
-===== Email Attachments
-
-The `EmailAttachment` object is a wrapper that holds the attachment as a byte array (the `data` field), the file name (the `name` field), and, if necessary, the attachment identifier which is unique for this message (the optional but useful `contentId` field).
-
-The attachment identifier may be used to insert images in the message body. For this, a unique `contentId` (for example, `myPic`) is specified when creating `EmailAttachment`. Expression like `cid:myPic` can be used as a path to insert the attachment in the message body. So, to insert an image you can specify the following HTML element:
-
-[source, xml]
-----
-<img src="cid:myPic"/>
-----
-
-[[email_sending_properties]]
-===== Configuring Email Sending Parameters
-
-Email sending parameters can be configured using the <<app_properties,application properties>> listed below. All of them are runtime parameters and are stored in the database, but can be overridden for a specific *Middleware* block in its `app.properties` file.
-
-All email sending parameters are available via the `EmailerConfig` configuration interface.
-
-* `cuba.email.fromAddress` – the default sender's address. It is used if the `EmailInfo.from` attribute is not specified.
-+
-Default value: `DoNotReply@localhost`
-
-* `cuba.email.smtpHost` – the address of the SMTP server.
-+
-Default value: `test.host`
-
-* `cuba.email.smtpPort` – the port of the SMTP server.
-+
-Default value: `25`
-
-* `cuba.email.smtpAuthRequired` flags whether the SMTP server requires authentication. It corresponds to the `mail.smtp.auth` parameter, which is passed at the creation of the `javax.mail.Session` object.
-+
-Default value: `false`
-
-* `cuba.email.smtpSslEnabled` flags whether `SSL` protocol is enabled. It corresponds to the `mail.transport.protocol` parameter with the `smtps` value, which is passed at the creation of the `javax.mail.Session` object.
-+
-Default value: `false`
-
-* `cuba.email.smtpStarttlsEnable` – flags the use of the `STARTTLS` command when authenticating on the SMTP server. It corresponds to the `mail.smtp.starttls.enable` parameter, which is passed at the creation of the `javax.mail.Session` object.
-+
-Default value: `false`
-
-* `cuba.email.smtpUser` – the user name for SMTP server authentication.
-
-* `cuba.email.smtpPassword` – the user password for SMTP server authentication.
-
-* `cuba.email.delayCallCount` – is used in asynchronous sending of emails to skip first few calls of `EmailManager.queueEmailsToSend()` after server startup to reduce the load during application initialization. Email sending will start with the next call.
-+
-Default value: `2`
-
-* `cuba.email.messageQueueCapacity` – for asynchronous sending, the maximum number of messages read from the queue and sent in one call of `EmailManager.queueEmailsToSend()`.
-+
-Default value: `100`
-
-* `cuba.email.defaultSendingAttemptsCount` for asynchronous sending, the default number of attempts to send an email. It is used if the `attemptsCount` parameter is not specified when calling `Emailer.sendEmailAsync()`. 
-+
-Default value: `10`
-
-* `cuba.email.maxSendingTimeSec` – the maximum expected time in seconds, which is required to send an email to the SMTP server. It is used for asynchronous sending to optimize the selection of `SendingMessage` objects from the DB queue.
-+
-Default value: 120
-
-* `cuba.email.sendAllToAdmin` – indicates that all messages should be sent to the cuba.email.adminAddress address, regardless of the specified recipient's address. It is recommended to use this parameter during system development and debugging.
-+
-Default value: `false`
-
-* `cuba.email.adminAddress` – the address, to which all messages are sent if the `cuba.email.sendAllToAdmin` property is switched on.
-+
-Default value: `admin@localhost`
-
-* `cuba.emailerUserLogin` – the login of system user, used by asynchronous email sending code to be able to persist the information to the database. It is recommended to create a separate user (for example, `emailer`) without a password, so that it will be impossible to log in under his name via user interface. This is also convenient to search for messages related to email sending in the server log.
-+
-Default value: `admin`
-
-You can also use properties from JavaMail API, adding them to the `app.properties` file of the *core* module. The `mail.*` properties are passed at the creation of the `javax.mail.Session` object.
-
-You can view the current parameter values and send a test message using the `app-core.cuba:type=Emailer` JMX bean.
-
-[[dynamic_attributes]]
-==== Dynamic Attributes
-
-_Dynamic attributes_ are additional entity attributes, that can be added without changing the database schema and restarting the application. Dynamic attributes are usually used to define new entity properties at deployment or production stage.
-
-CUBA dynamic attributes implement the link:$$http://en.wikipedia.org/wiki/Entity%E2%80%93attribute%E2%80%93value_model$$[Entity-Attribute-Value] model.
-
-.Dynamic Attributes Classes Diagram
-image::dynamic_attributes.png[align="center"]
-
-*  `Category` - defines a _category_ of objects and the corresponding set of dynamic attributes. The category must be assigned to some entity type. 
-+
-For example, there is an entity of the Car type. We can define two categories for it: Truck and Passenger. The Truck category will contain Load Capacity and Body Type attributes, and the Passenger category – Number of Seats and Child Seat. 
-
-*  `CategoryAttribute` - defines a dynamic attribute related to some category. Each attribute describes a single field of a definite type. The required `Code` field contains the system name of the attribute. The `Name` field contains the human-readable attribute name. 
-
-*  `CategoryAttributeValue` - dynamic attribute value for a particular entity instance. Dynamic attribute values are physically stored in the dedicated `++SYS_ATTR_VALUE++` table. Each table record has a reference to some entity (`++ENTITY_ID++` column). 
-
-An entity instance can have dynamic attributes of all categories related to the entity type. So if you create two categories of the Car entity mentioned above, you will be able to specify any dynamic attribute from both categories for a Car instance. If you want to be able to classify an entity instance as belonging to a single category (a car can be either truck or passenger), the entity must implement <<categorized_entity,Categorized>> interface. In this case an entity instance will have the reference to a category, and dynamic attributes from this category only.
-
-Loading and saving of dynamic attribute values is handled by <<dataManager,DataManager>>. The `LoadContext.setLoadDynamicAttributes()` method is used to indicate that dynamic attributes should be loaded for entity instances. By default, dynamic attributes are not loaded. At the same time, `DataManager` always saves dynamic attributes contained in entity instances passed to `commit()`.
-
-Dynamic attribute values are available through `getValue()` / `setValue()` methods for any persistent entity inherited from `BaseGenericIdEntity`. An attribute code with the `+++++` prefix should be passed to these methods, for example: 
-
-[source, java]
-----
-include::{sourcesdir}/features/dynamicAttr_1.java[]
----- 
-
-In fact, the direct access to attribute values in the application code is rarely needed. Any dynamic attribute can be automatically displayed in any <<gui_Table,Table>> or <<gui_FieldGroup,FieldGroup>> component bound to a datasource containing the entity, for which the dynamic attribute was created. The attribute editor described below allows you to specify screens and components that should show the attribute.
-
-User <<permissions,permissions>> to access dynamic attributes can be set in the <<roles,security role>> editor in the same way as for regular attributes. Dynamic attributes are displayed with the `+++++` prefix.
-
-[[dynamic_attributes_mgmt]]
-===== Managing Dynamic Attributes
-
-Managing attributes categories and descriptions is done via special screens available in *Administration > Dynamic Attributes* menu.
-
-The category browser shows the list of all registered categories.
-
-.Categories Browser
-image::categoryBrowser.png[align="center"]
-
-The category editor allows you to create a new category for an entity and define a set of dynamic attributes. The category name and the related entity type fields are mandatory. The *Default* checkbox indicates that this category will be automatically selected for a new instance of an entity implementing `Categorized` interface. 
-
-.Category Editor
-image::categoryEditor.png[align="center"]
-
-Dynamic attribute editor enables setting the name, system code, value type and the default value of the attribute.
-
-.Dynamic Attribute Editor
-image::runtimePropertyEditor.png[align="center"]
-
-For all value types, except `Boolean`, there is  a *Width* field available to set up the field width in `FieldGroup` in pixels or as a percentage. If the *Width* field is empty, its assumed value is 100%.
-
-For all value types, except `Boolean` and `Enumeration`, there is also an *Is* *collection* checkbox available. It allows you to create multi-valued dynamic attributes of a selected type.
-
-For the `Enumeration` value type, the set of named values is defined in the *Enumeration* field via the list editor.
-
-.Dynamic Attribute Editor for `Enumeration` type
-image::runtimePropertyEnum.png[align="center"]
-
-A dynamic attribute also has visibility settings, which define the screens where it should be displayed. By default, the attribute is invisible on any screen. 
-
-.Dynamic Attribute Visibility Settings
-image::runtimePropertyVisibility.png[align="center"]
-
-In addition to the screen, you can also specify a component in which the attribute is to appear (for example, for screens, where several <<gui_FieldGroup,FieldGroup>> components show the fields of the same entity). 
-
-If the attribute is marked as visible on a screen, it will automatically appear in all field groups and tables displaying entities of the corresponding type on the screen. 
-
-Access to dynamic attributes can also be restricted by <<roles,user role>> settings. Security settings for dynamic attributes are similar to those for regular attributes. 
-
-In order for changes in attribute and visibility settings to take effect, click *Apply settings* in the categories browser. Changes can also be applied via *Administration > JMX Console* by calling the `clearDynamicAttributesCache()` method of the `app-core.cuba:type=CachingFacade` JMX bean.
-
-The dynamic attribute added to the screen automatically by specifying visibility settings is shown below: 
-
-image::runtimePropsApplyChanges.png[align="center"]
-
-Dynamic attributes can be added to a screen manually. To do this, follow these steps:
-
-* In the `dsContext` section of the screen XML-descriptor, set the `loadDynamicAttributes` property to `true` for a datasource that loads the entity (entities), for example:
-+
-[source, xml]
-----
-<dsContext>
-    <datasource id="carDs" class="com.company.sample.entity.Car" view="_local" loadDynamicAttributes="true"/>
-</dsContext>
-----
-
-* Specify the dynamic attribute code with the `+++++` prefix in the `property` XML attribute of a component definition:
-+
-[source, xml]
-----
-<textField id="numberOfSeats" datasource="carDs" property="+numberOfSeats"/>
-----
-
-[[categorized_entity]]
-===== Categorized Entities
-
-If an entity implements `com.haulmont.cuba.core.entity.Categorized` interface, you can use `com.haulmont.cuba.gui.components.RuntimePropertiesFrame` component for displaying dynamic attributes of this entity. This component allows a user to select a category for the particular entity instance and specify values of dynamic attributes of this category.
-
-In order to use the `RuntimePropertiesFrame` component in an edit screen, do the following: 
-
-* Two <<datasources,datasources>> should be declared in the `dsContext` section: 
-+
---
-**  `runtimePropsDatasource` - a specific datasource to load the `CategoryAttributeValue` instances. The `mainDs` attribute must refer to the main datasource, which contains the edited entity. 
-
-** A regular `collectionDatasource` to load the list of categories of this entity type. 
-
-Example: 
-
-[source, xml]
-----
-<dsContext>
-  <datasource id="carDs"
-      class="com.company.sample.entity.Car"
-      view="carEdit"/>
-
-  <runtimePropsDatasource id="runtimePropsDs"
-      mainDs="carDs"/>
-
-  <collectionDatasource id="categories"
-      class="com.haulmont.cuba.core.entity.Category"
-      view="_local">
-    <query>
-         select c from sys$Category c where c.entityType='sample$Car'
-    </query>
-  </collectionDatasource>
-</dsContext>
----- 
---
-
-* Now, the `runtimeProperties` visual component may be included in the XML-descriptor of the screen: 
-+
-[source, xml]
-----
-<runtimeProperties id="runtimePropsFrame"
-  runtimeDs="runtimePropsDs"
-  categoriesDs="categories"/>
-----  
-
-[[dynamic_attributes_in_rest_api]]
-===== Dynamic Attributes in REST API
-
-<<rest_api,REST API>> supports loading and saving dynamic attributes. In order to load dynamic attributes of an entity instance, add the `dynamicAttributes=true` parameter to the `find` or `query` request:
-
 [source, url]
 ----
-app-portal/api/find.xml?e=sample$Car-9f789ba9-ca15-4758-a8b8-77e434f1d438&s=9f789ba9-ca15-4758-a8b8-77e434f1d438&dynamicAttributes=true
+http://localhost:8080/app/open?screen=sec$User.browse
 ----
 
-Dynamic attributes are represented in JSON and XML documents in the same way as regular attributes, except for the preceding `+++++` symbol.
-
-REST API also saves dynamic attributes passed to `commit`. 
-
-[[pessimistic_locking]]
-==== Pessimistic Locking
-
-Pessimistic locking should be used when there is a high probability of simultaneous editing of a single entity instance. In such cases the standard <<optimistic_locking,optimistic locking>>, based on entity versioning, usually creates too many collisions.
-
-Pessimistic locking explicitly locks an entity instance when it is opened in the <<screen_edit,editor>>. As a result, only one user can edit this particular entity instance in a given moment of time.
-
-Pessimistic locking mechanism can also be used to manage simultaneous execution of arbitrary processes. The key benefit is that the locks are distributed, since they are replicated in the Middleware cluster. More information is available in JavaDocs for the `LockManagerAPI` and `LockService` interfaces.
-
-Pessimistic locking can be enabled for any entity class on application development or production stage using *Administration > Locks > Setup* screen, or as follows:
-
-* Insert a new record with the following field values into the *SYS_LOCK_CONFIG* table with the following field values:
+* `item` – an entity instance to be passed to the <<screen_edit,edit screen>>, encoded according to conventions of the `EntityLoadInfo` class, i.e. `entityName-instanceId` or `entityName-instanceId-viewName`. Examples:
 +
---
-** *ID* – an arbitrary UUID-type identifier.
-
-** *NAME* – the name of the object to be locked. For an entity, it should be the name of its <<metaClass,meta class>>.
-
-** *TIMEOUT_SEC* – lock expiration timeout in seconds.
-
-Example:
-
-[source, sql]
+[source, url]
 ----
-insert into sys_lock_config (id, create_ts, name, timeout_sec) values (newid(), current_timestamp, 'sales$Order', 300)
+http://localhost:8080/app/open?screen=sec$User.edit&item=sec$User-60885987-1b61-4247-94c7-dff348347f93
+
+http://localhost:8080/app/open?screen=sec$User.edit&item=sec$User-60885987-1b61-4247-94c7-dff348347f93-user.edit
 ----
---
 
-* Restart the server or call `reloadConfiguration()` method of the `app-core.cuba:type=LockManager` JMX bean.
-
-Current state of locks can be tracked via the `app-core.cuba:type=LockManager` JMX bean or through the *Administration > Locks* screen. This screen also enables unlocking of any object.
-
-[[entity_statistics]]
-==== Entity Statistics
-
-The entity statistics mechanism provides the information on the current number of entity instances in the database. This data is used to automatically select the best lookup strategy for linked entities and to limit the size of search results displayed in UI screens.
-
-Statistics are stored in the *SYS_ENTITY_STATISTICS* table, corresponding to the `EntityStatistics` entity. Statistics can be updated manually by adding the the necessary records to the table, as well as automatically by using the `refreshStatistics()` method of the <<persistenceManagerMBean,PersistenceManagerMBean>> JMX bean. When passing the entity name as a parameter, the statistics will be collected only for the corresponding entity; otherwise, the statistics will be collected for all entities. Collecting statistics may take a considerable amount of time and put excessive load on the database. Thus, it is better to do it manually or by using a <<scheduled_tasks_cuba,scheduled task>> at an appropriate time.
-
-Programmatic access to entity statistics is available via `PersistenceManagerAPI` interface on the middle tier and `PersistenceManagerService` on the the client tier. Statistics get cached into memory, and as a result, any direct changes to statistics in the database will only be applied after the server restart or after a calling to the `PersistenceManagerMBean.flushStatisticsCache()` method.
-
-The description of the `EntityStatistics` attributes and their impact on the system behaviour is provided below: 
-
-* `name` (*NAME* column) – the name of the entity <<metaClass,meta-class>>, for example, `sales$Customer`.
-
-* `instanceCount` (*INSTANCE_COUNT* column) – the approximate number of entity instances.
-
-* `fetchUI` (*FETCH_UI* column) – the size of the data displayed on a page when extracting entity lists. 
+* `params` – parameters passed to the screen <<screen_controller,controller's>> `init()` method. Parameters are encoded as `name1:value1,name2:value2`. Parameter values may include entity instances encoded according to the conventions of the `EntityLoadInfo` class. Examples:
 +
-For example, the <<gui_Filter,Filter>> component uses this number in the *Show N rows* field.
-
-* `maxFetchUI` (*MAX_FETCH_UI* column) – the maximum number of entity instances that can be extracted and passed to the client tier.
-+
-This limit is applied when showing entity lists in such components as <<gui_LookupField,LookupField>> or <<gui_LookupPickerField,LookupPickerField>>, as well as tables without a <<gui_Filter,filter>>, when no limitations are applied to the connected <<datasources,datasource>> via `CollectionDatasource.setMaxResults()`. In this case the data source itself limits the number of extracted instances to `maxFetchUI`.
-
-* `lookupScreenThreshold` (*LOOKUP_SCREEN_THRESHOLD* column) – the threshold, measured in number of entities, which determines when <<screen_lookup,lookup screens>> should be used instead of dropdowns for entity searches. 
-+
-The <<gui_Filter,Filter>> component takes this parameter into account when choosing filter parameters. Until the threshold is reached, the system uses the <<gui_LookupField,LookupField>> component, and once the threshold is exceeded, the <<gui_PickerField,PickerField>> component is used. Hence, if lookup screens should be used for a specific entity in a filter parameter, it is possible to set the value of `lookupScreenThreshold` to a value lower than `instanceCount`.
-
-`PersistenceManagerMBean` JMX bean enables setting default values for all of the parameters mentioned above via `DefaultFetchUI`, `DefaultMaxFetchUI`, `DefaultLookupScreenThreshold` attributes. The system will use the corresponding default values when an entity has no statistics, which is a common case.
-
-Besides, `PersistenceManagerMBean.enterStatistics()` method allows a user to enter statistics data for an entity. For example, the following parameters should be passed to the method to set a default page size to 1,000 and maximum number of loaded into <<gui_LookupField,LookupField>> instances to 30,000:
-
-[source, json]
+[source, url]
 ----
-entityName: sales$Customer
-fetchUI: 1000
-maxFetchUI: 30000
+http://localhost:8080/app/open?screen=sales$Customer.lookup&params=p1:v1,p2:v2
+
+http://localhost:8080/app/open?screen=sales$Customer.lookup&params=p1:sales$Customer-01e37691-1a9b-11de-b900-da881aea47a6
 ----
 
-[[entity_log]]
-==== Entity Log
-
-This mechanism tracks entity persistence at the <<entity_listeners,entity listeners>> level, i.e. it is guaranteed to track all changes passing through persistent context of the <<entityManager,EntityManager>>. Direct changes to entities in the database using SQL, including the ones performed using <<nativeQuery,NativeQuery>> or <<queryRunner,QueryRunner>>, are not tracked. 
-
-Modified entity instances are passed to `registerCreate()`, `registerModify()` and `registerDelete()` methods of the `EntityLogAPI` bean before they are saved to the database. Each method has `auto` parameter, allowing separation of automatic logs added by entity listeners from manual logs added by calling these methods from the application code. When these methods are called from entity listeners the value of `auto` parameter is `true`. 
-
-The logs contain information about the time of modification, the user who has modified the entity, and the new values of the changed attributes. Log entries are stored in the *SEC_ENTITY_LOG* table corresponding to the `EntityLogItem` entity. Changed attribute values are stored in the *CHANGES* column and are converted to instances of `EntityLogAttr` entity when they are loaded by the Middleware.
-
-[[entity_log_setup]]
-===== Setting Up Entity Log
-
-The simplest way to set up the entity log is using the *Administration > Entity Log > Setup* application screen.
-
-You can also set up Entity Log by entering some records in the database, if you want to include the configuration to the <<db_scripts,database initialization scripts>>.
-
-Logging is configured using the `LoggedEntity` and `LoggedAttribute` entities corresponding to *SEC_LOGGED_ENTITY* and *SEC_LOGGED_ATTR* tables.
-
-`LoggedEntity` defines the types of entities that should be logged. `LoggedEntity` has the following attributes:
-
-* `name` (*NAME* column) – the name of the entity <<metaClass,meta-class>>, for example, `sales$Customer`.
-
-* `auto` (*AUTO* column) – defines if the system should log the changes when EntityLogAPI is called with `auto = true` parameter (i.e. called by <<entity_listeners,entity listeners>>).
-
-* `manual` (*MANUAL* column) – defines if the system should log the changes when `EntityLogAPI` is called with `auto = false` parameter.
-
-`LoggedAttribute` defines the entity attribute to be logged and contains a link to the `LoggedEntity` and the attribute name.
-
-To set up logging for a certain entity, the corresponding entries should be added into the *SEC_LOGGED_ENTITY* and *SEC_LOGGED_ATTR* tables. For example, logging the changes to `name` and `grade` attributes of the `Customer` entity can be enabled using:
-
-[source, sql]
-----
-insert into SEC_LOGGED_ENTITY (ID, CREATE_TS, CREATED_BY, NAME, AUTO, MANUAL)
-values ('25eeb644-e609-11e1-9ada-3860770d7eaf', now(), 'admin', 'sales$Customer', true, true);
-
-insert into SEC_LOGGED_ATTR (ID, CREATE_TS, CREATED_BY, ENTITY_ID, NAME)
-values (newid(), now(), 'admin', '25eeb644-e609-11e1-9ada-3860770d7eaf', 'name');
-
-insert into SEC_LOGGED_ATTR (ID, CREATE_TS, CREATED_BY, ENTITY_ID, NAME)
-values (newid(), now(), 'admin', '25eeb644-e609-11e1-9ada-3860770d7eaf', 'grade');
-----
-
-The logging mechanism is activated by default. If you want to stop it, set the `Enabled` attribute of the `app-core.cuba:type=EntityLog` JMX bean `false` and then invoke the its `invalidateCache()` operation. Alternatively, set the <<cuba.entityLog.enabled,cuba.entityLog.enabled>> application property to `false` and restart the server.
-
-[[entity_log_view]]
-===== Viewing the Entity Log
-
-The entity log content can be viewed on a dedicated screen available at *Administration > Entity Log*.
-
-The change log for a certain entity can also be accessed from any application screen by loading a collection of `EntityLogItem` and the associated `EntityLogAttr` instances into the datasources and creating the visual components connected to these datasources. For example:
+`LinkHandler` bean may be <<bean_extension,redefined>> in the application project in order to provide specialized link handling. The `LinkHandler` bean is a prototype, so do not forget to specify the scope when defining your bean in <<spring.xml,spring.xml>>, for example:
 
 [source, xml]
 ----
-include::{sourcesdir}/features/entity_log.xml[]
+<!-- web-spring.xml -->
+<bean id="cuba_LinkHandler" class="com.company.sample.web.MyLinkHandler" scope="prototype"/>
 ----
-
-Logged attributes should contain the <<localizedValue_annotation,@LocalizedValue>> annotation in order to display localized values. When annotated, the logging mechanism populates the `EntityLogAttr.messagesPack` field, and the table in the example above is able to use `locValue` column instead of `value`:
-
-[source, xml]
-----
-<table id="logAttrTable" width="100%" height="100%">
-  <columns>
-      <column id="name"/>
-      <column id="locValue"/>
-  </columns>
-  <rows datasource="logAttrDs"/>
-</table>
-----
-
-[[entity_snapshots]]
-==== Entity Snapshots
-
-The entity saving mechanism, much like the <<entity_log,entity log>>, is intended to track data changes at runtime. It has the following distinct features:
-
-* The whole state (or snapshot) of a graph of entities defined by a specified <<views,view>> is saved.
-
-* Snapshot saving mechanism is explicitly called from the application code.
-
-* The platform allows the snapshots to be viewed and compared.
-
-[[entity_snapshots_save]]
-===== Saving Snapshots
-
-In order to save a snapshot of a given graph of entities, you need to call the `EntitySnapshotService.createSnapshot()` method passing the entity which is an entry point to the graph and the <<views,view>> describing the graph. The snapshot will be created using the loaded entities without any calls to the database. As a result, the snapshot will not contain the fields that are not included in the view used to load the entity.
-
-The graph of Java objects is converted into XML and saved in the *SYS_ENTITY_SNAPSHOT* table (corresponding to the `EntitySnapshot` enitity) together with the link to the primary entity. 
-
-Usually, snapshots need to be saved after <<screen_edit,editor screen>> commit. This may be achieved by overriding the `postCommit()` method of the screen controller, for example:
-
-[source, java]
-----
-public class CustomerEditor extends AbstractEditor<Customer> {
-
-  @Inject
-  protected Datasource<Customer> customerDs;
-
-  @Inject
-  protected EntitySnapshotService entitySnapshotService;
-
-...
-  @Override
-  protected boolean postCommit(boolean committed, boolean close) {
-      if (committed) {
-          entitySnapshotService.createSnapshot(customerDs.getItem(), customerDs.getView());
-      }
-      return super.postCommit(committed, close);
-  }
-}
-----
-
-[[entity_snapshots_view]]
-===== Viewing Snapshots
-
-Viewing snapshots for arbitrary entities is possible using the `com/haulmont/cuba/gui/app/core/entitydiff/diff-view.xml` frame. For example:
-
-[source, xml]
-----
-<frame id="diffFrame"
-      src="/com/haulmont/cuba/gui/app/core/entitydiff/diff-view.xml"
-      width="100%"
-      height="100%"/>
-----
-
-The snapshots should be loaded into the frame from the edit screen controller:
-
-[source, java]
-----
-public class CustomerEditor extends AbstractEditor<Customer> {
-
-  @Inject
-  protected EntityDiffViewer diffFrame;
-
-...
-  @Override
-  protected void postInit() {
-      if (!PersistenceHelper.isNew(getItem())) {
-          diffFrame.loadVersions(getItem());
-      }
-  }
-}
-----
-
-The `diff-view.xml` frame shows the list of snapshots for the given entity, with an ability to compare them. The view for each snapshot includes the user, date and time. When a snapshot is selected from the list, the changes will be displayed compared to the previous snapshot. All attributes are marked as changed for the first snapshot. Selecting two snapshots shows the results of the comparison in a table.
-
-The comparison table shows attribute names and their new values. When a row is selected, the detailed information on attribute changes across two snapshots is shown. Reference fields are displayed according to their <<namePattern_annotation,instance name>>. When comparing collections, the new and removed elements are highlighted with green and red color respectively. Collection elements with changed attributes are displayed without highlighting. Changes to element positions are not recorded.
-
-[[file_storage]]
-==== File Storage
-
-File storage enables uploading, storing and downloading arbitrary files associated with the entities. In the standard implementation, the files are stored outside of the main database using a specialized structure within the file system.
-
-File storage mechanism includes the following parts:
-
-* `FileDescriptor` entity – the descriptor of the uploaded file (not to be confused with `java.io.FileDescriptor`) enables referencing the file from the data model objects.
-
-* `FileStorageAPI` interface – provides access to the file storage at the middle <<app_tiers,tier>>. Its main methods are:
-
-** `saveStream()` – saves the contents of the file passed as the `InputStream` according to the specified `FileDescriptor`.
-
-** `openStream()` – returns the contents of the file defined by the `FileDescriptor` in the form of an opened `InputStream`.
-
-* `FileUploadController` class – a Spring MVC controller, which enables sending files from the Client to the Middleware with HTTP POST requests.
-
-* `FileDownloadController` class – Spring MVC controller which enables retrieving files from the Middleware to the Client with HTTP GET requests.
-
-*  <<gui_FileUploadField,FileUpload>> and <<gui_FileMultiUploadField,FileMultiUpload>> visual components – enable uploading files from the user's computer to the client tier of the application and then transferring them to the Middleware.
-
-* `FileUploadingAPI` interface – temporary storage for files uploaded to the client tier. It is used for uploading files to the client tier by the visual components mentioned above. The application code can use `putFileIntoStorage()` method for moving a file into the persistent storage of the Middleware.
-
-* <<fileLoader,FileLoader>> - an interface for working with the file storage using the same set of methods on both middle and client tiers.
-
-* `ExportDisplay` – client tier interface allowing downloading various application resources to the user's computer. Files can be retrieved from persistent storage using the `show()` method, which requires a `FileDescriptor`. An instance of `ExportDisplay` may be obtained either by calling the `AppConfig.createExportDisplay()` static method, or through <<screen_controller_injection,injection>> into the controller class.
-
-[TIP]
-====
-File transfer between the user's computer and the storage in both directions is always performed by copying data between input and output streams. Files are never fully loaded into memory at any application level, which enables transferring files of almost any size.
-====
-
-[[file_upload]]
-===== Uploading Files
-
-Files from the user's computer can be uploaded into the storage using the <<gui_FileUploadField,FileUpload>> and <<gui_FileMultiUploadField,FileMultiUpload>> components. Usage examples are provided in this manual in the appropriate component descriptions, as well as in <<images_recipe>>.
-
-`FileUpload` component is also available within the ready-to-use <<dialogs_fileUploadDialog,FileUploadDialog>> window designed to load files in the temporary storage.
-
-The temporary client-level storage (`FileUploadingAPI`) stores temporary files in the folder defined by <<cuba.tempDir,cuba.tempDir>> application property. Temporary files can remain in the folder in case of any failures. The `clearTempDirectory()` method of the `cuba_FileUploading` bean is invoked periodically by the scheduler defined in the <<spring.xml,cuba-web-spring.xml>> file.
-
-[[file_download]]
-===== Downloading Files
-
-Files can be downloaded from the file storage to the user's computer by using the `ExportDisplay` interface. It can be obtained by calling the `AppConfig.createExportDisplay()` static method or via <<screen_controller_injection,injection>> in the controller class. For example:
-
-[source, java]
-----
-AppConfig.createExportDisplay(this).show(fileDescriptor);
-----
-
-The `show()` method accepts an optional `ExportFormat` type parameter, which defines the type of the content and the file extension. If the format has not been provided, the extension is retrieved from the `FileDescriptor`, and the content type is set to `application/octet-stream`. 
-
-The file extension defines whether the file is downloaded via the browser's standard open/save dialog (`Content-Disposition = attachment`), or if the browser will attempt to show the file in the browser window (`Content-Disposition = inline`). The list of extensions for files that should be shown in the browser window is defined by the <<cuba.web.viewFileExtensions,cuba.web.viewFileExtensions>> application property.
-
-`ExportDisplay` also enables downloading of arbitrary data if `ByteArrayDataProvider` is used as a parameter of the `show()` method. For example:
-
-[source, java]
-----
-include::{sourcesdir}/features/exportDisplay_1.java[]
-----
-
-[[fileLoader]]
-===== FileLoader Interface
-
-The `FileLoader` interface allows you to work with file storage using the same set of methods on both middle and client tiers. Uploading and downloading of files is performed using streams:
-
-* `saveStream()` – saves an `InputStream` contents into file storage.
-
-* `openStream()` – returns an input stream to load a file contents from file storage.
-
-[TIP]
-====
-Both client-side and server-side implementations of `FileLoader` follow the common rule: file transfer is always performed by copying data between input and output streams. Files are never fully loaded into memory at any application level, which enables transferring files of almost any size.
-====
-
-As an example of using `FileLoader` let's consider a simple task of saving a user input into the text file and displaying the file content in another field on the same screen.
-
-The screen contains two `textArea` fields. Suppose the user inputs text in the first `textArea`, clicks the `buttonIn` below, and the text is saved to the `FileStorage`. The second `textArea` will display the content of the saved file on `buttonOut` click.
-
-Below is the fragment of the screen XML descriptor:
-
-[source, xml]
-----
-include::{sourcesdir}/features/fileLoader_1.xml[]
-----
-
-The screen controller contains two methods invoked on buttons click:
-
-* In the `onButtonInClick()` method we create a byte array from the first `textArea` input. Then we create a `FileDescriptor` object and define the new file name, extension, size, and creation date with its attributes.
-+
-Then we save the new file with the `saveStream()` method of `FileLoader`, passing the `FileDescriptor` to it and providing the file content with an `InputStream` supplier. We also commit the `FileDescriptor` to the data store using the `DataManager` interface.
-
-* In the `onButtonOutClick()` method we extract the content of the saved file using the `openStream()` method of the `FileLoader`. Then we display the content of the file in the second `textArea`.
-
-[source, java]
-----
-include::{sourcesdir}/features/fileLoader_1.java[]
-----
-
-image::fileLoader_recipe.png[align="center"]
-
-[[file_storage_impl]]
-===== Standard File Storage Implementation
-
-The standard implementation stores files in a dedicated folder structure within one or several file locations.
-
-The roots of the structure can be defined in the <<cuba.fileStorageDir,cuba.fileStorageDir>> application property in the format of comma-separated paths list. For example:
-
-[source, properties]
-----
-cuba.fileStorageDir=/work/sales/filestorage,/mnt/backup/filestorage
-----
-
-If the property is not defined, the storage will be located in the `filestorage` sub-folder of the Middleware's <<work_dir,work directory>>. This folder is `tomcat/work/app-core/filestorage` in standard Tomcat deployment.
-
-With several locations defined, the storage behaves as follows: 
-
-* First folder in the list is considered as _primary_, others – as _backup_. 
-
-* Stored files are first placed in the primary folder, and then copied to all of the backup directories.
-+
-The system checks that each folder is accessible before storing a file. If the primary directory is not accessible, the system throws an exception without storing the file. If any of the backup directories are not accessible, the file gets stored in available ones and the corresponding error is logged. 
-
-* The files are read from the primary directory.
-+
-If the primary directory is not accessible, the system reads files from the first available backup directory containing the required files. A corresponding error is logged.
-
-The storage folder structure is organized in the following way:
-
-* There are three levels of subdirectories representing the files upload date – year, month, and day.
-
-* The actual files are saved in the `day` directory. The file names match the identifiers of the corresponding `FileDescriptor` objects. The file extension matches that of the source file.
-
-* The root folder of the structure contains a `storage.log` file with the information on each stored file, including the user and upload time. This log is not required for operation of the storage mechanism, but it could be useful for troubleshooting.
-
-The `app-core.cuba:type=FileStorage` JMX bean displays the current set of storage roots and offers the following methods for troubleshooting:
-
-* `findOrphanDescriptors()` – finds all instances of `FileDescriptor` in the database that do not have a matching file in the storage.
-
-* `findOrphanFiles()` – finds all files in the storage that do not have a corresponding `FileDescriptor` instance in the database.
 
 [[uniqueNumbers]]
 ==== Sequence Generation
@@ -2106,387 +1256,3 @@ There are two ways of using `QueryRunner`: current transaction or separate trans
 
 * To run a query in a separate transaction, `QueryRunner` instance must be created using a constructor with the `DataSource` parameter retrieved using `Persistence.getDataSource()`. Then, `query()` or `update()` methods should be called without the `Connection` parameter. Connection will be created from the specified `DataSource` and immediately closed afterwards. 
 
-[[myBatis]]
-==== Integration with MyBatis
-
-The platform includes *MyBatis* framework, which offers wider capabilities for running SQL and mapping query results to objects compared to ORM <<nativeQuery,native query>> or <<queryRunner,QueryRunner>>.
-
-The following beans must be added into <<spring.xml,spring.xml>> file of the *core* module to use MyBatis in the project:
-
-[source, xml]
-----
-<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
-  <property name="cubaDataSource" ref="cubaDataSource"/>
-  <property name="configLocation" value="cuba-mybatis.xml"/>
-  <property name="mapperLocations" value="classpath*:com/sample/sales/core/sqlmap/*.xml"/>
-</bean>
-
-<bean id="sqlSession" class="org.mybatis.spring.SqlSessionTemplate">
-  <constructor-arg index="0" ref="sqlSessionFactory" />
-</bean>
-----
-
-The `MapperLocations` parameter defines a path to `mapperLocations` mapping files (according to the rules of `ResourceLoader` Spring interface). 
-
-Below is the an example of a mapping file for loading an instance of `Order` together with a related `Customer` and a collection of `Order` items:
-
-[source, xml]
-----
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE mapper
-      PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
-      "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="com.sample.sales">
-
-  <select id="selectOrder" resultMap="orderResultMap">
-      select
-          o.ID as order_id,
-          o.DATE as order_date,
-          o.AMOUNT as order_amount,
-          c.ID as customer_id,
-          c.NAME as customer_name,
-          c.EMAIL as customer_email,
-          i.ID as item_id,
-          i.QUANTITY as item_quantity,
-          p.ID as product_id,
-          p.NAME as product_name
-      from
-          SALES_ORDER o
-          left join SALES_CUSTOMER c on c.ID = o.CUSTOMER_ID
-          left join SALES_ITEM i on i.ORDER_ID = o.id and i.DELETE_TS is null
-          left join SALES_PRODUCT p on p.ID = i.PRODUCT_ID
-      where
-          c.id = #{id}
-  </select>
-
-  <resultMap id="orderResultMap" type="com.sample.sales.entity.Order">
-      <id property="id" column="order_id"/>
-      <result property="date" column="order_date"/>
-      <result property="amount" column="order_amount"/>
-
-      <association property="customer" column="customer_id" javaType="com.sample.sales.entity.Customer">
-          <id property="id" column="customer_id"/>
-          <result property="name" column="customer_name"/>
-          <result property="email" column="customer_email"/>
-      </association>
-
-      <collection property="items" ofType="com.sample.sales.entity.Item">
-          <id property="id" column="item_id"/>
-          <result property="quantity" column="item_quantity"/>
-          <association property="product" column="product_id" javaType="com.sample.sales.entity.Product">
-              <id property="id" column="product_id"/>
-              <result property="name" column="product_name"/>
-          </association>
-      </collection>
-  </resultMap>
-
-</mapper>
-----
-
-The following code can be used to retrieve query results from the example above:
-
-[source, java]
-----
-Transaction tx = persistence.createTransaction();
-try {
-  SqlSession sqlSession = AppBeans.get("sqlSession");
-  Order order = (Order) sqlSession.selectOne("com.sample.sales.selectOrder", orderId);
-  tx.commit();
-} finally {
-  tx.end();
-}
-----
-
-[[folders_pane]]
-==== Folders Panel
-
-The folders panel provides quick access to frequently used information. It is a panel on the left side of the main application window containing a hierarchical structure of folders. Clicking on folders shows the corresponding system screens with certain parameters.
-
-At the moment of this writing, the panel is available for the *Web Client* only. 
-
-The platform supports three types of folders: _application folders_, _search folders_ and _record sets_. Application folders are displayed at the top of the panel as a separate folder tree. Search folders and record sets are displayed at the bottom of the panel in a combined tree. 
-
-* Application folders:
-
-** Open screens with or without a <<gui_Filter,filter>>.
-
-** The set of folders depend on the current user session. Folder visibility is defined by a Groovy script.
-
-** Application folders can be created and changed only by users with special <<permissions,permissions>>.
-
-** Folder headers may show the record count calculated by a Groovy script.
-
-** Folder headers are updated on timer events, which means that record count and display style for each folder can be updated. 
-
-* Search folders:
-
-** Open screens with a <<gui_Filter,filter>>. 
-
-** Search folders can be local or global, accessible only by the user who created them or by all users, respectively.
-
-** Local folders can be created by any user, while global are created only by users with special permissions.
-
-* Record sets:
-
-** Open screens with a <<gui_Filter,filter>> containing a condition to select specific records by their identifiers.
-
-** Record set content can be edited using the dedicated table <<gui_Action,actions>>: Add to set and Remove from set. 
-
-** Record sets are available only to the user who created them.
-
-The following application properties can influence the functionality of the folder panel:
-
-* <<cuba.web.foldersPaneEnabled,cuba.web.foldersPaneEnabled>>
-
-* <<cuba.web.foldersPaneVisibleByDefault,cuba.web.foldersPaneVisibleByDefault>>
-
-* <<cuba.web.foldersPaneDefaultWidth,cuba.web.foldersPaneDefaultWidth>>
-
-* <<cuba.web.appFoldersRefreshPeriodSec,cuba.web.appFoldersRefreshPeriodSec>>
-
-* <<cuba.web.showFolderIcons,cuba.web.showFolderIcons>>
-
-[[application_folder]]
-===== Application Folders
-
-Creating application folders requires special <<permissions,permissions>> to create/edit application folders (`cuba.gui.appFolder.global`).
-
-A simple application folder can be created via the folder panel context menu. Such folder will not be connected to the system screens and can be only used to group other folders within a folder tree.
-
-A folder that opens a screen with a filter can be created as follows:
-
-* Open a screen and filter the records as necessary.
-
-* Select *Save as application folder* option in the *Filter...* button menu.
-
-* Fill in the folder attributes in the *Add* dialog:
-
-** *Folder name*.
-
-** *Window title* – a string to be added to the window title when opening it from the folder.
-
-** *Parent folder* – determines the location of the new folder in the folder tree.
-
-** *Visibility script* – a Groovy script defining folder visibility, executed at the start of user session.
-+
-The script should return a `Boolean`. The folder is visible, if the script is not defined or returns `true` or `null`. Example of a Groovy script:
-+
-[source, groovy]
-----
-userSession.currentOrSubstitutedUser.login == 'admin'
-----
-
-** *Count script* – a Groovy script defining the record count and display style for a folder. Executed at the start of the user session and on timer.
-+
-The script should return a numeric value, the integer part of which will be used as the record count value. If the script is not defined or returns `null`, the counter will not be displayed. In addition to the returned value, the script can also set the `style` variable, which will be used as folder display style. Example of a Groovy script:
-+
-[source, java]
-----
-def em = persistence.getEntityManager()
-def q = em.createQuery('select count(o) from sales$Order o')
-def count = q.getSingleResult()
-
-style = count > 0 ? 'emphasized' : null
-return count
-----
-+
-In order for the style to be displayed, the application theme should contain this style for the `v-tree-node` element in `cuba-folders-pane`, for example:
-+
-[source, css]
-----
-.cuba-folders-pane .v-tree-node.emphasized {
-  font-weight: bold;
-}
-----
-
-Scripts can use the following variables defined in the `groovy.lang.Binding` context:
-
-* `folder` – an instance of `AppFolder` entity for which the script is executed.
-
-* `userSession` – instance of <<userSession,UserSession>> for current user session.
-
-* `persistence` – implementation of the <<persistence,Persistence>> interface.
-
-* `metadata` – implementation of the <<metadata,Metadata>> interface.
-
-The platform uses the same instance of `groovy.lang.Binding` for all scripts when the folders are being updated. So it is possible to pass variables between them in order to eliminate duplicate requests and increase performance.
-
-Script sources can be stored within the attributes of the `AppFolder` entity or in separate files. In the latter case, the attribute should include a file path with a mandatory ".groovy" extension, as required by the <<resources,Resources>> interface. If an attribute contains a string ending with ".groovy", the script will be loaded from the corresponding file; otherwise, the attribute content itself will be used as a script.
-
-Application folders are instances of the `AppFolder` entity and are stored in the related *SYS_FOLDER* and *SYS_APP_FOLDER* tables.
-
-[[search_folder]]
-===== Search Folders
-
-Search folders can be created by the users similar to application folders. Group folders are created directly via the context menu of the folder panel. The folders connected to screens are created from the *Filter...* button menu, using the Save as search folder option.
-
-Creating global search folders, requires the user to have *Create/edit global search folders* permission (`cuba.gui.searchFolder.global`). 
-
-Search folder's filter can be edited once the folder is created by opening the folder and changing the *Folder:{folder name}* filter. Saving the filter will change the folder filter as well.
-
-Search folders are instances of the `SearchFolder` entity stored in the related *SYS_FOLDER* and *SEC_SEARCH_FOLDER* tables.
-
-[[record_set]]
-===== Record Sets
-
-Using records sets within a screen is possible, if the <<gui_Filter,Filter>> has a corresponding <<gui_Table,Table>> component defined in the `applyTo` attribute. For example:
-
-[source, xml]
-----
-<layout>
-  <filter id="customerFilter"
-          datasource="customersDs"
-          applyTo="customersTable"/>
-
-  <groupTable id="customersTable"
-              width="100%">
-      <buttonsPanel>
-          <button action="customersTable.create"/>
-...
-      </buttonsPanel>
-...
-----
-
-*Add to set* or *Add to current set* / *Remove from set* buttons should now appear in table context menu. If a table includes a `buttonsPanel` (as in the example above), the corresponding table buttons will also be added.
-
-Record sets are the instances of the `SearchFolder` entity stored in the related *SYS_FOLDER* and *SEC_SEARCH_FOLDER* tables.
-
-[[link_to_screen]]
-==== Screen Links
-
-The Web Client <<app_tiers,block>> enables opening application screens via commands embedded into a URL. If the browser does not have an active application session with the registered user, the application will show the login screen first, and then, after successful authentication, proceed to the main application window with the requested screen.
-
-The list of supported commands is defined in the <<cuba.web.linkHandlerActions,cuba.web.linkHandlerActions>> application property. By default, these are `open` and `o`. When the HTTP request is being processed, the last part of the URL is analyzed, and if a match with one of the commands is detected, control is handed over to the `LinkHandler` <<managed_beans,bean>>. The standard implementation of this bean accepts the following parameters:
-
-* `screen` – name of the screen defined in <<screens.xml,screens.xml>>, for example:
-+
-[source, url]
-----
-http://localhost:8080/app/open?screen=sec$User.browse
-----
-
-* `item` – an entity instance to be passed to the <<screen_edit,edit screen>>, encoded according to conventions of the `EntityLoadInfo` class, i.e. `entityName-instanceId` or `entityName-instanceId-viewName`. Examples:
-+
-[source, url]
-----
-http://localhost:8080/app/open?screen=sec$User.edit&item=sec$User-60885987-1b61-4247-94c7-dff348347f93
-
-http://localhost:8080/app/open?screen=sec$User.edit&item=sec$User-60885987-1b61-4247-94c7-dff348347f93-user.edit
-----
-
-* `params` – parameters passed to the screen <<screen_controller,controller's>> `init()` method. Parameters are encoded as `name1:value1,name2:value2`. Parameter values may include entity instances encoded according to the conventions of the `EntityLoadInfo` class. Examples:
-+
-[source, url]
-----
-http://localhost:8080/app/open?screen=sales$Customer.lookup&params=p1:v1,p2:v2
-
-http://localhost:8080/app/open?screen=sales$Customer.lookup&params=p1:sales$Customer-01e37691-1a9b-11de-b900-da881aea47a6
-----
-
-`LinkHandler` bean may be <<bean_extension,redefined>> in the application project in order to provide specialized link handling. The `LinkHandler` bean is a prototype, so do not forget to specify the scope when defining your bean in <<spring.xml,spring.xml>>, for example: 
-
-[source, xml]
-----
-<!-- web-spring.xml -->
-<bean id="cuba_LinkHandler" class="com.company.sample.web.MyLinkHandler" scope="prototype"/>
----- 
-
-[[entity_inspector]]
-==== Entity Inspector
-
-The entity inspector enables working with any application objects without having to create dedicated screens. The inspector dynamically generates the screens to browse and edit the instances of the selected entity.
-
-This gives the system administrator an opportunity to review and edit the data that is not accessible from standard screens due to their design, and to create the data model and main menu sections linked to the entity inspector only, at prototyping stage.
-
-The entry point for the inspector is the `com/haulmont/cuba/gui/app/core/entityinspector/entity-inspector-browse.xml` screen.
-
-If a `String`-type parameter named `entity` with an entity name has been passed to the screen, the inspector will show a list of entities with the abilities for filtering, selection and editing. The parameter can be specified when registering the screen in <<screens.xml,screens.xml>>, for example:
-
-`screens.xml`
-
-[source, xml]
-----
-<screen id="sales$Product.lookup"
-      template="/com/haulmont/cuba/gui/app/core/entityinspector/entity-inspector-browse.xml">
-  <param name="entity"
-         value="sales$Product"/>
-</screen>
-----
-
-`menu.xml`
-
-[source, xml]
-----
-<item id="sales$Product.lookup"/>
-----
-
-Screen identifier defined as `++{entity_name}.lookup++` allows <<gui_PickerField,PickerField>> and <<gui_LookupPickerField,LookupPickerField>> components to use this screen within the `PickerField.LookupAction` standard action.
-
-Generally, the screen may be called without any parameters. In this case, the top part will contain an entity selection field. In the *cuba* application component, the inspector screen is registered with the `entityInspector.browse` identifier, so it can be simply referenced in a menu item:
-
-[source, xml]
-----
-<item id="entityInspector.browse"/>
-----
-
-[[entityImportExport]]
-==== Export and Import Entities in JSON
-
-The platform provides an API for exporting and importing graphs of entities in JSON format. It is available on Middleware via the `EntityImportExportAPI` interface and on the client tier via `EntityImportExportService`. These interfaces have an identical set of methods which are described below. The export/import implementation delegates to the `EntitySerializationAPI` interface which can also be used directly.
-
-* `exportEntitiesToJSON()` - serializes a collection of entities to JSON.
-+
-[source, java]
-----
-include::{sourcesdir}/common/entityImportExportService_1.java[]
-----
-
-* `exportEntitiesToZIP()` - serializes a collection of entities to JSON and packs the JSON file into ZIP archive. In the following example, the ZIP archive is saved to the file storage using the <<fileLoader,FileLoader>> interface:
-+
-[source, java]
-----
-include::{sourcesdir}/common/entityImportExportService_2.java[]
-----
-
-* `importEntitiesFromJSON()` - deserializes the JSON and persists deserialized entities according to the rules, described by the `entityImportView` parameter (see JavaDocs on the `EntityImportView` class). If an entity is not present in the database, it will be created. Otherwise the fields of the existing entity that are specified in the `entityImportView` will be updated.
-
-* `importEntitiesFromZIP()` - reads a ZIP archive that contains a JSON file, deserializes the JSON and persists deserialized entities like the `importEntitiesFromJSON()` method.
-+
-[source, java]
-----
-include::{sourcesdir}/common/entityImportExportService_3.java[]
-----
-
-[[credits]]
-==== Information about Software Components
-
-The platform provides an ability to register the information about third party software components used in the application (credits) and to display this information in the UI. The information includes a software component name, a website link and the license text.
-
-<<app_components,Application components>> of the platform contain their own files with descriptions, like `cuba-credits.xml`, `reports-credits.xml`. The <<cuba.creditsConfig,cuba.creditsConfig>> application property can be used to specify a description file of the application.
-
-The structure of the `credits.xml` file is as follows:
-
-* The `items` element lists the used libraries with license texts included either as an embedded `license` element, or as a `license` attribute with a link to the text in the `licenses` section.
-+
-It is possible to reference licenses declared in the current file as well as any other file declared in `cuba.creditsConfig` variable prior to the current one.
-
-* The `licenses` element lists the texts of general licenses used (e.g. LGPL).
-
-The entire list of third-party software components can be displayed using the `com/haulmont/cuba/gui/app/core/credits/credits-frame.xml` frame, which loads the information from the files defined in the `cuba.creditsConfig` property. An example of the frame within a screen:
-
-[source, xml]
-----
-<dialogMode width="500" height="400"/>
-<layout expand="creditsBox">
-  <groupBox id="creditsBox"
-            caption="msg://credits"
-            width="100%">
-      <frame id="credits"
-              src="/com/haulmont/cuba/gui/app/core/credits/credits-frame.xml"
-              width="100%"
-              height="100%"/>
-  </groupBox>
-</layout>
-----
-
-If the dialog mode (`WindowManager.OpenType.DIALOG`) is used when opening the screen that contains the frame, the height must be specified; otherwise, the scrolling may work not correctly. See the `dialogMode` element in the example above.

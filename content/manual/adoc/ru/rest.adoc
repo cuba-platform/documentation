@@ -1,0 +1,673 @@
+[[rest_api_v2]]
+=== REST API
+
+Универсальный REST API предоставляет следующую функциональность:
+
+* CRUD операции над сущностями.
+* Выполнение предопределенных JPQL запросов.
+* Вызов методов сервисов.
+* Получение метаданных (сущности, представления, перечисления, типы данных).
+* Получение разрешений для текущего пользователя (доступ к сущностям, атрибутам, специфические разрешения).
+* Получение информации о текущем пользователе (имя, язык, временная зона и т.д.).
+* Загрузка и скачивание файлов.
+
+REST API использует протокол OAuth2 для аутентификации и поддерживает анонимный доступ.
+
+[TIP]
+====
+Подробная документация по REST API написана согласно спецификации http://swagger.io/specification[Swagger] и доступна по следующему адресу: http://files.cuba-platform.com/swagger.
+====
+
+Любое запущенное приложение на CUBA также экспортирует документацию swagger по адресам: `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.yaml` и  `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.json`.
+
+[[rest_api_v2_queries_config]]
+==== Настройка предопределенных JPQL запросов
+
+В приложении на CUBA предопределенные JPQL запросы должны быть объявлены в файлах, определенных свойством приложения <<cuba.rest.queriesConfig, cuba.rest.queriesConfig>>. Свойство должно быть определено в модуле *web* или *portal* (например, в файле `web-app.properties`):
+
+[source,properties]
+----
+cuba.rest.queriesConfig = +com/company/myapp/rest-queries.xml
+----
+
+Файл `rest-queries.xml` должен находиться в главном пакете модуля *web* или *portal* (например, `com.company.myapp`). Его содержимое определяется схемой http://schemas.haulmont.com/cuba/{revnumber}/rest-queries.xsd[rest-queries.xsd], например:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-queries-config.xml[]
+----
+
+Пример конфигурирования и исполнения запроса можно увидеть в разделе <<rest_api_v2_ex_query>>.
+
+Платформа также предоставляет встроенный запрос `all` для получения списка всех экземпляров некоторой сущности. Он может быть использован совместно с `/count` чтобы получить общее количество экземпляров сущности, например:
+
+  http://localhost:8080/app/rest/v2/queries/sales$Order/all/count
+
+[[rest_api_v2_services_config]]
+==== Настройка сервисов среднего слоя
+
+Список методов сервисов, доступных для вызова через REST API, должен быть объявлен в приложении в конфигурационных файлах, заданных свойством приложения <<cuba.rest.servicesConfig, cuba.rest.servicesConfig>>. Свойство должно быть определено в модуле *web* или *portal* (например, в файле `web-app.properties`):
+
+[source,properties]
+----
+cuba.rest.servicesConfig = +com/company/myapp/rest-services.xml
+----
+
+Файл `rest-services.xml` должен находиться в главном пакете модуля *web* или *portal* (например, `com.company.myapp`). Его содержимое определяется схемой http://schemas.haulmont.com/cuba/{revnumber}/rest-services-v2.xsd[rest-services-v2.xsd], например:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-services-config.xml[]
+----
+
+Типы параметров метода могут быть опущены, если сервис не содержит перегруженного метода с тем же количеством аргументов. Иначе типы параметров обязательны к указанию.
+
+Пример конфигурирования и вызова сервиса можно увидеть в разделе <<rest_api_v2_ex_service_get>>.
+
+[[rest_api_v2_data_model_versioning]]
+==== Версионирование модели данных
+
+REST API поддерживает работу с различными версиями модели данных. Это может быть полезно в случае, например, когда имя атрибута сущности было изменено, но клиент REST API не знает об этом изменении и ожидает, что атрибут все еще имеет старое имя.
+
+Для подобных случаев вы можете описать правила трасформации JSON сущностей. Если клиентское приложение посылает версию модели данных в параметре запроса, то JSON ответа, сформированном REST API, или тело запроса к REST API будут трансформированы согласно правилам, объявленным для конкретной версии модели данных.
+
+Правила трансформации JSON должны быть объявлены в файлах, зарегистрированных в свойстве приложения <<cuba.rest.jsonTransformationConfig, cuba.rest.jsonTransformationConfig>> для модуля *web* или *portal* (например, в файле `web-app.properties`):
+
+[source,properties]
+----
+cuba.rest.jsonTransformationConfig = +com/company/myapp/rest-json-transformations.xml
+----
+
+Файл `rest-json-transformations.xml` должен быть расположен в модуле *web* или *portal* (например, в пакете `com.company.myapp`). Содержимое файла определяется схемой {xsd_url}/rest-json-transformations.xsd[rest-json-transformations.xsd]. Пример файла:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-json-transformations.xml[]
+----
+
+Стандартные трансформеры, определяемые в конфигурационном файле, могут осуществлять следующие типы трансформаций JSON:
+
+* переименование сущности
+
+* переименование атрибута сущности
+
+* удаление атрибута сущности
+
+Трансформация JSON работает для следующих адресов REST API:
+
+* */entities* - получение списка сущностей, одной сущности, создание сущности, изменение сущности, удаление сущности
+
+* */queries* - JSON с сущностями, возращаемыми методом, будет трансформирован
+
+* */services* - трансформации JSON применяются как к сущностям, возращаемым методом сервиса, так и к сущностям, переданным в качестве параметра метода.
+
+Трансформации JSON применяются, если запрос к REST API содержит параметр `modelVersion` со значением версии модели данных в URL.
+
+Раздел <<rest_api_v2_ex_json_transformations>> содержит примеры настройки версионирования модели данных и использования его из клиентских приложений.
+
+[[rest_api_v2_cors]]
+==== Настройки CORS
+
+По умолчанию все кросс-доменные запросы к REST API разрешены. Для ограничения списка разрешенных хостов укажите список хостов через запятую в свойстве приложения <<cuba.rest.allowedOrigins, cuba.rest.allowedOrigins>>.
+
+[[rest_api_v2_anonymous]]
+==== Анонимный доступ
+
+По умолчанию анонимный доступ к REST API запрещен. Для его включения установите свойство приложения <<cuba.rest.anonymousEnabled, cuba.rest.anonymousEnabled>> в `true`. Запрос считается анонимным, если в нем отсутствует заголовок `Authentication`. В этом случае <<securityContext, SecurityContext>> будет содержать анонимную сессию.
+
+Чтобы определить разрешения для анонимного доступа необходимо задать набор <<roles, ролей>> для пользователя, имя которого хранится в свойстве приложения <<cuba.anonymousLogin, cuba.anonymousLogin>>.
+
+
+[[rest_api_v2_settings]]
+==== Прочие настройки REST API
+
+<<cuba.rest.client.id, cuba.rest.client.id>> - определяет id клиента REST API по умолчанию.
+
+<<cuba.rest.client.secret, cuba.rest.client.secret>> - определяет пароль клиента REST API по умолчанию.
+
+<<cuba.rest.client.tokenExpirationTimeSec, cuba.rest.client.tokenExpirationTimeSec>> - определяет время жизни токена в секундах для клиента по умолчанию.
+
+<<cuba.rest.maxUploadSize, cuba.rest.maxUploadSize>> - определяет максимальный размер файла, который может быть загружен с помощью REST API.
+
+[[rest_api_v2_custom_controllers]]
+==== Собственные контроллеры, защищенные OAuth2
+
+Если вам необходимо создать свой REST контроллер, защищенный с помощью OAuth2, сделайте следующее:
+
+. Предположим, ваш контроллер выглядит следующим образом:
++
+[source, java]
+----
+include::{sourcesdir}/features/MyController.java[]
+----
+
+. Создайте новый файл конфигурации Spring с именем `rest-dispatcher-spring.xml` внутри корневого пакета (например, `com.company.test`) модуля *web* или *portal*. Содержимое файла должно быть следующим:
++
+[source, xml]
+----
+include::{sourcesdir}/features/rest-dispatcher-spring.xml[]
+----
+
+. Задайте <<additive_app_properties,аддитивное>> свойство приложения `cuba.restSpringContextConfig` в файле свойств соответствующего модуля, например, в `portal-app.properties`:
++
+[source, properties]
+----
+cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+----
+
+. Новый контроллер будет помещен в контекст, связанный с сервлетом `CubaRestApiServlet`, поэтому URL для доступа к методам контроллера будут начинаться с `/rest`, т.е. метод doSmth() будет доступен по адресу: `http://localhost:8080/app-portal/rest/myapi/dosmth`.
++
+[WARNING]
+====
+Адреса для доступа к методам кастомных контроллеров НЕ ДОЛЖНЫ начинаться с `/rest/v2`.
+====
+
+[[rest_api_v2_security_constraints]]
+==== Ограничения для атрибутов-коллекций
+
+Если сущность, возвращеннная REST API, имеет атрибут-коллекцию, и для сущностей в этой коллекции имеется <<constraints,ограничение>>, то возращаемый JSON может содержать системный атрибут `+__securityToken+`. Если данная сущность будет в дальнейшем передана в методы REST API для обновления, то в объекте JSON необходимо определить атрибут `+__securityToken+` со значением, полученным при чтении сущности. Если этого не сделать, коллекция может быть сохранена некорректно.
+
+Пример:
+
+[source, json]
+----
+include::{sourcesdir}/features/securityToken.json[]
+----
+
+[[rest_api_v2_persistent_token_store]]
+==== Персистентное хранилище токенов
+
+По умолчанию OAuth токены хранятся только в памяти. Для того, чтобы параллельно хранить их базе данных установите свойство <<cuba.rest.storeTokensInDb,cuba.rest.storeTokensInDb>> в `true`. Значение свойства хранится в базе данных, следовательно редактировать его можно из экрана *Администрирование > Свойства приложения*.
+
+Истекшие токены должны периодически удаляться из базы данных. Выражение cron, определяющее расписание процедуры удаления, определено свойством приложения <<cuba.rest.deleteExpiredTokensCron,cuba.rest.deleteExpiredTokensCron>>.
+
+[[rest_api_v2_usage_example]]
+==== Примеры использования REST API
+
+Данный раздел содержит ряд примеров использования API.
+
+Как упоминалось выше, детальная информация о методах REST API описана согласно спецификации http://swagger.io/specification[Swagger] и доступна по адресу http://files.cuba-platform.com/swagger.
+
+[[rest_api_v2_ex_get_token]]
+===== Получение OAuth токена
+
+OAuth токен необходим для выполнения любого метода REST API (кроме случая <<rest_api_v2_anonymous, анонимного доступа к REST API>>). Получить токен можно выполнив POST запрос по адресу
+
+    http://localhost:8080/app/rest/v2/oauth/token
+
+Доступ к данному URL защищен с помощью базовой аутентификации с использование идентификатора и пароля клиента REST API. Обратите внимание, что это не логин и пароль пользователя приложения. Идентификатор и пароль клиента REST API заданы в свойствах приложения <<cuba.rest.client.id, cuba.rest.client.id>> и <<cuba.rest.client.secret, cuba.rest.client.secret>> (значения по умолчанию для этих свойств: `client` и `secret`). Заголовок Authorization запроса на получение токена должен содеражть логин и пароль клиента, разделенные символом ":" и закодированные в base64.
+
+Тип запроса на получение токена должен быть `application/x-www-form-urlencoded`, кодировка `UTF-8`.
+
+Запрос должен содержать следующие параметры:
+
+* `grant_type` - всегда значение `password`.
+* `username` - логин пользователя приложения.
+* `password` - пароль пользователя приложения.
+
+[source, httprequest]
+----
+include::{sourcesdir}/features/rest-access-token-request.txt[]
+----
+
+Метод возвращает JSON объект:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-access-token-response.json[]
+----
+
+Значение токена содержится в поле `access_token`
+
+[[rest_api_v2_ex_get_entities_list]]
+===== Получение списка экземпляров сущности
+
+Предполжим, в системе имеется сущность `sales$Order`, и необходимо получить список экземляров этой сущности. При этом, необходимо получить не все записи, а 50 записей, начиная с сотой (для отображения третьей странице в каком-либо списке клиентского приложения). Кроме простых атрибутов сущности `sales$Order` результат должен содержать данные о клиенте (поле `customer`). Заказы должны быть отсортированы по дате.
+
+Базовый URL для получения списка экземпляров сущности `sales$Order`:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+Для выполнения описанных выше условий необходимо задать параметры запроса:
+
+* *view* - <<views, представление>>, с которым должны быть загружены сущности. В нашем примере представление `order-edit-view` содержит ссылку на `customer`.
+* *limit* - количество возвращаемыех экземпляров.
+* *offset* - позиция первого извлеченного элемента.
+* *sort* - имя атрибута сущности, по которому будет произведена сортировка.
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*:
+
+  Authorization: Bearer 29bc6b45-83cd-4050-8c7a-2a8a60adf251
+
+В итоге получаем следующий *GET* http-запрос:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order?view=order-edit-view&limit=50&offset=100&sort=date
+
+Ответ будет выглядеть следующим образом:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-orders-list-response.json[]
+----
+
+Обратите внимание, что для каждой сущности загружаются атрибуты `_entityName` с именем сущности и `_instanceName`, содержащий результат вычисления <<namePattern_annotation, короткого имени>> для сущности.
+
+[[rest_api_v2_ex_create_entity]]
+===== Создание экземпляра сущности
+
+Для создания нового экземпляра сущности `sales$Order` необходимо выполнить *POST* запрос по адресу:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*.
+
+Тело запроса должно содержать JSON объект, описывающий новый экземпляр, например:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-create-order-request.json[]
+----
+
+В теле запроса передается коллекция позиций заказа `items` и ссылка на клиента `customer`. Рассмотрим, как будут обработаны эти атрибуты.
+
+Саначала посмотрим на класс `Order`:
+
+[source, java]
+----
+include::{sourcesdir}/features/Order.java[]
+----
+
+В сущности `Order` коллекция `items` аннотирована <<composition_annotation, @Composition>>. Методы создания и обновления сущности REST API создают новые экземпляры для всех элементов таких коллекций. Т.е. вместе с заказом (`Order`) будет создано две позиции заказа (`OrderItem`).
+
+Ссылка `customer` не имеет аннотации @Composition, поэтому метод REST API попытается найти клиента с переданным идентификатором и проставить его в поле `customer`. Если клиент не будет найден, заказ не будет создан и метод вернет ошибку.
+
+В случае успеха возвращается полный граф созданной сущности:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-create-order-response.json[]
+----
+
+[[rest_api_v2_ex_update_entity]]
+===== Изменение существующего экземпляра сущности
+
+Для изменения экземпляра сущности `sales$Order` необходимо выполнить *PUT* запрос по адресу:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/5d7ff8e3-7828-ba94-d6ba-155c5c4f2a50
+
+Последняя часть запроса здесь - это идентификатор изменяемой сущности.
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*.
+
+В теле запроса необходимо передать JSON объект, содержащий только поля, которые мы хотим изменить, например:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-update-order-request.json[]
+----
+
+В теле ответа будет возвращена измененная сущность:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-update-order-response.json[]
+----
+
+[[rest_api_v2_ex_query]]
+===== Выполнение JPQL-запроса
+
+Перед выполнением запроса с помощью REST API необходимо описать его в <<rest_api_v2_queries_config, конфигурационном файле>>. В корневом пакете модуля *web* (например, `com.company.sales`) необходимо создать файл `rest-queries.xml`. Затем этот файл объявляется в файле свойств приложения модуля *web* (web-app.properties):
+
+[source, properties]
+----
+cuba.rest.queriesConfig = +com/company/sales/rest-queries.xml
+----
+
+Содержимое файла `rest-queries.xml`:
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-queries.xml[]
+----
+
+Для выполнения JPQL запроса, необходимо выполнить *GET* http-запрос к REST API:
+
+  http://localhost:8080/app/rest/v2/queries/sales$Order/ordersAfterDate?startDate=2016-11-01&endDate=2017-11-01
+
+Части URL:
+
+* `sales$Order` - имя извлекаемой сущности.
+* `ordersAfterDate` - имя запроса из конфигурационного файла.
+* `startDate` и `endDate` - параметры запроса со значениями.
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*.
+
+Метод возвращает JSON-массив со списком извлеченных экземпляров сущности:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-ordersAfterDate-query-response.json[]
+----
+
+Список других возможных параметров для метода выполнения запросов можно посмотреть в http://files.cuba-platform.com/swagger[Swagger документации].
+
+[[rest_api_v2_ex_service_get]]
+===== Вызов метода сервиса (GET)
+
+Предположим, в системе имеется <<services, сервис>> OrderService, реализация которого выглядит следующим образом:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderServiceBean.java[]
+----
+
+Перед выполнением метода сервиса с помощью REST API необходимо разрешить его вызов в <<rest_api_v2_services_config, конфигурационном файле>>. В корневом пакете модуля *web* (например, `com.company.sales`) необходимо создать файл `rest-services.xml`. Затем этот файл объявляется в файле свойств приложения модуля *web* (web-app.properties):
+
+[source, properties]
+----
+cuba.rest.servicesConfig = +com/company/sales/rest-services.xml
+----
+
+Содержимое файла `rest-services.xml`:
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-services.xml[]
+----
+
+Для вызова метода сервиса, необходимо выполнить *GET* http-запрос к REST API вида:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/calculatePrice?orderNumber=00001
+
+Части URL:
+
+* `sales_OrderService` - имя сервиса
+* `calculatePrice` - имя метода сервиса
+* `orderNumber` - аргумент метода со значением
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*.
+
+Метод сервиса может вернуть как простой тип данных, так и сущность, коллекцию сущностей или произвольный POJO. В нашем случае метод возвращает BigDecimal, поэтому в теле ответа нам вернется число:
+
+  39.2
+
+[[rest_api_v2_ex_service_post]]
+===== Вызов метода сервиса (POST)
+
+REST API позволяет выполнять методы сервисов, аргументами которых являются не только простые типы, но также:
+
+* сущности
+* коллекции сущностей
+* произвольные POJO
+
+Небольшой пример. Предположим, в сервис `OrderService`, созданный в предыдущем разделе, добавлен следующий метод:
+
+[source, java]
+----
+@Override
+public OrderValidationResult validateOrder(Order order, Date validationDate){
+    OrderValidationResult result=new OrderValidationResult();
+    result.setSuccess(false);
+    result.setErrorMessage("Validation of order "+order.getNumber()+" failed. validationDate parameter is: "+validationDate);
+    return result;
+}
+----
+
+Класс `OrderValidationResult` выглядит следующим образом:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderValidationResult.java[]
+----
+
+Новый метод сервиса принимает сущность `Order` в качестве первого аргумента и возвращает POJO.
+
+Перед вызовом данного метода с помощью REST API необходимо разрешить его, добавив запись в конфигурационный файл `rest-services.xml` (его создание было рассмотрено в <<rest_api_v2_ex_service_get>>):
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-services-2.xml[]
+----
+
+Метод `validateOrder` сервиса вызвается *POST* запросом по адресу:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/validateOrder
+
+Параметры в случае POST передаются в теле запроса в JSON объекте. Каждое поле JSON объекта соответствует аргументу метода сервиса:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-validateOrder-service-request.json[]
+----
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*.
+
+Метод вернет сериализованный POJO:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-validateOrder-service-response.json[]
+----
+
+[[rest_api_v2_ex_file_download]]
+===== Скачивание файлов
+
+При скачивании файла передавать токен в заголовке запроса часто оказывается неудобно. Хочется иметь URL для скачивания, который можно подставить например в атрибут *src* тега *img*. В этом случае передача OAuth-токена возможна в самом запросе в параметре с именем *access_token*.
+
+Например, в систему загружено изображение. Идентификатор соответствующего FileDescriptor - `44809679-e81c-e5ae-dd81-f56f223761d6`.
+
+В этом случае URL для загрузки изображения будет выглядеть так:
+
+  http://localhost:8080/app/rest/v2/files/44809679-e81c-e5ae-dd81-f56f223761d6?access_token=a2f0bb4e-773f-6b59-3450-3934cbf0a2d6
+
+[[rest_api_v2_ex_javascript_usage]]
+===== Пример использования из JavaScript
+
+В данном разделе приведен пример использования REST API v2 из JavaScript, выполняющегося на HTML-странице. На странице изначально отображается форма логина, а после успешного входа - соответствующее сообщение и список сущностей.
+
+Для простоты, в данном примере для хранения файлов HTML/CSS/JavaScript используется каталог `modules/web/web/VAADIN`, так как соответствующий каталог развернутого веб-приложения используется для выдачи статических ресурсов. Поэтому никаких настроек на сервере Tomcat делать не требуется. Результирующий URL будет начинаться с `++http://localhost:8080/app/VAADIN++`, так что данный вариант не стоит использовать в реальном приложении, вместо этого создайте отдельное веб-приложение со своим контекстом.
+
+Загрузите https://jquery.com/download[jQuery] и http://getbootstrap.com/getting-started/#download[Bootstrap] и скопируйте в каталог `modules/web/web/VAADIN` вашего проекта. Создайте файлы `customers.html` и `customers.js`, так что содержимое каталога должно быть примерно таким:
+
+[source, plain]
+----
+bootstrap.min.css
+customers.html
+customers.js
+jquery-3.1.1.min.js
+----
+
+Содержимое файла `customers.html`:
+
+[source, html]
+----
+include::{sourcesdir}/features/rest_customers.html[]
+----
+
+Содержимое файла `customers.js`:
+
+[source, javascript]
+----
+include::{sourcesdir}/features/rest_customers_script.js[]
+----
+
+Имя пользователя и пароль из полей ввода передаётся на сервер POST-запросом с закодированными Base64 клиентскими именем и паролем в заголовке `Authorization`, как описано в разделе <<rest_api_v2_ex_get_token>>. В случае успешной аутентификации, страница получает с сервера значение токена доступа, токен записывается в переменную `oauthToken`, скрывается блок `loginForm` и отображается блок `loggedInStatus`.
+
+Чтобы отобразить список покупателей, на сервер отправляется <<rest_api_v2_ex_get_entities_list,запрос на получение списка экземпляров>> сущности `sales$Customer`, передавая значение `oauthToken` в заголовке `Authorization`.
+
+Если запрос выполнен, блок `customers` отображается на экране, и маркированный список `customersList` заполняется элементами, содержащими значения атрибутов name и email сущности Customer.
+
+image::rest_js_1.png[align="center"]
+
+image::rest_js_2.png[align="center"]
+
+[[rest_api_v2_ex_localized_messages]]
+===== Получение локализованных сообщений
+
+REST API позволяет получить локализованные заголовки для сущностей, перечислений и их атрибутов.
+
+Например, чтобы получить локализованные сообщения для сущности `sec$User`, необходимо выполнить следующий *GET* запрос:
+
+  http://localhost:8080/app/rest/v2/messages/entities/sec$User
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*.
+
+Явно указать локаль запроса можно с помощью http-заголовка *Accept-Language*.
+
+Ответ будет выглядеть следующим образом:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-user-messages-response.json[]
+----
+
+Для получения списка локализованных сообщений для перечисления используется следующий запрос:
+
+  http://localhost:8080/app/rest/v2/messages/enums/com.haulmont.cuba.security.entity.RoleType
+
+Если из URL убрать часть с именем сущности или перечисления, то будут возвращены локализованные сообщения для всех сущностей или перечислений.
+
+[[rest_api_v2_ex_json_transformations]]
+===== Примеры версионирования модели данных
+
+Атрибут сущности переименован::
++
+--
+Предположим, атрибут `oldNumber` сущности `sales$Order` был переименован в `newNumber`, а атрибут `date` был переименован в `deliveryDate`. В этом случае конфигурация трансформации будет выглядеть следующим образом:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-attr-renamed-config.xml[]
+----
+
+Если клиентскому приложению необходимо работать со старой версии сущности `sales$Order`, то приложение должно передать значение версии модели данных в параметре URL `modelVersion`:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.0
+
+Будет возвращен следующий результат:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-renamed-response.json[]
+----
+
+Видим, что ответ содержит атрибуты `oldNumber` и `date`, хотя сущность в последней версии приложения уже имеет переименованные атрибуты `newNumber` и `deliveryDate`.
+--
+
+Имя сущности изменено::
++
+--
+Предположим, что в одном из следующих релизов приложения имя сущности `sales$Order` также было изменено. Новое имя сущности теперь `sales$NewOrder`.
+
+Конфиг трансформации для версии `1.1` выглядит так:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-config.xml[]
+----
+
+В дополнение к конфигу из предыдущего примера здесь появился атрибут `oldEntityName`. Он описывает имя сущности, действительное для версии модели данных `1.1`. Атрибут `currentEntityName` описывает текущее имя сущности.
+
+Хотя сущность с именем `sales$Order` более не существует, следующий запрос будет работать:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+Контроллер REST API поймет, что поиск должен быть осуществлен среди экземпляров сущности `sales$NewOrder`, и после того, как сущность с заданным ID будет найдена, имя сущности и имя атрибута `newNumber` будут заменены в JSON:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
+----
+
+Клиентское приложение также может использовать старую версию модели данных для создания или изменения сущности.
+
+Этот *POST* запрос использует старое имя сущности и имеет JSON в старом формате в теле запроса, однако, запрос будет работать:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
+----
+--
+
+Атрибут должен быть удален из JSON::
++
+--
+Иногда может возникнуть ситуация, когда в сущность был добавлен новый атрибут, но клиент, работающий со старой версией модели данных, не должен получать этот атрибут при запросе к сущности. В этом случае стандартный JSON трансформер может удалить атрибут из результата.
+
+Конфиг трансформации для данного случае выглядит примерно так:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-config.xml[]
+----
+
+Описание трансформации здесь содержит тег `toVersion` с вложенной командой `removeAttribute`. Это значит, что при выполнении трасформации из текущей версии модели данных к определенной версии (например, при запросе списка сущностей) атрибут `discount` будет удален из JSON.
+
+Если выполнить запрос к REST API без атрибута `modelVersion`, то атрибут `discount` будет возвращен.
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-response-2.json[]
+----
+
+Если указать `modelVersion` в запросе, то атрибут `discount` будет удален:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-response.json[]
+----
+--
+
+Использование кастомных трансформеров::
++
+--
+Вы также можете создать и зарегистрировать свой собственный трансформер JSON. В качестве примера рассмотрим следующую ситуацию.
+
+Сущность `sales$OldOrder` была переименована в `sales$NewOrder`. В сущности имеется поле `orderDate` с типом дата. В старой версии сущности это поле содержало часть со временем, в новой версии сущности часть со временем в поле отсутствует. Клиент REST API, запрашивающий сущность со старой версией модели данных `1.0` ожидает, что дата будет иметь часть со временем. Получается, что JSON трансформер должен изменить значение в JSON.
+
+Так будет выглядеть конфигурация трансформации для данного случая:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-custom-config.xml[]
+----
+
+Конфигурация содержит элемент `custom` с вложенными элементами `toVersion` и `fromVersion`. Эти элементы содержат ссылки на бины, т.е. кастомный трансформер должен быть зарегистрирован как Spring bean.
+
+Важная деталь: в кастомном трансформере возможно потребуется использовать бин платформы `RestTransformations` (он предоставляет доступ к транформерам для других сущностей). Но бин `RestTransformations` зарегистрирован в Spring контексте сервлета REST API, а не в главном контексте веб-приложения. Это значит, что бин кастомного трансформера также должен быть зарегистрирован в контексте REST API.
+
+Как это сделать. Во-первых, создайте файл `rest-dispatcher-spring.xml` в модуле *web* или *portal* (например в пакете `com.company.test`).
+
+Затем зарегистрируйте этот файл в файле свойств `app.properties` соответствующего модуля.
+
+[source, properties]
+----
+cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+----
+
+Файл `rest-dispatcher-spring.xml` должен содержать определения бинов для кастомных трансформеров:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-dispatcher-spring.xml[]
+----
+
+Исходный код бина `sales_OrderJsonTransformerToVersion`:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderJsonTransformerToVersion.java[]
+----
+
+Данный трансформер находит элемент `orderDate` в JSON и изменяет значение элемента, добавляя к нему часть со временем.
+
+Когда сущность `sales$Order` будет запрошена с версией модели данных `1.0`, то JSON результат будет содержать сущность, поле `orderDate` которой содержит часть со временем, хотя текущий тип поля сущности - дата без времени.
+
+Несколько слов о кастомных трансформерах. Они должны реализовывать интерфейс `EntityJsonTransformer`. Вы также можете отнаследоваться от класса `AbstractEntityJsonTransformer` и переопределить его метод `doCustomTransformations`. Класс `AbstractEntityJsonTransformer` содержит функциональность стандартных трансформеров.
+--

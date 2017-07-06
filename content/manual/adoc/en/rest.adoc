@@ -1,0 +1,673 @@
+[[rest_api_v2]]
+=== REST API
+
+The universal REST API provides the following functionality:
+
+* CRUD operations on entities.
+* Execution of predefined JPQL queries.
+* Execution of service methods.
+* Getting metadata (entities, views, enumerations, datatypes).
+* Getting current user permissions (access to entities, attributes, specific permissions).
+* Getting current user information (name, language, time zone, etc.).
+* Uploading and downloading files.
+
+REST API uses the OAuth2 protocol for authentication and supports anonymous access.
+
+[TIP]
+====
+The detailed documentation for the API is written according to http://swagger.io/specification[Swagger specification] and is available at the following URL: http://files.cuba-platform.com/swagger.
+====
+
+Any running CUBA application also exports the swagger documentation at the URLs `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.yaml` and  `\http://HOST:PORT/APP_NAME/rest/v2/docs/swagger.json`.
+
+[[rest_api_v2_queries_config]]
+==== Predefined JPQL Queries Configuration
+
+In the CUBA application, predefined JPQL queries must be specified in files registered in the <<cuba.rest.queriesConfig, cuba.rest.queriesConfig>> application property of the *web* or *portal* module (e.g in the `web-app.properties file`):
+
+[source,properties]
+----
+cuba.rest.queriesConfig = +com/company/myapp/rest-queries.xml
+----
+
+The `rest-queries.xml` file must be placed in the root package of the *web* or *portal* module (e.g. `com.company.myapp`). Its content is defined by the http://schemas.haulmont.com/cuba/{revnumber}/rest-queries.xsd[rest-queries.xsd] schema, for example:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-queries-config.xml[]
+----
+
+An example of how to configure and execute a query can be found in the <<rest_api_v2_ex_query>> chapter.
+
+The platform also provides the predefined `all` query for getting all instances of a specified entity type. It can be used with `/count` to receive the total number of entity instances, for example:
+
+  http://localhost:8080/app/rest/v2/queries/sales$Order/all/count
+
+[[rest_api_v2_services_config]]
+==== Services Configuration
+
+The list of service methods that are available via the REST API must be configured in the CUBA application in files registered in the <<cuba.rest.servicesConfig, cuba.rest.servicesConfig>> application property of the *web* or *portal* module (e.g in the `web-app.properties file`):
+
+[source,properties]
+----
+cuba.rest.servicesConfig = +com/company/myapp/rest-services.xml
+----
+
+The content of the `rest-services.xml` must be placed in the root package of the *web* or *portal* module (e.g. `com.company.myapp`). Its content is defined by the http://schemas.haulmont.com/cuba/{revnumber}/rest-services-v2.xsd[rest-services-v2.xsd] schema, for example:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-services-config.xml[]
+----
+
+Method parameter types can be omitted if the service doesn't contain an overloaded method with the same number of parameters. Otherwise, types must be defined.
+
+An example of how to configure and invoke a service can be found in the <<rest_api_v2_ex_service_get>> chapter.
+
+[[rest_api_v2_data_model_versioning]]
+==== Data Model Versioning
+
+REST API can handle data model changes. It is useful when, for example, some entity attribute was renamed, but REST API client doesn't know about this modification and expects the attribute to have an old name.
+
+For such cases REST API allows you to define transformation rules for entities JSON. If the client application sends the data model version in the request query parameter then the JSON in REST API method response or request body will be transformed according to transformation rules defined for that particular domain model version.
+
+JSON transformation rules must be specified in files registered in <<cuba.rest.jsonTransformationConfig, cuba.rest.jsonTransformationConfig>> application property of the *web* or *portal* module (e.g in the `web-app.properties` file):
+
+[source,properties]
+----
+cuba.rest.jsonTransformationConfig = +com/company/myapp/rest-json-transformations.xml
+----
+
+The `rest-json-transformations.xml` file must be placed in the *web* or *portal* module (e.g. in package `com.company.myapp`). Its content is defined by the {xsd_url}/rest-json-transformations.xsd[rest-json-transformations.xsd] schema. File example:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-json-transformations.xml[]
+----
+
+Standard transformers configured in the config file can perform the following transformations of entity JSON:
+
+* rename entity
+
+* rename entity attribute
+
+* remove entity attribute
+
+JSON transformation works for the following REST API endpoints:
+
+* */entities* - getting entities list, getting a single entity, entity create, entity update, entity delete
+
+* */queries* - entities JSON returned by the query will be transformed
+
+* */services* - JSON transformations will be applied both to entities returned by the service method and to entities passed as a service method argument
+
+JSON transformations are applied if the request to the REST API contains the `modelVersion` URL parameter with the data model version number.
+
+See the <<rest_api_v2_ex_json_transformations>> to understand how to configure data model versioning and use it from the client application.
+
+[[rest_api_v2_cors]]
+==== CORS Settings
+
+By default, all CORS requests to the REST API are allowed. To restrict the origins list you can define the <<cuba.rest.allowedOrigins, cuba.rest.allowedOrigins>> application property.
+
+[[rest_api_v2_anonymous]]
+==== Anonymous Access
+
+By default, anonymous access is disabled. To enable it, use the <<cuba.rest.anonymousEnabled, cuba.rest.anonymousEnabled>> application property. A request is considered to be anonymous if it doesn't contain an `Authentication` header. In this case, the <<securityContext, SecurityContext>> will contain an anonymous user session.
+
+To set up permissions for anonymous user you must define <<roles, roles>> for the user specified by the <<cuba.anonymousLogin, cuba.anonymousLogin>> application property.
+
+[[rest_api_v2_settings]]
+==== Other REST API Settings
+
+<<cuba.rest.client.id, cuba.rest.client.id>> - defines a default REST API client id.
+
+<<cuba.rest.client.secret, cuba.rest.client.secret>> - defines a default REST API client secret.
+
+<<cuba.rest.client.tokenExpirationTimeSec, cuba.rest.client.tokenExpirationTimeSec>> - defines a token expiration time for the default client in seconds.
+
+<<cuba.rest.maxUploadSize, cuba.rest.maxUploadSize>> - defines a maximum file size that can be uploaded with the REST API.
+
+[[rest_api_v2_custom_controllers]]
+==== Creating Custom OAuth2 Protected Controllers
+
+If you need to create a custom REST controller protected with the OAuth2 authentication then you have to do the following:
+
+. Suppose you have the following REST controller:
++
+[source, java]
+----
+include::{sourcesdir}/features/MyController.java[]
+----
+
+. Create a new Spring configuration file with name `rest-dispatcher-spring.xml` under the root package (`com.company.test`) of *web* or *portal* module. The content of the file must be as follows:
++
+[source, xml]
+----
+include::{sourcesdir}/features/rest-dispatcher-spring.xml[]
+----
+
+. Define an <<additive_app_properties,additive>> application property `cuba.restSpringContextConfig` in the properties file of the module,.e.g. `portal-app.properties`:
++
+[source, properties]
+----
+cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+----
+
+. The new controller runs in the context of the `CubaRestApiServlet`. So the URL for controller methods will start with the `/rest`, i.e. the doSmth() method will be accesed by the URL: `http://localhost:8080/app-portal/rest/myapi/dosmth`.
++
+[WARNING]
+====
+URL of the custom controller MUST NOT start with the `/rest/v2`.
+====
+
+[[rest_api_v2_security_constraints]]
+==== Security Constraints for Collection Attributes
+
+If an entity that is returned by the REST API has a collection attribute and entities in the collection are restricted by any <<constraints,constraint>> then a system attribute `+__securityToken+` may be returned in the result JSON. When you send such entity to REST API methods for update you have to specify the `+__securityToken+` property (the one you got on entity read) in the JSON object. Otherwise, the collection property may be saved incorrectly.
+
+Example:
+
+[source, json]
+----
+include::{sourcesdir}/features/securityToken.json[]
+----
+
+[[rest_api_v2_persistent_token_store]]
+==== Persistent Token Store
+
+By default, OAuth tokens are stored in memory only. If you want to persist them in the database as well, you should set the <<cuba.rest.storeTokensInDb,cuba.rest.storeTokensInDb>> application property to `true`. The property value is stored in the database, so you can change its value in the *Administration > Application Properties* screen.
+
+Expired tokens in the database store must be periodically deleted. The cron expression for scheduled removing of expired tokens is specified in the <<cuba.rest.deleteExpiredTokensCron,cuba.rest.deleteExpiredTokensCron>> application property.
+
+[[rest_api_v2_usage_example]]
+==== REST API Usage Examples
+
+This section contains REST API usage examples.
+
+As mentioned earlier, a detailed information about REST API methods is written according to http://swagger.io/specification[Swagger] specification and is available at address http://files.cuba-platform.com/swagger.
+
+[[rest_api_v2_ex_get_token]]
+===== Getting an OAuth Token
+
+An OAuth token is required for any REST API method (except when you are using an <<rest_api_v2_anonymous, anonymous access>>). A token can be obtained by the POST request on the address:
+
+  http://localhost:8080/app/rest/v2/oauth/token
+
+An access to this endpoint is protected with a basic authentication. REST API client identifier and password is used for basic authentication. Please note that these are not an application user login and password. REST API client id and password are defined in the application properties <<cuba.rest.client.id, cuba.rest.client.id>> and <<cuba.rest.client.secret, cuba.rest.client.secret>> (the default values are `client` and `secret`). You must pass the client id and secret, separated by a single colon (":") character, within a base64 encoded string in the `Authorization` header.
+
+
+The request type must be `application/x-www-form-urlencoded`, the encoding is `UTF-8`.
+
+The requst must contain the following parameters:
+
+* `grant_type` - always `password`.
+* `username` - application user login.
+* `password` - application user password.
+
+[source, httprequest]
+----
+include::{sourcesdir}/features/rest-access-token-request.txt[]
+----
+
+Method returns a JSON object:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-access-token-response.json[]
+----
+
+A token value is in the `access_token` property.
+
+[[rest_api_v2_ex_get_entities_list]]
+===== Getting an Entity Instances List
+
+Let's suppose that the system has a `sales$Order` entity and we need to get a list of this entity instances. Besides, we need to get not all the records, but only 50 records, starting with the 100th one. A response must contain not only simple properties of the `sales$Order` entity but also an information about the order customer (a reference field named `customer`). Orders must be sorted by date.
+
+A base URL for getting all instances of the `sales$Order` entity is as follows:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+To implement all the conditions described above the following request parameters must be specified:
+
+* *view* - a <<views, view>>, that will be used for loading entities. In our case the `order-edit-view` contains a `customer` reference.
+* *limit* - a number of instances to be returned.
+* *offset* - a position of the first extracted record.
+* *sort* - an entity attribute name that will be used for sorting.
+
+An OAuth token must be placed in the `Authorization` header with the `Bearer` type:
+
+  Authorization: Bearer 29bc6b45-83cd-4050-8c7a-2a8a60adf251
+
+As a result, we get the following *GET* request URL:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order?view=order-edit-view&limit=50&offset=100&sort=date
+
+The response will be like this:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-orders-list-response.json[]
+----
+
+Please note, that every entity in the response has a `_entityName` attribute with the entity name and an `_instanceName` attribute with the entity <<namePattern_annotation, instance name>>.
+
+[[rest_api_v2_ex_create_entity]]
+===== New Entity Instance Creation
+
+New `sales$Order` entity instance can be created with the *POST* request on the address:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+
+The request body must contain a JSON object that describes a new entity instance, e.g.:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-create-order-request.json[]
+----
+
+A collection of order items (`items`) and a `customer` reference are passed in the request body. Let's examine how these attributes will be processed.
+
+First, let's have a quick look to the `Order` class:
+
+[source, java]
+----
+include::{sourcesdir}/features/Order.java[]
+----
+
+The `items` collection property is annotated with the <<composition_annotation, @Composition>>. REST API methods for entity creation and update will create a new entity instances for all members of such collections. In our case, two instances of `OrderItem` entity will be created with the `Order` entity.
+
+The `customer` reference doesn't have a `@Composition` annotation, that's why the REST API will try to find a client with the given id and set it to the `customer` field. If the client is not found then an order won't be created and the method will return an error.
+
+In case of successful method execution a full object graph of the created entity is returned:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-create-order-response.json[]
+----
+
+[[rest_api_v2_ex_update_entity]]
+===== Existing Entity Instance Update
+
+An existing `sales$Order` entity instance can be updated with the *PUT* request on the address:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/5d7ff8e3-7828-ba94-d6ba-155c5c4f2a50
+
+The last part of the query here is the entity identifier.
+
+An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+
+The request body must contain a JSON object containing only fields we want to update, e.g.:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-update-order-request.json[]
+----
+
+The response body will contain a modified entity:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-update-order-response.json[]
+----
+
+[[rest_api_v2_ex_query]]
+===== Executing a JPQL Query
+
+Before the execution with the REST API a query must be described in the <<rest_api_v2_queries_config, configuration file>>. The `rest-queries.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
+
+[source, properties]
+----
+cuba.rest.queriesConfig = +com/company/sales/rest-queries.xml
+----
+
+`rest-queries.xml` contents:
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-queries.xml[]
+----
+
+To execute a JPQL query the following *GET* request must be executed:
+
+  http://localhost:8080/app/rest/v2/queries/sales$Order/ordersAfterDate?startDate=2016-11-01&endDate=2017-11-01
+
+The request URL parts:
+
+* `sales$Order` - extracted entity name.
+* `ordersAfterDate` - a query name from the configuration file.
+* `startDate` and `endDate` - request parameters with the values.
+
+An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+
+The method returns a JSON array of extracted entity instances:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-ordersAfterDate-query-response.json[]
+----
+
+A full list of possible request parameters is available in the http://files.cuba-platform.com/swagger[Swagger documentation].
+
+[[rest_api_v2_ex_service_get]]
+===== Service Method Invocation (GET)
+
+Suppose there is an `OrderService` <<services, service>> in the system. The implementation looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderServiceBean.java[]
+----
+
+Before the execution with the REST API a service method invocation must be allowed in the <<rest_api_v2_services_config, configuration file>>. The `rest-services.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
+
+[source, properties]
+----
+cuba.rest.servicesConfig = +com/company/sales/rest-services.xml
+----
+
+`rest-services.xml` content:
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-services.xml[]
+----
+
+To invoke the service method the following *GET* request must be executed:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/calculatePrice?orderNumber=00001
+
+The request URL parts:
+
+* `sales_OrderService` - a service name.
+* `calculatePrice` - a method name.
+* `orderNumber` - an argument name with the value.
+
+An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+
+A service method may return a result of  simple datatype, an entity, an entities collection or a serializable POJO. In our case a BigDecimal is returned, so the response body contains just a number:
+
+  39.2
+
+[[rest_api_v2_ex_service_post]]
+===== Service Method Invocation (POST)
+
+REST API allows execution not only of methods that have arguments of simple datatypes, but also of methods with the following arguments:
+
+* entities
+* entities collections
+* POJOs
+
+Suppose we added a new method to the `OrderService` created in the previous section:
+
+[source, java]
+----
+@Override
+public OrderValidationResult validateOrder(Order order, Date validationDate){
+    OrderValidationResult result=new OrderValidationResult();
+    result.setSuccess(false);
+    result.setErrorMessage("Validation of order "+order.getNumber()+" failed. validationDate parameter is: "+validationDate);
+    return result;
+}
+----
+
+`OrderValidationResult` class looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderValidationResult.java[]
+----
+
+The new method has an `Order` entity in the arguments list and returns a POJO.
+
+Before the invocation with the REST API the method must be allowed, so we add a record to the `rest-services.xml` configuration file (it was described in the <<rest_api_v2_ex_service_get>>).
+
+[source, xml]
+----
+include::{sourcesdir}/features/sales-rest-services-2.xml[]
+----
+
+The `validateOrder` service method may be called with the *POST* request on the address:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/validateOrder
+
+In case of the POST request parameters are passed in the request body. The request body must contain a JSON object, each field of this object corresponds to the service method argument.
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-validateOrder-service-request.json[]
+----
+
+An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+
+The REST API method returns a serialized POJO:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-validateOrder-service-response.json[]
+----
+
+[[rest_api_v2_ex_file_download]]
+===== Files Downloading
+
+When downloading a file, passing a security token in the request header is often inconvenient. It is desirable to have a URL for downloading that may be put to the *src* attribute of the *img* tag.
+
+As a solution, an OAuth token can also be passed in the request URL as a parameter with the *access_token* name.
+
+For example, an image is uploaded to the application. Its FileDescriptor id is `44809679-e81c-e5ae-dd81-f56f223761d6`.
+
+In this case a URL for downloading the image will look like this:
+
+  http://localhost:8080/app/rest/v2/files/44809679-e81c-e5ae-dd81-f56f223761d6?access_token=a2f0bb4e-773f-6b59-3450-3934cbf0a2d6
+
+[[rest_api_v2_ex_javascript_usage]]
+===== JavaScript Usage Example
+
+This section contains an example of using REST API v2 from JavaScript running on a HTML page. The page initially shows login form, and after successful login displays a message and a list of entities.
+
+For simplicity, we will use `modules/web/web/VAADIN` folder for storing HTML/CSS/JavaScript files, as the corresponding folder in the deployed web application is used for serving static resources by default. So you will not need to make any configuration of your Tomcat application server. The resulting URL will start from `++http://localhost:8080/app/VAADIN++`, so do not use this approach in a real world application - create a separate web application with its own context instead.
+
+Download https://jquery.com/download[jQuery] and http://getbootstrap.com/getting-started/#download[Bootstrap] and copy to `modules/web/web/VAADIN` folder of your project. Create `customers.html` and `customers.js` files, so the content of the folder should look as follows:
+
+[source, plain]
+----
+bootstrap.min.css
+customers.html
+customers.js
+jquery-3.1.1.min.js
+----
+
+`customers.html` file content:
+
+[source, html]
+----
+include::{sourcesdir}/features/rest_customers.html[]
+----
+
+`customers.js` file content:
+
+[source, javascript]
+----
+include::{sourcesdir}/features/rest_customers_script.js[]
+----
+
+Login and password from the user input are sent to the server by the POST request with the Base64-encoded client credentials in the `Authorization` header as explained in <<rest_api_v2_ex_get_token>> section. If the authentication is successful, the web page receives an access token value from the server, the token is stored in the `oauthToken` variable, the `loginForm` div is hidden and the `loggedInStatus` div is shown.
+
+To show the list of customers, the request is sent to the server <<rest_api_v2_ex_get_entities_list,to get the instances>> of the `sales$Customer` entity, passing the `oauthToken` value in the `Authorization` header.
+
+In case the request is processed successfully, the `customers` div is shown, and the `customersList` element is filled with items containing customer names and emails.
+
+image::rest_js_1.png[align="center"]
+
+image::rest_js_2.png[align="center"]
+
+[[rest_api_v2_ex_localized_messages]]
+===== Getting Localized Messages
+
+There are methods in the REST API for getting localized messages for entities, their properties and enums.
+
+For example, to get a list of localized messages for the `sec$User` entity you have to execute the following *GET* request:
+
+  http://localhost:8080/app/rest/v2/messages/entities/sec$User
+
+An OAuth token must be placed in the `Authorization` header with the `Bearer` type.
+
+You can explicitly specify the desired locale using the *Accept-Language* http header.
+
+The response will be like this:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-user-messages-response.json[]
+----
+
+To get the localization for enum, use the following URL:
+
+  http://localhost:8080/app/rest/v2/messages/enums/com.haulmont.cuba.security.entity.RoleType
+
+If you omit the entity name or enum name part in the URL, you'll get the localization for all entities or enums.
+
+[[rest_api_v2_ex_json_transformations]]
+===== Data Model Versioning Example
+
+Entity attribute was renamed::
++
+--
+Let's suppose that the `oldNumber` attribute of the `sales$Order` entity was renamed to `newNumber` and `date` was renamed to `deliveryDate`. In this case transformation config will be like this:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-attr-renamed-config.xml[]
+----
+
+If the client app needs to work with the old version of the `sales$Order` entity then it must pass the `modelVersion` value in the URL parameter:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.0
+
+The following result will be returned:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-renamed-response.json[]
+----
+
+The response JSON contains an `oldNumber` and `date` attributes although the entity in the CUBA application has `newNumber` and `deliveryDate` attributes.
+--
+
+Entity name was changed::
++
+--
+Next, let's imagine, that in some next release of the application a name of the `sales$Order` entity was also changed. The new name is `sales$NewOrder`.
+
+Transformation config for version `1.1` will be like this:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-config.xml[]
+----
+
+In addition to the config from the previous example an `oldEntityName` attribute is added here. It specifies the entity name that was valid for model version `1.1`. The `currentEntityName` attribute specifies the current entity name.
+
+Although an entity with a name `sales$Order` doesn't exist anymore, the following request will work:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+The REST API controller will understand that it must search among `sales$NewOrder` entities and after the entity with given id is found names of the entity and of the `newNumber` attribute will be replaced in the result JSON:
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
+----
+
+The client app can also use the old version of data model for entity update and creation.
+
+This *POST* request that uses old entity name and has old JSON in the request body will work:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-entity-name-changed-response.json[]
+----
+--
+
+Entity attribute must be removed from JSON::
++
+--
+If some attribute was added to the entity, but the client that works with the old version of data model doesn't expect this new attribute, then the new attribute can be removed from the result JSON.
+
+Transformation configuration for this case will look like this:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-config.xml[]
+----
+
+Transformation in this config file contains a `toVersion` tag with a nested `removeAttribute` command. This means that when the transformation from the current state to specific version is performed (i.e. when you request a list of entities) then a `discount` attribute must be removed from the result JSON.
+
+In this case if you perform the request without the `modelVersion` attribute, the discount attribute will be returned:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-response-2.json[]
+----
+
+If you specify the `modelVersion` then `discount` attribute will be removed
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+[source, json]
+----
+include::{sourcesdir}/features/rest-transform-attr-removed-response.json[]
+----
+--
+
+Using custom transformer::
++
+--
+You can also create and register a custom JSON transformer. As an example let's examine the following situation: there was an entity `sales$OldOrder` that was renamed to `sales$NewOrder`. This entity has an `orderDate` field. In the previous version, this date field contained a time part, but in the latest version of the entity, the time part is removed. REST API client that request the entity with an old model version `1.0` expects the date field to have the time part, so the transformer must modify the value in the JSON.
+
+First, that's how the transformer configuration must look like:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-custom-config.xml[]
+----
+
+There are a `custom` element and nested `toVersion` and `fromVersion` elements. These elements have a reference to the transformer bean. This means that custom transformer must be registered as a Spring bean. There is one important thing here: a custom transformer may use the `RestTransformations` platform bean (this bean gives an access to other entities transformers if it is required). But the `RestTransformations` bean is registered in the Spring context of the REST API servlet, not in the main context of the web application. This means that custom transformer beans must be registered in the REST API Spring context as well.
+
+That's how we can do that.
+
+First, create a `rest-dispatcher-spring.xml` in the *web* or *portal* module (e.g. in package `com.company.test`).
+
+Next, register this file in the `app.properties` of the web or portal module:
+
+[source, properties]
+----
+cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+----
+
+The `rest-dispatcher-spring.xml` must contain custom transformer bean definitions:
+
+[source, xml]
+----
+include::{sourcesdir}/features/rest-transform-dispatcher-spring.xml[]
+----
+
+The content of the `sales_OrderJsonTransformerToVersion` transformer is as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderJsonTransformerToVersion.java[]
+----
+
+This transformer finds the `orderDate` node in the JSON object and modifies its value by adding the time part to the value.
+
+When the `sales$OldOrder` entity with a data model version `1.0` is requested, the result JSON will contain entities with `orderDate` fields that contain time part, although it is not stored in the database anymore.
+
+A couple more words about custom transformers. They must implement the `EntityJsonTransformer` interface. You can also extend the `AbstractEntityJsonTransformer` class and override its `doCustomTransformations` method. The `AbstractEntityJsonTransformer` contains all functionality of the standard transformer.
+--
