@@ -995,16 +995,30 @@ protected Set<Permission> permissions;
 @OnDeleteInverse(DeletePolicy.UNLINK)
 protected Role role;
 ----
-+
+
 Особенности реализации:
 
-. Нужно быть осторожным при использовании `@OnDeleteInverse` с политиками `CASCADE` и `UNLINK`, так как при этом происходит извлечение из БД на сервер приложения всех экземпляров ссылающихся объектов, изменение и затем сохранение. 
+. Политика обработки связей реализуется при сохранении данных в БД на уровне Middleware.
+
+. Нужно быть осторожным при использовании `@OnDeleteInverse` с политиками `CASCADE` и `UNLINK`, так как при этом происходит извлечение из БД на сервер приложения всех экземпляров ссылающихся объектов, изменение и затем сохранение.
 +
 Например, в случае ассоциации `Customer` - `Job` и большого количества работ для одного заказчика, если поставить на атрибут `Job.customer` политику `@OnDeleteInverse(CASCADE)`, то при удалении экземпляра заказчика будет предпринята попытка извлечь и изменить все его работы. Это может привести к перегрузке сервера приложения и БД.
 +
 С другой стороны, использование `@OnDeleteInverse(DENY)` безопасно, так как при этом производится только подсчет количества ссылающихся объектов, и если оно больше `0`, выбрасывается исключение. Поэтому `@OnDeleteInverse(DENY)` для атрибута `Job.customer` вполне допустимо.
 
-. Политика обработки связей реализуется с помощью <<entity_listeners,Entity Listeners>>, то есть при сохранении данных в БД на <<app_tiers,уровне>> Middleware.
+. Политика `UNLINK` не поддерживается для ссылок на коллекции с отношениями one-to-many и many-to-many: при попытке удаления экземпляра сущности на ведущей стороне ассоциации будет выброшено исключение `UnsupportedOperationException`. Пример ошибочной политики:
++
+`Owner.java`
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_OWNER_SUBORDINATE_LINK",
+    joinColumns = @JoinColumn(name = "OWNER_ID"),
+    inverseJoinColumns = @JoinColumn(name = "SUBORDINATE_ID"))
+@OnDelete(DeletePolicy.UNLINK)
+@ManyToMany
+protected List<Subordinate> subordinate;
+----
 
 [[soft_deletion_unique_constr]]
 ====== Ограничение уникальности на уровне БД
