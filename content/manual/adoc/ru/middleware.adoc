@@ -417,6 +417,245 @@ include::{sourcesdir}/middleware/jpqlquery_2.java[]
 
 Запросы, модифицирующие данные (`update`, `delete`) приводят к сбросу (flush) в базу данных текущего персистентного контекста перед выполнением. Другими словами, ORM сначала синхронизирует состояние сущностей в персистентном контексте и в БД, а уже потом выполняет модифицирующий запрос. Рекомендуется выполнять такие запросы в неизмененном персистентном контексте, чтобы исключить неявные действия ORM, которые могут отрицательно сказаться на производительности.
 
+[[jpql_functions]]
+====== Функции JPQL
+
+В таблице ниже описаны функции JPQL, поддерживаемые и не поддерживаемые платформой CUBA.
+
+[cols="1,1,5",width="100%"]
+|===
+|Функция |Поддерживается |Пример запроса
+
+//Aggregate functions with scalar expression
+
+.2+|Агрегатные функции
+
+|ДА
+
+m|SELECT AVG(o.quantity) FROM app$Order o
+
+|_НЕТ: агрегатные функции со скалярными выражениями (особенность EclipseLink)_
+
+m|_SELECT AVG(o.quantity)/2.0 FROM app$Order o_
+
+_SELECT AVG(o.quantity * o.price) FROM app$Order o_
+
+//ALL, ANY, SOME
+
+|ALL, ANY, SOME
+
+|ДА
+
+m|SELECT emp FROM app$Employee emp WHERE emp.salary > ALL (SELECT m.salary FROM app$Manager m WHERE m.department = emp.department)
+
+//Arithmetic Functions (INDEX, SIZE, ABS, SQRT, MOD)
+
+|Арифметические функции (INDEX, SIZE, ABS, SQRT, MOD)
+
+|ДА
+
+m|SELECT w.name FROM app$Course c JOIN c.studentWaitlist w WHERE c.name = 'Calculus' AND INDEX(w) = 0
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND SIZE(c.studentWaitlist) = 1
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND ABS(c.time) = 10
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND SQRT(c.time) = 10.5
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND MOD(c.time, c.time1) = 2
+
+//CASE Expression in UPDATE query
+
+.2+|CASE
+
+|ДА
+
+m|SELECT e.name, f.name, CONCAT(CASE WHEN f.annualMiles > 50000 THEN 'Platinum ' WHEN f.annualMiles > 25000 THEN 'Gold ' ELSE '' END, 'Frequent Flyer')
+  FROM app$Employee e JOIN e.frequentFlierPlan f
+
+|_НЕТ: CASE в UPDATE-запросе_
+
+m|_UPDATE app$Employee e SET e.salary = CASE e.rating WHEN 1 THEN e.salary * 1.1 WHEN 2 THEN e.salary * 1.05 ELSE e.salary * 1.01 END_
+
+//Date Functions (CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP)
+
+|Функции даты и времени (CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP)
+
+|ДА
+
+m|SELECT e FROM app$Order e WHERE e.date = CURRENT_DATE
+
+//EclipseLink Functions (CAST, REGEXP, EXTRACT)
+
+|Функции EclipseLink (CAST, REGEXP, EXTRACT)
+
+|ДА
+
+m|SELECT EXTRACT(YEAR FROM e.createTs) FROM app$MyEntity e WHERE EXTRACT(YEAR FROM e.createTs) > 2012
+
+  SELECT e FROM app$MyEntity e WHERE e.name REGEXP '.*'
+
+  SELECT CAST(e.number text) FROM app$MyEntity e WHERE e.path LIKE CAST(:ds$myEntityDs.id text)
+
+//Entity Type Expression
+
+.2+|Операторы типов сущности
+
+|ДА: тип сущности передаётся как параметр
+
+m|SELECT e FROM app$Employee e WHERE TYPE(e) IN (:empType1, :empType2)
+
+|_НЕТ: прямая ссылка на сущность_
+
+m|_SELECT e FROM app$Employee e WHERE TYPE(e) IN (app$Exempt, app$Contractor)_
+
+//Function Invocation
+
+.2+|Вызов функций
+
+|ДА: результат с операторами сравнения
+
+m|SELECT u FROM sec$User u WHERE function('DAYOFMONTH', u.createTs) = 1
+
+|_НЕТ: прямое использование результата функции_
+
+m|_SELECT u FROM sec$User u WHERE function('hasRoles', u.createdBy, u.login)_
+
+//IN
+
+|IN
+
+|ДА
+
+m|SELECT e FROM Employee e, IN(e.projects) p WHERE p.budget > 1000000
+
+//IS EMPTY collection
+
+|IS EMPTY для коллекций
+
+|ДА
+
+m|SELECT e FROM Employee e WHERE e.projects IS EMPTY
+
+//KEY/VALUE
+
+|KEY/VALUE
+
+|_НЕТ_
+
+m|_SELECT v.location.street, KEY(i).title, VALUE(i) FROM app$VideoStore v JOIN v.videoInventory i WHERE v.location.zipcode = '94301' AND VALUE(i) > 0_
+
+//Literals
+.2+|Литералы
+
+|ДА
+
+m|SELECT e FROM app$Employee e WHERE e.name = 'Bob'
+
+  SELECT e FROM app$Employee e WHERE e.id = 1234
+
+  SELECT e FROM app$Employee e WHERE e.id = 1234L
+
+  SELECT s FROM app$Stat s WHERE s.ratio > 3.14F
+
+  SELECT s FROM app$Stat s WHERE s.ratio > 3.14e32D
+
+  SELECT e FROM app$Employee e WHERE e.active = TRUE
+
+|_НЕТ: литералы даты и времени_
+
+m|_SELECT e FROM app$Employee e WHERE e.startDate = {d'2012-01-03'}_
+
+  _SELECT e FROM app$Employee e WHERE e.startTime = {t'09:00:00'}_
+
+  _SELECT e FROM app$Employee e WHERE e.version = {ts'2012-01-03 09:00:00.000000001'}_
+
+//MEMBER OF
+
+.2+|MEMBER OF
+
+|ДА: для полей и запросов
+
+m|SELECT d FROM app$Department d WHERE (select e from app$Employee e where e.id = :eParam) MEMBER OF e.employees
+
+|_НЕТ: для литералов_
+
+m|_SELECT e FROM app$Employee e WHERE 'write code' MEMBER OF e.codes_
+
+//NEW in SELECT
+
+|NEW в SELECT
+
+|_НЕТ_
+
+m|_SELECT NEW com.acme.example.CustomerDetails(c.id, c.status, o.count) FROM app$Customer c JOIN c.orders o WHERE o.count > 100_
+
+//NULLIF/COALESCE
+
+|NULLIF/COALESCE
+
+|ДА
+
+m|SELECT NULLIF(emp.salary, 10) FROM app$Employee emp
+
+  SELECT COALESCE(emp.salary, emp.salaryOld, 10) FROM app$Employee emp
+
+//NULLS FIRST, NULLS LAST in order by
+
+|NULLS FIRST, NULLS LAST в order by
+
+|ДА
+
+m|SELECT h FROM sec$GroupHierarchy h ORDER BY h.level DESC NULLS FIRST
+
+//String Functions (CONCAT, SUBSTRING, TRIM, LOWER, UPPER, LENGTH, LOCATE)
+
+.2+|Строковые функции (CONCAT, SUBSTRING, TRIM, LOWER, UPPER, LENGTH, LOCATE)
+
+|ДА
+
+m|SELECT x FROM app$Magazine x WHERE CONCAT(x.title, 's') = 'JDJs'
+
+  SELECT x FROM app$Magazine x WHERE SUBSTRING(x.title, 1, 1) = 'J'
+
+  SELECT x FROM app$Magazine x WHERE LOWER(x.title) = 'd'
+
+  SELECT x FROM app$Magazine x WHERE UPPER(x.title) = 'D'
+
+  SELECT x FROM app$Magazine x WHERE LENGTH(x.title) = 10
+
+  SELECT x FROM app$Magazine x WHERE LOCATE('A', x.title, 4) = 6
+
+  SELECT x FROM app$Magazine x WHERE TRIM(TRAILING FROM x.title) = 'D'
+
+|_НЕТ: TRIM не поддерживается с trim char_
+
+m|_SELECT x FROM app$Magazine x WHERE TRIM(TRAILING 'J' FROM x.title) = 'D'_
+
+//Subquery
+.2+|Вложенные запросы
+
+|ДА
+
+m|SELECT goodCustomer FROM app$Customer goodCustomer WHERE goodCustomer.balanceOwed < (SELECT AVG(c.balanceOwed) FROM app$Customer c)
+
+|_НЕТ: path-выражения вместо имени сущности в FROM подзапроса_
+
+m|_SELECT c FROM app$Customer c WHERE (SELECT AVG(o.price) FROM c.orders o) > 100_
+
+//TREAT
+.2+|TREAT
+
+|ДА
+
+m|SELECT e FROM app$Employee e JOIN TREAT(e.projects AS app$LargeProject) p WHERE p.budget > 1000000
+
+|_НЕТ: TREAT в WHERE-выражениях_
+
+m|_SELECT e FROM Employee e JOIN e.projects p WHERE TREAT(p as LargeProject).budget > 1000000_
+
+|===
+
 [[query_case_insensitive]]
 ====== Поиск подстроки без учета регистра
 
