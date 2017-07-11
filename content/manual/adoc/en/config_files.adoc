@@ -7,7 +7,7 @@ This appendix describes the main configuration files included in CUBA-applicatio
 [[app-component.xml]]
 === app-component.xml
 
-`app-component.xml` file is required for using the current application as a <<app_components,component>> of another application. The file defines the dependencies on other components, describes the existing <<app_modules,application modules>>, generated <<artifact,artifacts>> and exposed <<app_properties,configuration parameters>>.
+`app-component.xml` file is required for using the current application as a <<app_components,component>> of another application. The file defines the dependencies on other components, describes the existing <<app_modules,application modules>>, generated <<artifact,artifacts>> and exposed <<app_properties,application properties>>.
 
 The `app-component.xml` file should be located in a package, specified in the `App-Component-Id` entry of the *global* module JAR manifest. This manifest entry allows the build system to find components for a project in the build class path. As a result, in order to use some component in your project, just define the component's global artifact coordinates in the `buildscript/dependencies` section of your <<build.gradle,build.gradle>>.
 
@@ -601,145 +601,42 @@ See also the <<cuba.viewsConfig,cuba.viewsConfig>> application property.
 [[web.xml]]
 === web.xml
 
-The `web.xml` file is a standard descriptor of a *Java EE* web application and should be created for the Middleware, Web Client and Web Portal blocks.
+The `web.xml` file is a standard descriptor of a Java EE web application and should be created for the Middleware, Web Client and Web Portal blocks.
 
-In an application project, `web.xml` files are located in the web/WEB-INF folders of the corresponding <<app_modules,modules>>.
+In an application project, `web.xml` files are located in the `web/WEB-INF` folders of the corresponding <<app_modules,modules>>.
 
-`web.xml` for the Middleware block (*core* project module) has the following content:
-
+* `web.xml` for the Middleware block (*core* project module) has the following content:
++
+--
 [source, xml]
 ----
-<web-app xmlns="http://java.sun.com/xml/ns/javaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
-         http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
-         version="3.0">
-
-  <!-- Application properties config files -->
-  <context-param>
-      <param-name>appPropertiesConfig</param-name>
-      <param-value>
-          classpath:cuba-app.properties
-          classpath:app.properties
-          file:${catalina.home}/conf/app-core/local.app.properties
-      </param-value>
-  </context-param>
-
-  <listener>
-      <listener-class>com.haulmont.cuba.core.sys.AppContextLoader</listener-class>
-  </listener>
-
-  <servlet>
-      <servlet-name>remoting</servlet-name>
-      <servlet-class>com.haulmont.cuba.core.sys.remoting.RemotingServlet</servlet-class>
-      <load-on-startup>1</load-on-startup>
-  </servlet>
-
-  <servlet-mapping>
-      <servlet-name>remoting</servlet-name>
-      <url-pattern>/remoting/*</url-pattern>
-  </servlet-mapping>
-
-  <servlet>
-      <servlet-name>restapi</servlet-name>
-      <servlet-class>com.haulmont.cuba.core.sys.restapi.RestApiServlet</servlet-class>
-      <load-on-startup>1</load-on-startup>
-  </servlet>
-
-  <servlet-mapping>
-      <servlet-name>restapi</servlet-name>
-      <url-pattern>/api/*</url-pattern>
-  </servlet-mapping>
-</web-app>
+include::{sourcesdir}/config_files/web_1.xml[]
 ----
 
-The `context-param` elements define initializing parameters for the `ServletContext` object of the current web application. The list of <<app_properties_files,application property files>> is also defined in the `appPropertiesConfig` parameter.
+The `context-param` elements define initializing parameters for the `ServletContext` object of the current web application. The list of <<app_components,application components>> is defined in the `appComponents` parameter, the list of <<app_properties_files,application property files>> is defined in the `appPropertiesConfig` parameter.
 
 The `listener` element defines a listener class implementing the `ServletContextListener` interface. The Middleware block uses the `AppContextLoader` class as a listener. This class initializes the <<appContext,AppContext>>.
 
 Servlet descriptions follow, including the `RemotingServlet` class, mandatory for the Middleware block. This servlet is accessible via the `++/remoting/*++` URL, and is related to the remote access container (see <<remoting-spring.xml,>>).
+--
 
-`web.xml` for the Web Client block (*web* project module) has the following content:
-
+* `web.xml` for the Web Client block (*web* project module) has the following content:
++
+--
 [source, xml]
 ----
-<web-app xmlns="http://java.sun.com/xml/ns/javaee"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
-         http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd"
-         version="3.0">
-
-  <context-param>
-      <description>Vaadin production mode</description>
-      <param-name>productionMode</param-name>
-      <param-value>false</param-value>
-  </context-param>
-
-  <context-param>
-      <param-name>appPropertiesConfig</param-name>
-      <param-value>
-          classpath:cuba-web-app.properties
-          classpath:web-app.properties
-          file:${catalina.home}/conf/app/local.app.properties
-      </param-value>
-  </context-param>
-
-  <listener>
-      <listener-class>com.vaadin.server.communication.JSR356WebsocketInitializer</listener-class>
-  </listener>
-  <listener>
-      <listener-class>com.haulmont.cuba.web.sys.WebAppContextLoader</listener-class>
-  </listener>
-
-  <servlet>
-      <servlet-name>app_servlet</servlet-name>
-      <servlet-class>com.haulmont.cuba.web.sys.CubaApplicationServlet</servlet-class>
-      <init-param>
-          <param-name>application</param-name>
-          <param-value>com.haulmont.sales.web.App</param-value>
-      </init-param>
-      <init-param>
-          <param-name>widgetset</param-name>
-          <param-value>com.haulmont.cuba.web.toolkit.ui.WidgetSet</param-value>
-      </init-param>
-      <init-param>
-          <param-name>UI</param-name>
-          <param-value>com.haulmont.cuba.web.AppUI</param-value>
-      </init-param>
-      <init-param>
-          <param-name>UIProvider</param-name>
-          <param-value>com.haulmont.cuba.web.sys.CubaUIProvider</param-value>
-      </init-param>
-      <async-supported>true</async-supported>
-  </servlet>
-
-  <servlet-mapping>
-      <servlet-name>app_servlet</servlet-name>
-      <url-pattern>/*</url-pattern>
-  </servlet-mapping>
-
-  <filter>
-      <filter-name>cuba_filter</filter-name>
-      <filter-class>com.haulmont.cuba.web.sys.CubaHttpFilter</filter-class>
-      <async-supported>true</async-supported>
-  </filter>
-
-  <filter-mapping>
-      <filter-name>cuba_filter</filter-name>
-      <url-pattern>/*</url-pattern>
-  </filter-mapping>
-
-</web-app>
+include::{sourcesdir}/config_files/web_2.xml[]
 ----
 
-The list of <<app_properties_files,application property files>> is defined in the `appPropertiesConfig` parameter. The `productionMode` property disables the *Vaadin* framework debugging mode.
+In the `context-param` elements, the lists of <<app_components,application components>> and <<app_properties_files,application property files>> are defined. The `webResourcesTs` parameter with the value substituted at build time ensures correct caching of static resources in web browser.
 
 The Web Client block uses the `WebAppContextLoader` class as a `ServletContextListener`.
 
-Next, the `CubaApplicationServlet` is defined, providing the <<gui_framework,generic user interface>> implementation based on the *Vaadin* framework. The servlet has a number of parameters, including:
+The `JSR356WebsocketInitializer` listener is required for WebSockets protocol support.
 
-* `application` – defines a project specific client application class, inherited from `com.haulmont.cuba.web.App`.
+`CubaApplicationServlet` provides the <<gui_framework,generic user interface>> implementation based on the Vaadin framework.
 
-* `widgetset` – defines a set of *GWT* components used on the browser side.
+`CubaDispatcherServlet` initializes an additional Spring context for Spring MVC controllers. This context is configured in the <<dispatcher-spring.xml,>> file.
 
-Later, the `CubaHttpFilter` required for functioning of the Web Client block is defined.
+`CubaRestApiServlet` provides the universal <<rest_api_v2,REST API>>.
+--

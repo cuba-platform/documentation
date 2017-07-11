@@ -2222,13 +2222,23 @@ When you need to set a value to a platform property, find this property in the <
 ====
 --
 
+[[component_app_properties]]
+Properties From Application Components::
++
+--
+An <<app_components,application component>> can expose properties by defining them in its  <<app-component.xml,app-component.xml>> file.
+Then if an application which uses the component does not define its own value for the property, the value will be obtained from the component. If the application uses multiple components defining the same property, the actual value in the application will be obtained from the component which is the closest ancestor by the hierarchy of dependencies between components. If there are several components on the same level of the hierarchy, the value is unpredictable.
+--
+
 [[additive_app_properties]]
 Additive Properties::
 +
 --
-Properties representing configuration parameters can be _additive_. Additive properties get their values from all <<app_components,components>> used in the application. This allows platform mechanisms to configure your application depending on the properties provided by application components. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is an additive property. In your project, it specifies a `persistence.xml` file defining your project's data model. But due to the fact that the real property value will include also `persistence.xml` files of the application components, the whole data model of your application will include also entities defined in the components.
+Sometimes it is needed to get a combined property value from all application components used in the project. This is especially true for configuration parameters that allow platform mechanisms to configure your application based on the parameters provided by components.
 
-Additive properties are stored in <<app_properties_files,files>> and usually have the plus sign in the beginning of values, indicating that the property value will be assembled from application components at runtime. If you omit `+` for an additive property, its value will be obtained only from the current project. It can be useful if you don't want to inherit some configuration from components, for example, when you define a menu structure.
+Such properties should be made _additive_ by specifying the plus sign in the beginning of their values. This sign indicates that the property value will be assembled from application components at runtime. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> should be an additive property. In your project, it specifies a `persistence.xml` file defining your project's data model. But due to the fact that the real property value will include also `persistence.xml` files of the application components, the whole data model of your application will include also entities defined in the components.
+
+If you omit `+` for a property, its value will be obtained only from the current project. It can be useful if you don't want to inherit some configuration from components, for example, when you define a menu structure.
 --
 
 [[app_properties_access]]
@@ -2248,7 +2258,7 @@ You can access application properties in your code using the following mechanism
 [[app_properties_files]]
 ===== Storing Properties in Files
 
-Properties that determine configuration and deployment parameters are specified in special property files named according to the `++*app.properties++` pattern. Each application <<app_tiers,block>> contains a set of such files, including files from *cuba* <<app_components,application component>>. The set of property files is defined as follows:
+Properties that determine configuration and deployment parameters are specified in special property files named according to the `++*app.properties++` pattern. Each application <<app_tiers,block>> contains a set of such files which is defined as follows:
 
 * For web application blocks (Middleware, Web Client, Web Portal) the set of property files is specified in the `appPropertiesConfig` parameter of <<web.xml,web.xml>>.
 
@@ -2261,16 +2271,16 @@ For example, the set of property files of the Middleware block is specified in t
 <context-param>
     <param-name>appPropertiesConfig</param-name>
     <param-value>
-        classpath:cuba-app.properties
         classpath:com/company/sample/app.properties
-        file:${catalina.home}/conf/app-core/local.app.properties
+        /WEB-INF/local.app.properties
+        "file:${catalina.base}/conf/app-core/local.app.properties"
     </param-value>
 </context-param>
 ----
 
-The `classpath:` prefix means that the corresponding file can be found in the Java classpath, while `file:` prefix means that it should be loaded from the file system. Java system properties can be used: in this example, `catalina.home` is the Tomcat installation path.
+The `classpath:` prefix means that the corresponding file can be found in the Java classpath, while `file:` prefix means that it should be loaded from the file system. A path without such prefix means the path inside the web application relative to its root. Java system properties can be used: in this example, `catalina.home` is the Tomcat installation path.
 
-An order in which files are declared is important because the values, specified in each subsequent file override the values of the properties with the same name, specified in the preceding files. This allows you to override platform properties in the application.
+An order in which files are declared is important because the values, specified in each subsequent file override the values of the properties with the same name, specified in the preceding files. 
 
 The last file in the above set is `local.app.properties`. It can be used to override application properties upon deployment. If the file does not exist, it is silently ignored. You can create this file on the application server and define all properties specific to the environment in it. As a result, the settings will be separated from the application, and you will be able to update the application without fear of losing the specific configuration information. The <<tomcat_in_prod>> section contains an example of using the `local.app.properties` file.
 
