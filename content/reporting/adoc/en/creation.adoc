@@ -47,21 +47,23 @@ The *Dataset name* column value is used for user convenience only.
 
 The *Link field* is used to merge data from multiple datasets inside one band. It can be used when the whole data for the report row could not be received by a single query or a Groovy script.
 
-Supported dataset types are provided below:
+Supported dataset types are described below.
 
 [[structure_sql]]
-. *SQL* - the dataset is produced as result of SQL query execution. It is recommended to use aliases for query result fields with the help of the `as` operator. It is also recommended to enclose the aliases in double quotes to prevent possible case conversion by the DBMS:
-+
+==== SQL Dataset
+
+*SQL* dataset is produced as result of SQL query execution. It is recommended to use aliases for query result fields with the help of the `as` operator. It is also recommended to enclose the aliases in double quotes to prevent possible case conversion by the DBMS:
+
 [source, sql]
 ----
 select u.name as "userName", u.login as "userLogin" 
 from sec_user u
 ----
-+
-You can use report input parameters and parent bands fields in the query. Parameters should be addressed by name enclosed in `${}`, for example `${dateFrom}`. Parent band fields should be addressed similarly, by adding the band name in front of the field name: `${band1.field1}`.
-+
+
+You can use report input parameters and parent bands fields in the query. Parameters should be addressed by name enclosed in `${}`, for example, `${dateFrom}`. Parent band fields should be addressed similarly, by adding the band name in front of the field name: `${band1.field1}`.
+
 Below is an example of an SQL query with a `groupId` parameter, obtained from the `group` parent band and an external  `active` parameter:
-+
+
 [source, sql]
 ----
 select u.name as "userName", u.login as "userLogin" 
@@ -70,19 +72,21 @@ where u.group_id = ${group.groupId}
     and u.active = ${active}
     and u.delete_ts is null
 ----
-+
+
 [WARNING]
 ====
 You should manually include conditions to filter soft deleted records for SQL queries.
 ====
-+
+
 By default, SQL queries are executed on the main database. If you want to query an additional data store (see Developer's Manual), set its name in the *Data store* field.
 
 [[structure_jpql]]
-. *JPQL* - the dataset is produced as result of JPQL query execution. The resulted query fields must have aliases provided using the `as` operator. You can use report input parameters and parent bands fields in the JPQL query, similar to SQL query.
-+
+==== JPQL Dataset
+
+*JPQL* dataset is produced as result of JPQL query execution. The resulted query fields must have aliases provided using the `as` operator. You can use report input parameters and parent bands fields in the JPQL query, similar to SQL query.
+
 Below is an example of a JPQL query with a `groupId` parameter, obtained from the `group` parent band and an external `active` parameter:
-+
+
 [source, jpql]
 ----
 select u.name as userName, u.login as userLogin
@@ -90,17 +94,35 @@ from sec$User u
 where u.group.id = ${group.groupId}
     and u.active = ${active}
 ----
-+
+
 JPQL queries automatically support soft deletion and return only records which are not deleted.
-+
+
 By default, JPQL queries use entities mapped to the the main database. If you want to query entities from an additional data store (see Developer's Manual), set its name in the *Data store* field.
 
 [[structure_groovy]]
-. *Groovy* - the dataset is produced as result of a Groovy script execution. The script must return an object of the `List<Map<String, Object>>` type. Each element of this list - an object of the `Map<String, Object>` type - corresponds to one dataset record.
-+
+==== Groovy Dataset
+
+*Groovy* dataset is produced as result of a Groovy script execution. The script must return an object of the `List<Map<String, Object>>` type. Each element of this list - an object of the `Map<String, Object>` type - corresponds to one dataset record.
+
 The following objects are passed into the script:
+
+* `dataManager` - an object of the `com.haulmont.cuba.core.global.DataManager` type that provides CRUD functionality. For example:
 +
---
+[source, groovy]
+----
+LoadContext<Book> loadContext = LoadContext.create(Book.class)
+        .setId(bookId)
+        .setView("book.edit")
+def book = dataManager.load(loadContext)
+----
+
+* `metadata` - an object of the `com.haulmont.cuba.core.global.Metadata` type, providing access the application metadata. For example:
++
+[source, groovy]
+----
+def metaClass = metadata.getClassNN('sec$User')
+----
+
 * `params` - external report parameters map. Below is an example to get a parameter value:
 +
 [source, groovy]
@@ -144,11 +166,20 @@ try {
 }
 ----
 
-* `metadata` - an object of the `com.haulmont.cuba.core.global.Metadata` type, providing access the application metadata. For example:
+* `security` -  an object of the `com.haulmont.cuba.core.global.Security` type used to check user access rights to different objects in the system. For example:
 +
 [source, groovy]
 ----
-def metaClass = metadata.getClassNN('sec$User')
+if (security.isEntityOpPermitted(Book.class, EntityOp.READ) {
+    ...
+}
+----
+
+* `timeSource` - an object of the `com.haulmont.cuba.core.global.TimeSource` type used to obtain the current time. For example:
++
+[source, groovy]
+----
+def currentDate = timeSource.currentTimestamp()
 ----
 
 * `transactional` - a method that takes a closure, which should be executed in a new transaction, as parameter. The current `EntityManager` becomes the closure parameter. For example:
@@ -185,20 +216,37 @@ transactional { em ->
 }
 return result
 ----
---
+
+* `userSession` - an object of the `com.haulmont.cuba.security.global.UserSession` type associated with the currently authenticated user. For example:
++
+[source, groovy]
+----
+def user = userSession.currentOrSubstitutedUser
+----
+
+* `userSessionSource` - an object of the `com.haulmont.cuba.core.global.UserSessionSource` type which is used to obtain current user session object. For example:
++
+[source, groovy]
+----
+def locale = userSessionSource.locale
+----
 
 [[structure_entity]]
-. *Entity* - the dataset consists of a single row and is produced using attributes of a single entity instance and the entities related to it.
-+
+==== Entity Dataset
+
+*Entity* dataset consists of a single row and is produced using attributes of a single entity instance and the entities related to it.
+
 The data source is produced from an external parameter of the *Entity* type, which must be described in the *Parameters and Formats* tab. The value in the *Entity parameter name* field must match the parameter name.
-+
+
 The report template must contain fields with entity attribute names. Attributes used in the template should be listed in the special window, which is invoked by the *Select entity attributes* button.
 
 [[structure_list]]
-. *List of entities* - the dataset is produced using a list of entity instances.
-+
+==== List of Entities Dataset
+
+*List of entities* dataset is produced using a list of entity instances.
+
 The data source is produced using an external parameter being a *List of entities*, which must be described in the *Parameters and Formats* tab. The value in the *Entity parameter name* field must match the parameter alias.
-+
+
 The report template must contain fields with entity attribute names. Attributes used in the template should be listed in the special window, which is invoked by the *Entity attributes* button.
 
 [[template]]
