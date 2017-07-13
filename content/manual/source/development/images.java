@@ -1,18 +1,24 @@
-public class EmployeeEdit extends AbstractEditor<Employee> {
+import com.haulmont.cuba.core.entity.FileDescriptor;
+import com.haulmont.cuba.core.global.FileStorageException;
+import com.haulmont.cuba.gui.components.*;
+import com.company.employeeimages.entity.Employee;
+import com.haulmont.cuba.gui.data.DataSupplier;
+import com.haulmont.cuba.gui.data.Datasource;
+import com.haulmont.cuba.gui.export.ExportDisplay;
+import com.haulmont.cuba.gui.export.ExportFormat;
+import com.haulmont.cuba.gui.upload.FileUploadingAPI;
 
-    private Logger log = LoggerFactory.getLogger(EmployeeEdit.class);
+import javax.inject.Inject;
+import java.util.Map;
+
+public class EmployeeEdit extends AbstractEditor<Employee> {
 
     @Inject
     private DataSupplier dataSupplier;
     @Inject
-    private FileStorageService fileStorageService;
-    @Inject
     private FileUploadingAPI fileUploadingAPI;
     @Inject
     private ExportDisplay exportDisplay;
-
-    @Inject
-    private Embedded embeddedImage;
     @Inject
     private FileUploadField uploadField;
     @Inject
@@ -22,8 +28,8 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
     @Inject
     private Datasource<Employee> employeeDs;
 
-    private static final int IMG_HEIGHT = 190;
-    private static final int IMG_WIDTH = 220;
+    @Inject
+    private Image image;
 
     @Override
     public void init(Map<String, Object> params) {
@@ -69,39 +75,11 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
     }
 
     private void displayImage() {
-        byte[] bytes = null;
         if (getItem().getImageFile() != null) {
-            try {
-                bytes = fileStorageService.loadFile(getItem().getImageFile());
-            } catch (FileStorageException e) {
-                log.error("Unable to load image file", e);
-                showNotification("Unable to load image file", NotificationType.HUMANIZED);
-            }
-        }
-        if (bytes != null) {
-            embeddedImage.setSource(getItem().getImageFile().getName(), new ByteArrayInputStream(bytes));
-            embeddedImage.setType(Embedded.Type.IMAGE);
-            BufferedImage image;
-            try {
-                image = ImageIO.read(new ByteArrayInputStream(bytes));
-                int width = image.getWidth();
-                int height = image.getHeight();
-
-                if (((double) height / (double) width) > ((double) IMG_HEIGHT / (double) IMG_WIDTH)) {
-                    embeddedImage.setHeight(String.valueOf(IMG_HEIGHT));
-                    embeddedImage.setWidth(String.valueOf(width * IMG_HEIGHT / height));
-                } else {
-                    embeddedImage.setWidth(String.valueOf(IMG_WIDTH));
-                    embeddedImage.setHeight(String.valueOf(height * IMG_WIDTH / width));
-                }
-            } catch (IOException e) {
-                log.error("Unable to resize image", e);
-            }
-            // refresh image
-            embeddedImage.setVisible(false);
-            embeddedImage.setVisible(true);
+            image.setSource(Image.FileDescriptorImageResource.class).setFileDescriptor(getItem().getImageFile());
+            image.setVisible(true);
         } else {
-            embeddedImage.setVisible(false);
+            image.setVisible(false);
         }
     }
 }
