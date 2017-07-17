@@ -955,6 +955,41 @@ insert into sys_lock_config (id, create_ts, name, timeout_sec) values (newid(), 
 
 Текущее состояние блокировок можно отслеживать через JMX-бин `app-core.cuba:type=LockManager`, или через специальный экран, доступный в меню *Administration > Locks*. Экран также позволяет разблокировать любой объект принудительно.
 
+[[queryRunner]]
+==== Выполнение SQL с помощью QueryRunner
+
+`QueryRunner` - класс, предназначенный для выполнения SQL. Его следует использовать вместо *JDBC* везде, где есть необходимость работы с SQL и нежелательно применение аналогичных <<nativeQuery,средств ORM>>.
+
+QueryRunner платформы является вариантом link:$$http://commons.apache.org/dbutils/apidocs/org/apache/commons/dbutils/QueryRunner.html$$[Apache DbUtils QueryRunner], усовершенствованным для использования Java Generics.
+
+Пример использования:
+
+[source, java]
+----
+QueryRunner runner = new QueryRunner(persistence.getDataSource());
+try {
+  Set<String> scripts = runner.query("select SCRIPT_NAME from SYS_DB_CHANGELOG",
+          new ResultSetHandler<Set<String>>() {
+              public Set<String> handle(ResultSet rs) throws SQLException {
+                  Set<String> rows = new HashSet<String>();
+                  while (rs.next()) {
+                      rows.add(rs.getString(1));
+                  }
+                  return rows;
+              }
+          });
+  return scripts;
+} catch (SQLException e) {
+  throw new RuntimeException(e);
+}
+----
+
+Есть два варианта использования `QueryRunner` - либо в текущей транзакции, либо в отдельной в режиме autocommit.
+
+* Для выполнения запроса в текущей транзакции необходимо создать экземпляр `QueryRunner` конструктором без параметров, не передавая `DataSource`. После этого нужно вызывать методы `query()` или `update()`, передавая в них `Connection`, полученный вызовом `EntityManager.getConnection()`. После выполнения закрывать `Connection` не нужно, он будет закрыт при коммите транзакции.
+
+* Для выполнения запроса в отдельной транзакции необходимо создать экземпляр `QueryRunner` конструктором с параметром `DataSource`, получив экземпляр `DataSource` вызовом `Persistence.getDataSource()`. После этого нужно вызывать методы `query()` или `update()` без передачи какого-либо `Connection`, оно будет создано из указанного `DataSource` и затем сразу закрыто.
+
 [[scheduled_tasks]]
 ==== Выполнение задач по расписанию
 
@@ -1219,38 +1254,3 @@ private long getNextValue() {
 * Для Microsoft SQL Server версии ниже 2012 каждой последовательности соответствует таблица `++SEC_UN_{domain}++` с полем IDENTITY.
 
 * Для MySQL последовательности соответствуют строкам в таблице `SYS_SEQUENCE`.
-
-[[queryRunner]]
-==== Выполнение SQL с помощью QueryRunner
-
-`QueryRunner` - класс, предназначенный для выполнения SQL. Его следует использовать вместо *JDBC* везде, где есть необходимость работы с SQL и нежелательно применение аналогичных <<nativeQuery,средств ORM>>.
-
-QueryRunner платформы является вариантом link:$$http://commons.apache.org/dbutils/apidocs/org/apache/commons/dbutils/QueryRunner.html$$[Apache DbUtils QueryRunner], усовершенствованным для использования Java Generics.
-
-Пример использования:
-
-[source, java]
-----
-QueryRunner runner = new QueryRunner(persistence.getDataSource());
-try {
-  Set<String> scripts = runner.query("select SCRIPT_NAME from SYS_DB_CHANGELOG",
-          new ResultSetHandler<Set<String>>() {
-              public Set<String> handle(ResultSet rs) throws SQLException {
-                  Set<String> rows = new HashSet<String>();
-                  while (rs.next()) {
-                      rows.add(rs.getString(1));
-                  }
-                  return rows;
-              }
-          });
-  return scripts;
-} catch (SQLException e) {
-  throw new RuntimeException(e);
-}
-----
-
-Есть два варианта использования `QueryRunner` - либо в текущей транзакции, либо в отдельной в режиме autocommit.
-
-* Для выполнения запроса в текущей транзакции необходимо создать экземпляр `QueryRunner` конструктором без параметров, не передавая `DataSource`. После этого нужно вызывать методы `query()` или `update()`, передавая в них `Connection`, полученный вызовом `EntityManager.getConnection()`. После выполнения закрывать `Connection` не нужно, он будет закрыт при коммите транзакции.
-
-* Для выполнения запроса в отдельной транзакции необходимо создать экземпляр `QueryRunner` конструктором с параметром `DataSource`, получив экземпляр `DataSource` вызовом `Persistence.getDataSource()`. После этого нужно вызывать методы `query()` или `update()` без передачи какого-либо `Connection`, оно будет создано из указанного `DataSource` и затем сразу закрыто.
