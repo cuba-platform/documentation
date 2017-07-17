@@ -1,0 +1,1 @@
+textArea.addResizeListener(e -> showNotification("Resized"));
