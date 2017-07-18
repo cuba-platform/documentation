@@ -1,1 +1,1 @@
-showMessageDialog("Warning", "Something is wrong", MessageType.WARNING);
+showMessageDialog("Warning", "Something is wrong", MessageType.WARNING.modal(true).closeOnClickOutside(true));
