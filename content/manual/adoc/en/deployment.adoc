@@ -70,6 +70,8 @@ This section describes different ways to deploy CUBA applications:
 
 * <<war_deployment,WAR deployment to Jetty>>
 
+* <<wildfly_war_deployment,WAR deployment to WildFly>>
+
 * <<tomcat_war_deployment,WAR deployment to Tomcat Windows Service>>
 
 * <<uberjar_deployment,UberJAR>>
@@ -302,6 +304,107 @@ java -jar c:\work\jetty-home\start.jar
 
 . Open `++http://localhost:8080/app++` in your web browser.
 
+[[wildfly_war_deployment]]
+==== WAR deployment to WildFly
+
+The WAR files with CUBA application can be deployed to the *WildFly* application server. An example below demonstrates how to deploy a CUBA application running with the PostgreSQL 9.6 to the WildFly 8.2 environment.
+
+. Assemble and deploy the project to the default Tomcat server in order to get all necessary dependencies locally.
+
+. Configure the working directory for the application:
++
+--
+* Create a folder that will be fully available for WildFly server's process. For example: `C:\Users\UserName\app_home`.
+
+* Copy the `logback.xml` file from `tomcat/conf` to this folder and edit the `logDir` property:
+
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
+--
+
+. Configure the WildFly server
++
+--
+* Install WildFly to a local folder, for example, to `C:\wildfly`.
+
+* Edit the `C:\wildfly\bin\standalone.conf.bat` file and add the following line to the end of the file:
+
+[source, plain]
+----
+set "JAVA_OPTS=%JAVA_OPTS% -Dapp.home=%USERPROFILE%/app_home -Dlogback.configurationFile=%USERPROFILE%/app_home/logback.xml"
+----
+
+Here we define the `app.home` system property with the application working directory and configure the logging by setting the path to the `logback.xml` file. You can also use an absolute path instead of `%USERPROFILE%` variable.
+
+* Compare the Hibernate Validator versions in WildFly and CUBA application (normally, the platform uses a newer version). Replace the `C:/wildfly/modules/system/layers/base/org/hibernate/validator/main/hibernate-validator-x.y.z-sometext.jar` with the newer file from `tomcat/shared/lib`, for example, `hibernate-validator-5.4.1.Final.jar`.
+
+* Update the JAR file version number in the `/wildfly/modules/system/layers/base/org/hibernate/validator/main/module.xml` file.
+
+* To register PostgreSQL driver in WildFly, copy the `postgresql-9.4-1201-jdbc41.jar` from `tomcat/lib` to `C:\wildfly\standalone\deployments`.
+--
+
+. Create JDBC Datasource
++
+--
+* Start WildFly by running `standalone.bat`
+
+* Open the administration console on http://localhost:9990. The first time you log in, you will be asked to create a user and a password.
+
+* Open the *Configuration - Subsystems - Datasources* tab and create a new datasource for your application:
+
+[source, plain]
+----
+Name: Cuba
+JNDI Name: java:/jdbc/CubaDS
+JDBC Driver: postgresql
+Connection URL: your database URL
+Username: your database username
+Password: your database password
+----
+The JDBC driver will be available in the list of detected drivers if you have copied `postgresql-x.y.z.jar` as described above.
+
+Check the connection by clicking the *Test connection* button.
+
+* Activate the datasource.
+--
+
+. Build the application
++
+--
+* Open *Deployment settings* > *WAR* in Studio.
+
+* Check *Build WAR* checkbox.
+
+* Set `${app.home}` in the *Application home directory* field.
+
+* Check *Include JDBC driver* checkbox.
+
+* Save the settings.
+
+* Open <<build.gradle,build.gradle>> in IDE and add the `doAfter` property to the <<build.gradle_buildWar,buildWar>> task. This property will copy the WildFly deployment descriptor:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/wildfly.groovy[]
+----
+
+* In the project root folder, create the `jboss-deployment-structure.xml` file and add the WildFly deployment descriptor to it:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/wildfly.xml[]
+----
+
+* Run the `buildWar` task to create WAR files.
+--
+
+. Copy the files `app-core.war` and `app.war` from `build\distributions\war` to WildFly directory `C:\wildfly\standalone\deployments`.
+
+. Restart the WildFLy server.
+
+. Your application will become available on http://localhost:8080/app. The log files will be saved in the application working directory: `C:\Users\UserName\app_home\logs`.
 
 [[tomcat_war_deployment]]
 ==== WAR deployment to Tomcat Windows Service
