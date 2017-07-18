@@ -1,0 +1,1 @@
+userIndicator.setUserNameFormatter(value -> value.getName() + " - [" + value.getEmail() + "]");
