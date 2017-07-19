@@ -29,6 +29,12 @@ public void init(Map<String, Object>params) {
             showNotification("Hello!", NotificationType.TRAY);
         }
     });
+    // OR
+    pickerField.addAction(new BaseAction("hello")
+            .withCaption(null)
+            .withDescription(getMessage("helloDescription"))
+            .withIcon("icons/ok.png")
+            .withHandler(e -> showNotification("Hello", NotificationType.TRAY)));
 
     box.add(pickerField);
 }

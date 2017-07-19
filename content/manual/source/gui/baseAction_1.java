@@ -9,4 +9,7 @@ public void init(Map<String, Object>params) {
             showNotification("Hello!", NotificationType.TRAY);
         }
     });
+    // OR
+    helloBtn.setAction(new BaseAction("hello")
+            .withHandler(e -> showNotification("Hello", NotificationType.TRAY)));
 }
