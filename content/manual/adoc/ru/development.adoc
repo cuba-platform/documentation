@@ -1401,7 +1401,7 @@ protected void initNewItem(Employee item) {
 Как правило, редактирование сущностей, входящих в состав композиции, удобно осуществлять совместно. То есть, например, пользователь открывает экран редактирования аэропорта, видит в нем список терминалов, может создавать и редактировать их, но все изменения, как аэропорта, так и терминалов, сохраняются в базу данных вместе в одной транзакции, и только тогда, когда пользователь подтвердит сохранение главной сущности - аэропорта.
 
 [[composition_impl_recipe]]
-===== Реализация композиции
+===== Композиция One-to-Many
 
 Рассмотрим реализацию композиции на примере сущностей `Airport` и `Terminal`:
 
@@ -1409,55 +1409,21 @@ image::composition_recipe_1.png[align="center"]
 
 . Сущность `Terminal` содержит обязательную ссылку на `Airport`:
 +
-[source, java]
-----
-@Entity(name = "sample$Terminal")
-@Table(name = "SAMPLE_TERMINAL")
-public class Terminal extends StandardEntity {
-...    
-    @ManyToOne(optional = false, fetch = FetchType.LAZY)
-    @JoinColumn(name = "AIRPORT_ID")
-    private Airport airport;
-
-    public Airport getAirport() {
-        return airport;
-    }
-
-    public void setAirport(Airport airport) {
-        this.airport = airport;
-    }
-}
+include::{sourcesdir}/development/composition_recipe_1.java[]
 ----
 
 . Сущность `Airport` содержит one-to-many коллекцию терминалов. Соответствующее поле помечается аннотацией <<composition_annotation,@Composition>> для огранизации композиции и <<onDelete_annotation,@OnDelete>> для каскадного мягкого удаления:
 +
 [source, java]
 ----
-@Entity(name = "sample$Airport")
-@Table(name = "SAMPLE_AIRPORT")
-public class Airport extends StandardEntity {
-...
-    @OneToMany(fetch = FetchType.LAZY, mappedBy = "airport")
-    @OnDelete(DeletePolicy.CASCADE)
-    @Composition
-    protected List<Terminal> terminals;
-
-    public List<Terminal> getTerminals() {
-        return terminals;
-    }
-
-    public void setTerminals(List<Terminal> terminals) {
-        this.terminals = terminals;
-    }
-}
+include::{sourcesdir}/development/composition_recipe_2.java[]
 ----
+
 . <<views,Представление>>, используемое в экране редактирования аэропорта, должно содержать атрибут-коллецию `terminals`:
 +
 [source, xml]
 ----
-<view entity="sample$Airport" name="airport-edit" extends="_local">
-    <property name="terminals" view="_local"/>
-</view>
+include::{sourcesdir}/development/composition_recipe_3.xml[]
 ----
 +
 Для сущности `Terminal` здесь выбрано представление `++_local++`, хотя она содержит ссылочный атрибут `airport` - ссылку на аэропорт. Дело в том, что атрибут `airport` устанавливается только при создании нового экземпляра `Terminal`, и не меняется в дальнейшем, поэтому загружать его не обязательно.
@@ -1466,37 +1432,14 @@ public class Airport extends StandardEntity {
 +
 [source, xml]
 ----
-<dsContext>
-    <datasource id="airportDs"
-                class="com.haulmont.sample.entity.Airport"
-                view="airport-edit">
-        <collectionDatasource id="terminalsDs" property="terminals"/>
-    </datasource>
-</dsContext>
+include::{sourcesdir}/development/composition_recipe_4.xml[]
 ----
 
 . В XML-дескрипторе экрана редактирования аэропорта определяем таблицу, отображающую терминалы, и <<list_actions,стандартные действия>> для нее:
 +
 [source, xml]
 ----
-<table id="terminalsTable">
-    <actions>
-        <action id="create"/>
-        <action id="edit"/>
-        <action id="remove"/>
-    </actions>
-    <buttonsPanel>
-        <button action="terminalsTable.create"/>
-        <button action="terminalsTable.edit"/>
-        <button action="terminalsTable.remove"/>
-    </buttonsPanel>
-    <columns>
-        <column id="code"/>
-        <column id="name"/>
-        <column id="address"/>
-    </columns>
-    <rows datasource="terminalsDs"/>
-</table>
+include::{sourcesdir}/development/composition_recipe_5.xml[]
 ----
 
 . В экране редактирования терминала достаточно определить стандартные элементы: `datasource` для экземпляра `Terminal` и визуальные компоненты, связанные с этим `datasource`, для редактирования атрибутов терминала.
@@ -1510,6 +1453,57 @@ public class Airport extends StandardEntity {
 * Пользователь может создавать новые или удалять терминалы - все изменения сохраняются в источнике данных `terminalsDs`.
 
 * Пользователь нажимает *OK* в экране редактирования аэропорта, и измененный `Airport` вместе со всеми измененными экземплярами `Terminal` отправляется на Middleware в метод <<dataManager,DataManager>>.commit() и сохраняется в базе данных в рамках одной транзакции. 
+
+[[composition_oto_recipe]]
+===== Композиция One-to-One
+
+Композиция one-to-one рассматривается на примере сущностей `Customer` и `CustomerDetails`:
+
+image::composition_recipe_3.png[align="center"]
+
+. Сущность `Customer` содержит необязательную ссылку на `CustomerDetails`, аннотированную как `@Composition`:
++
+[source, java]
+----
+include::{sourcesdir}/development/composition_recipe_6.java[]
+----
+
+. <<views,Представление>>, используемое в экране редактирования `Customer`, должно содержать атрибут `details`:
++
+[source, xml]
+----
+include::{sourcesdir}/development/composition_recipe_7.xml[]
+----
+
+. В экране редактирования `Customer` объявлен вложенный источник данных для экземпляра `CustomerDetails`:
++
+[source, xml]
+----
+include::{sourcesdir}/development/composition_recipe_8.xml[]
+----
+
+. Компонент `FieldGroup` в экране редактирования `Customer` содержит атрибут `details`:
++
+[source, xml]
+----
+include::{sourcesdir}/development/composition_recipe_9.xml[]
+----
+
+В результате редактирование экземпляра `Customer` работает следующим образом:
+
+* Экран редактирования `Customer` содержит компонент <<gui_PickerField,PickerField>> с двумя действиями: <<openAction,OpenAction>> и <<clearAction,ClearAction>>:
+
+image::composition_recipe_oto_1.png[align="center"]
+
+* Когда вызывается `OpenAction`, создается новый экземпляр `CustomerDetails` и он отображается в собственном экране редактирования. При нажатии *OK* в этом экране, экземпляр `CustomerDetails` сохраняется не в БД, а в источнике данных `detailsDs` редактора `Customer`.
+
+* Компонент выбора отображает <<namePattern_annotation,instance name>> сущности `CustomerDetails`:
+
+image::composition_recipe_oto_2.png[align="center"]
+
+* Когда пользователь нажимает *OK* в редакторе `Customer`, измененный экземпляр `Customer` вместе с экземпляром `CustomerDetails` отправляется в метод `DataManager.commit()` на средний слой и сохраняется в БД в одной транзакции.
+
+* Если пользователь вызывает `ClearAction` в поле выбора, экземпляр `CustomerDetails` удаляется и ссылка на него очищается в одной транзакции после коммита редактора `Customer`.
 
 [[composition_deep_recipe]]
 ===== Глубокая композиция
