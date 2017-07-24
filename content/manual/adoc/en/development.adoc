@@ -220,21 +220,30 @@ Non-standard module dependencies can be specified in Studio on the *Project prop
 [[access_to_repo]]
 ==== Configuring Access to Repository
 
-CUBA Studio Server window contains a field where you can select an artifact repository. By default, it contains two entries:
+Main Repository::
++
+--
+When you create a new project, you have to select a main repository containing CUBA artifacts. By default, there are two options (and you can have more if you set up a <<private_repo,private repository>>):
 
 * `++https://repo.cuba-platform.com/content/groups/work++` - a repository located at Haulmont's server. It requires common credentials which are specified right in the build script (`cuba` / `cuba123`).
 
 * `++https://dl.bintray.com/cuba-platform/main++` - a repository hosted at https://bintray.com[JFrog Bintray]. It has anonymous access.
 
-Both repositories have identical contents for the latest platform versions. We assume that Bintray is more reliable for worldwide access.
+Both repositories have identical contents for the latest platform versions, but Bintray does not contain snapshots. We assume that Bintray is more reliable for worldwide access.
 
-When you create a new project in CUBA Studio, it's `build.gradle` contains the link to the repository which is selected in the Studio server window. In case of Bintray, the build script is also configured to use Maven Central, JCenter and Vaadin Add-ons repositories separately.
+In case of Bintray, the build script of the new project is also configured to use Maven Central, JCenter and Vaadin Add-ons repositories separately.
+--
 
+Access to CUBA Premium Add-ons::
++
+--
 If your project uses CUBA Premium Add-ons, Studio adds one more repository:
 
 * In case of `repo.cuba-platform.com` it is `++https://repo.cuba-platform.com/content/groups/premium++`
 
 * In case of Bintray it is `++https://cuba-platform.bintray.com/premium++`
+
+If you use a <<private_repo,private repository>>, nothing is added automatically, because it is assumed that it proxies all CUBA repositories including premium ones.
 
 Both Premium Add-ons repositories require a user name and a password which are provided by per-developer subscription. The first part of your license key before dash is the repository user name, the part after dash is the password. For example, if your key is `111111222222-abcdefabcdef`, then the user name is `111111222222` and the password is `abcdefabcdef`.
 
@@ -259,6 +268,19 @@ Instead of passing credentials each time you build the project from the command 
 * `CUBA_PREMIUM_USER` - will be used if `premiumRepoUser` is not passed.
 
 * `CUBA_PREMIUM_PASSWORD` - will be used if `premiumRepoPass` is not passed.
+--
+
+[[custom_repositories]]
+Custom Repositories::
++
+--
+Your project can use any number of custom repositories containing <<app_components,application components>>. They should be specified in `build.gradle` manually *after* the main repository, for example:
+
+[source,groovy]
+----
+include::{sourcesdir}/development/access_to_repo_1.groovy[]
+----
+--
 
 [[build.gradle_tasks]]
 ==== Build Tasks
@@ -851,37 +873,22 @@ If you have a subscription to the Premium Add-ons, add one more repository with 
 - On the *Configuration* tab, add *cuba-premium* repository to the group below *cuba-work*.
 - Click *Save* button.
 
-[[private_repo_studio_config]]
-===== Configuring CUBA Studio to Use the Private Repository
+[[private_repo_usage]]
+===== Using the Private Repository
 
 Now your private repository is ready to use. Find the *cuba-group* URL at the top of the screen, for example:
 ----
 http://localhost:8081/nexus/content/groups/cuba-group
 ----
-- Open CUBA Studio Server window and paste the URL into the *Repository* field.
-- Click *Auth* button next the *Repository* field and enter login and password: `admin / admin123`.
-- Start Studio.
-- Open `++http://localhost:8111/studio++` in your browser.
-- Open your project.
+
+- If you are creating a new project, click the button next to the *Repository* field in the *New project* window.
+- For an existing project, edit *Project properties* and click the button next to the *Repository* field.
+- In the opened dialog, click *Add*, enter the repository URL and credentials: `admin / admin123`.
+- Select the new repository and click *OK* to use it in the project.
+- Save the *Project properties* page.
 - Build the project.
 
 During the first build your new repository downloads necessary artifacts and keeps them in the cache for the next usage. You may find them in `c:\nexus-2.14.3-02\sonatype-work` folder.
-
-[WARNING]
-====
-For CUBA Studio version 6.4 and below, before running Studio with the private repository for the first time, do the following:
-
-- Set the *cuba-group* URL in your `build.gradle` manually.
-
-- Assemble the project from the command line:
-+
---
-[source]
-----
-gradle assemble
-----
---
-====
 
 [[private_repo_in_isolated_network]]
 ===== Repository in an Isolated Network
@@ -908,10 +915,8 @@ In order to use CUBA Studio in an isolated network, follow the steps below:
 - Download https://services.gradle.org/distributions/[Gradle] (version {gradleVersion} is required) and install it onto developers machines.
 - Open CUBA Studio Server window.
 - Press *Advanced* button and set path to the folder where you have installed Gradle.
-- Enter your <<private_repo_in_isolated_network,internal>> repository URL in the *Repository* field, for example, `++http://localhost:8081/nexus/content/groups/cuba-group++`.
-- Click *Auth* button next the *Repository* field and enter repository login and password (`admin/admin123` by default).
-- Start Studio.
-- Open and build your project.
+- Start the Studio server.
+- Follow the steps <<private_repo_usage,above>> to configure your project.
 
 [[project_creation]]
 === Creating a Project
