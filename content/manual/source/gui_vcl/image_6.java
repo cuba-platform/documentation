@@ -1,3 +1,3 @@
-FileDescriptorImageResource resource = image.createResource(Image.FileDescriptorImageResource.class)
+FileDescriptorResource resource = image.createResource(FileDescriptorResource.class)
         .setFileDescriptor(avatar);
 image.setSource(resource);
