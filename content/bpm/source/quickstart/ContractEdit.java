@@ -1,16 +1,15 @@
-package com.company.demo.web.contract;
+package com.company.bpmdemo.web.contract;
 
-import com.company.demo.entity.Contract;
+import com.haulmont.cuba.gui.components.AbstractEditor;
+import com.company.bpmdemo.entity.Contract;
 import com.haulmont.bpm.entity.ProcAttachment;
 import com.haulmont.bpm.gui.procactions.ProcActionsFrame;
 import com.haulmont.cuba.gui.app.core.file.FileDownloadHelper;
-import com.haulmont.cuba.gui.components.AbstractEditor;
 import com.haulmont.cuba.gui.components.Table;
 
 import javax.inject.Inject;
 
 public class ContractEdit extends AbstractEditor<Contract> {
-
     private static final String PROCESS_CODE = "contractApproval";
 
     @Inject
