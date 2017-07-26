@@ -3,9 +3,73 @@
 
 This chapter describes different aspects of CUBA applications deployment and operation.
 
+Below is a diagram showing a possible deployment structure. It eliminates a single point of failure, provides load balancing and connection of different clients.
+
 image::DeploymentStructure.png[align="center"]
 
-In the example above, the application prevents a single point of failure existence, provides load balancing and various client types connection. In the simplest case, however, the server part of an application can be installed on one computer that includes the database. Various deployment options depending on load and fault tolerance requirements are described in detail in <<scaling,>>.
+In the simplest case, however, an application can be installed on a single computer that contains also the database. Various deployment options depending on load and fault tolerance requirements are described in detail in <<scaling,>>.
+
+[[app_home]]
+=== Application Home
+
+Application home is a file system directory where <<app_dirs>> described below can be placed together. It is used in all <<deployment_variants,deployment scenarios>> except <<fast_deployment>>. In the latter case, the application directories are located in specific Tomcat folders.
+
+The application home is formed simply by specifying a common root for the application directories. It is normally done in the `/WEB-INF/local.app.properties` file inside of a WAR or UberJAR file.
+
+* If you build a WAR file, you have to define the path to the application home in the <<build.gradle_buildWar,buildWar>> Gradle task. You can specify an absolute path or a path relative to the server working directory if you know in advance where the WAR will be deployed. If not, you can specify a placeholder for a Java system property and provide the real path at runtime.
++
+--
+Example of an application home set at runtime:
+
+** Task configuration:
++
+[source,groovy]
+----
+task buildWar(type: CubaWarBuilding) {
+    appHome = '${app.home}'
+    // ...
+}
+----
+
+** Content of `/WEB-INF/local.app.properties` after building the WAR:
++
+----
+cuba.logDir = ${app.home}/logs
+cuba.confDir = ${app.home}/${cuba.webContextName}/conf
+cuba.tempDir = ${app.home}/${cuba.webContextName}/temp
+cuba.dataDir = ${app.home}/${cuba.webContextName}/work
+...
+----
+
+** Command line providing `app.home` system property:
++
+----
+java -Dapp.home=/opt/app_home ...
+----
++
+The way to set the Java system property depends on your application server. For Tomcat, it is recommended to set it in the `bin/setenv.sh` (or `bin/setenv.bat`) file.
+
+** Resulting directory structure:
++
+----
+/opt/app_home/
+  app/
+    conf/
+    temp/
+    work/
+  app-core/
+    conf/
+    temp/
+    work/
+  logs/
+----
+--
+
+* In case of UberJAR, the home is set to the working directory by default, but can be redefined by the `app.home` Java system property. So in order to have the home in the same directory as described above for WAR example, it is enough to specify it in the command line as follows:
++
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
 
 [[app_dirs]]
 === Application Directories
@@ -15,9 +79,9 @@ This section describes file system directories used by various <<app_tiers,appli
 [[conf_dir]]
 ==== Configuration Directory
 
-The configuration directory can contain resources that complement and override configuration, user interface and business logic after the application is deployed. Overriding is provided by the loading mechanism of the <<resources,Resources>> infrastructure interface. Firstly it performs search in the configuration directory and then in CLASSPATH, so that resources from the configuration directory take precedence over identically named resources located in JAR files and class directories.
+The configuration directory can contain resources that complement and override configuration, user interface and business logic after the application is deployed. Overriding is provided by the loading mechanism of the <<resources,Resources>> infrastructure interface. Firstly it performs search in the configuration directory and then in the classpath, so that resources from the configuration directory take precedence over identically named resources located in JAR files and class directories.
 
-The configuration directory may contain the following resource types:
+The configuration directory may contain resources of the following types:
 
 *  <<metadata.xml,metadata.xml>>, <<persistence.xml,persistence.xml>>, <<views.xml,views.xml>>, <<remoting-spring.xml,remoting-spring.xml>> configuration files.
 
@@ -27,39 +91,48 @@ The configuration directory may contain the following resource types:
 
 * Groovy scripts or classes, and Java source code that is used by the application via the <<scripting,Scripting>> interface.
 
-The location of the configuration directory is determined by the <<cuba.confDir,cuba.confDir>> application property. For the Middleware, Web Client and Web Portal blocks in <<fast_deployment,fast deployment>> configuration in Tomcat, it is a subdirectory with the web application name in the `tomcat/conf` directory, for example, `tomcat/conf/app-core` for the Middleware.
+The location of the configuration directory is determined by the <<cuba.confDir,cuba.confDir>> application property. In case of <<fast_deployment,fast deployment>> in Tomcat, it is a subdirectory with the web application name in the `tomcat/conf` directory, for example, `tomcat/conf/app-core` for the Middleware. For other deployment scenarios, the configuration directory is located inside the <<app_home,application home>>.
 
 [[work_dir]]
 ==== Work Directory
 
-The application uses the work directory to store data and configuration files.
+The application uses the work directory to store some persistent data and configuration.
 
-For example, the `filestorage` subdirectory of the work directory is used by the <<file_storage,file storage>>. In addition, the Middleware block saves generated <<persistence.xml,persistence.xml>> and orm.xml files in the work directory on start.
+For example, the <<file_storage,file storage>> mechanism by default uses the `filestorage` subdirectory of the work directory. Besides, the Middleware block writes generated <<persistence.xml,persistence.xml>> and `orm.xml` files into the work directory on startup.
 
-Work directory location is determined by the <<cuba.dataDir,cuba.dataDir>> application property. For the Middleware, Web Client and Web Portal blocks in <<fast_deployment,fast deployment>> configuration in Tomcat, it is a subdirectory with the name of the web application in the `tomcat/work` directory.
+Work directory location is determined by the <<cuba.dataDir,cuba.dataDir>> application property. In case of <<fast_deployment,fast deployment>> in Tomcat, it is a subdirectory with the name of the web application in the `tomcat/work` directory. For other deployment scenarios, the work directory is located inside the <<app_home,application home>>.
 
 [[log_dir]]
 ==== Log Directory
 
-The content and settings of the log files are determined by the configuration of the *Logback* framework. The configuration file location is determined by <<logback.configurationFile,logback.configurationFile>> system property.
+The content of log files is determined by the configuration of the *Logback* framework. The platform provides a default configuration file `logback.xml` in the classpath root. According to its settings the log messages will be printed to the standard output.
 
-This directory can also be used to store arbitrary information about the running application. The log directory location is determined by <<cuba.logDir,cuba.logDir>> application property. For the Middleware, Web Client and Web Portal blocks in <<fast_deployment,fast deployment>> configuration in Tomcat, it is the `tomcat/logs` directory.
+In order to specify your own logging configuration, provide the <<logback.configurationFile,logback.configurationFile>> Java system property with the path to your configuration file. See <<logging_setup_tomcat>> for how to do it in case of <<fast_deployment,fast deployment>>.
+
+The logging configuration determines where the log file is located. It can be a directory inside a specific Tomcat folder (`tomcat/logs` in case of fast deployment), or a directory inside the <<app_home,application home>>. You can control it if you take the `logback.xml` from the `deploy/tomcat/conf` folder of your project and modify the `logDir` property, for example:
+
+[source,xml]
+----
+include::{sourcesdir}/deployment/log_dir_1.xml[]
+----
+
+The application should know where you store log files in order to allow administrators to view and load them in the *Administration > Server Log* screen. Use the <<cuba.logDir,cuba.logDir>> application property to set the location to the same directory as defined by `logback.xml`.
 
 See also <<logging,>>.
 
 [[temp_dir]]
 ==== Temporary Directory
 
-This directory can be used for creating arbitrary temporary files at application run time. The path to the temporary directory is determined by the <<cuba.tempDir,cuba.tempDir>> application property. For the Middleware, Web Client and Web Portal blocks in <<fast_deployment,fast deployment>> configuration in Tomcat, it is a subdirectory with the web application name in the `tomcat/temp` directory.
+This directory can be used by the application for creating arbitrary temporary files at run time. The path to the temporary directory is determined by the <<cuba.tempDir,cuba.tempDir>> application property. In case of <<fast_deployment,fast deployment>> in Tomcat, it is a subdirectory with the name of the web application in the `tomcat/temp` directory. For other deployment scenarios, the temporary directory is located inside the <<app_home,application home>>.
 
 [[db_dir]]
 ==== Database Scripts Directory
 
-This directory of the deployed Middleware block stores the set of SQL scripts to create and update the DB.
+This directory contains the set of SQL scripts to create and update the database. It is specific to the Middleware block.
 
 The script directory structure reproduces the one described in <<db_scripts,>>, but it also has an additional top level that separates <<app_components,application components>> and the application scripts. The numbering of top level directories is performed by project build <<build.gradle,tasks>>.
 
-The DB scripts directory location is determined by <<cuba.dbDir,cuba.dbDir>> application property. For <<fast_deployment,fast deployment>> configuration in *Tomcat*, it is the `WEB-INF/db` subdirectory of the middleware web application directory: `tomcat/webapps/app-core/WEB-INF/db`.
+The DB scripts directory location is determined by <<cuba.dbDir,cuba.dbDir>> application property. For <<fast_deployment,fast deployment>> in Tomcat, it is the `WEB-INF/db` subdirectory of the middleware web application directory: `tomcat/webapps/app-core/WEB-INF/db`. For other deployment scenarios, the database scripts are located in the `/WEB-INF/db` directory inside WAR or UberJAR files.
 
 [[deployment_variants]]
 === Deployment Options
@@ -509,6 +582,16 @@ java -jar app.jar -contextName sales
 * `jettyConfPath` - a path to the Jetty server configuration file which will override build time settings specified in the `webJettyConfPath/coreJettyConfPath/portalJettyConfPath` parameter. It can be an absolute path or a path relative to the working directory.
 --
 
+Application Home::
++
+--
+By default, the <<app_home,application home>> is the working directory. It means that <<app_dirs,application directories>> will be created in the folder where you have run the application. It can be redefined by the `app.home` Java system property. So for example, in order to have the home in `/opt/app_home`, specify the following in the command line:
+
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
+--
+
 Logging::
 +
 --
@@ -519,6 +602,13 @@ java -Dlogback.configurationFile=file:./logback.xml -jar app.jar
 ----
 
 Here it is assumed that the `logback.xml` file is located in the folder where you start the application from.
+
+In order to set the <<log_dir,log output directory>> correctly, make sure the `logDir` property in the `logback.xml` points to the `logs` subdirectory of the application home:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/log_dir_1.xml[]
+----
 --
 
 Stopping an application::

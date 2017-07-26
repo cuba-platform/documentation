@@ -1,5 +1,5 @@
 task buildWar(type: CubaWarBuilding) {
-    appHome = '..'
+    appHome = '${app.home}'
     appProperties = ['cuba.automaticDatabaseUpdate': 'true']
     singleWar = false
 }
