@@ -1150,9 +1150,15 @@ Dependencies between datasources are organized using <<datasource_query,query pa
 
 . Collects all changed entity instances and sends them to *Middleware* in a single invocation of `DataManager.commit()`, i.e. to save them into the database in a single transaction.
 +
-As an example, let's assume that some screen allows a user to edit an instance of the `Order` entity and a collection of `OrderLine` instances belonging to it. The `Order` instance is located in `Datasource`; the `OrderLine` collection – in nested `CollectionDatasource`, which is created using the `Order.lines` attribute. If user changes some attribute of `Order` and creates a new instance, `OrderLine`. Then, when a screen is committed to <<dataManager,DataManager>>, two instances – changed `Order` and new `OrderLine` – will be sent simultaneously. After that, they will together be merged into one <<entityManager,persistent context>> and saved into the database on the transaction commit. The `OrderLine` instance is also contained in the `Order.lines` collection, but if it's not passed into persistent context independently, the cascade merging between `Order` and `OrderLines` at the ORM level should be set. Tight cascade relations at the ORM level sometimes cause unwanted consequences in unexpected places, so it is better to avoid them, as described in the `DsContext` mechanism.
-+
+--
+As an example, let's assume that some screen allows a user to edit an instance of the `Order` entity and a collection of `OrderLine` instances belonging to it. The `Order` instance is located in `Datasource`; the `OrderLine` collection – in nested `CollectionDatasource`, which is created using the `Order.lines` attribute.
+
+If a user changes some attribute of `Order` and creates a new instance, `OrderLine`, then, when a screen is committed to <<dataManager,DataManager>>, two instances – changed `Order` and new `OrderLine` – will be sent simultaneously. After that, they will together be merged into one <<entityManager,persistent context>> and saved into the database on the transaction commit.
+
+The `OrderLine` instance is also contained in the `Order.lines` collection, but if it's not passed into persistent context independently, the cascade merging between `Order` and `OrderLines` at the ORM level should be set. Tight cascade relations at the ORM level sometimes cause unwanted consequences in unexpected places, so it is better to avoid them, as described in the `DsContext` mechanism.
+
 As a result of committing the transaction, `DsContext` receives a set of saved instances from *Middleware* (in the case of optimistic locking they, at least, have an increased value of the `version` attribute), and sets these instances in datasources replacing old ones. It allows you to work with the latest instances immediately after committing without an extra datasource refresh that produces queries to *Middleware* and the database.
+--
 
 . Declares two listeners: `BeforeCommitListener` and `AfterCommitListener`. They receive notifications before and after committing modified instances. `BeforeCommitListener` enables to supplement a collection of entities sent to <<dataManager,DataManager>> to save arbitrary entities in the same transaction. A collection of saved instances that are returned from `DataManager` can be obtained after commit in the `AfterCommitListener` listener.
 +
