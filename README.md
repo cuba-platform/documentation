@@ -1,1 +1,1 @@
-See https://confluence.haulmont.come/display/PLAT/Asciidoc
+See https://confluence.haulmont.com/display/PLAT/Asciidoc
