@@ -876,19 +876,28 @@ The source code of this sample project is available on https://github.com/cuba-p
 
 . In order to connect your application to Facebook, you will need to create the *App ID* (unique application identifier) and *App Secret* (a kind of password that authenticates requests from your application to Facebook servers). Follow the https://developers.facebook.com/docs/apps/register[instruction] and register the generated values in `app.properties` file of the *core* module as the `facebook.appId` and `facebook.appSecret` application properties respectively, for example:
 +
+--
 [source, properties]
-.app.properties
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
 ----
 facebook.appId = 123456789101112
 facebook.appSecret = 123456789101112abcde131415fghi16
 ----
 
-. Extend the <<login_screen,login screen>> and add the button for social login. This button will invoke the `loginFacebook()` method - the entry point to the social login flow.
+Also register the URL that you used for the Facebook app registration in the <<cuba.webAppUrl,cuba.webAppUrl>> property in the *core* and *web* application properties files:
+
+[source, properties]
+----
+cuba.webAppUrl = http://cuba-fb.test:8080/app
+----
+--
+
+. Extend the https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ext-loginWindow.xml[login screen] and add the button for social login. This button will invoke the `loginFacebook()` method - the entry point to the social login flow.
 
 . To use Facebook user accounts, we need to add one extra field to the standard CUBA user account. Extend the `User` entity and add the `facebookId` attribute of String type to it:
 +
 [source, java]
-.SocialUser.java
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/entity/SocialUser.java[SocialUser.java]
 ----
 @Column(name = "FACEBOOK_ID")
 protected String facebookId;
@@ -897,7 +906,7 @@ protected String facebookId;
 . Create a service that will look for a user with a given `facebookId` in the application database and either return the existent user or create a new one:
 +
 [source, java]
-.SocialRegistrationService.java
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/SocialRegistrationService.java[SocialRegistrationService.java]
 ----
 public interface SocialRegistrationService {
     String NAME = "demo_SocialRegistrationService";
@@ -905,53 +914,182 @@ public interface SocialRegistrationService {
     User findOrRegisterUser(String facebookId, String email, String name);
 }
 ----
-
-. Create a service to manage the login process. In this example it is `FacebookService` that contains two methods: `getLoginUrl()` and `getUserData()`.
-+
---
-* `getLoginUrl()` will generate the login URL based on the application URL and OAuth2 response type (code, access token or both; see more on response types in https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow[Facebook API documentation]).
 +
 [source, java]
-.FacebookServiceBean.java
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/SocialRegistrationServiceBean.java[SocialRegistrationServiceBean.java]
 ----
-@Inject
-private Configuration configuration;
+@Service(SocialRegistrationService.NAME)
+public class SocialRegistrationServiceBean implements SocialRegistrationService {
+    @Inject
+    private Metadata metadata;
 
-@Override
-public String getLoginUrl(String appUrl, OAuth2ResponseType responseType) {
-    FacebookConfig config = configuration.getConfig(FacebookConfig.class);
+    @Inject
+    private Persistence persistence;
 
-    String startUrl = "http://www.facebook.com/dialog/oauth";
-    String appId = config.getFacebookAppId();
-    String scope = config.getFacebookAppScope();
+    @Inject
+    private Configuration configuration;
 
-    String redirectUrl = getEncodedRedirectUrl(appUrl);
-    return startUrl + "?client_id=" + appId +
-            "&response_type=" + responseType.getId() +
-            "&redirect_uri=" + redirectUrl +
-            "&scope=" + scope;
+    @Override
+    @Transactional
+    public User findOrRegisterUser(String facebookId, String email, String name) {
+        EntityManager em = persistence.getEntityManager();
+
+        // Find existing user
+        TypedQuery<SocialUser> query = em.createQuery("select u from sec$User u where u.facebookId = :facebookId",
+                SocialUser.class);
+        query.setParameter("facebookId", facebookId);
+        query.setViewName(View.LOCAL);
+
+        SocialUser existingUser = query.getFirstResult();
+        if (existingUser != null) {
+            return existingUser;
+        }
+
+        SocialRegistrationConfig config = configuration.getConfig(SocialRegistrationConfig.class);
+
+        Group defaultGroup = em.find(Group.class, config.getDefaultGroupId(), View.MINIMAL);
+
+        // Register new user
+        SocialUser user = metadata.create(SocialUser.class);
+        user.setFacebookId(facebookId);
+        user.setEmail(email);
+        user.setName(name);
+        user.setGroup(defaultGroup);
+        user.setActive(true);
+        user.setLogin(email);
+
+        em.persist(user);
+
+        return user;
+    }
 }
 ----
 
-* `getUserData()` will look for for the Facebook user by the given application URL and code, and either return the personal data of the existent user or create a new one. In this example we want get the user's id, name and email, the id will correspond the `facebookId` attribute created above. Define the `facebook.fields` and `facebook.scope` application properties in the `app.properties` file of the *code* module:
+. Create a service to manage the login process. In this example it is https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/FacebookService.java[FacebookService] that contains two methods: `getLoginUrl()` and `getUserData()`.
++
+--
+* `getLoginUrl()` will generate the login URL based on the application URL and OAuth2 response type (code, access token or both; see more on response types in https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow[Facebook API documentation]). The complete implementation of this method you can find in the https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/FacebookServiceBean.java[FacebookServiceBean.java] file.
+
+* `getUserData()` will look for the Facebook user by the given application URL and code, and either return the personal data of the existent user or create a new one. In this example we want get the user's id, name and email, the id will correspond the `facebookId` attribute created above.
+--
+
+. Define the `facebook.fields` and `facebook.scope` application properties in the `app.properties` file of the *core* module:
 +
 [source, properties]
-.app.properties
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
 ----
 facebook.fields = id,name,email
 facebook.scope = email
 ----
---
 
-. Go back to the `loginFacebook()` method in the controller of the extended login window. The `UIAccessor` instance will lock the UI until the login request is proceeded. `FacebookService` will get the user data by a given app URL and a code parameter. Then the corresponding CUBA user will be found or registered in the system, and the login on behalf of this user will be performed. After that the session will be closed, and the user will be redirected to the application page.
-
-. The last step is to override the <<ldap,LDAP>> authentication mechanism in your project. Create an implementation of `CubaAuthProvider` in the `auth` package under the root package of the *web* module and simply override the following methods making no changes in them:
+. Go back to the `loginFacebook()` method in the controller of the extended login window. The full code of the controller you can find in the https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java] file.
 +
 --
-* `authenticate()`,
-* `init()`,
-* `doFilter()`,
-* `destroy()`.
+In this method we add the request handler to the current session, save the current URL and invoke the redirect to the Facebook authentication form in the browser:
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+----
+private RequestHandler facebookCallBackRequestHandler =
+        this::handleFacebookCallBackRequest;
+
+private URI redirectUri;
+
+@Inject
+private FacebookService facebookService;
+
+@Inject
+private GlobalConfig globalConfig;
+
+public void loginFacebook() {
+    VaadinSession.getCurrent()
+            .addRequestHandler(facebookCallBackRequestHandler);
+
+    this.redirectUri = Page.getCurrent().getLocation();
+
+    String loginUrl = facebookService.getLoginUrl(globalConfig.getWebAppUrl(), OAuth2ResponseType.CODE);
+    Page.getCurrent()
+            .setLocation(loginUrl); // will cause redirect in a browser
+}
+----
+
+The `handleFacebookCallBackRequest()` method will handle the callback after Facebook authentication form. Firstly, we use the `UIAccessor` instance to lock the UI until the login request is proceeded.
+
+Then, `FacebookService` will get the Facebook user account email and id. After that, the corresponding CUBA user will be found by `facebookId` or registered on the fly in the system.
+
+Next, the authentication is triggered, the user session on behalf of this user is loaded, and the UI is updated. After that, we remove the Facebook callback handler, as far as we no longer expect authentication..
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+----
+public boolean handleFacebookCallBackRequest(VaadinSession session, VaadinRequest request,
+                                             VaadinResponse response) throws IOException {
+    if (request.getParameter("code") != null) {
+        uiAccessor.accessSynchronously(() -> {
+            try {
+                String code = request.getParameter("code");
+
+                FacebookUserData userData = facebookService.getUserData(globalConfig.getWebAppUrl(), code);
+
+                User user = socialRegistrationService.findOrRegisterUser(
+                        userData.getId(), userData.getEmail(), userData.getName());
+
+                App app = App.getInstance();
+                Connection connection = app.getConnection();
+                Locale defaultLocale = messages.getTools().getDefaultLocale();
+
+                ((ExternallyAuthenticatedConnection) connection)
+                        .loginAfterExternalAuthentication(user.getLogin(), defaultLocale);
+            } catch (Exception e) {
+                log.error("Unable to login using Facebook", e);
+            } finally {
+                session.removeRequestHandler(facebookCallBackRequestHandler);
+            }
+        });
+
+        ((VaadinServletResponse) response).getHttpServletResponse().
+                sendRedirect(ControllerUtils.getLocationWithoutParams(redirectUri));
+
+        return true;
+    }
+
+    return false;
+}
+----
 --
 
+. The last step is to disable the built-in <<ldap,LDAP>> authentication mechanism in your project. Create an implementation of `CubaAuthProvider` in the `auth` package under the root package of the *web* module and simply override the following methods making no changes in them:
++
+--
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/auth/NoOpAuthProvider.java[NoOpAuthProvider.java]
+----
+public class NoOpAuthProvider implements CubaAuthProvider {
+    @Override
+    public void authenticate(String login, String password, Locale messagesLocale) throws LoginException {
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+    }
+
+    @Override
+    public void destroy() {
+    }
+}
+----
+
+Register this implementation in `web-app.properties` file in the *web* module:
+
+[source, properties]
+.web-app.properties
+----
+cuba.web.externalAuthenticationProviderClass = com.company.demo.web.auth.NoOpAuthProvider
+----
+--
 Now, when a user clicks the *Facebook* button on the login screen, the application will ask him for permission to use his Facebook profile and email, and if this permission is granted, the logged in user will be redirected to the main application page.
