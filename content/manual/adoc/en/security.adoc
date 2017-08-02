@@ -908,61 +908,13 @@ protected String facebookId;
 [source, java]
 .https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/SocialRegistrationService.java[SocialRegistrationService.java]
 ----
-public interface SocialRegistrationService {
-    String NAME = "demo_SocialRegistrationService";
-
-    User findOrRegisterUser(String facebookId, String email, String name);
-}
+include::{sourcesdir}/security/security_SocialRegistrationService.java[]
 ----
 +
 [source, java]
 .https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/SocialRegistrationServiceBean.java[SocialRegistrationServiceBean.java]
 ----
-@Service(SocialRegistrationService.NAME)
-public class SocialRegistrationServiceBean implements SocialRegistrationService {
-    @Inject
-    private Metadata metadata;
-
-    @Inject
-    private Persistence persistence;
-
-    @Inject
-    private Configuration configuration;
-
-    @Override
-    @Transactional
-    public User findOrRegisterUser(String facebookId, String email, String name) {
-        EntityManager em = persistence.getEntityManager();
-
-        // Find existing user
-        TypedQuery<SocialUser> query = em.createQuery("select u from sec$User u where u.facebookId = :facebookId",
-                SocialUser.class);
-        query.setParameter("facebookId", facebookId);
-        query.setViewName(View.LOCAL);
-
-        SocialUser existingUser = query.getFirstResult();
-        if (existingUser != null) {
-            return existingUser;
-        }
-
-        SocialRegistrationConfig config = configuration.getConfig(SocialRegistrationConfig.class);
-
-        Group defaultGroup = em.find(Group.class, config.getDefaultGroupId(), View.MINIMAL);
-
-        // Register new user
-        SocialUser user = metadata.create(SocialUser.class);
-        user.setFacebookId(facebookId);
-        user.setEmail(email);
-        user.setName(name);
-        user.setGroup(defaultGroup);
-        user.setActive(true);
-        user.setLogin(email);
-
-        em.persist(user);
-
-        return user;
-    }
-}
+include::{sourcesdir}/security/security_SocialRegistrationServiceBean.java[]
 ----
 
 . Create a service to manage the login process. In this example it is https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/FacebookService.java[FacebookService] that contains two methods: `getLoginUrl()` and `getUserData()`.
@@ -990,27 +942,7 @@ In this method we add the request handler to the current session, save the curre
 [source,java]
 .https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
 ----
-private RequestHandler facebookCallBackRequestHandler =
-        this::handleFacebookCallBackRequest;
-
-private URI redirectUri;
-
-@Inject
-private FacebookService facebookService;
-
-@Inject
-private GlobalConfig globalConfig;
-
-public void loginFacebook() {
-    VaadinSession.getCurrent()
-            .addRequestHandler(facebookCallBackRequestHandler);
-
-    this.redirectUri = Page.getCurrent().getLocation();
-
-    String loginUrl = facebookService.getLoginUrl(globalConfig.getWebAppUrl(), OAuth2ResponseType.CODE);
-    Page.getCurrent()
-            .setLocation(loginUrl); // will cause redirect in a browser
-}
+include::{sourcesdir}/security/security_loginFacebook.java[]
 ----
 
 The `handleFacebookCallBackRequest()` method will handle the callback after Facebook authentication form. Firstly, we use the `UIAccessor` instance to lock the UI until the login request is proceeded.
@@ -1022,39 +954,7 @@ Next, the authentication is triggered, the user session on behalf of this user i
 [source,java]
 .https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
 ----
-public boolean handleFacebookCallBackRequest(VaadinSession session, VaadinRequest request,
-                                             VaadinResponse response) throws IOException {
-    if (request.getParameter("code") != null) {
-        uiAccessor.accessSynchronously(() -> {
-            try {
-                String code = request.getParameter("code");
-
-                FacebookUserData userData = facebookService.getUserData(globalConfig.getWebAppUrl(), code);
-
-                User user = socialRegistrationService.findOrRegisterUser(
-                        userData.getId(), userData.getEmail(), userData.getName());
-
-                App app = App.getInstance();
-                Connection connection = app.getConnection();
-                Locale defaultLocale = messages.getTools().getDefaultLocale();
-
-                ((ExternallyAuthenticatedConnection) connection)
-                        .loginAfterExternalAuthentication(user.getLogin(), defaultLocale);
-            } catch (Exception e) {
-                log.error("Unable to login using Facebook", e);
-            } finally {
-                session.removeRequestHandler(facebookCallBackRequestHandler);
-            }
-        });
-
-        ((VaadinServletResponse) response).getHttpServletResponse().
-                sendRedirect(ControllerUtils.getLocationWithoutParams(redirectUri));
-
-        return true;
-    }
-
-    return false;
-}
+include::{sourcesdir}/security/security_handleFacebookCallBackRequest.java[]
 ----
 --
 
@@ -1064,24 +964,7 @@ public boolean handleFacebookCallBackRequest(VaadinSession session, VaadinReques
 [source,java]
 .https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/auth/NoOpAuthProvider.java[NoOpAuthProvider.java]
 ----
-public class NoOpAuthProvider implements CubaAuthProvider {
-    @Override
-    public void authenticate(String login, String password, Locale messagesLocale) throws LoginException {
-    }
-
-    @Override
-    public void init(FilterConfig filterConfig) throws ServletException {
-    }
-
-    @Override
-    public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
-            throws IOException, ServletException {
-    }
-
-    @Override
-    public void destroy() {
-    }
-}
+include::{sourcesdir}/security/security_NoOpAuthProvider.java[]
 ----
 
 Register this implementation in `web-app.properties` file in the *web* module:
