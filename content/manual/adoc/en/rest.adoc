@@ -219,6 +219,104 @@ include::{sourcesdir}/rest/rest-access-token-response.json[]
 
 A token value is in the `access_token` property.
 
+[[rest_api_v2_custom_auth]]
+===== Custom Authentication
+
+Authentication mechanisms can provide access tokens by key, link, LDAP login and password, etc. REST API uses its own authentication mechanism that cannot be modified. In order to use custom authentication process, you need to create a REST controller and use its URL.
+
+Let's consider the custom authentication mechanism that enables getting an OAuth token by a promo code. In the following example we will use a sample application that contains the `Coupon` entity with `code` attribute. We will send this attribute's value as an authentication parameter in GET request.
+
+. Create a `Coupon` entity with the `code` attribute:
++
+[source, java]
+----
+@Column(name = "CODE", unique = true, length = 4)
+protected String code;
+----
+
+. Create a <<users,user>> with *promo-user* login on behalf of which the authentication will be performed.
+
+. Create a new Spring configuration file with name `rest-dispatcher-spring.xml` under the root package (`com.company.demo`) of *web* module. The content of the file must be as follows:
++
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring-ex.xml[]
+----
+
+. Include the file into the `cuba.restSpringContextConfig` application property in the `modules/web/src/web-app.properties` file:
++
+[source, properties]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring.properties[]
+----
+
+. Create the `rest` package under the root package of *web* module and implement the custom Spring MVC controller in it. Use the `OAuthTokenIssuer` bean to generate and issue the REST API token for a user after the custom authentication:
++
+[source, java]
+----
+include::{sourcesdir}/rest/customRestController.java[]
+----
+
+. Exclude the `rest` package from scanning in *web/core* modules: the `OAuthTokenIssuer` bean is available only in REST API context, and scanning for it in the application context will cause an error.
++
+[source, xml]
+----
+include::{sourcesdir}/rest/web-spring-ex.xml[]
+----
+
+. Now users will be able to obtain OAuth2 access code using GET HTTP request with the `code` parameter to
++
+  http://localhost:8080/app/rest/auth-code?code=A325
++
+The result will be:
++
+  {"access_token":"74202587-6c2b-4d74-bcf2-0d687ea85dca","token_type":"bearer","expires_in":43199,"scope":"rest-api"}
++
+The obtained access token should then be passed to REST API, as described in the documentation.
+
+[[rest_api_v2_social_login]]
+====== Social Login in REST API
+
+The mechanism of social login can be used in REST API too. The complete sample application is available on https://github.com/cuba-platform/sample-social-login/[GitHub] and described in the <<social_login>> section, below are the key points of getting an access token with a Facebook account.
+
+. Create the `restapi` package under the root package of *web* module and implement the custom Spring MVC controller in it. This controller should contain two main methods: `get()` to get a `ResponseEntity` instance and `login()` to obtain an OAuth token.
++
+--
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/restapi/FacebookAuthenticationController.java[FacebookAuthenticationController.java]
+----
+include::{sourcesdir}/rest/social_login_rest_1.java[]
+----
+
+Here we check the Facebook code, obtain an access code and issue the access token using `OAuthTokenIssuer`:
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/restapi/FacebookAuthenticationController.java[FacebookAuthenticationController.java]
+----
+include::{sourcesdir}/rest/social_login_rest_2.java[]
+----
+--
+
+. Create the `facebook-login-demo.html` file in the `modules/web/web/VAADIN` folder of your project. It will contain the JavaScript code running on HTML page:
++
+--
+[source, html]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/web/VAADIN/facebook-login-demo.html[facebook-login-demo.html]
+----
+include::{sourcesdir}/rest/social_login_rest_3.html[]
+----
+
+The following script will try to login with Facebook. Firstly, it will remove code parameters from URL, then it will pass the code to REST API to get an OAuth access token, and in case of successful authentication we will be able to load and save data as usual.
+
+[source, js]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/web/VAADIN/facebook-login-demo.html[facebook-login-demo.html]
+----
+include::{sourcesdir}/rest/social_login_rest_4.js[]
+----
+
+Another example or running a JavaScript code from CUBA applications you can find in the <<rest_api_v2_ex_javascript_usage>> section.
+--
+
 [[rest_api_v2_ex_get_entities_list]]
 ===== Getting an Entity Instances List
 
