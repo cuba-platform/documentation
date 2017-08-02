@@ -862,3 +862,116 @@ include::{sourcesdir}/security/sso_3.properties[]
 . Перейдите по адресу `++http://bar:8082/app++` в том же веб-браузере. Если вы по прежнему аутентифицированы в приложении Foo, то вы автоматически войдете как `admin` и в приложение Bar. Создайте пользователя `u1` (пароль не важен) в приложении Bar.
 
 . Теперь вы сможете входить как `admin` или `u1` в оба приложения через единую форму логина, и если вы аутентифицированы в одном приложении, то вход во второе будет автоматическим, минуя форму.
+
+[[social_login]]
+=== Social Login
+
+Вход через социальные сети, или social login, это разновидность <<sso,single sign-on>>, которая позволяет использовать данные для входа в социальные сети, такие как Facebook, Twitter или Google+, для входа в приложения CUBA вместо того, чтобы создавать пользователя в приложении напрямую.
+
+В этом примере мы рассмотрим, как можно войти в приложение, используя аккаунт на Facebook. В Facebook используется механизм авторизации OAuth2, более подробно о его использовании вы можете узнать из документации по Facebook API и Facebook Login Flow: https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow.
+
+Исходный код проекта из этого примера доступен на https://github.com/cuba-platform/sample-social-login[GitHub], ниже приведены ключевые моменты реализации social login.
+
+. Чтобы подключить приложение к Facebook, необходимо создать для него *App ID* (уникальный идентификатор приложения) и *App Secret* (своего рода пароль для аутентификации запросов, поступающих от приложения на серверы Facebook). Следуя https://developers.facebook.com/docs/apps/register[инструкции], создайте эти значения и затем зарегистрируйте их в файле `app.properties` в модуле *core* в свойствах приложения `facebook.appId` и `facebook.appSecret` соответственно, например:
++
+--
+[source, properties]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
+----
+facebook.appId = 123456789101112
+facebook.appSecret = 123456789101112abcde131415fghi16
+----
+
+Также необходимо зарегистрировать URL, который вы указали при регистрации приложения на Facebook, в свойстве приложения <<cuba.webAppUrl,cuba.webAppUrl>> в модулях *core* и *web*, к примеру:
+
+[source, properties]
+----
+cuba.webAppUrl = http://cuba-fb.test:8080/app
+----
+--
+
+. Расширьте https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ext-loginWindow.xml[окно входа в систему] и добавьте кнопку для входа через социальную сеть. По нажатию этой кнопки будет вызываться метод `loginFacebook()` - наша точка входа в процедуру social login.
+
+. Чтобы использовать учётные записи пользователей Facebook в своём приложении, необходимо добавить новое поле к стандартной учётной записи пользователя CUBA. Расширьте сущность `User` и добавьте строковый атрибут `facebookId`:
++
+[source, java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/entity/SocialUser.java[SocialUser.java]
+----
+@Column(name = "FACEBOOK_ID")
+protected String facebookId;
+----
+
+. Создайте сервис, который будет искать пользователя приложения в базе данных по переданному `facebookId`, и если таковой не найден, то создавать его на лету:
++
+[source, java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/SocialRegistrationService.java[SocialRegistrationService.java]
+----
+include::{sourcesdir}/security/security_SocialRegistrationService.java[]
+----
++
+[source, java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/SocialRegistrationServiceBean.java[SocialRegistrationServiceBean.java]
+----
+include::{sourcesdir}/security/security_SocialRegistrationServiceBean.java[]
+----
+
+. Создайте сервис для реализации логики входа. В данном примере это сервис https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/FacebookService.java[FacebookService], содержащий два метода: `getLoginUrl()` и `getUserData()`.
++
+--
+* `getLoginUrl()` генерирует URL для входа на основании URL приложения и типа ответа OAuth2 (code, access token или оба; более подробно о параметре `response_type` см. в документации https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow[Facebook API]). Исходный код этого метода можно посмотреть в файле https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/FacebookServiceBean.java[FacebookServiceBean.java].
+
+* `getUserData()` будет искать пользователя Facebook по параметрам, переданным в URL и в коде, и вернёт данные существующего пользователя или создаст нового. В этом примере из пользовательских данных нам нужны id, name и email, id будет соответствовать атрибуту `facebookId`, который мы создали ранее.
+--
+
+. Определите свойства приложения `facebook.fields` и `facebook.scope` в файле `app.properties` модуля *core*:
++
+[source, properties]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
+----
+facebook.fields = id,name,email
+facebook.scope = email
+----
+
+. Вернёмся к методу `loginFacebook()` в контроллере расширенного окна входа. Код контроллера целиком вы можете найти в файле https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java].
++
+--
+В этом методе мы добавим к текущей сессии обработчик запроса, затем сохраним текущий URL и перенаправим пользователя на экран авторизации Facebook в браузере:
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+----
+include::{sourcesdir}/security/security_loginFacebook.java[]
+----
+
+В методе `handleFacebookCallBackRequest()` будет обработан обратный вызов после формы авторизации Facebook. Во-первых, используем экземпляр `UIAccessor`, чтобы зафиксировать состояние UI, пока будет обрабатываться запрос на вход.
+
+Затем с помощью `FacebookService` получим email и id учётной записи Facebook. После этого найдём соответствующего пользователя CUBA по его `facebookId` или создадим нового на лету.
+
+Далее будет совершен вход в приложение, будет создана новая сессия от лица этого пользователя и обновлен UI. Теперь мы можем удалить обработчик обратного вызова Facebook, так как процедура аутентификации закончена.
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+----
+include::{sourcesdir}/security/security_handleFacebookCallBackRequest.java[]
+----
+--
+
+. Последним шагом необходимо запретить встроенный механизм аутентификации <<ldap,LDAP>> в проекте. Создайте свою реализацию `CubaAuthProvider` в пакете `auth` в корневом каталоге модуля *web* и просто переопределите в ней следующие методы, не внося в них никаких изменений:
++
+--
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/auth/NoOpAuthProvider.java[NoOpAuthProvider.java]
+----
+include::{sourcesdir}/security/security_NoOpAuthProvider.java[]
+----
+
+Зарегистрируйте эту реализацию в файле `web-app.properties` в модуле *web*:
+
+[source, properties]
+.web-app.properties
+----
+cuba.web.externalAuthenticationProviderClass = com.company.demo.web.auth.NoOpAuthProvider
+----
+--
+
+Теперь при нажатии кнопки *Facebook* на экране входа приложение запросит разрешение на использование учётных данных пользователя Facebook, и если разрешение будет получено, пользователь после логина будет перенаправлен на главную страницу приложения.
