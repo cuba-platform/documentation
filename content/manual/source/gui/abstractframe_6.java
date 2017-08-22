@@ -7,5 +7,5 @@ showOptionDialog("PLease confirm", "Are you sure?",
                     // do something
                 }
             },
-            new DialogAction(DialogAction.Type.NO);
+            new DialogAction(DialogAction.Type.NO)
         });
