@@ -8,6 +8,11 @@ $(document).ready(function () {
             mobileMenu.removeClass("active");
         } else {
             mobileMenu.addClass("active");
+            
+            var selEl = document.getElementsByClassName('toc-selected-item')[1]; // from mobile menu
+            if (selEl) {
+                selEl.scrollIntoView();
+            }
         }
     });
 

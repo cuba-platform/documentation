@@ -115,7 +115,10 @@ class Section {
         def inHierarchy = hierarchy.contains(this)
         def isSelected = this == hierarchy.last()
 
-        sb.append("\n<li class='toc-item'>${getTocMarker(this, inHierarchy)}${getTocA(this, isSelected, inHierarchy)}");
+        sb.append("\n<li class='toc-item");
+        if (isSelected)
+            sb.append(" toc-selected-item");
+        sb.append("'>${getTocMarker(this, inHierarchy)}${getTocA(this, isSelected, inHierarchy)}");
         if (inHierarchy) {
             sb.append("\n<ul>")
             for (child in children) {
