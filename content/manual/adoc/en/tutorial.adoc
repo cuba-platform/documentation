@@ -1,0 +1,122 @@
+:proj_business_logic: https://git.haulmont.com/krivopustov/sample-business-logic
+
+[[tutorial]]
+== Tutorial
+
+This a practical guide to developing on the CUBA platform, which contains many examples of implementing typical use cases and solving common problems. The information in each section is organized from basic to advanced topics, so feel free to jump to another section or leave the tutorial at any time and start coding.
+
+Most of the sections are accompanied by the sample applications. You can see them online, view their source code on GitHub or download and run locally. You will also see the applications on the Samples tab in Studio.
+
+[[business_logic_tutor]]
+=== Organizing Business Logic
+
+When you start developing on the platform, one of the first questions is "where should I place my business logic"? Using Studio for creating data model and CRUD screens is simple, but any real project requires some logic beyond CRUD. This section explains how you can effectively organize your business logic depending on your requirements.
+
+[[logic_in_controllers_tutor]]
+==== Logic in Controllers
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://localhost:8080/business-logic/open?screen=sample$Customer.browse_1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Let's consider the following task: we need to calculate discounts for customers based on current amounts of their purchases. So we have the `Customer` and `Order` entities and we want to run discount calculation when a user clicks a button on the customer's browser screen.
+
+The most straightforward way to accomplish the task is to place the calculation logic right in the screen controller where it is invoked. See the *Calculate discount* button in the demo application and the screen controller implementation: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex1/customer/CustomerBrowse.java[CustomerBrowse.java]. Please keep in mind that the provided calculation process is not optimal and see more options in the <<data_tutor>> section.
+
+This approach is acceptable if the logic is invoked from a single point and it is not too complex to fit into a couple of short methods.
+
+[[logic_in_client_beans_tutor]]
+==== Logic in Client Tier Beans
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://localhost:8080/business-logic/open?screen=sample$Customer.browse_2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Let's complicate the task from the <<logic_in_controllers_tutor,previous>> section a bit. Now we want to invoke the calculation both from the customer browser and editor screens. To not repeat yourself, we should extract the logic to a common place available for both controllers. It can be a <<managed_beans,managed bean>> of the client <<app_tiers,tier>>.
+
+A managed bean is a class annotated with the `@Component` annotation. It can be injected into other beans and screen controllers, or obtained via the `AppBeans.get()` static method. If the bean has a separate interface, you can access the bean through the interface instead of the class.
+
+Please note that in order to be accessible for screen controllers, the bean must be located in *global*, *gui* or *web* <<app_modules,modules>> of your project. In the former case the bean will be also accessible for the middleware.
+
+See the *Calculate discount* button on both browser and editor screens of the demo application and the implementation:
+
+* Browser controller: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex2/customer/CustomerBrowse.java[CustomerBrowse.java]
+
+* Editor controller: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex2/customer/CustomerEdit.java[CustomerEdit.java]
+
+* Discount calculator bean: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex2/DiscountCalculator.java[DiscountCalculator.java]
+
+
+[[logic_in_services_tutor]]
+==== Logic in Middleware Services
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://localhost:8080/business-logic/open?screen=sample$Customer.browse_3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+In the <<logic_in_client_beans_tutor,previous>> section we considered the encapsulation of business logic in a managed bean of the client tier. Now we will go further and implement our logic in the most appropriate place: on the <<middleware,middle tier>>. By doing this, we will achieve the following goals:
+
+* Our business method will be available for all types of clients including <<polymer_ui,Polymer UI>>.
+
+* We will be able to use APIs available only on the middleware: <<entityManager,EntityManager>>, <<transactions,transactions>>, etc.
+
+In order to invoke a middleware business method from the client, you need to create a <<services,service>>. Studio allows you to create a service stub easily:
+
+* Switch to the *Middleware* section and click *New > Service*.
+
+* Change the service interface name to `DiscountService`. The bean class and service names will be changed accordingly. Click *OK* or *Apply*.
+
+* Click *IDE* and open the service interface in your IDE. Create a method and implement it in the service class.
+
+See an example implementation here: {proj_business_logic}/blob/master/modules/core/src/com/company/sample/service/DiscountServiceBean.java[DiscountServiceBean.java]
+
+A service interface can be injected into screen controllers and to other managed beans of the client and middle tier. See the following examples: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex3/customer/CustomerBrowse.java[CustomerBrowse.java] and {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex3/customer/CustomerEdit.java[CustomerEdit.java].
+
+Let's now make this this business method accessible for external clients through the <<rest_api_v2,REST API>>:
+
+* Open the service editor in Studio and switch to the *REST Methods* tab.
+
+* Select the *REST invocation allowed* checkbox for the method.
+
+Studio will create the `rest-services.xml` file and write the method description into it. After restarting the application server you will be able to invoke your business method using HTTP requests. For example, the following GET request should work with our online demo server:
+
+http://localhost:8080/business-logic/rest/v2/services/sample_DiscountService/calculateDiscount?customerId=1797f54d-5bec-87a6-4330-d958955743a2
+
+Please note that the demo application allows <<rest_api_v2_anonymous,anonymous access>>. In the most real-world usage scenarios you need to authenticate prior to executing REST requests.
+
+[[logic_in_entity_listeners_tutor]]
+==== Logic in Entity Listeners
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://localhost:8080/business-logic/open?screen=sample$orderBrowseWithCustomers" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+<<entity_listeners,Entity listeners>> allow you to execute your business logic each time an entity is added, updated or removed from the database. For example, we could recalculate the discount for a customer each time an order for this customer is changed.
+
+An entity listener stub can be easily created using Studio:
+
+* Switch to the *Middleware* section and click *New > Entity listener*.
+
+* Change the class name to `OrderEntityListener` and select checkboxes for `BeforeInsertEntityListener`, `BeforeUpdateEntityListener` and `BeforeDeleteEntityListener` interfaces.
+
+* Select `Order` entity in the *Entity type* field.
+
+* Click *OK* or *Apply* and open the listener class in your IDE.
+
+See an example implementation here: {proj_business_logic}/blob/master/modules/core/src/com/company/sample/listener/OrderEntityListener.java[OrderEntityListener.java]
+
+If you open the *Logic in Entity Listeners* screen of the sample application, you will see two tables: orders and customers. Create, edit or remove an order, then refresh the customers table, and you will see that the discount of the corresponding customer is changed.
+
+[[modeling_domain_tutor]]
+=== Modeling Your Problem Domain
+
+[[data_tutor]]
+=== Working with Data
