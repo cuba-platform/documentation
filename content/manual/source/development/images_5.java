@@ -26,7 +26,7 @@ public class EmployeeBrowse extends AbstractLookup {
             image.setWidth("40");
 
             FileDescriptor userImageFile = entity.getImageFile();
-            image.setSource(FileDescriptorImageResource.class).setFileDescriptor(userImageFile);
+            image.setSource(FileDescriptorResource.class).setFileDescriptor(userImageFile);
 
             Label userLogin = componentsFactory.createComponent(Label.class);
             userLogin.setValue(entity.getName());

@@ -76,7 +76,7 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
 
     private void displayImage() {
         if (getItem().getImageFile() != null) {
-            image.setSource(Image.FileDescriptorImageResource.class).setFileDescriptor(getItem().getImageFile());
+            image.setSource(FileDescriptorResource.class).setFileDescriptor(getItem().getImageFile());
             image.setVisible(true);
         } else {
             image.setVisible(false);
