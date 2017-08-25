@@ -1,18 +1,18 @@
 :proj_business_logic: https://git.haulmont.com/krivopustov/sample-business-logic
 
-[[tutorial]]
-== Tutorial
+[[cookbook]]
+== Cookbook
 
-This a practical guide to developing on the CUBA platform, which contains many examples of implementing typical use cases and solving common problems. The information in each section is organized from basic to advanced topics, so feel free to jump to another section or leave the tutorial at any time and start coding.
+This collection of practical recipes for developing on CUBA platform contains examples of implementing typical use cases and solving common problems. The information in each section is organized from basic to advanced topics, so feel free to jump to another section or leave the documentation at any time and start coding.
 
-Most of the sections are accompanied by the sample applications. You can see them online, view their source code on GitHub or download and run locally. You will also see the applications on the Samples tab in Studio.
+Most of the sections are accompanied by the sample applications. You can see them online, view their source code on GitHub or download and run locally. You will also see the applications on the *Samples* tab in Studio.
 
-[[business_logic_tutor]]
+[[business_logic_recipes]]
 === Organizing Business Logic
 
 When you start developing on the platform, one of the first questions is "where should I place my business logic"? Using Studio for creating data model and CRUD screens is simple, but any real project requires some logic beyond CRUD. This section explains how you can effectively organize your business logic depending on your requirements.
 
-[[logic_in_controllers_tutor]]
+[[logic_in_controllers_recipe]]
 ==== Business Logic in Controllers
 
 ++++
@@ -23,11 +23,11 @@ When you start developing on the platform, one of the first questions is "where 
 
 Let's consider the following task: we need to calculate discounts for customers based on current amounts of their purchases. So we have the `Customer` and `Order` entities and we want to run discount calculation when a user clicks a button on the customer's browser screen.
 
-The most straightforward way to accomplish the task is to place the calculation logic right in the screen controller where it is invoked. See the *Calculate discount* button in the demo application and the screen controller implementation: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex1/customer/CustomerBrowse.java[CustomerBrowse.java]. Please keep in mind that the provided calculation process is not optimal and see more options in the <<data_tutor>> section.
+The most straightforward way to accomplish the task is to place the calculation logic right in the screen controller where it is invoked. See the *Calculate discount* button in the demo application and the screen controller implementation: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex1/customer/CustomerBrowse.java[CustomerBrowse.java]. Please keep in mind that the provided calculation process is not optimal and see more options in the <<data_recipes>> section.
 
 This approach is acceptable if the logic is invoked from a single point and it is not too complex to fit into a couple of short methods.
 
-[[using_client_beans_tutor]]
+[[using_client_beans_recipe]]
 ==== Using Client Tier Beans
 
 ++++
@@ -36,7 +36,7 @@ This approach is acceptable if the logic is invoked from a single point and it i
 </div>
 ++++
 
-Let's complicate the task from the <<logic_in_controllers_tutor,previous>> section a bit. Now we want to invoke the calculation both from the customer browser and editor screens. To not repeat yourself, we should extract the logic to a common place available for both controllers. It can be a <<managed_beans,managed bean>> of the client <<app_tiers,tier>>.
+Let's complicate the task from the <<logic_in_controllers_recipe,previous>> section a bit. Now we want to invoke the calculation both from the customer browser and editor screens. To not repeat yourself, we should extract the logic to a common place available for both controllers. It can be a <<managed_beans,managed bean>> of the client <<app_tiers,tier>>.
 
 A managed bean is a class annotated with the `@Component` annotation. It can be injected into other beans and screen controllers, or obtained via the `AppBeans.get()` static method. If the bean has a separate interface, you can access the bean through the interface instead of the class.
 
@@ -51,7 +51,7 @@ See the *Calculate discount* button on both browser and editor screens of the de
 * Discount calculator bean: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex2/DiscountCalculator.java[DiscountCalculator.java]
 
 
-[[using_services_tutor]]
+[[using_services_recipe]]
 ==== Using Middleware Services
 
 ++++
@@ -60,7 +60,7 @@ See the *Calculate discount* button on both browser and editor screens of the de
 </div>
 ++++
 
-In the <<using_client_beans_tutor,previous>> section we considered the encapsulation of business logic in a managed bean of the client tier. Now we will go further and implement our logic in the most appropriate place: on the <<middleware,middle tier>>. By doing this, we will achieve the following goals:
+In the <<using_client_beans_recipe,previous>> section we considered the encapsulation of business logic in a managed bean of the client tier. Now we will go further and implement our logic in the most appropriate place: on the <<middleware,middle tier>>. By doing this, we will achieve the following goals:
 
 * Our business method will be available for all types of clients including <<polymer_ui,Polymer UI>>.
 
@@ -90,7 +90,7 @@ http://localhost:8080/business-logic/rest/v2/services/sample_DiscountService/cal
 
 Please note that the demo application allows <<rest_api_v2_anonymous,anonymous access>>. In the most real-world usage scenarios you need to authenticate prior to executing REST requests.
 
-[[using_entity_listeners_tutor]]
+[[using_entity_listeners_recipe]]
 ==== Using Entity Listeners
 
 ++++
@@ -115,8 +115,34 @@ See an example implementation here: {proj_business_logic}/blob/master/modules/co
 
 If you open the *Logic in Entity Listeners* screen of the sample application, you will see two tables: orders and customers. Create, edit or remove an order, then refresh the customers table, and you will see that the discount of the corresponding customer is changed.
 
-[[modeling_domain_tutor]]
+[[using_jmx_beans_recipe]]
+==== Using JMX Beans
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://localhost:8080/business-logic/open?screen=jmxConsole" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+With <<jmx_beans,JMX beans>> you can expose some administrative functionality of your application without creating a user interface for it. The functionality becomes available via the built-in JMX console and via external JMX tools like `jconsole`.
+
+In our example with discounts, a user having access to JMX console is able to recalculate discounts for all customers and for a customer with a given id.
+
+Studio cannot help you with scaffolding JMX beans at the moment, so all classes and configuration entries have to be created manually in the IDE.
+
+See the example implementation in the demo application:
+
+* JMX bean interface: {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/jmx/DiscountsMBean.java[DiscountsMBean.java]
+
+* JMX bean implementation: {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/jmx/Discounts.java[Discounts.java]
+
+* Managed bean of the middle tier which is invoked by the JMX bean: {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/DiscountCalculator.java[DiscountCalculator.java]
+
+* Registration of the JMX bean: {proj_business_logic}/blob/master/modules/core/src/com/company/sample/spring.xml[spring.xml]
+
+
+[[modeling_domain_recipes]]
 === Modeling Your Problem Domain
 
-[[data_tutor]]
+[[data_recipes]]
 === Working with Data
