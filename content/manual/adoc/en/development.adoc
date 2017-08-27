@@ -1590,33 +1590,6 @@ Here, the `meetingPointsDs` datasource is not associated with any visual compone
 
 As a result, the updated instances of the `MeetingPoint`, as well as the `Terminal` instances, will be saved to the database only with the `Airport` instance in the same transaction.
 
-[[app_start_recipe]]
-==== Running Code at Application Start
-
-Sometimes you may need to run certain code immediately after the application start at the moment when all application functionality is already initialized and ready to work. For this, you can use the <<appContext,AppContext.Listener>>.
-
-Assume we have the following task: a project has an `Employee` entity that should be linked one-to-one to a platform entity (`User`).
-
-image::init_values_recipe_2.png[align="center"]
-
-If the `name` attribute of the `User` entity is changed, for example, through a standard user management screen, the `name` attribute of the related `Employee` should change as well. This is a common task for "denormalized" data, which is typically solved using <<entity_listeners,entity listeners>>. Our case is more complex, since we need to track changes of the platform's `User` entity, and thus we cannot add an entity listener using <<listeners_annotation,@Listeners>> annotation. However, we can add a listener dynamically using the `EntityListenerManager` bean, and it is better to do this on application start.
-
-Let us create the `AppLifecycle` bean implementing the `AppContext.Listener` interface in the application *core* module and register it by invoking `AppContext.addListener()` method in the object constructor:
-
-[source, java]
-----
-include::{sourcesdir}/development/app_start_recipe_1.java[]
-----
-
-[source, java]
-----
-include::{sourcesdir}/development/app_start_recipe_2.java[]
-----
-
-As a result, the `applicationStarted()` method of this bean will be invoked immediately after the start of the Middleware <<app_tiers,block>>. In this method, the `sample_UserEntityListener` bean is registered as an entity listener for the `User` entity.
-
-The `onBeforeUpdate()` method of the `UserEntityListener` class will be invoked every time before the changes in the `User` instances are saved to the database. The method checks if the `name` attribute exists among the updated attributes. If yes, a related `Employee` instance is loaded and its `name` is updated with the new value.
-
 [[images_recipe]]
 ==== Loading and Displaying Images
 
