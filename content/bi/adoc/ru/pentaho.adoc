@@ -1,14 +1,51 @@
 [[setup_pentaho]]
 == Установка и настройка Pentaho
 
-. Скачайте и установите Pentaho с http://www.pentaho.com/download
+. Скачайте и установите Pentaho Community Edition с http://community.pentaho.com/:
++
+* Downloads → Main Downloads → Business Analytics Platform
 
-. Остановите фоновые процессы _Pentaho Server_ и _Pentaho Solution Repository_ в службах Windows Services или их аналоге.
+. Скачайте и распакуйте плагин Saiku Analytics (Meteorite BI) с http://www.pentaho.com/marketplace/
 
-. Измените порт Pentaho по умолчанию на 8081.
+. Перенесите папку `saiku` в папку `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system`, где `$PENTAHO_HOME` - папка, в которую установлен Pentaho.
+
+. Плагин Saiku по умолчанию не поддерживает последние версии Pentaho Server. Чтобы избежать ошибок при сохранении отчёта, сделайте следующее:
 +
 --
-* Перейдите в папку `$PENTAHO_HOME/server/pentaho-server/tomcat/conf`, где `$PENTAHO_HOME` - папка, в которую установлен Pentaho.
+* Удалите файлы библиотек `cpf-core-6.0.0.0-353.jar` и `cpf-pentaho5-6.0.0.0-353.jar` из папки `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/saiku/lib`.
+
+* Скопируйте следующие библиотеки из `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/sparkl/lib` в папку `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/saiku/lib`:
+
+[source, plain]
+----
+cpf-core-7.1.0.0-12.jar
+
+cpf-pentaho-7.1.0.0-12.jar
+
+cpk-core-7.1.0.0-12.jar
+
+cpk-pentaho5-7.1.0.0-12.jar
+----
+--
+
+. Перейдите на http://licensing.meteorite.bi и создайте новую учётную запись. После валидации учётной записи сгенерируйте лицензию:
++
+--
+* Войдите в систему и нажмите на кнопку CREATE NEW LICENSE.
+
+* В окне создания лицензии выберите тип лицензии COMMUNITY_EDITION.
+
+* Сохраните и скачайте файл лицензии. Переименуйте файл в `license.lic` и скопируйте его в папку `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/saiku`
+--
+
+. Скачайте и установите утилиту Pentaho Data Integration с http://community.pentaho.com/:
++
+* Downloads → Main Downloads → Data Integration
+
+. Измените порт Pentaho по умолчанию на 8081:
++
+--
+* Перейдите в папку `$PENTAHO_HOME/server/pentaho-server/tomcat/conf`
 
 * Измените порт Tomcat по умолчанию на 8081 в файле `server.xml`:
 
@@ -18,22 +55,26 @@ include::{sourcesdir}/bi_port.xml[]
 ----
 --
 
-. Настройте аутентификацию пользователей CUBA в Pentaho.
+. Настройте аутентификацию пользователей CUBA в Pentaho:
 +
 --
-* Скачайте https://dl.bintray.com/cuba-platform/main/com/haulmont/addon/bi/cuba-bi-pentaho/{addonVer}/cuba-bi-pentaho-{addonVer}.jar и скопируйте его в папку `$PENTAHO_HOME$/server/pentaho-server/tomcat/webapps/pentaho/WEB-INF/lib`.
+* Скачайте BI-дополнение с https://git.haulmont.com/platform/bi.git
 
-* Создайте новый файл `cuba-pentaho-authentication.xml` в папке `$PENTAHO_HOME/server/pentaho-server/pentaho-solutions/system` со следующим содержимым:
-+
-[source,xml]
-----
-include::{sourcesdir}/cuba-pentaho-authentication.xml[]
-----
+* Перейдите в папку `$BI_PROJECT$/modules/pentaho/`, где `$BI_PROJECT$` - папка, в которую установлено дополнение.
+
+* Скопируйте файл `cuba-pentaho-community-authentication.xml` в папку `$PENTAHO_HOME/pentaho-server/pentaho-solutions/system`.
 +
 [TIP]
 ====
 Укажите URL вашего приложения CUBA в свойстве `cubaConnectionUrl` бина `cubaAuthenticationFilter`.
+
+[source, xml]
+----
+<property name="cubaConnectionUrl" value="http://localhost:18080/app"/>
+----
 ====
+
+* Скопируйте JAR-файл `cuba-bi-pentaho-1.2-SNAPSHOT.jar` из папки `$BI_PROJECT$/modules/pentaho/build/libs` в папку `$PENTAHO_HOME$/pentaho-server/tomcat/webapps/pentaho/WEB-INF/lib`.
 
 * Отредактируйте файл `pentaho-spring-beans.xml` в папке `pentaho-solutions/system`, добавив в него строку `<import resource="cuba-pentaho-authentication.xml" />` после строки `<import resource="applicationContext-spring-security.xml" />`:
 +
@@ -43,4 +84,10 @@ include::{sourcesdir}/bi_beans.xml[]
 ----
 --
 
-. Снова запустите фоновые процессы _Pentaho Server_ и _Pentaho Solution Repository_ в службах Windows Services или их аналоге.
+. Запустите сервер Pentaho:
++
+--
+* Перейдите в папку `$PENTAHO_HOME$`.
+
+* Выполните `start-pentaho.bat`
+--
