@@ -306,6 +306,14 @@ Formulas can reference the cells of the same band or another band. To be process
 
 To process the data as an Excel chart, create a band and a same-named region for this chart, and make a reference to related bands using *Select data* button in the chart context menu. If your chart data is in a continuous range of cells, select any cell in that range. Your chart will include all the data in the range. If your data isn't in a continuous range, select nonadjacent cells or ranges.
 
+Converting XLSX to PDF and CSV::
++
+--
+XLSX reports can be automatically converted to CSV and PDF format. <<open_office,OpenOffice/LibreOffice>> should be installed for the PDF conversion.
+
+image::csv_output.png[align="center"]
+--
+
 [[crosstab_xls]]
 ===== Crosstab Reports
 
@@ -416,33 +424,7 @@ Below is an example of a template which outputs a report consisting of two bands
 
 [source, html]
 ----
-<!doctype html>
-<html>
-<head></head>
-<body>
-   <#assign book = Root.bands.Book[0] />
-    <#assign authors = Root.bands.Authors />
-
-    <p>Name: ${book.fields.name}</p>
-    <p>Genre: ${book.fields.literatureType.name}</p>
-    <table border="1" cellpadding="5" cellspacing="0" width="200">
-        <thead>
-            <tr>
-                <td>First name</td>
-                <td>Last name</td>
-            </tr>
-        </thead>
-        <tbody>
-        <#list authors as author>
-            <tr>
-                <td>${author.fields.firstName}</td>
-                <td>${author.fields.lastName}</td>
-            </tr>
-        </#list>
-        </tbody>
-    </table>
-</body>
-</html>
+include::{sourcesdir}/examples_html_6.html[]
 ----
 
 Below is a more complex example. Let us assume we have the following bands structure:
@@ -453,10 +435,10 @@ Root {
     HeaderBand {
         query = return [[ "name" : "Column1" ],[ "name" : "Column2" ]]
     }
-    Band1 { 
+    Band1 {
         query = return [
-            ["field1" : "Value 11", "field2" : "Value 12"], 
-            ["field1" : "Value 21" , "field2" : "Value 22"]
+                ["field1" : "Value 11", "field2" : "Value 12"],
+                ["field1" : "Value 21" , "field2" : "Value 22"]
         ]
     }
     Band2 {
@@ -472,110 +454,28 @@ Root {
 
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> Simple template </title>
-    </head>
-    <body>
-        <#assign Tree1 = Root.bands.Band2>
-        <h1> Header </h1>
-        <p>
-            ${Tree1[1].bands.SubBand1[0].fields.header}
-        </p>
-    </body>
-</html>
+include::{sourcesdir}/examples_html_8.html[]
 ----
 
 * Inserting a list:
 
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> List </title>
-    </head>
-    <body>
-        <#assign Table1Header = Root.bands.HeaderBand>
-        
-        <#if Table1Header?has_content>
-        <ol> 
-            <#list Table1Header as header>
-            <li> ${header.fields.name} </li>
-            </#list>  
-        </ol>
-        </#if> 
-    </body>
-</html>
+include::{sourcesdir}/examples_html_9.html[]
 ----
 
 * Inserting a table:
 
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> Table </title>
-    </head>
-    <body>
-        <#assign Table1Header = Root.bands.HeaderBand>
-        <#assign Table1 = Root.bands.Band1>       
-        <table border="1" cellpadding="5" cellspacing="0" width="200">
-            <thead>
-                <tr>
-                <#list Table1Header as header>
-                    <td> ${header.fields.name} </td>
-                </#list>
-                </tr>
-            </thead>
-            <tbody>
-            <#list Table1 as row>
-                <tr>
-                    <td>
-                        ${row.fields.field1}
-                    </td>
-                    <td>
-                        ${row.fields.field2}
-                    </td>
-                </tr>
-            </#list>
-            </tbody>
-        </table>  
-    </body>
-</html>
+include::{sourcesdir}/examples_html_10.html[]
 ----
 
 * Inserting a multi-level list:
 
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> Multi-level list </title>
-    </head>
-    <body>
-        <#assign Tree1 = Root.bands.Band2>        
-        <ul>
-            <#list Tree1 as item>
-            <li>
-                <h2> ${item.fields.header} </h2>
-                <#if item.bands.SubBand1?has_content>
-                <ul>
-                    <#list item.bands.SubBand1 as subitem>
-                    <li>
-                        <h3> ${subitem.fields.header} </h3>
-                    </li>
-                    </#list>
-                </ul>
-                </#if>
-            </li>
-            </#list>
-        </ul>  
-    </body>
-</html>
+include::{sourcesdir}/examples_html_11.html[]
 ----
 
 *Embedded pictures*
@@ -711,18 +611,19 @@ At least one row definition must be added for the serial chart:
 
 [options="header"]
 |===============
-|Template / Output|XLSX|XLS|DOCX|DOC|PDF  |HTML|Chart
-|XLSX             |+   |   |    |   |+ ^1^|    |
-|XLS              |    |+  |    |   |+ ^1^|    |
-|DOCX             |    |   |+   |   |+ ^2^|+   |
-|DOC              |    |   |    |  +|+ ^1^|    |
-|HTML             |    |   |    |   |+    |+   |
-|Chart            |    |   |    |   |     |    |+
+|Template / Output|XLSX|XLS|CSV|DOCX|DOC|PDF  |HTML |Chart
+|XLSX             |+   |   |+  |    |   |+ ^1^|+ ^1^|
+|XLS              |    |+  |   |    |   |+ ^1^|     |
+|CSV              |    |+  |+  |    |   |+ ^1^|     |
+|DOCX             |    |   |   |+   |   |+ ^2^|+ ^2^|
+|DOC              |    |   |   |    |  +|+ ^1^|     |
+|HTML             |    |   |   |    |   |+    |+    |
+|Chart            |    |   |   |    |   |     |     |+
 |===============
 
-^1^ - OpenOffice must be <<open_office,installed>> for output.
+^1^ - OpenOffice/LibreOffice must be <<open_office,installed>> for output.
 
-^2^ - depending on the <<reporting.openoffice.docx.useOfficeForPdfConversion,reporting.openoffice.docx.useOfficeForPdfConversion>> application property, the output can be performed with or without OpenOffice. In the latter case, you need to provide required fonts, as described in <<html_to_pdf>>.
+^2^ - depending on the <<reporting.openoffice.docx.useOfficeForPdfConversion,reporting.openoffice.docx.useOfficeForPdfConversion>> application property, the output can be performed with or without OpenOffice/LibreOffice. In the latter case, you need to provide required fonts, as described in <<html_to_pdf>>.
 
 [[parameters]]
 === External Report Parameters
