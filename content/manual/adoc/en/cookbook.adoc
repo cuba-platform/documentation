@@ -30,11 +30,11 @@ In these examples, we will calculate discounts for customers based on total amou
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/business-logic/open?screen=sample$Customer.browse_1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7081/business-logic/open?screen=sample$Customer.browse_1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
-If we want to run the discount calculation when a user clicks a button on the customer's browser screen, the most straightforward way to accomplish this is to put the calculation logic right in the browser screen controller.
+If we want to run the discount calculation when a user clicks a button on the customer's browser screen, the most straightforward way to accomplish this is to put the calculation logic right in the browser <<screen_controller,screen controller>>.
 
 See the *Calculate discount* button in the demo application and the screen controller implementation: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex1/customer/CustomerBrowse.java[CustomerBrowse.java]. Please keep in mind that the provided calculation process is not optimal and see more options in the <<data_recipes>> section.
 
@@ -45,7 +45,7 @@ This approach is acceptable if the logic is invoked from a single point and it i
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/business-logic/open?screen=sample$Customer.browse_2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7081/business-logic/open?screen=sample$Customer.browse_2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -71,7 +71,7 @@ image::using_client_beans_1.png[align="center"]
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/business-logic/open?screen=sample$Customer.browse_3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7081/business-logic/open?screen=sample$Customer.browse_3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -111,7 +111,7 @@ Let's now make our business method accessible for external clients through the <
 
 Studio will create the `rest-services.xml` file and write the method description into it. After restarting the application server you will be able to invoke your business method using HTTP requests. For example, the following GET request should work with our online demo server:
 
-http://localhost:8080/business-logic/rest/v2/services/sample_DiscountService/calculateDiscount?customerId=1797f54d-5bec-87a6-4330-d958955743a2
+http://cubadev:7081/business-logic/rest/v2/services/sample_DiscountService/calculateDiscount?customerId=1797f54d-5bec-87a6-4330-d958955743a2
 
 Please note that the demo application allows <<rest_api_v2_anonymous,anonymous access>>. In the most real-world usage scenarios you need to authenticate prior to executing REST requests.
 
@@ -120,7 +120,7 @@ Please note that the demo application allows <<rest_api_v2_anonymous,anonymous a
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/business-logic/open?screen=sample$orderBrowseWithCustomers" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7081/business-logic/open?screen=sample$orderBrowseWithCustomers" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -151,7 +151,7 @@ If you open the *Logic in Entity Listeners* screen of the demo application, you 
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/business-logic/open?screen=jmxConsole" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7081/business-logic/open?screen=jmxConsole" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -180,7 +180,7 @@ Sometimes you need to run some code on the application startup, at the moment wh
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/business-logic/open?screen=sample$Employee.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7081/business-logic/open?screen=sample$Employee.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -204,6 +204,67 @@ The `onBeforeUpdate()` method of the `UserEntityListener` class will be invoked 
 
 In this section, you can find recipes for the data model design and working with entity attributes.
 
+[[init_values]]
+==== Assigning Initial Values
+
+There are different ways to assign initial values to the attributes of new entity instances.
+
+[[init_values_in_class]]
+===== Entity Fields Initialization
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://cubadev:7081/model/open?screen=sample$Customer.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Simple attributes (`Boolean`, `Integer` etc.) and enumerations can be initialized in the declaration of the corresponding field of an entity class, see for example `active` and `grade` fields in {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/Customer.java[Customer.java].
+
+Additionally, a specific initialization method with a <<postConstruct_entity_annotation,@PostConstruct>> annotation can be created in the entity class. In this case, any global <<infrastructure_interfaces,infrastructure interfaces>> and <<managed_beans,beans>> can be invoked during initialization, see for example the `init()` method in {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/Customer.java[Customer.java].
+
+
+[[init_values_in_CreateAction]]
+===== Initialization Using CreateAction
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://cubadev:7081/model/open?screen=sample$customersWithAddresses" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+If the initial value of an attribute depends on the data of the invoking screen, you can use `setInitialValues()` or `setInitialValuesSupplier()` methods of the <<createAction,CreateAction>> class.
+
+See an example of handling `Customer` and `CustomerAddress` entities in the demo application:
+
+image::cookbook/init_values_1.png[align="center"]
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customer/customer-address-browse.xml[customer-address-browse.xml] - a screen descriptor with two linked tables, one for customers and another for their addresses.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customer/CustomerAddressBrowse.java[CustomerAddressBrowse.java] - the screen controller. In its `init()` method, the `setInitialValuesSupplier()` is used to provide initial value for `customer` attribute of a created address. It will be the currently selected in the first table customer.
+
+
+[[init_values_in_initNewItem]]
+===== Using initNewItem Method
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://cubadev:7081/model/open?screen=sample$Customer.browse1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Initial values can also be defined in the <<initNewItem,initNewItem()>> method of the screen controller of the created entity.
+
+Consider the following entities:
+
+image::cookbook/composition_recipe_3.png[align="center"]
+
+In the demo application, `CustomerDetails` attribute (`info`) is edited on the same screen as `Customer` itself. It requires creating of a `CustomerDetails` instance together with the owning `Customer`.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_1/customer-edit.xml[customer-edit.xml] - a customer edit screen descriptor. It contains a nested datasource for a linked `CustomerDetails` instance. The `infoField` text area component is connected to this datasource.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_1/CustomerEdit.java[CustomerEdit.java] - the screen controller. It defines the `initNewItem()` method that creates a new `CustomerDetails` instance and sets it to a new `Customer`. The created instance will be available through the nested datasource and later saved to the database when the screen is committed.
+
+
 [[composition_recipe]]
 ==== Composite Structures
 
@@ -216,7 +277,7 @@ Typically, the entities belonging to a composition are edited together since it 
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/model/open?screen=sample$Airport.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7082/model/open?screen=sample$Airport.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -253,7 +314,7 @@ As a result, editing of an airport instance works as follows:
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/model/open?screen=sample$Airport.browse1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7082/model/open?screen=sample$Airport.browse1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -287,7 +348,7 @@ CUBA can handle compositions with up to 2 levels of nesting. Here we have 3 leve
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/model/open?screen=sample$Airport.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7082/model/open?screen=sample$Airport.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -299,7 +360,7 @@ CUBA can handle compositions with up to 2 levels of nesting. Here we have 3 leve
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="http://localhost:8080/model/open?screen=sample$Airport.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="http://cubadev:7082/model/open?screen=sample$Airport.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
@@ -317,33 +378,11 @@ The one-to-one composition will be illustrated by the `Customer` and `CustomerDe
 
 image::cookbook/composition_recipe_3.png[align="center"]
 
-. The `Customer` entity contains an optional link to `CustomerDetails` annotated with `@Composition`:
-+
-[source, java]
-----
-include::{sourcesdir}/cookbook/composition_recipe_6.java[]
-----
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/Customer.java[Customer.java] - the `Customer` entity contains an optional link to `CustomerDetails` annotated with `@Composition`.
 
-. The <<views,view>> of the customer editing screen contains the `details` attribute:
-+
-[source, xml]
-----
-include::{sourcesdir}/cookbook/composition_recipe_7.xml[]
-----
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/CustomerDetails.java[CustomerDetails.java] - the `CustomerDetails` entity.
 
-. In the customer edit screen, a nested datasource for the `CustomerDetails` instance is defined:
-+
-[source, xml]
-----
-include::{sourcesdir}/cookbook/composition_recipe_8.xml[]
-----
-
-. The field group in the customer edit screen contains the `details` attribute:
-+
-[source, xml]
-----
-include::{sourcesdir}/cookbook/composition_recipe_9.xml[]
-----
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_2/customer-edit.xml[customer-edit.xml] - the customer edit screen descriptor. It contains a nested datasource for the `CustomerDetails` instance. In order to load the nested instance, the root datasource uses a <<views,view>> of the `Customer` entity that includes the `details` attribute. The field group in the customer edit screen just declares a field for the `details` attribute.
 
 As a result, customer editing works as follows:
 
@@ -361,175 +400,6 @@ image::cookbook/composition_recipe_oto_2.png[align="center"]
 
 * If the user invokes the clear action of the picker field, the `CustomerDetails` instance is deleted and the reference to it is cleared in the same transaction after the user commits the customer editor.
 
-[[init_values]]
-==== Assigning Initial Values
-
-There are different ways to assign initial values to the attributes of new entity instances.
-
-[[init_values_in_class]]
-===== Entity Fields Initialization
-
-Simple attributes (`Boolean`, `Integer` etc.) can be initialized in the declaration of the corresponding field of an entity class, for example:
-
-[source, java]
-----
-public class User extends StandardEntity {
-...
-    @Column(name = "ACTIVE")
-    protected Boolean active = true;
-...
-}
-----
-
-Additionally, a specific initialization method with a <<postConstruct_entity_annotation,@PostConstruct>> annotation can be created in the entity class. In this case, any global <<infrastructure_interfaces,infrastructure interfaces>> and <<managed_beans,beans>> can be invoked during initialization, for example:
-
-[source, java]
-----
-public class MyEntity extends StandardEntity {
-...
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "USER_ID")
-    protected User creator;
-...
-    @PostConstruct
-    protected void init() {
-       setCreator(AppBeans.get(UserSessionSource.class).getUserSession().getUser());
-    }
-}
-----
-
-[[init_values_in_CreateAction]]
-===== Initialization Using CreateAction
-
-If the initial value of an attribute depends on the data of the invoking screen, you can use `setInitialValues()` method of the <<createAction,CreateAction>> class.
-
-Let us look at the example of two linked entities:
-
-image::init_values_recipe_1.png[align="center"]
-
-A fragment of a screen XML descriptor showing the lists of two entities simultaneously:
-
-[source, xml]
-----
-<dsContext>
-    <collectionDatasource id="typesDs"
-                          class="com.haulmont.sample.entity.DeviceType"
-                          view="_local">
-        <query>
-            select e from sample$DeviceType e
-        </query>
-    </collectionDatasource>
-    <collectionDatasource id="descriptionsDs"
-                          class="com.haulmont.sample.entity.DeviceDescription"
-                          view="_local">
-        <query>
-            select e from sample$DeviceDescription e where e.deviceType.id = :ds$typesDs
-        </query>
-    </collectionDatasource>
-</dsContext>
-<layout>
-...
-        <table id="typeTable">
-            <actions>
-                <action id="create"/>
-                <action id="edit"/>
-                <action id="remove"/>
-            </actions>
-            <columns>
-                <column id="name"/>
-            </columns>
-            <rows datasource="typesDs"/>
-        </table>
-...
-        <table id="descriptionTable">
-            <actions>
-                <action id="create"/>
-                <action id="edit"/>
-                <action id="remove"/>
-            </actions>
-            <columns>
-                <column id="description"/>
-            </columns>
-            <rows datasource="descriptionsDs"/>
-        </table>
-    </split>
-</layout>
-----
-
-The screen controller:
-
-[source, java]
-----
-public class DeviceTypeBrowse extends AbstractLookup {
-
-    @Inject
-    private CollectionDatasource<DeviceType, UUID> typesDs;
-
-    @Named("descriptionTable.create")
-    private CreateAction descrCreateAction;
-
-    @Override
-    public void init(Map<String, Object> params) {
-        typesDs.addItemChangeListener(event -> {
-            descrCreateAction.setInitialValues(Collections.<String, Object>singletonMap("deviceType", event.getItem()));
-        });
-    }
-}
-----
-
-A listener is added in the controller for selected record change event in the `typesDs` datasource. When the selected record is changed, the system invokes the action's `setInitialValues()` method and submits a map with one element whose key is the attribute name (`deviceType`) and value (the selected instance of `DeviceType`). Thus, during the execution of `CreateAction`, the `deviceType` attribute of the new `DeviceDescription` instance will contain the instance of the `DeviceType` that was selected in the table.
-
-[[init_values_in_initNewItem]]
-===== Using initNewItem Method
-
-Initial values can also be defined in the <<initNewItem,initNewItem()>> method of the screen controller of the created entity.
-
-Assume we have the following task: a project has an `Employee` entity that should be linked to a platform entity (`User`). When a new employee instance is being created, a new user instance should be created as well.
-
-image::init_values_recipe_2.png[align="center"]
-
-To achieve this, we declare the data source for the employee instance and the nested data source for the linked user in the employee edit screen XML descriptor:
-
-[source, xml]
-----
-<dsContext>
-    <datasource id="employeeDs"
-                class="com.haulmont.sample.entity.Employee"
-                view="employee-edit">
-        <datasource id="userDs"
-                    property="user"/>
-    </datasource>
-</dsContext>
-----
-
-In the employee edit screen controller, we declare:
-
-[source, java]
-----
-@Inject
-private Metadata metadata;
-
-private Group defaultGroup;
-private Role defaultRole;
-
-@Override
-protected void initNewItem(Employee item) {
-    User user = metadata.create(User.class);
-    user.setGroup(defaultGroup);
-    final UserRole userRole = metadata.create(UserRole.class);
-    userRole.setUser(user);
-    userRole.setRole(defaultRole);
-    getDsContext().addBeforeCommitListener(context -> {
-        context.getCommitInstances().add(userRole);
-    });
-    item.setUser(user);
-}
-----
-
-Here, in the `initNewItem()` method, the new `User` instance is created and assigned the `defaultGroup`. Association with the `defaultRole` is set up using the new instance of `UserRole` entity. To save this relationship to the DB during screen commit the `UserRole` instance is added to the saved entities collection in the `beforeCommit()` method of <<dsContext,DsContext.CommitListener>>.
-
-The new instance of `User` is assigned to the corresponding attribute of the edited `Employee` entity and is thus included in the nested data source `userDs`. This gives us an opportunity to edit necessary user attributes in the employee screen and also leads to automatic saving of the user instance in the same transaction with the other entities when the screen is committed.
-
 
 [[data_recipes]]
 === Loading and Saving Data
@@ -539,7 +409,7 @@ This section describes different ways of loading and saving data to the database
 [[dm_vs_em]]
 ==== DataManager vs. EntityManager
 
-Both <<dataManager,DataManager>> and <<entityManager,EntityManager>> can be used for operations on entities (CRUD). There are following distinction between these interfaces:
+Both <<dataManager,DataManager>> and <<entityManager,EntityManager>> can be used for CRUD operations on entities. There are the following differences between these interfaces:
 
 |===
 |DataManager |EntityManager
@@ -547,7 +417,7 @@ Both <<dataManager,DataManager>> and <<entityManager,EntityManager>> can be used
 |DataManager is available on both middle and client <<app_tiers,tiers>>.
 |EntityManager is available only on the middle tier.
 
-|DataManager is a singleton bean.
+|DataManager is a singleton bean. It can be injected or obtained via `AppBeans.get()`.
 |You should obtain a reference to EntityManager through the <<persistence,Persistence>> interface.
 
 |DataManager defines a few high-level methods for working with <<entity_states,detached>> entities: `load()`, `loadList()`, `reload()`, `commit()`.
@@ -559,8 +429,8 @@ Both <<dataManager,DataManager>> and <<entityManager,EntityManager>> can be used
 |DataManager loads _partial_ entities according to <<views,views>>.
 |EntityManager always loads all local attributes. If a view is used, it affects only reference attributes.
 
-|DataManager queries can return entities only. Queries for single attributes or aggregates (SUM, COUNT) will fail.
-|EntityManager can run any JPQL or native queries.
+|DataManager executes only JPQL queries. Besides, it has a separate method for loading scalar values and aggregates: `loadValues()`. Queries for single attributes or aggregates (SUM, COUNT) will fail if issued via `load()` or `loadList()`.
+|EntityManager can run any JPQL or native (SQL) queries.
 
 |DataManager applies all <<security_subsystem,security>> restrictions when invoked on the client tier.
 |EntityManager does not impose security restrictions.
