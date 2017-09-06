@@ -423,21 +423,28 @@ Both <<dataManager,DataManager>> and <<entityManager,EntityManager>> can be used
 |DataManager defines a few high-level methods for working with <<entity_states,detached>> entities: `load()`, `loadList()`, `reload()`, `commit()`.
 |EntityManager mostly resembles the standard `javax.persistence.EntityManager`.
 
+|===
+
+DataManager in fact delegates to <<data_store,DataStore>> implementations, so the DataManager features listed below apply only to the most common case when you work with entities located in a relational database:
+
+|===
+|DataManager |EntityManager
+
 |DataManager always starts new <<transactions,transactions>> internally.
 |You have to open a transaction before working with EntityManager.
 
-|DataManager loads _partial_ entities according to <<views,views>>.
-|EntityManager always loads all local attributes. If a view is used, it affects only reference attributes.
+|DataManager loads _partial_ entities according to <<views,views>>. There are a few exceptions, see details <<dm_partial_entities,here>>.
+|EntityManager loads all local attributes. If a view is specified, it affects only reference attributes. See details <<em_partial_entities,here>>.
 
 |DataManager executes only JPQL queries. Besides, it has a separate method for loading scalar values and aggregates: `loadValues()`. Queries for single attributes or aggregates (SUM, COUNT) will fail if issued via `load()` or `loadList()`.
 |EntityManager can run any JPQL or native (SQL) queries.
 
-|DataManager applies all <<security_subsystem,security>> restrictions when invoked on the client tier.
+|DataManager checks <<dm_security,security>> restrictions when invoked on the client tier.
 |EntityManager does not impose security restrictions.
 
 |===
 
-When you work with data on the client tier, you have only one option - `DataManager`. On the middleware, use `EntityManager` when you need to implement some atomic logic inside a transaction or run a query returning single attributes or aggregates. Otherwise, on the middleware you can use both.
+When you work with data on the client tier, you have only one option - `DataManager`. On the middleware, use `EntityManager` when you need to implement some atomic logic inside a transaction or if the EntityManager interface is better suited to the task. Otherwise, on the middleware you can use both.
 
 If you need to overcome restrictions of `DataManager` when working on the client tier, create your own <<services,service>> and use `EntityManager` to work with data. In the service, you can check permissions using the <<security,Security>> interface and return data to the client in the form of persistent or non-persistent entities or arbitrary values.
 

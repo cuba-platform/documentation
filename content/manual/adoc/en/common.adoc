@@ -2076,17 +2076,18 @@ To call from a static context, you can use the `UuidProvider` class, which also 
 
 `DataManager` interface provides CRUD functionality on both middle and client tiers. It is a universal tool for loading entity graphs from the database and saving changed detached entity instances.
 
-`DataManager` always starts a new <<transactions,transaction>> and commits it on operation completion, thus returning entities in the <<entity_states,detached state>>.
+[TIP]
+====
+See <<dm_vs_em>> for information on differences between DataManager and <<entityManager,EntityManager>>.
+====
 
-`DataManager` always applies <<security_subsystem,security>> restrictions on entity operations and attributes when invoked from a client, and ignores them by default when invoked from middleware code. If you want to check these restrictions when using `DataManager` in your middleware code, obtain a wrapper via `DataManager.secure()` method and call its methods. Alternatively, you can set the <<cuba.dataManagerChecksSecurityOnMiddleware,cuba.dataManagerChecksSecurityOnMiddleware>> application property to turn on security check for the whole application. Note that access group <<constraints,constraints>> (row-level security) are always applied regardless of whether `DataManager` is called from the client or middle tier.
+`DataManager` in fact just delegates to a <<data_store,DataStore>> implementation and handles cross-database references if needed. The most implementation details described below are in effect when you work with entities contained in a relational database through the standard `RdbmsStore`. For another type of data store, everything except the interface method signatures can be different. For simplicity, when we write "DataManager" without additional clarification, we mean "DataManager via RdbmsStore".
 
 `DataManager` methods are listed below:
 
 * `load()`, `loadList()` – loads a graph of entities according to the parameters of the `LoadContext` object passed to it.
 +
 `LoadContext` must include either a JPQL query or an entity identifier. If both are defined, the query is used, and the identifier is ignored. The rules for queries creation are similar to those described in <<query>> . The difference is that the query in `LoadContext` may only use named parameters; positional parameters are not supported.
-+
-`load()` and `loadList()` methods check user <<permissions,permission>> `EntityOp.READ` for the entity being loaded. Additionally, loading entities from DB is subject for access group <<constraints,constraints>>.
 +
 Examples of loading entities in the screen controller:
 +
@@ -2108,8 +2109,6 @@ include::{sourcesdir}/common/dataManager_3.java[]
 +
 The method returns the set of entity instances returned by <<entityManager,EntityManager>>.merge(); essentially these are fresh instances just updated in DB. Further work should be performed with these returned instances to prevent data loss or optimistic locking. You can ensure that required attributes are present in the returned entities by setting a view for each saved instance using `CommitContext.getViews()` map.
 +
-This method checks user <<permissions,permissions>> `EntityOp.UPDATE` for the updated entities and `EntityOp.DELETE` for the deleted ones.
-+
 Examples for saving a collection of entities:
 +
 [source, java]
@@ -2121,12 +2120,39 @@ include::{sourcesdir}/common/dataManager_2.java[]
 
 * `remove()` - removes a specified instance from the database. Delegates to `commit()` method.
 
-While loading data, `DataManager` may also implement additional functionality described below.
+[[dm_transactions]]
+Transactions::
++
+--
+DataManager always starts a new <<transactions,transaction>> and commits it on operation completion, thus returning entities in the <<entity_states,detached state>>.
+--
 
-[TIP]
-====
-See <<dm_vs_em>> for information on differences between DataManager and <<entityManager,EntityManager>>.
-====
+[[dm_partial_entities]]
+Partial entities::
++
+--
+By default, DataManager loads _partial_ entities according to <<views,views>>. It will load all local attributes and use views only for fetching references in the following cases:
+
+* The loaded entity is <<entity_cache,cached>>.
+* In-memory "read" <<constraints,constraints>> are defined for an entity.
+* The `loadPartialEntities` attribute of `LoadContext` is set to false.
+--
+
+[[dm_security]]
+====== Security in DataManager
+
+The `load()`, `loadList()`, `loadValues()` and `getCount()` methods check user's READ <<permissions,permission>> for entities being loaded. Additionally, loading entities from the database is subject for access group <<constraints,constraints>>.
+
+The `commit()` method checks CREATE permissions for new entities, UPDATE for the updated entities and DELETE for the deleted ones.
+
+By default, `DataManager` checks permissions on entity operations (READ/CREATE/UPDATE/DELETE) when invoked from a client, and ignores them when invoked from a middleware code. Attribute permissions are not enforced by default.
+
+If you want to check entity operation permissions when using `DataManager` in your middleware code, obtain a wrapper via `DataManager.secure()` method and call its methods. Alternatively, you can set the <<cuba.dataManagerChecksSecurityOnMiddleware,cuba.dataManagerChecksSecurityOnMiddleware>> application property to turn on security check for the whole application.
+
+Attribute permissions will be enforced only if you additionally set the <<cuba.entityAttributePermissionChecking,cuba.entityAttributePermissionChecking>> application property to true.
+
+Note that access group <<constraints,constraints>> (row-level security) are always applied regardless of the above conditions.
+
 
 [[query_with_distinct]]
 ====== Queries with distinct
