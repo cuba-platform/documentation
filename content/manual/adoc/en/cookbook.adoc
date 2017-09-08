@@ -1,0 +1,2029 @@
+:proj_business_logic: https://github.com/cuba-platform/sample-business-logic
+:proj_model: https://github.com/cuba-platform/sample-model
+
+[[cookbook]]
+== Cookbook
+
+// for backward compatibility
+[[dev_recipes]]
+
+This collection of practical recipes for developing on CUBA platform contains examples of implementing typical use cases and solving common problems. The information in each section is organized from basic to advanced topics, so feel free to jump to another section or leave the documentation at any time and start coding.
+
+Most of the sections are accompanied by the sample applications. You can see them online, view their source code on GitHub or download and run locally. You will also see the applications on the *Samples* tab in Studio.
+
+[TIP]
+====
+The cookbook is a work in progress and will be gradually improved.
+====
+
+[[business_logic_recipes]]
+=== Organizing Business Logic
+
+When you start developing on the platform, one of the first questions is "where should I put my business logic"? Using Studio for creating data model and CRUD screens is simple, but any real project requires some logic beyond CRUD. This section explains how you can effectively organize your business logic depending on your requirements.
+
+Most examples in this section work with the following data model:
+
+image::business_logic_model_1.png[align="center"]
+
+In these examples, we will calculate discounts for customers based on total amount of their purchases.
+
+
+[[logic_in_controllers_recipe]]
+==== Business Logic in Controllers
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$Customer.browse_1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+If we want to run the discount calculation when a user clicks a button on the customer's browser screen, the most straightforward way to accomplish this is to put the calculation logic right in the browser <<screen_controller,screen controller>>.
+
+See the *Calculate discount* button in the demo application and the screen controller implementation: {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex1/customer/CustomerBrowse.java[CustomerBrowse.java]. Please keep in mind that the provided calculation process is not optimal and see more options in the <<data_recipes>> section.
+
+This approach is acceptable if the logic is invoked from a single point and it is not too complex to fit into a couple of short methods.
+
+[[using_client_beans_recipe]]
+==== Using Client Tier Beans
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$Customer.browse_2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Let's complicate the task from the <<logic_in_controllers_recipe,previous>> section a bit. Now we want to invoke the calculation both from the customer browser and editor screens. To not repeat yourself, we should extract the logic to a common place available for both controllers. It can be a <<managed_beans,managed bean>> of the client <<app_tiers,tier>>.
+
+A managed bean is a class annotated with the `@Component` annotation. It can be injected into other beans and screen controllers, or obtained via the `AppBeans.get()` static method. If the bean has a separate interface, you can access the bean through the interface instead of the class.
+
+Please note that in order to be accessible for screen controllers, the bean must be located in *global*, *gui* or *web* <<app_modules,modules>> of your project. In the former case the bean will be also accessible for the middleware.
+
+See the *Calculate discount* button on both browser and editor screens of the demo application and the implementation:
+
+image::using_client_beans_1.png[align="center"]
+
+* {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex2/customer/CustomerBrowse.java[CustomerBrowse.java] - browser controller.
+
+* {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex2/customer/CustomerEdit.java[CustomerEdit.java] - editor controller.
+
+* {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex2/DiscountCalculator.java[DiscountCalculator.java] - discount calculator bean. It uses <<dataManager,DataManager>> to load the list of orders for the given customer from the database.
+
+
+[[using_services_recipe]]
+==== Using Middleware Services
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$Customer.browse_3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+In the <<using_client_beans_recipe,previous>> section we considered the encapsulation of business logic in a managed bean of the client tier. Now we will go further and implement our logic in the most appropriate place: on the <<middleware,middle tier>>. By doing this, we will achieve the following goals:
+
+* Our business methods will be available for all types of clients including <<polymer_ui,Polymer UI>>.
+
+* We will be able to use APIs available only on the middleware: <<entityManager,EntityManager>>, <<transactions,transactions>>, etc.
+
+In order to invoke a middleware business method from the client, you need to create a <<services,service>>. Studio can help you to scaffold the service stub:
+
+* Switch to the *Middleware* section and click *New > Service*.
+
+* Change the service interface name to `DiscountService`. The bean class and service names will be changed accordingly. Click *OK* or *Apply*.
+
+* Click *IDE* and open the service interface in your IDE. Create a method and implement it in the service class.
+
+See an example implementation in the demo application:
+
+image::using_services_1.png[align="center"]
+
+ * {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex3/customer/CustomerBrowse.java[CustomerBrowse.java] and {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex3/customer/CustomerEdit.java[CustomerEdit.java] - screen controllers that invoke the service.
+
+ * {proj_business_logic}/blob/master/modules/core/com/company/sample/service/DiscountService.java[DiscountService.java] - service interface.
+
+ * {proj_business_logic}/blob/master/modules/core/src/com/company/sample/service/DiscountServiceBean.java[DiscountServiceBean.java] - service implementation.
+
+ * {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/DiscountCalculator.java[DiscountCalculator.java] - a managed bean of the middle tier which actually calculates discounts. Of course, a service can contain the business logic itself, but we will use this delegate to share logic with entity listeners and JMX beans (see next sections).
++
+Please note that this bean is different from the one mentioned in the <<using_client_beans_recipe,previous>> section: it is located in the *core* module and uses <<entityManager,EntityManager>> for loading the amount of purchases from the database.
+
+Let's now make our business method accessible for external clients through the <<rest_api_v2,REST API>>:
+
+* Open the service editor in Studio and switch to the *REST Methods* tab.
+
+* Select the *REST invocation allowed* checkbox for the method.
+
+Studio will create the `rest-services.xml` file and write the method description into it. After restarting the application server you will be able to invoke your business method using HTTP requests. For example, the following GET request should work with our online demo server:
+
+https://demo1.cuba-platform.com/business-logic/rest/v2/services/sample_DiscountService/calculateDiscount?customerId=1797f54d-5bec-87a6-4330-d958955743a2
+
+Please note that the demo application allows <<rest_api_v2_anonymous,anonymous access>>. In the most real-world usage scenarios you need to authenticate prior to executing REST requests.
+
+[[using_entity_listeners_recipe]]
+==== Using Entity Listeners
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$orderBrowseWithCustomers" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+<<entity_listeners,Entity listeners>> allow you to execute your business logic each time an entity is added, updated or removed from the database. For example, we could recalculate the discount for a customer each time an order for this customer is changed.
+
+An entity listener stub can be easily created using Studio:
+
+* Switch to the *Middleware* section and click *New > Entity listener*.
+
+* Change the class name to `OrderEntityListener` and select checkboxes for `BeforeInsertEntityListener`, `BeforeUpdateEntityListener` and `BeforeDeleteEntityListener` interfaces.
+
+* Select `Order` entity in the *Entity type* field.
+
+* Click *OK* or *Apply* and open the listener class in your IDE.
+
+See an example implementation in the demo application:
+
+image::using_entity_listeners_1.png[align="center"]
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/listener/OrderEntityListener.java[OrderEntityListener.java] - the entity listener.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/DiscountCalculator.java[DiscountCalculator.java] - a managed bean of the middle tier which actually calculates discounts. An entity listener can contain the business logic itself, but we will use this delegate to share logic with services and JMX beans.
+
+If you open the *Logic in Entity Listeners* screen of the demo application, you will see two tables: orders and customers. Create, edit or remove an order, then refresh the customers table, and you will see that the discount of the corresponding customer is changed.
+
+[[using_jmx_beans_recipe]]
+==== Using JMX Beans
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=jmxConsole" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+With <<jmx_beans,JMX beans>> you can expose some administrative functionality of your application without creating a user interface for it. The functionality becomes available via the built-in JMX console and via external JMX tools like `jconsole`.
+
+In our example with discounts, a user having access to JMX console is able to recalculate discounts for all customers and for a customer with a given id.
+
+Studio cannot help you with scaffolding JMX beans at the moment, so all classes and configuration entries have to be created manually in the IDE.
+
+See an example implementation in the demo application:
+
+image::using_jmx_beans_1.png[align="center"]
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/jmx/DiscountsMBean.java[DiscountsMBean.java] - JMX bean interface.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/jmx/Discounts.java[Discounts.java] - JMX bean implementation.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/DiscountCalculator.java[DiscountCalculator.java] - a managed bean of the middle tier which is invoked by the JMX bean. A JMX bean can contain the business logic itself, but we will use this delegate to share logic with services and entity listeners.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/spring.xml[spring.xml] - registers the JMX bean.
+
+[[app_start_recipe]]
+==== Running Code on Startup
+
+Sometimes you need to run some code on the application startup, at the moment when all application functionality is already initialized and ready to work. For this, you can use <<appContext,AppContext.Listener>>.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$Employee.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+In this section we demonstrate how to dynamically register an <<entity_listeners,entity listener>> on application startup. Consider the following task: a project has an `Employee` entity that is linked one-to-one to the platform's `User` entity.
+
+image::app_start_recipe_1.png[align="center"]
+
+If the `name` attribute of the `User` entity is changed, for example, through a standard user management screen, the `name` attribute of the related `Employee` should change as well. This is a common task for "denormalized" data, which is typically solved using entity listeners. Our case is more complicated, since we need to track changes of the platform's `User` entity, and thus we cannot add an entity listener using the <<listeners_annotation,@Listeners>> annotation. So we will add a listener dynamically using the `EntityListenerManager` bean on application start.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/AppLifecycle.java[AppLifecycle.java] - a middleware bean implementing the `AppContext.Listener` interface with the `applicationStarted()` and `applicationStopped()` methods.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/listener/UserEntityListener.java[UserEntityListener.java] - an entity listener for the `User` entity.
+
+As a result, the `applicationStarted()` method of the `AppLifecycle` bean will be invoked on the middleware <<app_tiers,block>> startup. This method registers the `sample_UserEntityListener` bean as an entity listener for the `User` entity.
+
+The `onBeforeUpdate()` method of the `UserEntityListener` class will be invoked every time before the changes in the `User` instances are saved to the database. The method checks if the `name` attribute exists among the updated attributes. If yes, a related `Employee` instance is loaded and its `name` is updated with the new value.
+
+
+[[modeling_domain_recipes]]
+=== Modeling Problem Domain
+
+In this section, you can find recipes for the data model design and working with entity attributes.
+
+[[init_values]]
+==== Assigning Initial Values
+
+There are different ways to assign initial values to the attributes of new entity instances.
+
+[[init_values_in_class]]
+===== Entity Fields Initialization
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Customer.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Simple attributes (`Boolean`, `Integer` etc.) and enumerations can be initialized in the declaration of the corresponding field of an entity class, see for example `active` and `grade` fields in {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/Customer.java[Customer.java].
+
+Additionally, a specific initialization method with a <<postConstruct_entity_annotation,@PostConstruct>> annotation can be created in the entity class. In this case, any global <<infrastructure_interfaces,infrastructure interfaces>> and <<managed_beans,beans>> can be invoked during initialization, see for example the `init()` method in {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/Customer.java[Customer.java].
+
+
+[[init_values_in_CreateAction]]
+===== Initialization Using CreateAction
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$customersWithAddresses" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+If the initial value of an attribute depends on the data of the invoking screen, you can use `setInitialValues()` or `setInitialValuesSupplier()` methods of the <<createAction,CreateAction>> class.
+
+See an example of handling `Customer` and `CustomerAddress` entities in the demo application:
+
+image::cookbook/init_values_1.png[align="center"]
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customer/customer-address-browse.xml[customer-address-browse.xml] - a screen descriptor with two linked tables, one for customers and another for their addresses.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customer/CustomerAddressBrowse.java[CustomerAddressBrowse.java] - the screen controller. In its `init()` method, the `setInitialValuesSupplier()` is used to provide initial value for `customer` attribute of a created address. It will be the currently selected in the first table customer.
+
+
+[[init_values_in_initNewItem]]
+===== Using initNewItem Method
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Customer.browse1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Initial values can also be defined in the <<initNewItem,initNewItem()>> method of the screen controller of the created entity.
+
+Consider the following entities:
+
+image::cookbook/composition_recipe_3.png[align="center"]
+
+In the demo application, `CustomerDetails` attribute (`info`) is edited on the same screen as `Customer` itself. It requires creating of a `CustomerDetails` instance together with the owning `Customer`.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_1/customer-edit.xml[customer-edit.xml] - a customer edit screen descriptor. It contains a nested datasource for a linked `CustomerDetails` instance. The `infoField` text area component is connected to this datasource.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_1/CustomerEdit.java[CustomerEdit.java] - the screen controller. It defines the `initNewItem()` method that creates a new `CustomerDetails` instance and sets it to a new `Customer`. The created instance will be available through the nested datasource and later saved to the database when the screen is committed.
+
+
+[[composition_recipe]]
+==== Composite Structures
+
+CUBA platform supports two types of relationship between entities: association and composition. They are called ASSOCIATION and COMPOSITION respectively in the CUBA Studio interface. Association is a relationship between the objects that can exist separately from each other. Composition, on the other hand, is used for "master-detail" relations, when the detail instances can exist only as part of the master. A case of an airport and its terminals may be considered an example of composition: a terminal that does not belong to any airport does not make sense.
+
+Typically, the entities belonging to a composition are edited together since it is more natural. For example, a user opens the airport editing screen and sees the list of terminals, so the user can create and edit them, but all changes both for the airport and the terminals are saved to the database together in one transaction, and only after the user confirms saving of the master entity (the airport).
+
+[[composition_impl_recipe]]
+===== One-to-Many: One Level of Nesting
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Let's implement a one-to-many composition using the `Airport` and the `Terminal` entities as an example:
+
+image::cookbook/composition_recipe_1.png[align="center"]
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Terminal.java[Terminal.java] - the `Terminal` entity contains a mandatory link to the `Airport`.
++
+In the Studio entity designer, set for the `airport` attribute: *Attribute type* - ASSOCIATION, *Cardinality* - MANY_TO_ONE, *Mandatory* - on.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - the `Airport` entity contains a one-to-many collection of terminals. The corresponding field is annotated with <<composition_annotation,@Composition>> in order to implement composition, and <<onDelete_annotation,@OnDelete>> for cascaded soft delete.
++
+In the Studio entity designer, set for the `terminals` attribute: *Attribute type* - COMPOSITION, *Cardinality* - ONE_TO_MANY, *On delete* - CASCADE.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - the `airport-terminals` <<views,view>> of the airport editing screen contains the `terminals` collection attribute. We are using the `_local` view for this attribute, because the `airport` attribute of the `Terminal` entity is set only at the creation of a new `Terminal` instance and never changes after that, so we do not need to load it.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[airport-edit.xml] - the XML descriptor of the airport editor defines a datasource for the `Airport` instance and a nested one for its terminals. It also contains a table displaying terminals.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports/terminal/terminal-edit.xml[terminal-edit.xml] - a standard editor for the `Terminal` entity.
+
+As a result, editing of an airport instance works as follows:
+
+* The airport edit screen shows a list of terminals.
+
+* A user can pick a terminal and open its editor. When *OK* is clicked in the terminal editor, the updated instance of the terminal is not saved to the database, but to the `terminalsDs` datasource of the airport editor.
+
+* The user can create new terminals and delete existing ones. All changes will be saved to the `terminalsDs` datasource.
+
+* When a user clicks *OK* in the airport edit screen, the updated `Airport` instance together with all the updated `Terminal` instances is submitted to the <<dataManager,DataManager>>.commit() method on the middleware and saved to the database within a single transaction.
+
+[[composition_deep_recipe]]
+===== One-to-Many: Two Levels of Nesting
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Composition can be deeper, with up to two nested levels. Let's extend the <<composition_impl_recipe,previous>> example by adding a `MeetingPoint` entity describing a meeting point at an airport terminal:
+
+image::cookbook/composition_recipe_2.png[align="center"]
+
+The `Terminal` entity contains the `meetingPoints` attribute – a collection of the `MeetingPoint` instances. In order for all three entities to become a single composition and be edited together, the following should be done in addition to the steps described above:
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Terminal.java[Terminal.java] - the `meetingPoints` attribute of the `Terminal` class is marked as `@Composition` and `@OnDelete` similarly to the `terminals` attribute of the `Airport` class.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - the `terminal-meetingPoints-view` view of the `Terminal` class contains the `meetingPoints` collection attribute. This view is used in the `airport-terminals-meetingPoints-view` view of the `Airport` entity.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_1/airport/airport-edit.xml[airport-edit.xml] - the `Airport` edit screen XML descriptor contains datasources for an instance of the `Airport` and nested entities for the entire composition (`airportDs` > `terminalsDs` > `meetingPointsDs`).
++
+Here, the `meetingPointsDs` datasource is not associated with any visual components, however it is needed for correct operation of joint editing of the composition.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_1/terminal/terminal-edit.xml[terminal-edit.xml] - the terminal edit screen XML descriptor contains a nested datasource and a corresponding table for the `meetingPoints` collection.
+
+As a result, the updated instances of the `MeetingPoint`, as well as the `Terminal` instances, will be saved to the database only with the `Airport` instance in the same transaction.
+
+
+[[composition_deep3_recipe]]
+===== One-to-Many: Three Levels of Nesting
+
+Suppose that you need an additional entity that contains some details of the meeting point: *Note*. So the whole structure looks as follows: *Airport > Terminal > Meeting Point > Note*.
+
+image::cookbook/composition_recipe_4.png[align="center"]
+
+CUBA can handle compositions with up to 2 levels of nesting. Here we have 3 levels, so we should limit the depth either from the top or from the bottom. Below we consider two different approaches (from the user experience perspective) of excluding the airport from the composition. Both of them solve the same problem: as now terminals are saved to the database independently from the airport, you cannot save a terminal for a newly created airport which is not saved to the database yet.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+* In the first approach, the airport browser and editor look the same as above, but the editor has additional *Save* button to save a new airport without closing the screen. A user cannot create terminals until the new airport is saved.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_2/airport/airport-edit.xml[airport-edit.xml] contains a standalone datasource for terminals instead of the nested one. This standalone datasource is linked to the airport datasource and thus loads terminals for the edited airport. Besides, airport editor contains `extendedEditWindowActions` frame which allows a user to save airport without closing the screen.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_2/airport/AirportEdit.java[AirportEdit.java] - here in the `postInit()` method of the airport editor, we manage the enabled state of the terminal's *Create* action and pass the current airport instance to initialize the airport attribute of a created terminal.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+* In the second approach, we have split the airport browser into two panels: one for the list of airports and another for the dependent list of terminals. That is the list of terminals is now outside of the airport editor. The terminal's *Create* action is disabled until an airport is selected.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_3/airport/airport-browse.xml[airport-browse.xml] contains a standalone datasource for the list of terminals. It is linked to the airports datasource and thus loads terminals for a selected airport.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_3/airport/AirportBrowse.java[AirportBrowse.java] - here in the `init()` method of the airport browse controller, we manage the enabled state of the terminal's *Create* action and pass the currently selected airport instance to initialize the airport attribute of a created terminal.
+
+
+[[composition_oto_recipe]]
+===== One-to-One Composition
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Customer.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+The one-to-one composition will be illustrated by the `Customer` and `CustomerDetails` entities:
+
+image::cookbook/composition_recipe_3.png[align="center"]
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/Customer.java[Customer.java] - the `Customer` entity contains an optional link to `CustomerDetails` annotated with `@Composition`.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/CustomerDetails.java[CustomerDetails.java] - the `CustomerDetails` entity.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_2/customer-edit.xml[customer-edit.xml] - the customer edit screen descriptor. It contains a nested datasource for the `CustomerDetails` instance. In order to load the nested instance, the root datasource uses a <<views,view>> of the `Customer` entity that includes the `details` attribute. The field group in the customer edit screen just declares a field for the `details` attribute.
+
+As a result, customer editing works as follows:
+
+* The customer edit screen contains the <<gui_PickerField,PickerField>> component with two actions: <<openAction,OpenAction>> and <<clearAction,ClearAction>>:
+
+image::cookbook/composition_recipe_oto_1.png[align="center"]
+
+* When the open action is invoked, a new instance of `CustomerDetails` is created and its edit screen is shown. When *OK* is clicked in the details editor, the details instance is not saved to the database, but to the `detailsDs` datasource of the customer edit screen.
+
+* The picker field displays the <<namePattern_annotation,instance name>> of the details entity:
+
+image::cookbook/composition_recipe_oto_2.png[align="center"]
+
+* When a user clicks *OK* in the customer edit screen, the updated `Customer` instance together with the `CustomerDetails` instance is submitted to the `DataManager.commit()` method on the Middleware and saved to the database within a single transaction.
+
+* If the user invokes the clear action of the picker field, the `CustomerDetails` instance is deleted and the reference to it is cleared in the same transaction after the user commits the customer editor.
+
+
+[[data_recipes]]
+=== Loading and Saving Data
+
+This section describes different ways of loading and saving data to the database.
+
+[[dm_vs_em]]
+==== DataManager vs. EntityManager
+
+Both <<dataManager,DataManager>> and <<entityManager,EntityManager>> can be used for CRUD operations on entities. There are the following differences between these interfaces:
+
+|===
+|DataManager |EntityManager
+
+|DataManager is available on both middle and client <<app_tiers,tiers>>.
+|EntityManager is available only on the middle tier.
+
+|DataManager is a singleton bean. It can be injected or obtained via `AppBeans.get()`.
+|You should obtain a reference to EntityManager through the <<persistence,Persistence>> interface.
+
+|DataManager defines a few high-level methods for working with <<entity_states,detached>> entities: `load()`, `loadList()`, `reload()`, `commit()`.
+|EntityManager mostly resembles the standard `javax.persistence.EntityManager`.
+
+|===
+
+DataManager in fact delegates to <<data_store,DataStore>> implementations, so the DataManager features listed below apply only to the most common case when you work with entities located in a relational database:
+
+|===
+|DataManager |EntityManager
+
+|DataManager always starts new <<transactions,transactions>> internally.
+|You have to open a transaction before working with EntityManager.
+
+|DataManager loads _partial_ entities according to <<views,views>>. There are a few exceptions, see details <<dm_partial_entities,here>>.
+|EntityManager loads all local attributes. If a view is specified, it affects only reference attributes. See details <<em_partial_entities,here>>.
+
+|DataManager executes only JPQL queries. Besides, it has separate methods for loading entities: `load()`, `loadList()`; and scalar values and aggregates: `loadValues()`.
+|EntityManager can run any JPQL or native (SQL) queries.
+
+|DataManager checks <<dm_security,security>> restrictions when invoked on the client tier.
+|EntityManager does not impose security restrictions.
+
+|===
+
+When you work with data on the client tier, you have only one option - `DataManager`. On the middleware, use `EntityManager` when you need to implement some atomic logic inside a transaction or if the EntityManager interface is better suited to the task. Otherwise, on the middleware you can use both.
+
+If you need to overcome restrictions of `DataManager` when working on the client tier, create your own <<services,service>> and use `EntityManager` to work with data. In the service, you can check permissions using the <<security,Security>> interface and return data to the client in the form of persistent or non-persistent entities or arbitrary values.
+
+[[rest_api_v2_usage_example]]
+=== Using REST API
+
+This section contains <<rest_api_v2,REST API>> usage examples.
+
+The detailed information about REST API methods is written according to http://swagger.io/specification[Swagger] specification and is available at address http://files.cuba-platform.com/swagger.
+
+[[rest_api_v2_ex_get_token]]
+==== Getting an OAuth Token
+
+An OAuth token is required for any REST API method (except when you are using an <<rest_api_v2_anonymous, anonymous access>>). A token can be obtained by the POST request on the address:
+
+  http://localhost:8080/app/rest/v2/oauth/token
+
+An access to this endpoint is protected with a basic authentication. REST API client identifier and password is used for basic authentication. Please note that these are not an application user login and password. REST API client id and password are defined in the application properties <<cuba.rest.client.id, cuba.rest.client.id>> and <<cuba.rest.client.secret, cuba.rest.client.secret>> (the default values are `client` and `secret`). You must pass the client id and secret, separated by a single colon (":") character, within a base64 encoded string in the `Authorization` header.
+
+
+The request type must be `application/x-www-form-urlencoded`, the encoding is `UTF-8`.
+
+The requst must contain the following parameters:
+
+* `grant_type` - always `password`.
+* `username` - application user login.
+* `password` - application user password.
+
+[source, httprequest]
+----
+include::{sourcesdir}/rest/rest-access-token-request.txt[]
+----
+
+Method returns a JSON object:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-access-token-response.json[]
+----
+
+A token value is in the `access_token` property.
+
+[[rest_api_v2_custom_auth]]
+==== Custom Authentication
+
+Authentication mechanisms can provide access tokens by key, link, LDAP login and password, etc. REST API uses its own authentication mechanism that cannot be modified. In order to use custom authentication process, you need to create a REST controller and use its URL.
+
+Let's consider the custom authentication mechanism that enables getting an OAuth token by a promo code. In the following example we will use a sample application that contains the `Coupon` entity with `code` attribute. We will send this attribute's value as an authentication parameter in GET request.
+
+. Create a `Coupon` entity with the `code` attribute:
++
+[source, java]
+----
+@Column(name = "CODE", unique = true, length = 4)
+protected String code;
+----
+
+. Create a <<users,user>> with *promo-user* login on behalf of which the authentication will be performed.
+
+. Create a new Spring configuration file with name `rest-dispatcher-spring.xml` under the root package (`com.company.demo`) of *web* module. The content of the file must be as follows:
++
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring-ex.xml[]
+----
+
+. Include the file into the `cuba.restSpringContextConfig` application property in the `modules/web/src/web-app.properties` file:
++
+[source, properties]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring.properties[]
+----
+
+. Create the `rest` package under the root package of *web* module and implement the custom Spring MVC controller in it. Use the `OAuthTokenIssuer` bean to generate and issue the REST API token for a user after the custom authentication:
++
+[source, java]
+----
+include::{sourcesdir}/rest/customRestController.java[]
+----
+
+. Exclude the `rest` package from scanning in *web/core* modules: the `OAuthTokenIssuer` bean is available only in REST API context, and scanning for it in the application context will cause an error.
++
+[source, xml]
+----
+include::{sourcesdir}/rest/web-spring-ex.xml[]
+----
+
+. Now users will be able to obtain OAuth2 access code using GET HTTP request with the `code` parameter to
++
+  http://localhost:8080/app/rest/auth-code?code=A325
++
+The result will be:
++
+  {"access_token":"74202587-6c2b-4d74-bcf2-0d687ea85dca","token_type":"bearer","expires_in":43199,"scope":"rest-api"}
++
+The obtained access token should then be passed to REST API, as described in the documentation.
+
+[[rest_api_v2_social_login]]
+===== Social Login in REST API
+
+The mechanism of social login can be used in REST API too. The complete sample application is available on https://github.com/cuba-platform/sample-social-login/[GitHub] and described in the <<social_login>> section, below are the key points of getting an access token with a Facebook account.
+
+. Create the `restapi` package under the root package of *web* module and implement the custom Spring MVC controller in it. This controller should contain two main methods: `get()` to get a `ResponseEntity` instance and `login()` to obtain an OAuth token.
++
+--
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/restapi/FacebookAuthenticationController.java[FacebookAuthenticationController.java]
+----
+include::{sourcesdir}/rest/social_login_rest_1.java[]
+----
+
+Here we check the Facebook code, obtain an access code and issue the access token using `OAuthTokenIssuer`:
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/restapi/FacebookAuthenticationController.java[FacebookAuthenticationController.java]
+----
+include::{sourcesdir}/rest/social_login_rest_2.java[]
+----
+--
+
+. Exclude the `restapi` package from scanning in *web/core* modules: the `OAuthTokenIssuer` bean is available only in REST API context, and scanning for it in the application context will cause an error.
++
+[source, xml]
+----
+include::{sourcesdir}/rest/social_login_rest_5.xml[]
+----
+
+. Create the `facebook-login-demo.html` file in the `modules/web/web/VAADIN` folder of your project. It will contain the JavaScript code running on HTML page:
++
+--
+[source, html]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/web/VAADIN/facebook-login-demo.html[facebook-login-demo.html]
+----
+include::{sourcesdir}/rest/social_login_rest_3.html[]
+----
+
+The following script will try to login with Facebook. Firstly, it will remove code parameters from URL, then it will pass the code to REST API to get an OAuth access token, and in case of successful authentication we will be able to load and save data as usual.
+
+[source, js]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/web/VAADIN/facebook-login-demo.html[facebook-login-demo.html]
+----
+include::{sourcesdir}/rest/social_login_rest_4.js[]
+----
+
+Another example or running a JavaScript code from CUBA applications you can find in the <<rest_api_v2_ex_javascript_usage>> section.
+--
+
+[[rest_api_v2_ex_get_entities_list]]
+==== Getting an Entity Instances List
+
+Let's suppose that the system has a `sales$Order` entity and we need to get a list of this entity instances. Besides, we need to get not all the records, but only 50 records, starting with the 100th one. A response must contain not only simple properties of the `sales$Order` entity but also an information about the order customer (a reference field named `customer`). Orders must be sorted by date.
+
+A base URL for getting all instances of the `sales$Order` entity is as follows:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+To implement all the conditions described above the following request parameters must be specified:
+
+* *view* - a <<views, view>>, that will be used for loading entities. In our case the `order-edit-view` contains a `customer` reference.
+* *limit* - a number of instances to be returned.
+* *offset* - a position of the first extracted record.
+* *sort* - an entity attribute name that will be used for sorting.
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type:
+
+  Authorization: Bearer 29bc6b45-83cd-4050-8c7a-2a8a60adf251
+
+As a result, we get the following *GET* request URL:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order?view=order-edit-view&limit=50&offset=100&sort=date
+
+The response will be like this:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-orders-list-response.json[]
+----
+
+Please note, that every entity in the response has a `_entityName` attribute with the entity name and an `_instanceName` attribute with the entity <<namePattern_annotation, instance name>>.
+
+[[rest_api_v2_ex_create_entity]]
+==== New Entity Instance Creation
+
+New `sales$Order` entity instance can be created with the *POST* request on the address:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+The request body must contain a JSON object that describes a new entity instance, e.g.:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-create-order-request.json[]
+----
+
+A collection of order items (`items`) and a `customer` reference are passed in the request body. Let's examine how these attributes will be processed.
+
+First, let's have a quick look to the `Order` class:
+
+[source, java]
+----
+include::{sourcesdir}/features/Order.java[]
+----
+
+The `items` collection property is annotated with the <<composition_annotation, @Composition>>. REST API methods for entity creation and update will create a new entity instances for all members of such collections. In our case, two instances of `OrderItem` entity will be created with the `Order` entity.
+
+The `customer` reference doesn't have a `@Composition` annotation, that's why the REST API will try to find a client with the given id and set it to the `customer` field. If the client is not found then an order won't be created and the method will return an error.
+
+In case of successful method execution a full object graph of the created entity is returned:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-create-order-response.json[]
+----
+
+[[rest_api_v2_ex_update_entity]]
+==== Existing Entity Instance Update
+
+An existing `sales$Order` entity instance can be updated with the *PUT* request on the address:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/5d7ff8e3-7828-ba94-d6ba-155c5c4f2a50
+
+The last part of the query here is the entity identifier.
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+The request body must contain a JSON object containing only fields we want to update, e.g.:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-update-order-request.json[]
+----
+
+The response body will contain a modified entity:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-update-order-response.json[]
+----
+
+[[rest_api_v2_ex_query_get]]
+==== Executing a JPQL Query (GET)
+
+Before the execution with the REST API a query must be described in the <<rest_api_v2_queries_config, configuration file>>. The `rest-queries.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
+
+[source, properties]
+----
+cuba.rest.queriesConfig = +com/company/sales/rest-queries.xml
+----
+
+`rest-queries.xml` contents:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/sales-rest-queries.xml[]
+----
+
+To execute a JPQL query the following *GET* request must be executed:
+
+  http://localhost:8080/app/rest/v2/queries/sales$Order/ordersAfterDate?startDate=2016-11-01&endDate=2017-11-01
+
+The request URL parts:
+
+* `sales$Order` - extracted entity name.
+* `ordersAfterDate` - a query name from the configuration file.
+* `startDate` and `endDate` - request parameters with the values.
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+The method returns a JSON array of extracted entity instances:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-ordersAfterDate-query-response.json[]
+----
+
+A full list of possible request parameters is available in the http://files.cuba-platform.com/swagger[Swagger documentation].
+
+[[rest_api_v2_ex_query_post]]
+==== Executing a JPQL Query (POST)
+
+It is also possible to execute a query with POST HTTP request. POST request can be used when you need to pass a collection as query parameter value. In this case, the type of the query parameter in REST queries configuration file must end with square brackets: `java.lang.String[]`, `java.util.UUID[]`, etc.
+
+[source, xml]
+----
+include::{sourcesdir}/rest/sales-rest-queries-post.xml[]
+----
+
+Query parameters values must be passed in the request body as JSON map:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-post-query.json[]
+----
+
+The POST request URL:
+
+  http://localhost:8080/app/rest/v2/queries/sales$Order/ordersByIds?returnCount=true
+
+[[rest_api_v2_ex_service_get]]
+==== Service Method Invocation (GET)
+
+Suppose there is an `OrderService` <<services, service>> in the system. The implementation looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderServiceBean.java[]
+----
+
+Before the execution with the REST API a service method invocation must be allowed in the <<rest_api_v2_services_config, configuration file>>. The `rest-services.xml` file must be created in the main package of the *web* module (e.g. `com.company.sales`). Then the file must be defined in the application properties file of the *web* module (web-app.properties).
+
+[source, properties]
+----
+cuba.rest.servicesConfig = +com/company/sales/rest-services.xml
+----
+
+`rest-services.xml` content:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/sales-rest-services.xml[]
+----
+
+To invoke the service method the following *GET* request must be executed:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/calculatePrice?orderNumber=00001
+
+The request URL parts:
+
+* `sales_OrderService` - a service name.
+* `calculatePrice` - a method name.
+* `orderNumber` - an argument name with the value.
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+A service method may return a result of  simple datatype, an entity, an entities collection or a serializable POJO. In our case a BigDecimal is returned, so the response body contains just a number:
+
+  39.2
+
+[[rest_api_v2_ex_service_post]]
+==== Service Method Invocation (POST)
+
+REST API allows execution not only of methods that have arguments of simple datatypes, but also of methods with the following arguments:
+
+* entities
+* entities collections
+* POJOs
+
+Suppose we added a new method to the `OrderService` created in the previous section:
+
+[source, java]
+----
+@Override
+public OrderValidationResult validateOrder(Order order, Date validationDate){
+    OrderValidationResult result=new OrderValidationResult();
+    result.setSuccess(false);
+    result.setErrorMessage("Validation of order "+order.getNumber()+" failed. validationDate parameter is: "+validationDate);
+    return result;
+}
+----
+
+`OrderValidationResult` class looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderValidationResult.java[]
+----
+
+The new method has an `Order` entity in the arguments list and returns a POJO.
+
+Before the invocation with the REST API the method must be allowed, so we add a record to the `rest-services.xml` configuration file (it was described in the <<rest_api_v2_ex_service_get>>).
+
+[source, xml]
+----
+include::{sourcesdir}/rest/sales-rest-services-2.xml[]
+----
+
+The `validateOrder` service method may be called with the *POST* request on the address:
+
+  http://localhost:8080/app/rest/v2/services/sales_OrderService/validateOrder
+
+In case of the POST request parameters are passed in the request body. The request body must contain a JSON object, each field of this object corresponds to the service method argument.
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-validateOrder-service-request.json[]
+----
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+The REST API method returns a serialized POJO:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-validateOrder-service-response.json[]
+----
+
+[[rest_api_v2_ex_file_download]]
+==== Files Downloading
+
+When downloading a file, passing a security token in the request header is often inconvenient. It is desirable to have a URL for downloading that may be put to the *src* attribute of the *img* tag.
+
+As a solution, an OAuth token can also be passed in the request URL as a parameter with the *access_token* name.
+
+For example, an image is uploaded to the application. Its FileDescriptor id is `44809679-e81c-e5ae-dd81-f56f223761d6`.
+
+In this case a URL for downloading the image will look like this:
+
+  http://localhost:8080/app/rest/v2/files/44809679-e81c-e5ae-dd81-f56f223761d6?access_token=a2f0bb4e-773f-6b59-3450-3934cbf0a2d6
+
+[[rest_api_v2_ex_javascript_usage]]
+==== JavaScript Usage Example
+
+This section contains an example of using REST API v2 from JavaScript running on a HTML page. The page initially shows login form, and after successful login displays a message and a list of entities.
+
+For simplicity, we will use `modules/web/web/VAADIN` folder for storing HTML/CSS/JavaScript files, as the corresponding folder in the deployed web application is used for serving static resources by default. So you will not need to make any configuration of your Tomcat application server. The resulting URL will start from `++http://localhost:8080/app/VAADIN++`, so do not use this approach in a real world application - create a separate web application with its own context instead.
+
+Download https://jquery.com/download[jQuery] and http://getbootstrap.com/getting-started/#download[Bootstrap] and copy to `modules/web/web/VAADIN` folder of your project. Create `customers.html` and `customers.js` files, so the content of the folder should look as follows:
+
+[source, plain]
+----
+bootstrap.min.css
+customers.html
+customers.js
+jquery-3.1.1.min.js
+----
+
+`customers.html` file content:
+
+[source, html]
+----
+include::{sourcesdir}/rest/rest_customers.html[]
+----
+
+`customers.js` file content:
+
+[source, javascript]
+----
+include::{sourcesdir}/rest/rest_customers_script.js[]
+----
+
+Login and password from the user input are sent to the server by the POST request with the Base64-encoded client credentials in the `Authorization` header as explained in <<rest_api_v2_ex_get_token>> section. If the authentication is successful, the web page receives an access token value from the server, the token is stored in the `oauthToken` variable, the `loginForm` div is hidden and the `loggedInStatus` div is shown.
+
+To show the list of customers, the request is sent to the server <<rest_api_v2_ex_get_entities_list,to get the instances>> of the `sales$Customer` entity, passing the `oauthToken` value in the `Authorization` header.
+
+In case the request is processed successfully, the `customers` div is shown, and the `customersList` element is filled with items containing customer names and emails.
+
+image::rest_js_1.png[align="center"]
+
+image::rest_js_2.png[align="center"]
+
+[[rest_api_v2_ex_localized_messages]]
+==== Getting Localized Messages
+
+There are methods in the REST API for getting localized messages for entities, their properties and enums.
+
+For example, to get a list of localized messages for the `sec$User` entity you have to execute the following *GET* request:
+
+  http://localhost:8080/app/rest/v2/messages/entities/sec$User
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+You can explicitly specify the desired locale using the *Accept-Language* http header.
+
+The response will be like this:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-user-messages-response.json[]
+----
+
+To get the localization for enum, use the following URL:
+
+  http://localhost:8080/app/rest/v2/messages/enums/com.haulmont.cuba.security.entity.RoleType
+
+If you omit the entity name or enum name part in the URL, you'll get the localization for all entities or enums.
+
+[[rest_api_v2_ex_json_transformations]]
+==== Data Model Versioning Example
+
+Entity attribute was renamed::
++
+--
+Let's suppose that the `oldNumber` attribute of the `sales$Order` entity was renamed to `newNumber` and `date` was renamed to `deliveryDate`. In this case transformation config will be like this:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-attr-renamed-config.xml[]
+----
+
+If the client app needs to work with the old version of the `sales$Order` entity then it must pass the `modelVersion` value in the URL parameter:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.0
+
+The following result will be returned:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-attr-renamed-response.json[]
+----
+
+The response JSON contains an `oldNumber` and `date` attributes although the entity in the CUBA application has `newNumber` and `deliveryDate` attributes.
+--
+
+Entity name was changed::
++
+--
+Next, let's imagine, that in some next release of the application a name of the `sales$Order` entity was also changed. The new name is `sales$NewOrder`.
+
+Transformation config for version `1.1` will be like this:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-entity-name-changed-config.xml[]
+----
+
+In addition to the config from the previous example an `oldEntityName` attribute is added here. It specifies the entity name that was valid for model version `1.1`. The `currentEntityName` attribute specifies the current entity name.
+
+Although an entity with a name `sales$Order` doesn't exist anymore, the following request will work:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+The REST API controller will understand that it must search among `sales$NewOrder` entities and after the entity with given id is found names of the entity and of the `newNumber` attribute will be replaced in the result JSON:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-entity-name-changed-response.json[]
+----
+
+The client app can also use the old version of data model for entity update and creation.
+
+This *POST* request that uses old entity name and has old JSON in the request body will work:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-entity-name-changed-response.json[]
+----
+--
+
+Entity attribute must be removed from JSON::
++
+--
+If some attribute was added to the entity, but the client that works with the old version of data model doesn't expect this new attribute, then the new attribute can be removed from the result JSON.
+
+Transformation configuration for this case will look like this:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-attr-removed-config.xml[]
+----
+
+Transformation in this config file contains a `toVersion` tag with a nested `removeAttribute` command. This means that when the transformation from the current state to specific version is performed (i.e. when you request a list of entities) then a `discount` attribute must be removed from the result JSON.
+
+In this case if you perform the request without the `modelVersion` attribute, the discount attribute will be returned:
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-attr-removed-response-2.json[]
+----
+
+If you specify the `modelVersion` then `discount` attribute will be removed
+
+  http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-attr-removed-response.json[]
+----
+--
+
+Using custom transformer::
++
+--
+You can also create and register a custom JSON transformer. As an example let's examine the following situation: there was an entity `sales$OldOrder` that was renamed to `sales$NewOrder`. This entity has an `orderDate` field. In the previous version, this date field contained a time part, but in the latest version of the entity, the time part is removed. REST API client that request the entity with an old model version `1.0` expects the date field to have the time part, so the transformer must modify the value in the JSON.
+
+First, that's how the transformer configuration must look like:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-custom-config.xml[]
+----
+
+There are a `custom` element and nested `toVersion` and `fromVersion` elements. These elements have a reference to the transformer bean. This means that custom transformer must be registered as a Spring bean. There is one important thing here: a custom transformer may use the `RestTransformations` platform bean (this bean gives an access to other entities transformers if it is required). But the `RestTransformations` bean is registered in the Spring context of the REST API servlet, not in the main context of the web application. This means that custom transformer beans must be registered in the REST API Spring context as well.
+
+That's how we can do that.
+
+First, create a `rest-dispatcher-spring.xml` in the *web* or *portal* module (e.g. in package `com.company.test`).
+
+Next, register this file in the `app.properties` of the web or portal module:
+
+[source, properties]
+----
+cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+----
+
+The `rest-dispatcher-spring.xml` must contain custom transformer bean definitions:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-dispatcher-spring.xml[]
+----
+
+The content of the `sales_OrderJsonTransformerToVersion` transformer is as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderJsonTransformerToVersion.java[]
+----
+
+This transformer finds the `orderDate` node in the JSON object and modifies its value by adding the time part to the value.
+
+When the `sales$OldOrder` entity with a data model version `1.0` is requested, the result JSON will contain entities with `orderDate` fields that contain time part, although it is not stored in the database anymore.
+
+A couple more words about custom transformers. They must implement the `EntityJsonTransformer` interface. You can also extend the `AbstractEntityJsonTransformer` class and override its `doCustomTransformations` method. The `AbstractEntityJsonTransformer` contains all functionality of the standard transformer.
+--
+
+[[misc_recipes]]
+=== Miscellaneous
+
+Here you can find various recipes that do not belong to the above categories.
+
+[[getting_messages]]
+==== Getting Localized Messages
+
+This section covers ways of getting <<localization,localized messages>> in different parts of the application.
+
+* In screen <<screen_xml,XML-descriptors>>, component attributes for displaying static text (such as <<gui_attr_caption,caption>>) can address localized messages using the rules of <<messageTools.loadString,MessageTools.loadString()>> method. For example:
+
+** `caption="msg://roleName"` – gets a message defined by the `roleName` key in the message pack of the current screen. Screen message pack is defined by the `messagesPack` attribute of the root `window` element.
+
+** `caption="msg://com.company.sample.entity/Role.name"` – gets a message defined by the `Role.name` key in the `com.company.sample.entity` message pack.
+
+* In <<screen_controller,screen controllers>>, localized strings can be retrieved in the following ways:
+
+** From the current screen message pack:
+
+*** Using `getMessage()` method inherited from the <<abstractFrame,AbstractFrame>> base class. For example:
++
+[source, java]
+----
+String msg = getMessage("warningMessage");
+----
+
+*** Using `formatMessage()` method inherited from the `AbstractFrame` base class. In this case, the extracted message is used to format submitted parameters according to the rules of `String.format()` method. For example:
++
+messages.properties:
++
+[source, properties]
+----
+warningMessage = Invalid email address: '%s'
+----
++
+Java controller:
++
+[source, java]
+----
+String msg = formatMessage("warningMessage", email);
+----
+
+** From an arbitrary messages pack via an injection of <<messages,Messages>> infrastructure interface. For example:
++
+[source, java]
+----
+@Inject
+private Messages messages;
+
+@Override
+public void init(Map<String, Object> params) {
+    String msg = messages.getMessage(getClass(), "warningMessage");
+    ...
+}
+----
+
+* For components managed by a Spring container (<<managed_beans,managed beans>>, <<services,services>>, <<jmx_beans,JMX-beans>>, Spring MVC controllers of the *portal* module), localized messages can be retrieved with the help of the <<messages,Messages>> infrastructure interface injection:
++
+[source, java]
+----
+@Inject
+protected Messages messages;
+...
+String msg = messages.getMessage(getClass(), "warningMessage");
+----
+
+* In application code where injection is not possible, the `Messages` interface can be obtained using the static `get()` method of the `AppBeans` class:
++
+[source, java]
+----
+protected Messages messages = AppBeans.get(Messages.class);
+...
+String msg = messages.getMessage(getClass(), "warningMessage");
+----
+
+[[images_recipe]]
+==== Loading and Displaying Images
+
+Let's consider a task of loading, storing and displaying employee photos:
+
+* An employee is represented by `Employee` entity.
+
+* Image files are stored in the <<file_storage,FileStorage>>. The `Employee` entity contains a link to the corresponding `FileDescriptor`.
+
+* The `Employee` edit screen shows the picture and also supports uploading, downloading and clearing the picture.
+
+Entity class with a link to the image file:
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/images_1.java[]
+----
+
+A <<views,view>> for loading an `Employee` together with `FileDescriptor` should include all local attributes of `FileDescriptor`:
+
+[source, xml]
+----
+include::{sourcesdir}/cookbook/images_2.xml[]
+----
+
+A fragment of the `Employee` edit screen XML descriptor:
+
+[source, xml]
+----
+include::{sourcesdir}/cookbook/images_3.xml[]
+----
+
+Components used to display, upload and download images are contained within the <<gui_GroupBoxLayout,groupBox>> container. Its top part shows a picture using the <<gui_Image,image>> component, while its bottom part from left to right contains the <<gui_FileUploadField,upload>> component and <<gui_Button,buttons>> to download and clear the image. As a result, this part of the screen should look like this:
+
+image::images_recipe.png[align="center"]
+
+Now, let us have a look at the <<abstractEditor,edit screen controller>>.
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/images.java[]
+----
+
+* The `init()` method first initializes the `uploadField` component that is used for uploading new images. In the case of a successful upload, a new `FileDescriptor` instance is retrieved from the component and the corresponding files are sent from the temporary client storage to `FileStorage` by invoking `FileUploadingAPI.putFileIntoStorage()`. After that, the `FileDescriptor` is saved to the database by invoking  <<dataSupplier,DataSupplier.commit()>>, and the saved instance is assigned to the `imageFile` attribute of the edited `Employee` entity. Then, the controller's `displayImage()` method is invoked to display the uploaded image.
++
+After that, a listener is added in the `init()` method to the datasource containing an `Employee` instance. The listener enables or disables download and clear buttons, depending on the fact whether the file has been loaded or not.
+
+* `postInit()` method performs file display and refreshes the button states, depending on the existence of a loaded file.
+
+* `onDownloadImageBtnClick()` is invoked when the `downloadImageBtn` button is clicked; it downloads the file using the <<file_download,ExportDisplay>> interface.
+
+* `onClearImageBtnClick()` is invoked when the `clearImageBtn` is clicked; it clears the `imageFile` attribute of the `Employee` entity. The file is not deleted from storage.
+
+* `displayImage()` loads the file from storage and sets the content of the `image` component.
+
+[[images_in_table]]
+===== Displaying Images in a Table Column
+
+To amplify the previous task, let's add pictures to the table as employees' icons on the `Employee` browse screen.
+
+The pictures can be displayed in a separate column or inside any existing column. In both cases the <<gui_Table_addGeneratedColumn,Table.ColumnGenerator>> interface is used.
+
+Below is a fragment of the `Employee` browse screen XML descriptor:
+
+[source, xml]
+----
+include::{sourcesdir}/cookbook/images_4.xml[]
+----
+
+To display pictures inline with an employee's name in the `name` column, let's change the standard representation of data in this column. We will use the <<gui_BoxLayout,HBoxLayout>> container and place the <<gui_Image,Image>> component into it:
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/images_5.java[]
+----
+
+* The `init()` method invokes the `addGeneratedColumn()` method that takes two parameters: an identifier of the column and an implementation of the `Table.ColumnGenerator` interface. The latter is used to define the custom representation of data in the `name` column.
+
+* Inside this method we create an `Image` component using the `ComponentsFactory` interface. We set the <<gui_Image_scaleMode,scale mode>> of the component (`CONTAIN`) and its size parameters.
+
+* Then we get the `FileDescriptor` instance with the picture stored in the <<file_storage,File Storage>>. The link to this picture is stored in the `imageFile` attribute of the `Employee` entity. The `FileDescriptorImageResource` resource type is used to set the source for the `Image` component.
+
+* We will display the `name` attribute in the `Label` component alongside the picture.
+
+* We will wrap both `Image` and `Label` components into the `HBoxLayout` container, and make the `addGeneratedColumn()` method return this container as the new table cell layout.
+
+image::image_recipe.png[align="center"]
+
+You can also use a more declarative approach with the <<gui_Table_column_generator,generator>> XML attribute.
+
+[[sending_emails_recipe]]
+==== Sending Emails
+
+This section contains a practical guide to sending emails using the CUBA email sending <<email_sending,mechanism>>.
+
+Let us consider the following task:
+
+--
+* There are the `NewsItem` entity and the `NewsItemEdit` screen.
+
+* The `NewsItem` entity contains the following attributes: `date`, `caption`, `content`.
+
+* We want to send emails to some addresses every time a new instance of `NewsItem` is created through the `NewsItemEdit` screen. An email should contain `NewsItem.caption` as a subject and the message body should be created from a template including `NewsItem.content`.
+--
+
+. Add the following code to `NewsItemEdit.java`:
++
+--
+[source, java]
+----
+include::{sourcesdir}/cookbook/sending_emails_1.java[]
+----
+
+As you can see, the `sendByEmail()` method invokes the `EmailService` and passes the `EmailInfo` instance describing the the messages. The body of the messages will be created on the basis of the `news_item.txt` template.
+--
+
+. Create the body template file `news_item.txt` in the `com.company.demo.templates` package of the *core* module:
++
+--
+[source, plain]
+----
+include::{sourcesdir}/cookbook/sending_emails_2.txt[]
+----
+
+This is a link:http://freemarker.incubator.apache.org[Freemarker] template which will use parameters passed in the `EmailInfo` instance (`newsItem` in this case).
+--
+
+. Launch the application, open the `NewsItem` entity browser and click *Create*. The editor screen will be opened. Fill in the fields and press *OK*. The confirmation dialog with the question about sending emails will be shown. Click *Yes*.
+
+. Go to the *Administration > Email History* screen of your application. You will see two records (by the number of recipients) with the `Queue` status. It means that the emails are in the queue and not yet sent.
+
+. To process the queue, set up a <<scheduled_tasks_cuba,scheduled task>>. Go to the *Administration > Scheduled Tasks* screen of your application. Create a new task and set the following parameters:
++
+--
+* *Bean Name* - `cuba_Emailer`
+* *Method Name* - `processQueuedEmails()`
+* *Singleton* - yes (this is important only for a cluster of middleware servers)
+* *Period, sec* - 10
+--
++
+Save the task and click *Activate* on it.
++
+If you did not set up the scheduled tasks execution for this project before, nothing will happen on this stage - the task will not be executed until you start the whole scheduling mechanism.
+
+. Open the `modules/core/src/app.properties` file and add the following <<cuba.schedulingActive,property>>:
++
+[source, properties]
+----
+cuba.schedulingActive = true
+----
++
+Restart the application server. The scheduling mechanism is now active and invokes the email queue processing.
+
+. Go to the *Administration > Email History* screen. The status of the emails will be `Sent` if they were successfully sent, or, most probably, `Sending` or `Queue` otherwise. In the latter case, you can open the application log in `build/tomcat/logs/app.log` and find out the reason. The email sending mechanism will take several (10 by default) attempts to send the messages and if they fail, set the status to `Not sent`.
+
+. The most obvious reason that emails cannot be sent is that you have not set up the SMTP server <<email_sending_properties,parameters>>. You can set the parameters in the database through the `app-core.cuba:type=Emailer` JMX bean or in the application properties file of your middleware. Let us consider the latter. Open the `modules/core/src/app.properties` file and add the required <<email_sending_properties,parameters>>:
++
+[source, properties]
+----
+include::{sourcesdir}/cookbook/sending_emails_3.properties[]
+----
++
+Restart the application server. Go to *Administration > JMX Console*, find the `Emailer` JMX bean and try to send a test email to yourself using the `sendTestEmail()` operation.
+
+. Now your sending mechanism is set up correctly, but it will not send the messages in the `Not sent` state. So you have to create another `NewsItem` in the editor screen. Do it and then watch how the status of new messages in the *Email History* screen will change to `Sent`.
+
+[[app_components_sample]]
+==== Using Application Components
+
+Any CUBA application can be used as a <<app_components,component>> of another application. An application component is a full-stack library providing functionality on all layers - from database schema to business logic and UI.
+
+In this section, we'll consider an example of creating an application component and using it in a project. The component will provide a "Customer Management" functionality and include the `Customer` entity and corresponding UI screens. The application will use the `Customer` entity from the component as a reference in its `Order` entity.
+
+image::app_components_sample.png[align="center"]
+
+Creating the Customer Management component::
+
+. Create a new project in Studio and specify the following properties on the *New project* screen:
+
+* *Project name* - `customers`
+
+* *Project namespace* - `cust`
+
+* *Root package* - `com.company.customers`
+
+. Edit *Project properties* and on the *Advanced* tab, set the *Module prefix* to `cust`. This is necessary to assemble component artifacts with names different from the default `app`.
+
+. Create the `Customer` entity with at least the `name` attribute. Switch to the *Instance name* tab and specify add `name` to the name pattern attributes.
++
+[WARNING]
+====
+If your component contains `@MappedSuperclass` persistent classes, make sure they have descendants which are entities (i.e. annotated with `@Entity`) in the same project. Otherwise such base classes will not be properly enhanced and you will not be able to use them in applications.
+====
+
+. Generate DB scripts and create standard screens for the `Customer` entity: `cust$Customer.browse` and `cust$Customer.edit`. After that, go to main menu designer and rename the `application` menu item to `customerManagement`.
+
+. Click to the *App component descriptor* link on the *Project properties* panel. Save the generated <<app-component.xml,descriptor>> by clicking *OK*.
+
+. Test the Customer Management functionality: *Run > Create database*, *Run > Start application server*, then open `++http://localhost:8080/cust++` in your web browser.
+
+. Install the application component into the local Maven repository by executing the *Run > Install app component* menu command. This command just runs the `install` Gradle task after stopping Gradle daemons.
+
+Creating the Sales application::
+
+. Create a new project in Studio and specify the following properties on the *New project* screen:
+
+* *Project name* - `sales`
+
+* *Project namespace* - `sales`
+
+* *Root package* - `com.company.sales`
+
+. Edit *Project properties* and on the *App components* panel click the plus button next to *Custom components*. In the *Custom application component* dialog, select the `customers` project in the *Registered project* drop-down list. The list contains all project registered in Studio that have an `app-component.xml` descriptor. Click *OK* in the dialog. The Maven coordinates of the Customer Management component will appear in the list of custom components. Save the project properties by clicking *OK*.
+
+. Create the `Order` entity and add the `date` and `amount` attributes. Then add the `customer` attribute as a many-to-one association with the `Customer` entity - it should be available in the *Type* drop-down list.
+
+. Generate DB scripts and create standard screens for the `Order` entity. When creating standard screens, create a `order-with-customer-view` view that includes the `customer` attribute and use it for the screens.
+
+. Test the application functionality: *Run > Create database*, *Run > Start application server*, then open `++http://localhost:8080/app++` in your web browser. The application will contain two top level menu items: *Customer Management* and *Application* with the corresponding functionality.
+
+Modifying the Customer Management component::
+
+Suppose we have to change the component functionality (add an attribute to `Customer`) and then reassemble the application to incorporate the changes.
+
+. Open the `customers` project in Studio.
+
+. Edit the `Customer` entity and add the `address` attribute. When saving the entity, select both browser and editor screens to include the new attribute.
+
+. Generate DB scripts - a script for altering table will be created. Save the scripts.
+
+. Test the changes in the component: *Run > Update database*, *Run > Start application server*, then open `++http://localhost:8080/cust++` in your web browser.
+
+. Re-install the application component into the local Maven repository by executing the *Run > Install app component* menu command.
+
+. Close the `customers` project and open `sales`.
+
+. Execute *Build > Clean*, then *Build > Assemble project* menu commands.
+
+. Execute *Run > Update database* - the update script from the Customer Management component will be executed.
+
+. Execute *Run > Start application server* and open `++http://localhost:8080/app++` in your web browser - the application will contain the `Customer` entity and screens with the new `address` attribute.
+
+Sharing the Customer Management component::
+
+You can share the application component by uploading it to a remote Maven repository.
+
+. Stop the Studio server.
+
+. Set up a repository as explained in <<private_repo>>.
+
+. Open `build.gradle` of the `customers` project in a text editor. Replace the repository and its credentials in `buildscript/repositories` section and add the `uploadRepository` to the `cuba` section:
++
+[source,groovy]
+----
+include::{sourcesdir}/cookbook/app_comp_upload_1.groovy[]
+----
+
+. Open the command line and run `gradle assemble` in the `customers` project root directory. This ensures your new repository caches CUBA artifacts required for working in Studio.
+
+. In the Studio server window, specify your repository and credentials instead of the standard CUBA repository. Start the Studio server.
+
+. Open the `customers` project in Studio.
+
+. In the Studio *Search* dialog (Alt-/), find the `uploadArchives` Gradle task and run it. You can also run this task from the command line. The Customer Management component artifacts will be uploaded to your repository.
+
+. Remove the component artifacts from your local Maven repository to ensure that they will be downloaded from the remote repository when the `sales` application is assembled the next time: just delete the `.m2/repository/com/company` folder located in your user home directory.
+
+. Open the `customers` project in Studio. The repository URL in its `build.gradle` will be automatically changed to the one specified in the Studio server window.
+
+. Now you can assemble and run the application - the Customer Management component will be downloaded from the remote repository.
+
+
+[[own_component_samples]]
+==== Creating Custom Visual Components
+
+As explained in the <<own_components>> section, the standard set of visual components can be extended in your project. You have the following options:
+
+. Integrate a Vaadin add-on. Many third-party Vaadin components are distributed as add-ons and available at https://vaadin.com/directory.
+
+. Integrate a JavaScript component. You can create a Vaadin component using a JavaScript library.
+
+. Create a new Vaadin component with the client part written on GWT.
+
+Futher on, you can integrate the resulting Vaadin component into CUBA Generic UI to be able to use it declaratively in screen XML descriptors and bind to datasources.
+
+And the final step of integration is the support of the new component in the Studio WYSIWYG layout editor.
+
+This section gives you examples of creating new visual components with all the methods described above. Integration to the Generic UI and support in Studio are the same for all methods, so these topics are described only for a new component created on the basis of a Vaadin add-on.
+
+[[vaadin_addon_sample]]
+===== Using a Third-party Vaadin Component
+
+This is an example of using the *Stepper* component available at http://vaadin.com/addon/stepper, in an application project. The component enables changing text field value in steps using the keyboard, mouse scroll or built-in up/down buttons.
+
+Create a new project in CUBA Studio and name it `addon-demo`.
+
+A Vaadin add-on may be integrated if the application project has a *web-toolkit* module. Create the module by clicking  the *Create web toolkit module* link of the *Project properties* navigator section.
+
+Then click the *New UI component* link. The *UI component generation* page will open. Select the *Vaadin add-on* value in the *Component type* section.
+
+image::ui_component/studio_vaadin_addon_wizard_no_gui.png[align="center"]
+
+Fill in the following fields:
+
+* The *Add-on Maven dependency* field contains Maven coordinates of the Vaadin add-on. The add-on will be included as a dependency to the project. You can define coordinates in two formats:
+
+. As an XML copied from the add-on web site (http://vaadin.com/addon/stepper):
++
+[source, xml]
+----
+<dependency>
+   <groupId>org.vaadin.addons</groupId>
+   <artifactId>stepper</artifactId>
+   <version>2.2.2</version>
+</dependency>
+----
+
+. In one line as you add dependencies in <<build.gradle,build.gradle>>: `org.vaadin.addons:stepper:2.2.2`
+
+* The *Inherited widgetset* field contains a widgetset name of the add-on:
++
+[source]
+----
+org.vaadin.risto.stepper.widgetset.StepperWidgetset
+----
+
+* *Integrate into generic UI* - deselect this checkbox as we do not integrate the component into the Generic UI in this example.
+
+Press the *OK* button.
+
+If you open the project in the IDE, you can see that Studio has changed two files:
+
+. In `build.gradle`, the *web* module now contains a dependency on the add-on that contains the component.
++
+[source, java]
+----
+configure(webModule) {
+    ...
+    dependencies {
+        ...
+        compile("org.vaadin.addons:stepper:2.2.2")
+    }
+----
+
+. The `AppWidgetSet.gwt.xml` file of the *web-toolkit* module now inherits the add-on widgetset:
++
+[source, xml]
+----
+<module>
+    <inherits name="com.haulmont.cuba.web.toolkit.ui.WidgetSet" />
+
+    <inherits name="org.vaadin.risto.stepper.widgetset.StepperWidgetset" />
+
+    <set-property name="user.agent" value="safari" />
+----
++
+[TIP]
+====
+You can speed up the widgetset compilation by defining the `user.agent` property. In this example, widgetset will be compiled only for browsers based on WebKit: Chrome, Safari, etc.
+====
+
+Now the component from the Vaadin add-on is included to the project. Let's see how to use it in the project screens.
+
+* Create a new entity `Customer` with two fields:
+
+** `name` of type String
+** `score` of type Integer
+
+* Generate standard screens for the new entity. Ensure that the *In module* field is set to `Web Module`. Screens that use Vaadin components directly must be placed in the *web* module.
++
+[TIP]
+====
+Actually, screens can be placed in the *gui* module as well, but then the code that uses the Vaadin component should be moved to a separate <<companions,companion>>.
+====
+
+* Next, we will add the `stepper` component to the screen. You can place it in a <<gui_FieldGroup,FieldGroup>> or in a separate container. Let's examine both methods.
++
+--
+. Add the `custom = "true"` attribute to the `score` field of the `fieldGroup` component of the `customer-edit.xml` screen.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui-custom-field.xml[]
+----
++
+Add the following code to the `CustomerEdit.java` controller:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiCustomField.java[]
+----
++
+The `init()` method initializes the custom `score` field. The `ComponentsFactory` creates an instance of <<gui_BoxLayout,BoxLayout>>, retrieves a link to the Vaadin container via <<webComponentsHelper,WebComponentsHelper>>, and adds the new component to it. The `BoxLayout` is then returned to be used in the custom field.
++
+Data binding is implemented programmatically by setting a current value to the `stepper` component from the edited `Customer` instance in the `postInit()` method. Additionally, the corresponding entity attribute is updated through the value change listener, when the user changes the value.
+
+. The new component can be used in any part of the screen outside of the `FieldGroup`. In order to do this, declare the `scoreBox` container in the XML-descriptor:
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui-container.xml[]
+----
++
+Inject the container to the screen controller, retrieve a link to the underlying Vaadin container and add the component to it:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiContainer.java[]
+----
++
+Data binding is implemented in the same way as described above.
+--
+
+* To adapt the component style, create a theme extension in the project. Click the *Create theme extension* link in the *Project properties* navigator section. Select the `halo` theme. After that, open the `themes/halo/halo-ext.scss` file located in the *web* module and add the following code:
++
+[source, css]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/halo-ext.scss[]
+----
+
+* Start the application server. The resulting editor screen will look as follows:
+
+image::ui_component/customer_edit_result.png[align="center"]
+
+[[vaadin_addon_sample_gui]]
+===== Integrating a Vaadin Component into the Generic UI
+
+In the <<vaadin_addon_sample,previous section>>, we have included the third-party Stepper component in the project. In this section, we will integrate it into CUBA Generic UI. This will allow developers to use the component declaratively in the screen XML and bind it to the data model entities through <<datasources,datasources>>.
+
+Create a new project in CUBA Studio and name it `addon-gui-demo`. Type `agd` in the *Project namespace* field.
+
+Create the *web-toolkit* module by clicking the *Create web toolkit module* link of the *Project properties* navigator section.
+
+Then click the *New UI component* link. The *UI component generation* page will open. Select the *Vaadin add-on* value in the *Component type* section.
+
+image::ui_component/studio_vaadin_addon_wizard_gui.png[align="center"]
+
+Fill in the *Add-on Maven dependency* and *Inherited widgetset* as described in the <<vaadin_addon_sample,previous section>>.
+
+Then fill in the fields of the bottom section:
+
+* *Integrate into Generic UI* - defines that a component should be integrated into the Generic UI.
+
+* *Component XML element* - an element to be used in screen XML descriptors. Enter `stepper`.
+
+* *Component interface name* - a name of the component Generic UI interface. Enter `Stepper`.
+
+* *FQN of the Vaadin component from add-on* - fully qualified class name of the Vaadin component from the add-on. In our case it is `org.vaadin.risto.stepper.IntStepper`.
+
+When you click *OK*, Studio will do the following:
+
+* Add the Vaadin add-on as a *web* module dependency in `build.gradle`.
+
+* Include add-on widgetset in `AppWidgetSet.gwt.xml` of *web-toolkit* module.
+
+* Generate stubs for the following files:
+
+** `Stepper` - an interface of the component in the *gui* module.
+
+** `WebStepper` - a component implementation in the *web* module.
+
+** `StepperLoader` - a component XML-loader in the *gui* module.
+
+** `ui-component.xsd` - a new component XML schema definition. If the file already exists, the information about the new component will be added to the existing file.
+
+** `cuba-ui-component.xml` - the file that registers a new component loader in *web* module. If the file already exists, the information about the new component will be added to the existing file.
+
+Open the project in the IDE.
+
+Let's walk through generated files add make necessary changes.
+
+* Open the `Stepper` interface in the *gui* module. Replace its content with the following code:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/Stepper.java[]
+----
++
+The base interface for the component is `Field`, which is designed to display and edit an entity attribute.
+
+* Open the `WebStepper` class - a component implementation in the *web* module. Replace its content with the following code:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/WebStepper.java[]
+----
++
+The chosen base class is `WebAbstractField`, which implements the methods of the `Field` interface.
+
+* The `StepperLoader` class in *gui* module loads the component from its representation in XML.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/StepperLoader.java[]
+----
++
+The `AbstractFieldLoader` class contains code for loading basic properties of the `Field` component. So `StepperLoader` loads only the specific properties of the `Stepper` component.
+
+* The `cuba-ui-component.xml` file in the *web* module registers the new component and its loader. Leave the file unchanged.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/cuba-ui-component.xml[]
+----
+
+* The `ui-component.xsd` file in *gui* module contains XML schema definitions of custom visual components. Add the `stepper` attributes definition.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/ui-component.xsd[]
+----
+
+Let's see how to add the new component to a screen.
+
+* Create a new entity `Customer`. The entity have two fields:
+
+** `name` of type String
+** `score` of type Integer
+
+* Generate standard screens for the new entity.
+
+* Add the `stepper` component to the editor screen. You can place it in a <<gui_FieldGroup,FieldGroup>> or in a separate container. We'll examine both methods.
+
+. Using the component inside a container.
++
+--
+* Open the `customer-edit.xml` file.
+
+* Define the new namespace `xmlns:app="http://schemas.company.com/agd/0.1/ui-component.xsd"`.
+
+* Remove the `score` field from `fieldGroup`.
+
+* Add `stepper` component to the screen.
+
+As a result, the XML descriptor should look like this:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-container.xml[]
+----
+
+In the example above, the `stepper` component is associated with the `score` attribute of the `Customer` entity. An instance of this entity is managed by the `customerDs` datasource.
+--
+
+. Using the new component inside a <<gui_FieldGroup>>:
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-custom-field.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/CustomerEditGuiCustomField.java[]
+----
+
+* To adapt the component style, create a theme extension in the project. Click the *Create theme extension* link in the *Project properties* navigator section. Select the `halo` theme. After that, open the `themes/halo/halo-ext.scss` file located in the *web* module and add the following code:
++
+[source, css]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/halo-ext.scss[]
+----
+
+* Start the application server. The resulting editor screen will look as follows:
+
+image::ui_component/customer_edit_result.png[align="center"]
+
+[[js_library_sample]]
+===== Using a JavaScript library
+
+In this example, we will use the https://jqueryui.com/slider/#range[Slider] component from the *jQuery UI* library. The slider will have two drag handlers that define a values range.
+
+Create a new project in CUBA Studio and name it `jscomponent`.
+
+Click the *New UI component* button on the *Project properties* navigator section. The *UI component generation* will open. Select the `JavaScript component` value in the `Component type` section.
+
+image::ui_component/studio_js_component_wizard.png[align="center"]
+
+Enter `SliderServerComponent` in the *Vaadin component class name* field.
+
+Deselect the *Integrate into Generic UI* flag. The process of integration into the Generic UI is the same as described at <<vaadin_addon_sample_gui>>, so we won't repeat it here.
+
+After clicking the *OK* button Studio will generate the following files:
+
+* `SliderServerComponent` - a Vaadin component integrated with JavaScript.
+
+* `SliderState` - a state class of the Vaadin component.
+
+* `slider-connector.js` - a JavaScript connector for the Vaadin component.
+
+Let's examine the generated files and make necessary changes in the source code.
+
+* `SlideState` state class defines what data is transferred between the server and the client. In our case it is a minimal possible value, maximum possible value and selected values.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/SliderState.java[]
+----
+
+* Vaadin server-side component `SliderServerComponent`.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/SliderServerComponent.java[]
+----
++
+The server component defines getters and setters to work with the slider state and an interface of value change listeners. The class extends `AbstractJavaScriptComponent`.
++
+The `addFunction()` method invocation in the class constructor defines a handler for an RPC-call of the `valueChanged()` function from the client.
++
+The `@JavaScript` and `@StyleSheet` annotations point to files that must be loaded on the web page. In our example, these are JavaScript files of the jquery-ui library, the connector and the stylesheet for jquery-ui. You should place these files to the Java package of the Vaadin server component.
+
+Download an archive with jQuery UI from http://jqueryui.com/download and put files `jquery-ui.js` and `jquery-ui.css` from the archive to the Java package of the `SliderServerComponent` class. At the jQuery UI download page, you can select which components should be put into the archive. For this demo, it is enough to select only the `Slider` item of the `Widgets` group.
+
+image::ui_component/js_project_structure.png[align="center"]
+
+* JavaScript connector `slider-connector.js`.
++
+[source, javascript]
+----
+include::{sourcesdir}/ui_component/js/slider-connector.js[]
+----
++
+Connector is a function that initializes a JavaScript component when the web page is loaded. The function name must correspond to the server component class name where dots in package name are replaced with underscore characters.
++
+Vaadin adds several useful methods to the connector function. `this.getElement()` returns an HTML DOM element of the component, `this.getState()` returns a state object.
++
+Our connector does the following:
++
+--
+* Initializes the `slider` component of the jQuery UI library. The `slide()` function is invoked when the position of any drag handler changes. This function in turn invokes the `valueChanged()` connector method. `valuedChanged()` is the method that we defined on the server side in the `SliderServerComponent` class.
+
+* Defines the `onStateChange()` function. It is called when the state object is changed on the server side.
+--
+
+To demonstrate how the component works, let's create the `Product` entity with three attributes:
+
+* `name` of type String
+* `minDiscount` of type Double
+* `maxDiscount` of type Double
+
+Generate standard screens for the entity. Ensure that the value of the *In module* field is `Web Module`.
+
+The `slider` component will set minimal and maximum discount values of a product.
+
+Open the `product-edit.xml` file. Make `minDiscount` and `maxDiscount` fields not editable by adding the `editable="false"` attribute to the corresponding elements. Then add the new custom `slider` field to the `fieldGroup`.
+
+As a result, the XML descriptor of the editor screen should look as follows:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/js/product-edit.xml[]
+----
+
+Open the `ProductEit.java` file. Replace its content with the following code:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/ProductEdit.java[]
+----
+
+The `initNewItem()` method sets initial values for discounts of a new product.
+
+Method `init()` initializes the `slider` custom field. It sets current, minimal and maximum values of the `slider` and defines the value change listener. When the drag handler moves, a new value will be set to the corresponding field of the editable entity.
+
+Start the application server and open the product editor screen. Changing the drop handler position must change the value of the text fields.
+
+image::ui_component/product_edit.png[align="center"]
+
+[[gwt_component_sample]]
+===== Creating a GWT component
+
+In this section, we will cover the creation of a simple GWT component (a rating field consisting of 5 stars) and its usage in application screens.
+
+image::ui_component/rating_field_component.png[align="center"]
+
+Create a new project in CUBA Studio and name it `ratingsample`.
+
+Click the *Create web-toolkit module* link in the *Project properties* navigator section.
+
+Click the *Create new UI component* link. The *New UI component* page will open. Select the *New GWT component* value in the *Component type* section.
+
+image::ui_component/studio_gwt_component_wizard.png[align="center"]
+
+Enter `RatingFieldServerComponent` in the *Vaadin component class name* field.
+
+Deselect the *Integrate into Generic UI* flag. The process of integration into the Generic UI is the same as described at <<vaadin_addon_sample_gui>>, so we won't repeat it here.
+
+After clicking the *OK* button Studio generates the following files:
+
+* `RatingFieldWidget.java` - a GWT widget in *web-toolkit* module.
+
+* `RatingFieldServerComponent.java` - a Vaadin component class.
+
+* `RatingFieldState.java` - a component state class.
+
+* `RatingFieldConnector.java` - a connector that links the client code with the server component.
+
+* `RatingFieldServerRpc.java` - a class that defines a server API for the client.
+
+Let's look at the generated files and make necessary changes in them.
+
+* `RatingFieldWidget` is a GWT widget. Replace its content with the following code:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldWidget.java[]
+----
++
+A widget is a client-side class responsible for displaying the component in the web browser and handling events. It defines interfaces for working with the server side. In our case these are the `setValue()` method and the `StarClickListener` interface.
+
+* `RatingFieldServerComponent` is a Vaadin component class. It defines an API for the server code, accessor methods, event listeners and data sources connection. Developers use the methods of this class in the application code.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldServerComponent.java[]
+----
+
+* The `RatingFieldState` state class defines what data are sent between the client and the server. It contains public fields that are automatically serialized on server side and deserialized on the client.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldState.java[]
+----
+
+* The `RatingFieldServerRpc` interface defines a server API that is used from the client-side. Its methods may be invoked by the RPC mechanism built into Vaadin. We will implement this interface in the component.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldServerRpc.java[]
+----
+
+* The `RatingFieldConnector` connector links client code with the server.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingFieldConnector.java[]
+----
+
+The `RatingFieldWidget` class does not define the component appearance, it only assigns style names to key elements. To define an appearance of the component, we'll create stylesheet files. Click the *Create theme extension* link on the *Project properties* navigator section. Select the `halo` theme in the dialog. Studio creates SCSS files for theme extension in the `themes` directory of the *web* module. The `halo` theme uses *FonAwesome* font glyphs instead of icons. We'll use this fact.
+
+It is recommended to put component styles into a separate file `componentname.scss` in the `components/componentname` directory in the form of SCSS mixture. Create the `components/ratingfield` directories structure in the `themes/halo` directory of the *web* module. Then create the `ratingfield.scss` file inside the `ratingfield` directory:
+
+image::ui_component/gwt_theme_ext_structure.png[align="center"]
+
+[source, css]
+----
+include::{sourcesdir}/ui_component/gwt/ratingfield.scss[]
+----
+
+Include this file in the `halo-ext.scss`main theme file:
+
+[source, css]
+----
+include::{sourcesdir}/ui_component/gwt/halo-ext.scss[]
+----
+
+To demonstrate how the component works let's create a new screen in the *web* module.
+
+Name the screen file `rating-screen.xml`.
+
+image::ui_component/gwt_rating_screen_designer.png[align="center"]
+
+Add the screen to the application menu. Go to the *Main menu* navigator section and click the *Edit* button. The menu editor will open. Add the screen created earlier to the `application` menu.
+
+Open the `rating-screen.xml` file in the IDE. We need a container for our component. Declare it in the screen XML:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/gwt/rating-screen.xml[]
+----
+
+Open the `RatingScreen.java` screen controller and add the code that puts the component to the screen.
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/gwt/RatingScreen.java[]
+----
+
+Start the application server and see the result.
+
+image::ui_component/rating_screen_result.png[align="center"]
+
+[[own_component_in_studio]]
+===== Support for Custom Visual Components in CUBA Studio
+
+This section describes how to integrate a new custom visual component into CUBA Studio. As a result of the integration, the component will be available on the component palette of the WYSIWYG screen layout designer. Developers will be able to drag and drop the component to the canvas and edit its properties in the properties panel.
+
+Let's walk through the process of integrating the `stepper` component into Studio. Creation of this component was described in <<vaadin_addon_sample_gui>>.
+
+Open the project containing the `stepper` component.
+
+[TIP]
+====
+If you didn't create this project, you can still reproduce the steps listed below in a new project. In this case, you will see how Studio supports the component, but you won't be able to run the application.
+====
+
+Click the *Extend Studio* link on the *Project properties* navigator section.
+
+image::ui_component/ui_component_extension_window.png[align="center"]
+
+In the *Extend Studio* screen, fill in the following fields:
+
+* *Configuration name* - a configuration identifier. Enter `stepper`.
+
+* *Component XML element* - a component element name to use in screen XML descriptors. It is `stepper` in our case.
++
+The *Component class name* and *Component model class name* fields are filled automatically based on the value of the *Component XML element*. Leave the values as is.
+
+* *Component namespace URI* - a namespace from the XSD that describes the Generic UI component. If you've generated the new component with Studio, then you can take the value of this field from the `ui-component.xsd` file located in the *gui* module.
+
+* *Component namespace prefix* - a prefix for the component XML element.
+
+* *Standard properties* - standard properties that should be available for editing in the component properties panel of the Studio screen layout designer.
++
+Select `caption`, `datasource` and `property` checkboxes.
++
+[TIP]
+====
+`id`, `align`, `height`, `width`, `enable`, `stylename` and `visible` properties are available to any component by default.
+====
+
+* *Custom properties* - this table is used for declaring component specific properties that should be edited in the component properties panel.
++
+--
+Add the following properties:
+
+* *manualInput* of type `Boolean`, the default value is `true`
+
+* *mouseWheel* of type `Boolean`, the default value is `true`
+
+* *stepAmount*, of type `Integer`, the default value is `0`
+
+* *maxValue*, of type `Integer`, the default value is `0`
+
+* *minValue*, of type `Integer`, the default value is `0`
+--
+
+Press the *OK* button.
+
+The custom visual components support is initialized when the Studio server start. Go to the Studio server window, stop the server, exit Studio, then reopen and start it again.
+
+Re-create standard screens for the `Customer` entity to erase the results of our previous experiments.
+
+Then go to the *GENERIC UI* navigator section and open the `customer-edit.xml` screen.
+
+Remove the `score` field from `fieldGroup` because we will use a separate component for editing the score.
+
+Find the new `Stepper` component on the components palette, then drag it to the screen below `fieldGroup`.
+
+image::ui_component/stepper_in_palette.png[align="center"]
+
+Select the `stepper` component and go to the component *Properties* tab.
+
+image::ui_component/stepper_component_properties.png[align="center"]
+
+Fill in the fields:
+
+* *id* - `stepper`
+
+* *caption* - `Stepper`
+
+* *datasource* - `customerDs`
+
+* *property* - `score`
+
+* *maxValue* - `50`
+
+Go to the *XML* tab to see the result.
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/studio_support/customer-edit.xml[]
+----
+
+There is a new namespace with the `app` prefix in the screen XML, the `stepper` component is added to the screen, and its properties are set correctly.
