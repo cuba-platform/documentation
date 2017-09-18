@@ -1,4 +1,4 @@
-serialChart.setCustomJson("{\n" +
+serialChart.setNativeJson("{\n" +
         "   \"titles\": [\n" +
         "       {\n" +
         "           \"size\": 15,\n" +
