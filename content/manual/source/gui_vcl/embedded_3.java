@@ -1,1 +1,1 @@
-embedded.setSource("my-logo.png")
+embedded.setSource("theme://branding/app-icon-menu.png");
