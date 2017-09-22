@@ -32,11 +32,6 @@ public class ProductEdit extends AbstractEditor<Product> {
     }
 
     @Override
-    public Product getItem() {
-        return super.getItem();
-    }
-
-    @Override
     protected void postInit() {
         super.postInit();
 
