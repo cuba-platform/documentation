@@ -1,4 +1,4 @@
 @Override
 public void init(Map<String, Object> params) {
-    getDialogOptions().setWidth(480).setHeight(320);
+    getDialogOptions().setWidth("480px").setHeight("320px");
 }
