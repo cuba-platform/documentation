@@ -78,6 +78,54 @@ where u.group_id = ${group.groupId}
 You should manually include conditions to filter soft deleted records for SQL queries.
 ====
 
+[[sql_preprocessing]]
+SQL preprocessing in bands::
++
+--
+If you need to modify the SQL/JPQL query dynamically depending on the report input parameters, or parameter values from the parent band, you can use the SQL preprocessing. In order to activate it, check the *Preprocess SQL as Groovy template* checkbox below the band editor. The resulting query will be processed by `GStringTemplateEngine`. The template engine will have access to:
+
+* the report parameters: `${<parameter_name>}`,
+
+* the values from the parent band: `{<band_name>.<parameter_name>}`.
+
+For example, depending on the `createTs2` report parameter you need to select one of the two the query conditions: `e.create_ts < ${createTs2}` or `e.create_ts < current_timestamp`.
+
+In this case the query should look like:
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+<% out << (createTs2 != null  ? 'e.create_ts < ${createTs2}' : 'e.create_ts < current_timestamp')%>
+----
+
+Then the template engine will transform it into
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+<% if (createTs2 != null) out << 'e.create_Ts < ${createTs2}' else out << 'e.create_Ts < current_timestamp'%>
+----
+
+and then
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+<% if (createTs2 != null) {%>e.create_Ts < \${createTs2} <%} else {%> e.create_Ts < current_timestamp <%}%>
+----
+
+, thus enabling you write queries in SQL/JPQL instead of Groovy directly.
+--
+
 By default, SQL queries are executed on the main database. If you want to query an additional data store (see Developer's Manual), set its name in the *Data store* field.
 
 [[structure_jpql]]
