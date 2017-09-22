@@ -1,0 +1,98 @@
+[[examples]]
+== Примеры
+
+[[process_runtime_service_usage]]
+=== Программный запуск процесса
+
+Ниже приведён пример программного запуска отчёта с заданными ролями из контроллера экрана редактирования сущности с помощью сервиса `ProcessRuntimeService`. Полный код данного тестового приложения можно посмотреть  на https://github.com/Haulmont/cuba-bpm[GitHub].
+
+. Для начала загрузите экземпляр описания процесса (<<ProcDefinition,process definition>>) по его коду:
++
+--
+[source, java]
+----
+ProcDefinition procDefinition = dataManager.load(
+        LoadContext.create(ProcDefinition.class)
+                .setQuery(new LoadContext.Query("select pd from bpm$ProcDefinition pd where pd.code = :code")
+                        .setParameter("code", PROCESS_CODE))
+                .setView("procDefinition-procInstanceEdit")
+);
+----
+--
+
+. Затем создайте экземпляр процесса (<<ProcInstance,process instance>>) и свяжите его с описанием процесса и сущностью проекта:
++
+--
+[source, java]
+----
+ProcInstance procInstance = metadata.create(ProcInstance.class);
+procInstance.setProcDefinition(procDefinition);
+procInstance.setEntityId(getItem().getUuid());
+procInstance.setEntityName(getItem().getMetaClass().getName());
+----
+--
+
+. Создайте участников процесса (<<ProcActor,process actors>>), назначив их роли:
++
+--
+[source, java]
+----
+ProcActor manager = metadata.create(ProcActor.class);
+manager.setUser(userSession.getUser());
+manager.setOrder(0);
+manager.setProcInstance(procInstance);
+manager.setProcRole(procDefinition.getProcRoles().get(0));
+
+ProcActor mechanic = metadata.create(ProcActor.class);
+mechanic.setUser(getItem().getMechanic().getUser());
+mechanic.setOrder(1);
+mechanic.setProcInstance(procInstance);
+mechanic.setProcRole(procDefinition.getProcRoles().get(1));
+----
+--
+
+. Свяжите набор участников с экземпляром процесса:
++
+--
+[source, java]
+----
+Set<ProcActor> procActors = new HashSet<>();
+procActors.add(manager);
+procActors.add(mechanic);
+
+procInstance.setProcActors(procActors);
+----
+--
+
+. Сохраните созданные сущности участников и процесса в базе данных:
++
+--
+[source, java]
+----
+Set<Entity> committed = dataManager.commit(new CommitContext()
+        .addInstanceToCommit(manager)
+        .addInstanceToCommit(mechanic)
+        .addInstanceToCommit(procInstance));
+----
+--
+
+. Запустите сохранённый экземпляр процесса:
++
+--
+[source, java]
+----
+ProcInstance committedProcInstance = (ProcInstance) committed.stream()
+        .filter(p -> p.equals(procInstance))
+        .findFirst()
+        .orElseThrow(() -> new RuntimeException("Error"));
+
+processRuntimeService.startProcess(committedProcInstance, "Started!", new HashMap<>());
+----
+--
+
+В данном примере метод `startProcess()` вызывается в контроллере экрана по нажатию кнопки. Код метода полностью:
+
+[source, java]
+----
+include::{sourcesdir}/start_process.java[]
+----
