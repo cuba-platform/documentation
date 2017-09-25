@@ -78,17 +78,19 @@ where u.group_id = ${group.groupId}
 You should manually include conditions to filter soft deleted records for SQL queries.
 ====
 
-[[sql_preprocessing]]
-SQL preprocessing in bands::
+By default, SQL queries are executed on the main database. If you want to query an additional data store (see Developer's Manual), set its name in the *Data store* field.
+
+[[query_preprocessing]]
+Query preprocessing in bands::
 +
 --
-If you need to modify the SQL/JPQL query dynamically depending on the report input parameters, or the parameter values from the parent band, you can use the SQL preprocessing. In order to activate it, check the *Preprocess SQL as Groovy template* checkbox below the band editor. The resulting query will be processed by `GStringTemplateEngine`. The template engine will have access to:
+If you need to modify the SQL/JPQL query dynamically depending on the report input parameters, or the parameter values from the parent band, you can use the SQL preprocessing. In order to activate it, check the *Preprocess query as Groovy template* checkbox below the band editor. The resulting query will be processed by `GStringTemplateEngine`. The template engine will have access to:
 
 * the report parameters: `${<parameter_name>}`,
 
-* the values from the parent band: `{<band_name>.<parameter_name>}`.
+* values from parent bands: `{<band_name>.<parameter_name>}`.
 
-For example, depending on the `createTs2` report parameter you need to select one of the two the query conditions: `e.create_ts < ${createTs2}` or `e.create_ts < current_timestamp`.
+Let's consider the following example: depending on the `createTs2` report parameter you need to select one of the query conditions: `e.create_ts < ${createTs2}` or `e.create_ts < current_timestamp`.
 
 In this case the query should look like:
 
@@ -101,18 +103,7 @@ and
 <% out << (createTs2 != null  ? 'e.create_ts < ${createTs2}' : 'e.create_ts < current_timestamp')%>
 ----
 
-Then the template engine will transform it into
-
-[source, sql]
-----
-select e.create_ts, e.id, e.vin from ref_car e
-where
-e.create_ts >= \${createTs1}
-and
-<% if (createTs2 != null) out << 'e.create_Ts < ${createTs2}' else out << 'e.create_Ts < current_timestamp'%>
-----
-
-and then
+Then the template engine will transform it into:
 
 [source, sql]
 ----
@@ -123,10 +114,8 @@ and
 <% if (createTs2 != null) {%>e.create_Ts < \${createTs2} <%} else {%> e.create_Ts < current_timestamp <%}%>
 ----
 
-, thus enabling you to write queries in SQL/JPQL instead of Groovy directly.
+Thus, the template engine enables you to modify SQL/JPQL queries using Groovy.
 --
-
-By default, SQL queries are executed on the main database. If you want to query an additional data store (see Developer's Manual), set its name in the *Data store* field.
 
 [[structure_jpql]]
 ==== JPQL Dataset
@@ -145,7 +134,7 @@ where u.group.id = ${group.groupId}
 
 JPQL queries automatically support soft deletion and return only records which are not deleted.
 
-You can also activate <<sql_preprocessing,JPQL preprocessing>> by checking the *Preprocess SQL as Groovy template* checkbox below the band editor.
+You can also activate <<query_preprocessing,query preprocessing>> by checking the *Preprocess query as Groovy template* checkbox below the band editor.
 
 By default, JPQL queries use entities mapped to the the main database. If you want to query entities from an additional data store (see Developer's Manual), set its name in the *Data store* field.
 
