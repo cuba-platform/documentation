@@ -87,6 +87,54 @@ where u.group_id = ${group.groupId}
 В запросы на SQL необходимо вручную включать условия фильтрации мягко удаленных записей.
 ====
 
+[[sql_preprocessing]]
+Препроцессор SQL в запросах полос::
++
+--
+Если вам нужно изменять запросы SQL/JPQL динамически в зависимости от значений параметров отчёта, можно использовать предварительную обработку SQL. Для её активации установите флажок *Preprocess SQL as Groovy template* под редактором полосы. Результирующий запрос будет обработан шаблонизатором `GStringTemplateEngine`, в котором доступны:
+
+* параметры отчёта: `${<parameter_name>}`,
+
+* значения из родительской полосы: `{<band_name>.<parameter_name>}`.
+
+Например, в зависимости от значения параметра `createTs2` вам необходимо выбирать, какое из условий использовать в запросе: `e.create_ts < ${createTs2}` или `e.create_ts < current_timestamp`.
+
+В этом случае запрос может выглядеть так:
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+<% out << (createTs2 != null  ? 'e.create_ts < ${createTs2}' : 'e.create_ts < current_timestamp')%>
+----
+
+Шаблонизатор трансформирует его в:
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+<% if (createTs2 != null) out << 'e.create_Ts < ${createTs2}' else out << 'e.create_Ts < current_timestamp'%>
+----
+
+а затем в
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+<% if (createTs2 != null) {%>e.create_Ts < \${createTs2} <%} else {%> e.create_Ts < current_timestamp <%}%>
+----
+
+, таким образом позволяя писать запросы на SQL/JPQL вместо Groovy.
+--
+
 По умолчанию SQL-запросы выполняются в основной базе данных. Если необходимо выполнить запрос в дополнительном хранилище данных (см. Руководство по разработке приложений), в поле *Data store* необходимо указать его имя.
 
 [[structure_jpql]]
@@ -105,6 +153,8 @@ where u.group.id = ${group.groupId}
 ----
 
 Запросы на JPQL автоматически поддерживают мягкое удаление и возвращают только неудаленные записи.
+
+Также вы можете использовать <<sql_preprocessing,препроцессор JPQL>>, установив флажок *Preprocess SQL as Groovy template* под редактором полосы.
 
 По умолчанию JPQL-запросы выполняются по сущностям основной базы данных. Если необходимо выполнить запрос к сущностям дополнительного хранилища (см. Руководство по разработке приложений), в поле *Data store* необходимо указать его имя.
 
