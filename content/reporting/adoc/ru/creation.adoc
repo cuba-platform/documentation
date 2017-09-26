@@ -93,13 +93,13 @@ where u.group_id = ${group.groupId}
 Препроцессор запросов::
 +
 --
-Если вам нужно изменять запросы SQL/JPQL динамически в зависимости от значений параметров отчёта, можно использовать предварительную обработку SQL. Для её активации установите флажок *Preprocess query as Groovy template* под редактором полосы. Результирующий запрос будет обработан шаблонизатором `GStringTemplateEngine`, в котором доступны:
+Если вам нужно изменять запросы SQL/JPQL динамически в зависимости от значений параметров отчёта, можно использовать предварительную обработку SQL. Препроцессор позволяет модифицировать SQL/JPQL-запросы с помощью Groovy. Для активации препроцессора установите флажок *Preprocess query as Groovy template* под редактором полосы. Результирующий запрос будет обработан шаблонизатором `GStringTemplateEngine`, в котором доступны:
 
 * параметры отчёта: `${<parameter_name>}`,
 
 * значения из родительских полос: `{<band_name>.<parameter_name>}`.
 
-Например, в зависимости от значения параметра `createTs2` вам необходимо выбирать, какое из условий использовать в запросе: `e.create_ts < ${createTs2}` или `e.create_ts < current_timestamp`.
+Например, в зависимости от того, передан параметр запроса `createTs2` или нет, вам необходимо выбирать, какое из условий использовать в запросе: `e.create_ts < ${createTs2}` или `e.create_ts < current_timestamp`.
 
 В этом случае запрос может выглядеть так:
 
@@ -112,7 +112,7 @@ and
 <% out << (createTs2 != null  ? 'e.create_ts < ${createTs2}' : 'e.create_ts < current_timestamp')%>
 ----
 
-Шаблонизатор трансформирует его в:
+Теперь, если параметр `createTs2` не передан, исходный запрос будет преобразован в следующий:
 
 [source, sql]
 ----
@@ -120,10 +120,19 @@ select e.create_ts, e.id, e.vin from ref_car e
 where
 e.create_ts >= \${createTs1}
 and
-<% if (createTs2 != null) out << 'e.create_Ts < ${createTs2}' else out << 'e.create_Ts < current_timestamp'%>
+e.create_ts < current_timestamp
 ----
 
-Таким образом, препроцессор позволяет модифицировать SQL/JPQL-запросы с помощью Groovy.
+Если же `createTs2` передан, для формирования полосы будет использован следующий результирующий запрос:
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+e.create_ts < ${createTs2}
+----
 --
 
 [[structure_jpql]]
