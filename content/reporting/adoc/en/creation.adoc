@@ -80,6 +80,52 @@ You should manually include conditions to filter soft deleted records for SQL qu
 
 By default, SQL queries are executed on the main database. If you want to query an additional data store (see Developer's Manual), set its name in the *Data store* field.
 
+[[query_preprocessing]]
+Query preprocessing in bands::
++
+--
+If you need to modify the SQL/JPQL query dynamically depending on the report input parameters, or the parameter values from the parent band, you can use the SQL preprocessing. The template engine enables you to modify SQL/JPQL queries using Groovy. In order to activate it, check the *Preprocess query as Groovy template* checkbox below the band editor. The resulting query will be processed by `GStringTemplateEngine` that will have access to:
+
+* the report parameters: `${<parameter_name>}`,
+
+* values from parent bands: `{<band_name>.<parameter_name>}`.
+
+Let's consider the following example: depending on whether the `createTs2` report parameter is passed you need to select one of the query conditions: `e.create_ts < ${createTs2}` or `e.create_ts < current_timestamp`.
+
+In this case the query should look like:
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+<% out << (createTs2 != null  ? 'e.create_ts < ${createTs2}' : 'e.create_ts < current_timestamp')%>
+----
+
+Thus, if the `createTs2` parameter is not passed, the initial query will be transformed into the following resulting query:
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+e.create_ts < current_timestamp
+----
+
+If `createTs2` is passed, the following resulting query will be used for the band:
+
+[source, sql]
+----
+select e.create_ts, e.id, e.vin from ref_car e
+where
+e.create_ts >= \${createTs1}
+and
+e.create_ts < ${createTs2}
+----
+--
+
 [[structure_jpql]]
 ==== JPQL Dataset
 
@@ -96,6 +142,8 @@ where u.group.id = ${group.groupId}
 ----
 
 JPQL queries automatically support soft deletion and return only records which are not deleted.
+
+You can also activate <<query_preprocessing,query preprocessing>> by checking the *Preprocess query as Groovy template* checkbox below the band editor.
 
 By default, JPQL queries use entities mapped to the the main database. If you want to query entities from an additional data store (see Developer's Manual), set its name in the *Data store* field.
 
