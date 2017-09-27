@@ -1,14 +1,51 @@
 [[setup_pentaho]]
 == Setting Up Pentaho
 
-. Download and install Pentaho from http://www.pentaho.com/download
+. Download and install Pentaho Community Edition from https://community.hds.com/community/products-and-solutions/pentaho/:
++
+* Downloads → Main Downloads → Business Analytics Platform
 
-. Stop _Pentaho Server_ and _Pentaho Solution Repository_ background processes in Windows Services or its equivalent.
+. Download Saiku Analytics plugin (Meteorite BI) from http://www.pentaho.com/marketplace/ and install it.
 
-. Change Pentaho default port to 8081.
+. Move the `saiku` folder to the `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system` directory, where `$PENTAHO_HOME` is the directory where Pentaho is installed.
+
+. The Saiku plugin doesn't work with the latest version of Pentaho Server. Do the following to fix the problem:
 +
 --
-* Navigate to `$PENTAHO_HOME/server/pentaho-server/tomcat/conf`, where `$PENTAHO_HOME` is the directory where Pentaho is installed.
+* Remove the `cpf-core-6.0.0.0-353.jar` and `cpf-pentaho5-6.0.0.0-353.jar` libraries from `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/saiku/lib` folder.
+
+* Copy the following libraries from `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/sparkl/lib` to `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/saiku/lib` folder:
+
+[source, plain]
+----
+cpf-core-7.1.0.0-12.jar
+
+cpf-pentaho-7.1.0.0-12.jar
+
+cpk-core-7.1.0.0-12.jar
+
+cpk-pentaho5-7.1.0.0-12.jar
+----
+--
+
+. Access the http://licensing.meteorite.bi and sign up for a new account. Once you have validated your account, create a new company and generate the community license for it:
++
+--
+* Login to the system and click the CREATE NEW LICENSE button.
+
+* On the new license page, set the license type to COMMUNITY_EDITION.
+
+* Save and download the license. Rename the file to `license.lic` and then copy it to the `$PENTAHO_HOME$/pentaho-server/pentaho-solutions/system/saiku`
+--
+
+. Download and install Pentaho Data Integration from https://community.hds.com/community/products-and-solutions/pentaho/:
++
+* Downloads → Main Downloads → Data Integration
+
+. Change Pentaho default port to 8081:
++
+--
+* Navigate to `$PENTAHO_HOME/pentaho-server/tomcat/conf`.
 
 * Change default Tomcat port to 8081 in the `server.xml`:
 
@@ -18,24 +55,38 @@ include::{sourcesdir}/bi_port.xml[]
 ----
 --
 
-. Setup authentication of CUBA users in Pentaho.
+. Change the Tomcat shutdown port to 8015 in the `server.xml` to avoid collision with CUBA default shutdown port:
 +
 --
-* Download https://dl.bintray.com/cuba-platform/main/com/haulmont/addon/bi/cuba-bi-pentaho/{addonVer}/cuba-bi-pentaho-{addonVer}.jar and copy it to `$PENTAHO_HOME$/server/pentaho-server/tomcat/webapps/pentaho/WEB-INF/lib`.
+[source,xml]
+----
+include::{sourcesdir}/bi_shutdown_port.xml[]
+----
+--
 
-* Create new `cuba-pentaho-authentication.xml` file in the `$PENTAHO_HOME/server/pentaho-server/pentaho-solutions/system` folder with the following content:
+. Setup authentication of CUBA users in Pentaho:
++
+--
+* Download https://dl.bintray.com/cuba-platform/main/com/haulmont/addon/bi/cuba-bi-pentaho/1.2.0/cuba-bi-pentaho-1.2.0.jar and copy it to `$PENTAHO_HOME$/pentaho-server/tomcat/webapps/pentaho/WEB-INF/lib`.
+
+* Create new `cuba-pentaho-community-authentication.xml` file in the `$PENTAHO_HOME/pentaho-server/pentaho-solutions/system` folder with the following content:
 +
 [source,xml]
 ----
-include::{sourcesdir}/cuba-pentaho-authentication.xml[]
+include::{sourcesdir}/cuba-pentaho-community-authentication.xml[]
 ----
 +
 [TIP]
 ====
-Specify URL of your CUBA application in the `cubaConnectionUrl` property of the `cubaAuthenticationFilter` bean.
+Specify URL of your CUBA application in the `cubaConnectionUrl` property of the `cubaAuthenticationFilter` bean:
+
+[source, xml]
+----
+<property name="cubaConnectionUrl" value="http://localhost:18080/app"/>
+----
 ====
 
-* Edit `pentaho-spring-beans.xml` in `pentaho-solutions/system` and add the line `<import resource="cuba-pentaho-authentication.xml" />` after the `<import resource="applicationContext-spring-security.xml" />` line:
+* Edit `pentaho-spring-beans.xml` in `pentaho-solutions/system` and add the line `<import resource="cuba-pentaho-community-authentication.xml" />` after the `<import resource="applicationContext-spring-security.xml" />` line:
 +
 [source,xml]
 ----
@@ -43,4 +94,10 @@ include::{sourcesdir}/bi_beans.xml[]
 ----
 --
 
-. Start _Pentaho Server_ and _Pentaho Solution Repository_ background processes in Windows Services or its equivalent.
+. Start Pentaho Server:
++
+--
+* Navigate to the `$PENTAHO_HOME$` directory.
+
+* Run `start-pentaho.bat`
+--
