@@ -1,0 +1,375 @@
+[[polymer_manual__advanced]]
+=== Polymer Core Advanced
+
+Despite the name of a section techniques listed there are required to build almost any real web application
+that consisted more than of a dozen components. So, their knowledge is essential.
+
+
+[[polymer_manual__advanced__dom]]
+==== Accessing DOM elements
+
+The simplest and the most straightforward method to access an HTML element from JS code is to use id-s. Please, check an example below.
+
+Click on the button to see what it's doing:
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-advanced/dom/colored-square-controller.html">
+
+<div class="polymer-demo-container">
+    <colored-square-controller></colored-square-controller>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-advanced/dom/colored-square-controller.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <colored-square-controller></colored-square-controller>
+</body>
+</html>
+----
+
+.src/polymer-advanced/dom/colored-square-controller.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/dom/colored-square-controller.html[]
+----
+
+.src/polymer-advanced/dom/colored-square.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/dom/colored-square.html[]
+----
+
+So, as we can see by using `this.$` we can access elements that contain id. In found elements we can change properties and call methods.
+
+TIP: Please note how we used attribute `black$` instead of `black`. What's the difference? +
+If we used just `black` then during the component initialization Polymer would or would not put `black` attribute in dom on div
+based on if `black` property is true or false. And if the `black` property changed later Polymer
+wouldn't add/remove this attribute from a div.
+So, it's would be impossible to use it in CSS (`.square[black]`). +
+But when we use `black$` Polymer automatically updates HTML attribute `black` based on changes in `black` property. +
+Simply speaking, if we in our example used `black` instead of `black$` then the square would always be white.
+No matter how much we press a button.
+
+However, the `this.$` syntax won't always work. Let us put a colored-square inside an if-template.
+In this case `this.$.square` won't work even the condition is true.
+
+.src/polymer-advanced/dom/colored-square-controller-with-if.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/dom/colored-square-controller-with-if.html[]
+----
+
+In such cases we can use `this.$$("selector")` to find a required element. This method will dynamically search for the element.
+
+.src/polymer-advanced/dom/colored-square-controller-with-if-fixed.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/dom/colored-square-controller-with-if-fixed.html[]
+----
+
+*What have we learned so far?*
+
+* `this.$.{id}` can be used to find an element with a particular id. However, it won't work if this element is
+added/removed dynamically from DOM.
+
+* `this.$$("{selector}")` can be used to find an element by CSS selector.
+
+* We can change properties on the found element and call its methods.
+
+* Prefix attributes of tags with "$" if you want them to be changed when element properties change. Mostly, it's required
+when we want to use these attributes in our CSS.
+
+[[polymer_manual__advanced__computed]]
+==== Computed Properties
+
+Sometimes, we need properties that depend on other properties. For example, we have properties `firstName`, `lastName`
+and also need property `fullName` that practically just concatenates first and last names.
+Or we have a boolean property that defines if a button is enabled or disabled.
+And this boolean property depends on a number of other properties.
+
+One thing is obvious. We shouldn't manually change a value for this synthetic properties.
+It should be calculated automatically.
+
+Luckily Polymer provides so called computed properties. Let's have a look on them.
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-advanced/computed-properties/service-agreement.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <service-agreement></service-agreement>
+</body>
+</html>
+----
+
+.src/polymer-advanced/computed-properties/service-agreement.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/computed-properties/service-agreement.html[]
+----
+
+*Result:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-advanced/computed-properties/service-agreement.html">
+
+<div class="polymer-demo-container">
+    <service-agreement></service-agreement>
+</div>
+
+++++
+
+In this example a user cannot confirm a form until he types in his name and agrees to some agreement.
+
+It's essential to specify what properties we depend on.
+
+You cannot just type `computed: "isContinueEnabled()"` and then use `this.name` and `this.agreementConfirmed` in `isContinueEnabled` method.
+Because this way Polymer won't know what properties we depend on. And it won't re-calculate a computed property when required.
+
+*What have we learned so far?*
+
+* We can use computed properties when we need to have some information that can be calculated based on other properties.
+
+[[polymer_manual__advanced__observers]]
+==== Observers
+
+Sometimes, we want to listen to changes in some properties and react on them. For example, we could want
+to send some notifications to a server if the user enters some information.
+
+The example below demonstrates it. Basically, a user can choose a type of his company and we save this information somewhere in a db.
+
+*Company type selector:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-advanced/observers/company-type-select.html">
+
+<div class="polymer-demo-container">
+    <company-type-select></company-type-select>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-advanced/observers/company-type-select.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <company-type-select></company-type-select>
+</body>
+</html>
+----
+
+.src/polymer-advanced/observers/company-type-select.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/observers/company-type-select.html[]
+----
+
+Observers can be much more complex. For example, we could want to monitor changes in several different properties.
+
+Let's just a little enhance our previous example by adding there a contact name input.
+
+.src/polymer-advanced/observers/company-type-select-enhanced.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/observers/company-type-select-enhanced.html[]
+----
+
+*Enhanced company type selector:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-advanced/observers/company-type-select-enhanced.html">
+
+<div class="polymer-demo-container">
+    <company-type-select-enhanced></company-type-select-enhanced>
+</div>
+
+++++
+
+*What have we learned so far?*
+
+* We can monitor changes in a single property by using an `observer` attribute. An observer function accepts 2 arguments:
+an old value and a new one.
+
+* We can monitor several properties at the same time by using observers array. But we lose information about old values in this case.
+
+[[polymer_manual__advanced__lifecycle]]
+==== Callback Events
+
+As we saw previously Polymer components give as a possibility to create an arbitrary number of properties and methods.
+That's certainly enough to build components that can be used by other components and react on events and changes of properties.
+But sometimes we need more. In some cases we want to automatically do some actions on components initialization. Wouldn't it be
+great if Polymer provided us a place where we can store some arbitrary code block that would be called on component initialization?
+
+Luckily, it's already implemented in Web Components! To use this feature it's enough to implement methods with particular names:
+
+- *constructor.* Called when an element is created but before property values are set.
+
+- *connectedCallback.* Called when an element is created and properties are set.
+
+- *disconnectedCallback.* Called when an element is removed from a document.
+
+So, for example, the user opens some profile page and we would like to load all required details from the server
+before showing them to a user.
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-advanced/lifecycle/profile-page.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <profile-page></profile-page>
+</body>
+</html>
+----
+
+.src/polymer-advanced/lifecycle/profile-page.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/lifecycle/profile-page.html[]
+----
+
+.src/polymer-advanced/lifecycle/personal-details-page.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/lifecycle/personal-details-page.html[]
+----
+
+.src/polymer-advanced/lifecycle/preferences-page.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/lifecycle/preferences-page.html[]
+----
+
+*Result:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-advanced/lifecycle/profile-page.html">
+
+<div class="polymer-demo-container">
+    <profile-page></profile-page>
+</div>
+
+++++
+
+*What have we learned so far?*
+
+* During it's lifecycle Polymer elements call a number of callback methods.
+We can use these methods to place our initialization logic there.
+
+[[polymer_manual__advanced__mixins]]
+==== Mixins
+
+Inheritance in Polymer is implemented with so called *Mixins*.
+
+Mixin is a set of methods, properties, observers and lifecycle callback methods that can be inherited by any Polymer element.
+
+Each web component can use any number of mixins. Web components can use mixins' methods and properties as if they were
+their own. And mixins can use web components' methods and properties.
+
+Here is an example to demonstrate how mixins are written and used. It's a spelling improvement program that offers
+a user to type some word. If the user fails to spell it correctly then an input will be highlighted with red. But on any typing
+the highlighting will be removed. Logic for setting/removing error state in a component is implemented by a mixin called
+`ValidatedElementMixin`.
+
+*Spelling checker:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-advanced/mixins/spelling-checker.html">
+
+<div class="polymer-demo-container">
+    <spelling-checker word="Elephant"></spelling-checker>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-advanced/mixins/spelling-checker.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <spelling-checker word="Elephant"></spelling-checker>
+</body>
+</html>
+----
+
+.src/polymer-advanced/mixins/spelling-checker.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/mixins/spelling-checker.html[]
+----
+
+.src/polymer-advanced/mixins/input-with-validation.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/mixins/input-with-validation.html[]
+----
+
+.src/polymer-advanced/mixins/validated-element-mixin.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-advanced/mixins/validated-element-mixin.html[]
+----
+
+`input-with-validation` represents a common UI component that supports validation.
+`ValidatedElementMixin` can be implemented by other types of elements: comboboxes, text areas, radio-buttons, etc.
+
+TIP: Please note what we marked `value` property in `input-with-validation.html` with notify attribute.
+It's a necessary action if want to allow clients of this element to use this property with 2-way binding.
+
+In this example we used just one mixin. But it's possible to use any number of them including them into one another.
+For example we could create something like that:
+`class PowerfulInput extends ElementWithDebounceMixin(SelfPersistedElementMixin(ValidatedElementMixin(Polymer.Element)))`
+
+TIP: Please note that prior to version 2.0 Polymer used so called *Behaviors* instead of mixins. They are elements
+similar to mixins with the same destination and possibilities but using another syntax in creation and usage.
+You don't need to create or use behaviors in your code but you might encounter them in 3d party components.
+To know more about behaviors please check https://www.polymer-project.org/1.0/docs/devguide/behaviors.
+
+*What have we learned so far?*
+
+* We can use mixins to implement some common logic and share it between components.
+
+* Mixins can contain methods, properties, lifecycle callback methods and observers.
+
+* After extending a mixin a Polymer component doesn't know which properties/methods are inherited and which are not.
+So, the component treats them the same.
+
+* In order to allow some property to be used by clients in two-way binding we have to mark it with `notify` parameter.

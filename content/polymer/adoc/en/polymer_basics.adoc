@@ -1,0 +1,431 @@
+[[polymer_manual__basic]]
+=== Polymer Core Basics
+
+The foundation of Polymer is creating of reusable components.
+
+Polymer components are stored in *.html files.
+
+Each HTML file contains 1 component. It consists of template (HTML), styles (CSS) and logic (JavaScript).
+
+Polymer components can use other Polymer components.
+
+[[polymer_manual__basic__simple_component]]
+==== Simple Component
+
+Let's check a very simple example. The project consists of 2 files: `index.html` and `alert-button.html`.
+
+`alert-button.html` contains a Polymer component.
+
+`index.html` uses this component.
+
+Please, see the source and the result below:
+
+.src/polymer-basic/simple-component/alert-button.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-basic/simple-component/alert-button.html[]
+----
+
+.index.html
+[source, html]
+----
+<html>
+<!-- index.html is an entry point of our application. -->
+<!-- Usually it loads one root Polymer element which contains all other components. -->
+<!-- So, index.html just contains this one Polymer element + polyfills. -->
+<head>
+    <!-- Link to a web component we want to use -->
+	<link rel="import" href="src/polymer-basic/simple-component/alert-button.html">
+	<!-- Polyfills. -->
+    <!-- Natively web-components work only in Google Chrome. -->
+    <!-- For all other browsers polyfills are required. -->
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <alert-button>
+        <!-- This text goes to <slot/> of the Polymer element -->
+        Our first simple component - alert button!
+    </alert-button>
+</body>
+</html>
+----
+
+*Result:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-basic/simple-component/alert-button.html">
+
+<div class="polymer-demo-container">
+    <alert-button>Our first simple component - alert button!</alert-button>
+</div>
+
+++++
+
+So, `alert-button` is a component that is represented by a button and a caption to this button.
+
+On click this button shows a message: "Hello, User!". The code using this component might provide a caption inside
+`<alert-button/>` tag. But the `slot` is not required. So, the user might omit it while using `alert-button`.
+
+These are the basics that allow to write and use simple Polymer components.
+
+[TIP]
+====
+You probably noticed that in `index.html` we imported polyfill script.
+This script checks what exactly our browser doesn't support (HTML imports, shadow DOM, custom elements) and loads
+only polyfills that are really required.
+
+If you are eager to know more on this topic, please visit
+https://github.com/webcomponents/webcomponentsjs[GitHub repository of the project].
+====
+
+*What have we learned so far?*
+
+* Polymer components are declared in *.html files inside `dom-module` tag.
+
+* Each Polymer element file can contain CSS (optional), HTML (optional) and JavaScript (mandatory).
+
+* Polymer component is declared by creating a class that extends `Polymer.Element` and registering it with `customElements` object.
+Our web component has to contain static property `is` which has to match an id of a `dom-module`
+and which is used to use this Polymer component afterwards.
+
+* Polymer parameter object can contain an arbitrary number of functions that can be called in handlers from HTML.
+
+* CSS declared in Polymer elements don't affect a rest of the application.
+
+* Polymer components can import our Polymer components and use them and can be imported by our code and used by it.
+
+[[polymer_manual__basic__properties]]
+==== Properties
+
+These days it's hard to imagine a web-framework without property binding functionality. Polymer is not an exception.
+
+Let's review a component that demonstrates binding abilities of Polymer.
+
+Basically, there is an input where a user can type something.
+All he is typing is duplicated below by using of property binding.
+Let's see.
+
+*Our guesser component:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-basic/properties/name-guesser.html">
+
+<div class="polymer-demo-container">
+    <name-guesser placeholder="Your name goes there"></name-guesser>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-basic/properties/name-guesser.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <name-guesser placeholder="Your name goes there"></name-guesser>
+</body>
+</html>
+----
+
+.src/polymer-basic/properties/name-guesser.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-basic/properties/name-guesser.html[]
+----
+
+There are 2 types of binding:
+
+* *[]* - one-way binding. A component listens to changes of a particular property and reacts on it by refreshing the value.
+
+* *{}* - two-way binding. A component not only listens to property changes but can also change it itself which will lead
+to changes in an original property.
+
+In this particular example we see that input listens to changes in "name" property and can change it itself. And these changes
+will affect all other places in code that use this property.
+
+In this component we could use everywhere `{}` instead of `[]` and the component still would work as expected but
+(1) a correct choice of binding increases readability of a code and makes the support easier;
+(2) in many cases it's essential to choose right. Otherwise, the application might work incorrect.
+If we use one-way binding instead of two-way then we just won't get any changes in our properties.
+If we use two-way binding instead of one-way it misleads fellow-programmers and complicates refactoring.
+
+A Polymer component can configure all its properties in `properties` container. It can just specify a type of a property
+(String, Boolean, Number, Object, Array, Date) or provide a number of different parameters. One of these parameters is `value` which
+specifies a default value for the property. Placeholder has default value "Your name please". But in our case it's overriten
+with "Your name goes there". We also could provide name while using "name-guesser" (`<name-guesser name ="Charlie"></name-guesser`).
+That would cause to input be filled on init.
+
+[subs="none"]
+++++
+
+<div class="polymer-demo-container">
+    <name-guesser name="Charlie" placeholder="Your name goes there"></name-guesser>
+</div>
+
+++++
+
+Apart from `value` a property can have a lot of other attributes (`observer`, `notify`, etc.) that partially will be reviewed further.
+
+`bind-value` in `iron-input` is also a property. If we go to the source file of `iron-input` we will see:
+
+[source, html]
+----
+    ...
+    properties: {
+
+      /**
+       * Use this property instead of `value` for two-way data binding.
+       */
+      bindValue: {
+        type: String
+      },
+      ...
+----
+
+You can notice an important detail there. Properties are named with CamelCase in JavaScript but used with kebab-case in HTML.
+
+*What have we learned so far?*
+
+* Use `[]` for one-way binding.
+
+* Use `{}` for two-way binding.
+
+* Describe your properties in `properties` block.
+
+* For each property you can provide type, default value and a number of other properties.
+
+* You can provide properties from outside a Polymer element by using of HTML attributes.
+
+* `iron-input` is a Polymer element that allows to use two-way binding in input.
+
+[[polymer_manual__basic__templating]]
+==== Templating
+
+Polymer provides convenient means for templating: conditional template (`dom-if`) and template repeater (`dom-repeat`).
+
+The following example demonstrates these features. It's a component named `name-list`. It allows a user to create a list of names. It provides an input where the user can enter some name and confirm it by pushing a confirm button. The confirmed name will be added to the list and displayed below.
+
+To prevent a user from entering too much names there is a property `maxNameLength`. When a list size reaches some limit (3, by default) the input disappears.
+
+*Result:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-basic/templating/name-list.html">
+
+<div class="polymer-demo-container">
+    <name-list></name-list>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-basic/templating/name-list.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <name-list></name-list>
+</body>
+</html>
+----
+
+.src/polymer-basic/templating/name-list.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-basic/templating/name-list.html[]
+----
+
+This example shows how we can work with `dom-if` and dom-repeat templates.
+
+Another interesting detail is how we change properties. We should use special Polymer methods to mutate our properties.
+
+If we forget to do it and change our properties as we change local variables (using "=" operator) then UI won't be updated
+when property is updated.
+
+[TIP]
+====
+Strictly speaking, you don't have to always use `set()` method.
+In an example above you could just write `this.newName = '';` and it would work.
+But if you used `this.names.push(this.newName);` it wouldn't work.
+
+And if you are working with objects you have to always use `set` method.
+
+`this.someObject.someProperty = 'value';` // won't work properly
+
+`this.set('someObject.someProperty', 'value');` // will work
+
+And if in some cases we use "=" then during refactoring this can be easily broken by mixing up the rules.
+
+It might seem a little complicated. Well, it is.
+
+So, our recommendation is to always use `set()` instead of a simple value assignment.
+This will guarantee that you won't forget the rules and won't break anything on code copy-paste or refactoring.
+But, of course, it's up to you.
+====
+
+*What have we learned so far?*
+
+* `dom-if` template can be used when some content should be shown/hidden on some condition.
+
+* `dom-repeat` template can be used to display an array of elements.
+
+* The default values of object properties have to be specified with functions to avoid sharing a state between components.
+
+* We should mutate web component properties by using a set of Polymer methods.
+
+[[polymer_manual__basic__events]]
+==== Events Firing and Handling
+
+Often child components have to notify parent components that something happened: a button was pushed, a form was confirmed, etc.
+
+In Polymer it's implemented using standard observer pattern. A child component emits some event and a parent listens to it.
+
+Let's check it on a simple example. So, there is a simple form consisting of one input and one button. A user enters his name
+and this form notifies a parent component that the form was confirmed. And also passes an entered name to it.
+
+*The form:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-basic/events/event-manager.html">
+
+<div class="polymer-demo-container">
+    <event-manager></event-manager>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-basic/events/event-manager.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <event-manager></event-manager>
+</body>
+</html>
+----
+
+.src/polymer-basic/events/event-manager.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-basic/events/event-manager.html[]
+----
+
+.src/polymer-basic/events/participation-form.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-basic/events/participation-form.html[]
+----
+
+[TIP]
+====
+If you have some experience with JavaScript events you probably noticed that we didn't put `e.stopPropagation();`
+expression into `formSubmitted(e)` method of `EventManager` component.
+The reason we don't stop propagation is that there is no propagation.
+
+For example, there are Component1, Component2 and Component3.
+Component1 contains Component2.
+Component2 contains Component3.
+Component3 emits some event.
+In this case Component2 will receive this event and Component1 won't.
+This behavior is convenient in most cases but can be changed by using `composed` property.
+To know more please check https://www.polymer-project.org/2.0/docs/devguide/events[the official guide].
+====
+
+*What have we learned so far?*
+
+* To emit an event we can use `dispatchEvent(event)` method. To create an event we can use `CustomEvent` constructor
+which accepts as parameters an event name (mandatory) and a settings object (optional).
+We can put our custom parameters into `detail` property of a settings object.
+
+* Listen to events by using `on-{eventName}` attribute;
+
+* Retrieve parameters from events by using `detail` property of an event.
+
+[[polymer_manual__basic__library]]
+==== Polymer Elements Library
+
+Polymer provides a large set of standard components that are grouped in collections.
+There are so called app-elements, gold-elements, paper-elements, platinum-elements, etc.
+
+The most basic and commonly used are iron elements (https://www.webcomponents.org/collection/PolymerElements/iron-elements)
+and paper elements (https://www.webcomponents.org/collection/PolymerElements/paper-elements).
+
+Iron elements provide some very basic elements that are required for almost every project: input, label, etc.
+
+Paper elements provide a set of UI compoments implementing material design: input, checkbox, slider, etc.
+
+You already saw `iron-input` in our previous examples.
+
+Let's check one of the paper elements.
+
+[.lead]
+Paper checkbox
+
+Paper-checkbox is a flat design implementation of a simple checkbox. Here is a simple application that uses this element.
+
+*Music taste analyzer:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/polymer-basic/library/music-survey.html">
+
+<div class="polymer-demo-container">
+    <music-survey></music-survey>
+</div>
+
+++++
+
+So, it’s a component that can analyze person’s music preferences and draw a mental portrait based on it.
+Let's check how it works under the hood.
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/polymer-basic/library/music-survey.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <music-survey></music-survey>
+</body>
+</html>
+----
+
+.src/polymer-basic/library/music-survey.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/polymer-basic/library/music-survey.html[]
+----
+
+To learn more about a standard library of Polymer elements please visit https://www.webcomponents.org/collection/Polymer/elements
+
+*What have we learned so far?*
+
+* Polymer offers a number of ready-to-use components.
+
+* Iron components are the most important components from the standard library.
+
+* Paper components library provides a list of UI components implementing material design.
+
+* We can use `Polymer.dom(this.root).querySelectorAll("some-selector-there")` to find elements in our component.

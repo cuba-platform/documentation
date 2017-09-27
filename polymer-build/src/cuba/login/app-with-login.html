@@ -1,0 +1,60 @@
+<link rel="import" href="../../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../../bower_components/polymer/lib/elements/dom-if.html">
+<link rel="import" href="../../../bower_components/cuba-app/cuba-app.html">
+<link rel="import" href="../../../bower_components/cuba-app/cuba-app-aware-behavior.html">
+<link rel="import" href="../../../bower_components/cuba-login/cuba-login.html">
+
+<dom-module id="app-with-login">
+  <template>
+
+    <!-- 'cuba-app' always should be the first thing in our cuba applications -->
+    <!--  that use CUBA REST API -->
+    <cuba-app api-url="/app/rest/"></cuba-app>
+
+    <template is="dom-if" if="[[!authenticated]]">
+      <!-- Only after the user is authorized -->
+      <!--  the rest of the CUBA REST API can be used -->
+      <cuba-login on-cuba-login-success="_onLoginSuccess" on-cuba-login-error="_onLoginError"></cuba-login>
+    </template>
+
+    <template is="dom-if" if="[[authenticated]]">
+      <h3>Congratulations! You are authenticated and now can use cuba REST API!</h3>
+      <div>
+        <button on-click="_logout">Logout</button>
+      </div>
+    </template>
+
+  </template>
+  <script>
+    class AppWithLogin extends Polymer.mixinBehaviors([CubaAppAwareBehavior], Polymer.Element) {
+      static get is() {
+        return 'app-with-login';
+      }
+
+      static get properties() {
+        return {
+          authenticated: {
+            type: Boolean,
+            value: false
+          }
+        };
+      }
+
+      _onLoginSuccess() {
+        this.set('authenticated', true);
+      }
+
+      _logout() {
+        this.set('authenticated', false);
+        this.app.logout();
+      }
+
+      _onLoginError() {
+        alert('Bad credentials');
+      }
+
+    }
+
+    customElements.define(AppWithLogin.is, AppWithLogin);
+  </script>
+</dom-module>

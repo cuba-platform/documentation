@@ -1,0 +1,556 @@
+[[recipes]]
+== Common Tasks
+
+From project to project, from one framework to another framework we solve the same standard tasks:
+
+* How to implement i18n in the project?
+
+* How to build a navigation block?
+
+* How do I inject my services into components?
+
+* And so on, and so on.
+
+Polymer doesn't have a goal to reach these objectives for us.
+It's primary intention was to provide convenient means for creating custom reusable components.
+Dependency injection, navigation, etc. are beyond this task.
+
+In this section we discuss some of the most frequent tasks encountered in development
+and offer a solution for them.
+
+Of course, they are not the immutable truth.
+The options we describe in this section are just one of the many possible solutions for routine tasks.
+
+[[recipes__conventions]]
+=== Organizing Your Code
+
+Using Polymer we can write clean, reusable components or absolutely incomprehensible elements.
+So, it's not all about the instrument. It's also about how we use it.
+
+This section contains several tips that can help you achieve better readability of the code and
+facilitate its maintenance.
+
+[[recipes__conventions__css]]
+==== CSS
+
+Polymer elements use shadow-dom and their styles don't overlap with each other. It's of course very convenient. But sometimes
+we want to share some CSS between elements.
+
+Let's examine an example of how we can re-use CSS.
+
+First of all we need to create an element that contains common styles we want to share.
+
+.src/recipes/convention/css/shared-styles.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/css/shared-styles.html[]
+----
+
+So, we declared one class and one variable with a color. Now, we can use them in other components.
+
+.src/recipes/convention/css/blue-button.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/css/blue-button.html[]
+----
+
+If we use `blue-button` element the result will be the next.
+
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/recipes/convention/css/blue-button.html">
+
+<div class="polymer-demo-container">
+    <blue-button></blue-button>
+</div>
+
+++++
+
+[[recipes__conventions__private_methods]]
+==== Private Methods and Properties
+
+Any Polymer component can expose an API consisting of a number of methods and properties.
+These component members can be called public.
+But there are also properties and methods that are supposed to be used only by the component itself to manage its work.
+We can name these members as private.
+
+It's a good practice to prefix private methods and properties with underscore.
+It makes a component easier to be used and maintained.
+
+Here is an example.
+
+*Disco lights application:*
+
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/recipes/convention/access-control/disc-jockey.html">
+
+<div class="polymer-demo-container">
+    <disc-jockey></disc-jockey>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/recipes/convention/access-control/disc-jockey.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <disc-jockey></disc-jockey>
+</body>
+</html>
+----
+
+.src/recipes/convention/access-control/disc-jockey.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/access-control/disc-jockey.html[]
+----
+
+.src/recipes/convention/access-control/disco-lights.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/access-control/disco-lights.html[]
+----
+
+[TIP]
+====
+In this component the `_currentColor` property could be as well a public one.
+If the controller doesn't require this information now it might require it in the future.
+But it's an internal component that isn't supposed to be distributed to 3d party projects.
+So, it would be easy to change public API later.
+
+If we intended to release this component on GitHub we would probably add an event on change color.
+And in this event we could add an information about currently selected color.
+====
+
+By adopting this convention we achieve at least 3 goals:
+
+* We explicitly declare what element members can be used.
+
+* We make an API more clear and obvious.
+
+* During refactoring we clearly see names of which properties and methods shouldn't be changed.
+
+[[recipes__conventions__import]]
+==== Managing imports
+
+Negligent treatment of HTML imports will easily allow you to shoot yourself in the foot.
+
+Let's look at the next example.
+There are 2 components.
+First one contains a paper button and a 2nd component.
+This 2nd component also contains a paper button.
+These buttons do absolutely nothing.
+It could appear that it's the most useless example so far.
+But, no. It demonstrates some interesting details about imports.
+
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/recipes/convention/import/parent-button-component.html">
+
+<div class="polymer-demo-container">
+    <parent-button-component></parent-button-component>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/recipes/convention/import/parent-button-component.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <parent-button-component></parent-button-component>
+</body>
+</html>
+----
+
+.src/recipes/convention/import/parent-button-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/import/parent-button-component.html[]
+----
+
+.src/recipes/convention/import/child-button-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/import/child-button-component.html[]
+----
+
+So, we forgot to import the button component into the child component and it still works.
+
+What would happen if we later refactor our `parent-button-component` and decide that
+simple HTML `<button/>` will suffice and remove `paper-button`?
+Well, probably, it's a bit obvious, but nonetheless:
+
+.src/recipes/convention/import/parent-simple-button-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/import/parent-simple-button-component.html[]
+----
+
+*Result:*
+
+[subs="none"]
+++++
+    <iframe
+        height="50"
+        class="polymer-iframe-container"
+        src="html/src/recipes/convention/import/iframe/parent-simple-button-component-app.html">
+
+    </iframe>
+++++
+
+So, we involuntary broke the child component.
+
+It's a simple case to present a matter.
+In real applications there are dozens of components that import each other.
+So, `paper-button` could be used not in a direct child but in one of the great-great-great-grandchild components.
+After a difficult refactoring it's possible not to notice that something broke.
+And when you finally discover that something doesn't work, it can be difficult to find a cause.
+
+But there can be even more complicated cases.
+In our example we imported `paper-button` into the parent component and didn't import it into the child component.
+But we could do the opposite thing. We could import it into the child component and not import it into the parent component.
+And it would work! Apparently in this case it can be broken even easier.
+
+The point of all this is that we should look after what we import.
+We recommend in each custom component to import every other component used by it.
+And if we remove some HTML code later, we should check and remove redundant imports.
+In this case all our components are guaranteed to work when other components are changed/removed/refactored.
+
+There are other conventions that can be used.
+For example, we can import all paper and iron elements in a root component and use them afterwards everywhere else
+without import statements.
+Or we can even import all components in our root component. And we won't need to use imports elsewhere in the code.
+The choice should be made by each team based on their preferences.
+In this case any convention, good or bad, is better than no convention at all.
+
+TIP: Of course if you bundle your client code before production (and CUBA Studio bundles Polymer code by default) then
+the problem is entirely in an area of development environment. On production and test environment there are no import statements
+because there is a single HTML file containing all code.
+
+[[recipes__i18n]]
+=== Internationalization
+
+Internationalization is a common task we face on many projects.
+And even if we don't intend to support several languages it still can useful to store all user messages together to
+have better perspective or/and to avoid duplication.
+
+CUBA provides the `CubaLocalizeBehavior` that can be used to assist you in this task.
+Basically, it just introduces the `msg()` method that gets messages from the `messages` property depending on the current locale.
+
+There is an example:
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/recipes/i18n/simple-greeting-component.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <simple-greeting-component></simple-greeting-component>
+</body>
+</html>
+----
+
+.src/recipes/i18n/simple-greeting-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/i18n/simple-greeting-component.html[]
+----
+
+*Result:*
+
+[subs="none"]
+++++
+    <iframe
+        height="100"
+        class="polymer-iframe-container"
+        src="html/src/recipes/i18n/stub/simple-greeting-component-stub.html"></iframe>
+++++
+
+`CubaLocalizeBehavior` in order to work requires an initialized `cuba-app`.
+Check <<cuba__setup, this section>> to know more.
+
+How is default locale determined? It's up to you. You can set a locale on component initialization.
+You also can provide some kind of language switcher that changes a locale. Changing locale is pretty straightforward.
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/recipes/i18n/locale-switcher.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <locale-switcher></locale-switcher>
+</body>
+</html>
+----
+
+.src/recipes/i18n/locale-switcher.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/i18n/locale-switcher.html[]
+----
+
+*Result:*
+
+[subs="none"]
+++++
+    <iframe
+        height="100"
+        class="polymer-iframe-container"
+        src="html/src/recipes/i18n/stub/locale-switcher-stub.html"></iframe>
+++++
+
+Still it would be more convenient to have a single place where all messages are stored.
+It can be easily achieved by creating a proxy between `CubaLocalizeBehavior` and the rest of your application.
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/recipes/i18n/calcium-adv.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <calcium-adv></calcium-adv>
+</body>
+</html>
+----
+
+.src/recipes/i18n/calcium-adv.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/i18n/calcium-adv.html[]
+----
+
+*Result:*
+
+[subs="none"]
+++++
+    <iframe
+        height="200"
+        class="polymer-iframe-container"
+        src="html/src/recipes/i18n/stub/calcium-adv-stub.html"></iframe>
+++++
+
+So, now all components can just implement `I18nMixin` and don't contain any actual wording.
+
+[[recipes__fetch]]
+=== Using REST API
+
+Occasionally, there will be a need to use some 3d party API. There are plenty of ways how it can be achieved.
+
+[.lead]
+fetch
+
+`index.html` generated by CUBA Studio contains a polyfill for `fetch` because it's used by CUBA Polymer components.
+
+So, you can freely use `fetch` in your own code.
+
+.src/recipes/ajax/fetch-example.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/ajax/fetch-example.html[]
+----
+
+To know more please visit - https://developers.google.com/web/updates/2015/03/introduction-to-fetch.
+
+
+[.lead]
+iron-ajax
+
+`iron-ajax` component is an another convenient option to perform ajax requests.
+
+.src/recipes/ajax/iron-ajax-example.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/ajax/iron-ajax-example.html[]
+----
+
+[[recipes__di]]
+=== Services and Dependency Injection
+
+Hardly there is a web-project that doesn't need some set of services. The most common examples of services are rest services,
+i18n services, object and collection util services, various caches, etc.
+
+By service there is meant a single-point access component that provides some common fucntionality. Services allow to re-use some
+code, grant access to some shared fucntionality and/or resources.
+
+There is a number of approaches of creating and injecting services into your web components. The way we recommend to adopt
+is described further.
+
+Let's imagine that we have an application that in its various parts requires to show various notifications to a user.
+These notifications are represented by a piece of text that is shown to the user for a short time to inform him about some event. Different parts of the application have to have possibilities to show notifications.
+
+Here is a possible implementation:
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/recipes/di/forbidden-button.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <forbidden-button></forbidden-button>
+</body>
+</html>
+----
+
+.src/recipes/di/forbidden-button.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/di/forbidden-button.html[]
+----
+
+.src/recipes/di/notification-service.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/di/notification-service.html[]
+----
+
+*Result:*
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/recipes/di/forbidden-button.html">
+
+<div class="polymer-demo-container">
+    <forbidden-button></forbidden-button>
+</div>
+
+++++
+
+So, basically we just instantiate some object, put it in a global variable and assign this variable to a component's
+property. It's as easy as that.
+
+[[recipes__navigation]]
+=== Navigation
+
+Certainly a navigation is one of the most common tasks that we have to implement while creating a web-application.
+There are plenty of ways to do it. We will examine one of them.
+
+It's based on two components: `app-route` and `iron-lazy-pages`.
+
+* `app-route` can be used to analyze url currently open in the browser.
+
+* `iron-lazy-pages` manages what page with which content should be currently open.
+
+There is a simple example demonstrating how the result of using these elements might work. It's put in `<iframe/>` because
+in order to demonstrate how navigation works we have to change current location.
+
+*Navigation example:*
+
+[subs="none"]
+++++
+    <iframe
+        height="300"
+        class="polymer-iframe-container"
+        src="html/app-with-navigation.html">
+
+    </iframe>
+++++
+
+*Code put in iframe:*
+
+.app-with-navigation.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/app-with-navigation.html[]
+----
+
+*Polymer element implementing navigation:*
+
+.src/recipes/navigation/thermodynamic-laws.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/navigation/thermodynamic-laws.html[]
+----
+
+It will be sufficient for applications with simple straightforward navigation. But in many cases we need several-level
+navigation. As soon as you understand how `app-route` and `iron-lazy-pages` work it can be achieved as easily as
+one-level navigation. Please inspect "Paper Elements" section from the next example.
+
+*2-level navigation:*
+
+[subs="none"]
+++++
+    <iframe
+        height="300"
+        class="polymer-iframe-container"
+        src="html/app-with-2-level-navigation.html">
+
+    </iframe>
+++++
+
+*Source code:*
+
+.src/recipes/navigation/polymer-elements-registry.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/navigation/polymer-elements-registry.html[]
+----
+
+.src/recipes/navigation/paper-elements-registry.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/navigation/paper-elements-registry.html[]
+----
+
+The same method can be used to create any navigation tree we like.
+
+[[recipes__new_library]]
+=== Adding a New Library
+
+Currently our Polymer UI module uses https://bower.io/[Bower] as its package manager.
+Therefore, if we want to add a library to a project then we need to edit `bower.json`.
+We can import any library that posted on https://github.com/.
+
+So, for example we decided that it would be a good idea to use
+https://www.webcomponents.org/element/PolymerElements/paper-toggle-button[paper-toggle-button] in our project.
+Its source is located on https://github.com/PolymerElements/paper-toggle-button.
+
+Basically, there are 2 ways to add this library to our project:
+
+. Via command line.
++
+[source]
+----
+$ bower install PolymerElements/paper-toggle-button --save
+----
+. Manually add it to `bower.json`. +
+Add `"paper-toggle-button": "PolymerElements/paper-toggle-button"` into `dependencies` block .
+
+That's it. The library is added into `bower_components/paper-toggle-button/` and can be used by our code.
+
+Bower will use the default branch of the required dependency.
+If we want to use any other version, we can specify it after the `#` sign.
+
+[source]
+----
+$ bower install PolymerElements/paper-toggle-button#3.0.0-pre.1 --save
+----

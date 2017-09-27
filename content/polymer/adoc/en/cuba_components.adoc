@@ -1,0 +1,468 @@
+[[cuba]]
+== CUBA Web Components
+
+CUBA Platform provides a set of CUBA-specific web components to solve common tasks that turn up when working
+with CUBA applications.
+
+* <<cuba__setup, cuba-app>>. Initializes a CUBA application. Required in order to use any other CUBA web component.
+
+* <<cuba__login, cuba-login>>. A material design login form. It allows to authenticate using the
+same credentials that are used to login into a common CUBA Application.
+
+* <<cuba__entities, cuba-entity, cuba-entities, cuba-entity-form>>. Components to request/save entities.
+
+* <<cuba__rest, cuba-query, cuba-service, cuba-service-form>>. Components to use custom CUBA REST API.
+
+* <<cuba__file, cuba-file-field>>. A component to upload files to a server.
+
+Probably, in many cases there will be need to create an application with a custom design. In this case our UI components
+(`cuba-login`, `cuba-file-field`) can be used as a template to create your own components.
+
+Components that work with entities (`cuba-entity`, `cuba-entities`, `cuba-entity-form`) will be convenient if an application
+uses a simple model structure and has a simple design. For other cases it makes sense to use custom service methods and
+queries (`cuba-query`, `cuba-service`, `cuba-service-form`).
+
+[[cuba__setup]]
+=== CUBA Application Setup
+
+`cuba-app` is a mandatory element for any CUBA Polymer Application.
+It should be defined in your application as early as possible.
+`cuba-app` contains initialization logic that is required by other CUBA Polymer components.
+That is, all other CUBA Polymer components won't work if `cuba-app` is absent in your code.
+
+You use `cuba-app` element like this:
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/cuba/init/empty-app.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <empty-app></empty-app>
+</body>
+</html>
+----
+
+.src/cuba/init/empty-app.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/init/empty-app.html[]
+----
+
+That's it. Now you can use all other CUBA Polymer components.
+
+[.lead]
+cuba-rest-js
+
+Under the hood `cuba-app` uses *cuba-rest-js* library (https://github.com/cuba-platform/cuba-rest-js).
+This library provides a convenient API for working with CUBA REST API that is used by all other CUBA Polymer components. Such as:
+
+* `login(login: string, password: string, options: object): Promise`.
+
+* `loadEntities(entityName: string, optoins: object): Promise`.
+
+* `getUserInfo(): Promise`.
+
+* and so on.
+
+As it can be seen a lot of methods return promises.
+If you never worked with JavaScript promises before you can read for example MDN documentation on the topic -
+https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise.
+
+In some cases it can be convenient to use this API directly instead of using ready CUBA Polymer components.
+This can be achieved by implementing `CubaAppAwareBehavior` behavior.
+This behavior provides an `app` property that has previously mentioned public API.
+
+For example, there is a simple application that shows an information about an authorized user.
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/cuba/init/user-info-component.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <user-info-component></user-info-component>
+</body>
+</html>
+----
+
+.src/cuba/init/user-info-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/init/user-info-component.html[]
+----
+
+*Result:*
+
+[subs="none"]
+++++
+    <iframe
+        height="150"
+        class="polymer-iframe-container"
+        src="html/src/cuba/init/stub/user-info-component-stub.html"></iframe>
+++++
+
+The way we extended `CubaAppAwareBehavior` might seem unintuitive.
+The thing is that CUBA elements are currently in hybrid mode.
+That means that they support both Polymer 1.0 and Polymer 2.0 syntax.
+In Polymer 1.0 there were behaviors instead of mixin-s.
+To know more about hybrid elements please check https://www.polymer-project.org/2.0/docs/devguide/hybrid-elements.
+
+Another suitable question would be where did the server get `firstName` and `lastName` information from?
+It took it from a currently authorized user.
+Please, check the <<cuba__login, login chapter>> to know more about authorization.
+
+[[cuba__login]]
+=== Login Form
+
+All REST API methods (apart from the login method) require an oauth token by default.
+In order to obtain this token the client must authenticate using his application login and password.
+In details the mechanism is described there - {manual-address}/rest_api_v2_ex_get_token.html.
+
+We provide `cuba-login` component to solve this task. It's a simple UI component with 2 fields ("User Name", "Password")
+and the button "Login". It emits two events on attempt to login: `cuba-login-success` and `cuba-login-error`.
+
+Here it is. Please use login/password test/test to authorize.
+
+[subs="none"]
+++++
+    <iframe
+        height="200"
+        class="polymer-iframe-container"
+        src="html/src/cuba/login/stub/cuba-app-with-login-stub.html"></iframe>
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/cuba/login/app-with-login.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <app-with-login></app-with-login>
+</body>
+</html>
+----
+
+.src/cuba/login/app-with-login.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/login/app-with-login.html[]
+----
+
+[.lead]
+Styling
+
+If we check `cuba-login` source files we'll see that the component is opened for extension by using of mixins.
+
+.bower_components/cuba-login/cuba-login.html
+[source, html]
+----
+      #form {
+        @apply --cuba-login-form;
+      }
+      #username {
+        @apply --cuba-login-username-input;
+      }
+      #password {
+        @apply --cuba-login-password-input;
+      }
+      #submit {
+        @apply --cuba-login-submit-button;
+      }
+      .actions {
+        display: flex;
+        flex-direction: row-reverse;
+        @apply --cuba-login-actions;
+      }
+      ...
+      <form id="form">
+        <div class="fields">
+          <paper-input type="text" id="username" label="[[msg('User Name')]]" value="{{username}}"></paper-input>
+          <paper-input type="password" id="password" label="[[msg('Password')]]" value="{{password}}"></paper-input>
+        </div>
+        <div class="actions">
+          <paper-button id="submit" on-tap="submit">[[msg('Login')]]</paper-button>
+        </div>
+      </form>
+----
+
+So, that's how we can implement these mixin-s.
+It's the same code as in the previous example but with the `<style/>` tag.
+
+.src/cuba/login/app-with-login-styled.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/login/app-with-login-styled.html[]
+----
+
+*Result:*
+
+[subs="none"]
+++++
+    <iframe
+        height="200"
+        class="polymer-iframe-container"
+        src="html/src/cuba/login/stub/cuba-app-with-login-styled-stub.html"></iframe>
+++++
+
+Probably, we didn't make the login form look much better. But we definitely changed its appearance.
+
+[.lead]
+Writing your own login form
+
+`cuba-login` as any other cuba component uses `cuba-rest` component API under the hood.
+So, if we need some very custom login page we can use API directly.
+
+.src/cuba/login/app-with-login-custom.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/login/app-with-login-custom.html[]
+----
+
+*Custom login form:*
+
+[subs="none"]
+++++
+    <iframe
+        height="150"
+        class="polymer-iframe-container"
+        src="html/src/cuba/login/stub/cuba-app-with-login-custom-stub.html"></iframe>
+++++
+
+[.lead]
+Token expiration
+
+On authentication our Polymer application receives an authentication token and afterwards uses it in every request.
+
+This token is not everlasting.
+By default it is valid for 12 hours.
+After this period requests stop to work until the user re-logins.
+
+`cuba-app` emits the `cuba-token-expired` event that can be used to handle expiration appropriately.
+
+[[cuba__entities]]
+=== Working with Entities
+
+CUBA provides a number of components to work with entities. Using them we can browse/create/remove any entity we like.
+
+Before we proceed it's worth to repeat some basic concepts relating to entities.
+
+* *Entity Name.* Entity name is a unique identifier of an entity. It consists of 2 parts: `{project_name$concept_name}`.
+For example: `taxi_service$Driver`, `statistics_for_agronomy$FieldDescription`, etc.
+In Java entity name is specified inside `Entity` annotation.
+
+* *Entity View.* It's a descriptor of what columns from DB should be loaded.
+Traditionally, the view for entity browsing contains less fields than for entity editing.
+For the sake of performance a view should contain a minimal possible number of fields.
+Please check {manual-address}/views.html to know more.
+
+[.lead]
+Entity Browse
+
+`cuba-entities` component allows to load a list of entities.
+
+`cuba-entity` component allows to load one particular entity by id.
+
+Below is an example of how these components can be used.
+It's a book browser application.
+The user sees a list of books.
+He can select any book to see more.
+The list of books is loaded by `cuba-entities`.
+`cuba-entity` is used to re-load a particular book.
+Why do we need to reload a book?
+To load more information.
+When we load a list of books we want to load as little info as possible to increase the performance.
+When we load a single book we can load a lot of other info: author biography, editions, even a photo of a cover page.
+
+*Book browser:*
+
+[subs="none"]
+++++
+    <iframe
+        height="300"
+        class="polymer-iframe-container"
+        src="html/src/cuba/entity/stub/cuba-books-browser-stub.html"></iframe>
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/cuba/entity/books-browser.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <books-browser></books-browser>
+</body>
+</html>
+----
+
+.src/cuba/entity/books-browser.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/entity/books-browser.html[]
+----
+
+In this example we omitted a code for login to simplify code.
+In real applications REST API won't work until we login or add `cuba.rest.anonymousEnabled` to our `app.properties`.
+
+[.lead]
+Entity Creation
+
+`cuba-entity-form` provides an ability to create new entities.
+Basically, we have to provide an entity name (identifier) and an entity we want to persist.
+And that's it. We call the `submit` method and the entity is saved.
+
+*Book creator:*
+
+[subs="none"]
+++++
+    <iframe
+        height="300"
+        class="polymer-iframe-container"
+        src="html/src/cuba/entity/stub/cuba-book-creator-stub.html"></iframe>
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/cuba/entity/book-creator.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <book-creator></book-creator>
+</body>
+</html>
+----
+
+.src/cuba/entity/book-creator.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/entity/book-creator.html[]
+----
+
+[.lead]
+Entity removal
+
+`cuba-entities` has method `remove()`. Please use it to remove a required entity.
+
+[.lead]
+Entity update
+
+We currently don't provide an element that assists in entity updates.
+But our standard REST API contains a method for it.
+Please feel free to use API directly if you need to update an entity.
+Our API specification - http://files.cuba-platform.com/swagger/.
+
+[.lead]
+More on entities
+
+That was an overview of how CUBA Polymer elements can be used to work with entities.
+But the components provide more functionality than was just described.
+`cuba-entity` allows to provide a `debounce` parameter to avoid excessive requests to a server.
+`cuba-entities` can sort entities by any field.
+An so on. To learn more please check a source code of components.
+Also, public API of our components is available there - https://cuba-elements.github.io/cuba-elements/.
+
+[[cuba__rest]]
+=== Custom REST API
+
+In most cases our application isn't limited with CRUD operations on entities.
+Services and queries are the places where we can put our business logic and use it afterward.
+
+Please read our main manual to learn how to expose your service methods and queries into REST API:
+
+* {manual-address}/rest_api_v2_services_config.html - services.
+
+* {manual-address}/rest_api_v2_queries_config.html - queries.
+
+After REST API is ready `cuba-service` and `cuba-query` components can be used to access it.
+
+Their usage is similar to <<cuba__entities, cuba-entities and cuba-entity>>.
+For `cuba-service` you provide properties: `data` (object where loaded information is stored), `serviceName` and `method`
+(as specified in `rest-services.xml`), optional `params`. For `cuba-query` you specify almost the same: `data`, `queryName`
+(as specified in `rest-queries.xml`), `entityName` and `params`.
+
+The components by default automatically load data on init.
+You can disable this behavior by assigning value `false` to property `auto` and calling `load()` method programmatically.
+
+*Usage example:*
+
+[source, html]
+----
+    <cuba-query id="query"
+                entity-name="sec$User"
+                query-name="usersByName"
+                data="{{users}}">
+    </cuba-query>
+    ...
+    <cuba-service service-name="cuba_ServerInfoService"
+                  method="getReleaseNumber"
+                  data="{{releaseNumber}}">
+    </cuba-service>
+----
+
+`cuba-service-form` can be used instead of `cuba-service` when it's semantically more correct to use form submit
+instead of information requests. However, it's not mandatory. Under the hood they use the same REST API.
+
+To know more about `cuba-query`, `cuba-service` and `cuba-service-form` please visit our components specification -
+https://cuba-elements.github.io/cuba-elements/.
+
+[[cuba__file]]
+=== Uploading a File
+
+`cuba-file-field` provides a fast ability to upload files to a server.
+Please, check an example below.
+Don't hesitate to choose any file from your system.
+The real uploading is turned off.
+So, your files won't be really uploaded anywhere.
+
+[subs="none"]
+++++
+    <iframe
+        height="200"
+        class="polymer-iframe-container"
+        src="html/src/cuba/file/stub/file-upload-app-stub.html"></iframe>
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/cuba/file/file-upload-app.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <file-upload-app></file-upload-app>
+</body>
+</html>
+----
+
+.src/cuba/file/file-upload-app.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/cuba/file/file-upload-app.html[]
+----

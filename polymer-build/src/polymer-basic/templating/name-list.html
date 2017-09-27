@@ -1,0 +1,77 @@
+<link rel="import" href="../../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../../bower_components/polymer/lib/elements/dom-if.html">
+<link rel="import" href="../../../bower_components/polymer/lib/elements/dom-repeat.html">
+<link rel="import" href="../../../bower_components/iron-input/iron-input.html">
+
+<dom-module id="name-list">
+  <template>
+
+    <!-- It's a standard way to use dom-if. -->
+    <!-- Polymer observes changes in the 'addingNameAvailable' property -->
+    <!--  and shows it's content depending on it. -->
+    <template is="dom-if" if="[[addingNameAvailable]]">
+      <iron-input bind-value="{{newName}}">
+        <input />
+      </iron-input>
+      <button on-click="addName">Add name</button>
+      <br/>
+    </template>
+
+    <template is="dom-repeat" items="[[names]]">
+      <br/>
+      <!-- Item is an element of 'names' array -->
+      <div>[[item]]</div>
+    </template>
+
+  </template>
+  <script>
+    class NameList extends Polymer.Element {
+      static get is() {
+        return 'name-list';
+      }
+
+      static get properties() {
+        return {
+          names: {
+            type: Array,
+            // Value can be specified not only by literal but also by a function.
+            // For properties of type Array or Object it's better to specify a function because
+            //  otherwise the value can be shared between different instances of this Polymer element.
+            value: function() {
+              return [];
+            }
+          },
+          newName: String,
+          addingNameAvailable: {
+            type: Boolean,
+            value: true
+          },
+          // Nothing prevents us to change this value when we use this web-component.
+          // <name-list max-name-length="5"></name-list> will do a trick
+          maxNameLength: {
+            type: Number,
+            value: 3
+          }
+        }
+      }
+
+      addName() {
+        // We should mutate parameters only by using Polymer mutator methods.
+        // If we just use 'this.names.push(this.name)' then the component won't be notified that the property changes
+        //  and UI won't be updated.
+        // 'push' method is used to add an element to an array.
+        this.push('names', this.newName);
+        // The same principle applies there.
+        // If we just use "this.newName = ''" the component won't know
+        //  that something changed.
+        this.set('newName', '');
+
+        if (this.names.length >= this.maxNameLength) {
+          this.set('addingNameAvailable', false);
+        }
+      }
+    }
+
+    customElements.define(NameList.is, NameList);
+  </script>
+</dom-module>
