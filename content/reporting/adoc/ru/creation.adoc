@@ -307,6 +307,49 @@ def myService = com.haulmont.cuba.core.global.AppBeans.get('sample_MyService')
 
 Шаблон отчета должен содержать поля с именами атрибутов сущности. Атрибуты, используемые в шаблоне, необходимо указать в специальном окне, вызываемом кнопкой *Select entity attributes*.
 
+
+[[structure_json]]
+==== Набор данных JSON
+
+*JSON* - набор данных формируется из данных в формате JSON, которые могут быть получены из следующих источников:
+
+. *Groovy script*
++
+--
+Скрипт задаётся пользователем и должен возвращать JSON как строку, например:
+
+[source, plain]
+----
+include::{sourcesdir}/json.groovy[]
+----
+--
+
+. *URL*
++
+--
+Генератор отчётов запрашивает данные через URL с помощью GET HTTP-запроса, например:
+
+[source, plain]
+----
+https://jsonplaceholder.typicode.com/users
+----
+--
+
+. *Parameter*
++
+--
+Внешний параметр отчёта с типом String, содержащий данные JSON, можно создать на вкладке *Parameters and Formats* редактора отчётов.
+--
+
+Извлечь необходимые данные из полученного дерева JSON можно запросом JsonPath. К примеру, выражение `$.store.book[*]` вернёт все книги из дерева JSON в следующем примере:
+
+[source, json]
+----
+include::{sourcesdir}/json.json[]
+----
+
+Более подробно о выражениях JsonPath можно посмотреть на http://goessner.net/articles/JsonPath/.
+
 [[template]]
 === Шаблон отчета
 
@@ -363,10 +406,18 @@ image::report_template_xls.png[align="center"]
 
 Для создания диаграммы в шаблоне Excel необходимо создать полосу и именованный регион с тем же названием, затем выбрать в контекстном меню диаграммы пункт *"Выбрать данные"*, где указать ссылку на необходимые полосы отчёта. Если данные для диаграммы находятся в непрерывном диапазоне ячеек, можно выбрать любую ячейку в этом диапазоне, так в диаграмму будут включены все данные в диапазоне. Если данные находятся в прерывном диапазоне, выберите несмежные ячейки или диапазоны (при этом область выделения должна быть в виде прямоугольника).
 
+Конвертация XLSX в PDF и CSV::
++
+--
+Для отчётов в формате XLSX поддерживается автоматическая конвертация в форматы CSV и PDF. Чтобы выбрать выходной тип файла PDF, необходимо установить <<open_office,OpenOffice/LibreOffice>>.
+
+image::csv_output.png[align="center"]
+--
+
 [[crosstab_xls]]
 ===== Перекрёстные отчёты
 
-Перекрёстные, или матричные, отчёты создаются с помощью *Microsoft Office* или *LibreOffice*.
+Перекрёстные, или матричные, отчёты создаются с помощью Microsoft Office или LibreOffice.
 
 Шаблон такого отчёта должен содержать горизонтальную полосу с вертикальной вложенной полосой, и не наоборот, так как вложенные (или дочерние) полосы обрабатываются генератором отчётов только для горизонтальных родительских полос. Результаты в родительской полосе будут использоваться дочерней полосой в качестве параметров запроса.
 
@@ -399,10 +450,23 @@ include::{sourcesdir}/crosstab_template_3.groovy[]
 
 image::crosstab_report.png[align="center"]
 
+[[template_csv]]
+==== Шаблоны CSV
+
+Шаблоны CSV создаются с помощью Microsoft Office или LibreOffice.
+
+Полосы в CSV-шаблоне должны быть горизонтальными, таким образом, именованные регионы будут заполняться вниз. Также полосы должны располагаться на первом уровне данных, то есть быть дочерними для Root. Во всём остальном при создании шаблонов CSV применяются те же принципы, что и для <<template_xls,шаблонов XLS/XLSX>>.
+
+.Пример шаблона CSV
+image::csv_template.png[align="center"]
+
+.Результат отчёта CSV
+image::csv_report.png[align="center"]
+
 [[template_doc]]
 ==== Шаблоны DOCX, DOC и ODT
 
-Шаблоны DOC и DOCX создаются с помощью *Microsoft Office* или *OpenOffice / LibreOffice*.
+Шаблоны DOC и DOCX создаются с помощью Microsoft Office или OpenOffice / LibreOffice.
 
 Шаблон данного типа включает в себя текст документа и опционально одну или несколько таблиц. В тексте документа выводятся данные из первых строк произвольных полос. В таблицу можно выводить произвольное количество строк некоторой полосы.
 
@@ -475,33 +539,7 @@ Root.bands.band[0].fields.name
 
 [source, html]
 ----
-<!doctype html>
-<html>
-<head></head>
-<body>
-    <#assign book = Root.bands.Book[0] />
-    <#assign authors = Root.bands.Authors />
-
-    <p>Name: ${book.fields.name}</p>
-    <p>Genre: ${book.fields.literatureType.name}</p>
-    <table border="1" cellpadding="5" cellspacing="0" width="200">
-        <thead>
-            <tr>
-                <td>First name</td>
-                <td>Last name</td>
-            </tr>
-        </thead>
-        <tbody>
-        <#list authors as author>
-            <tr>
-                <td>${author.fields.firstName}</td>
-                <td>${author.fields.lastName}</td>
-            </tr>
-        </#list>
-        </tbody>
-    </table>
-</body>
-</html>
+include::{sourcesdir}/examples_html_6.html[]
 ----
 
 Более сложный пример. Имеем структуру полос следующего вида:
@@ -531,110 +569,28 @@ Root {
 +
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> Simple template </title>
-    </head>
-    <body>
-        <#assign Tree1 = Root.bands.Band2>
-        <h1> Header </h1>
-        <p>
-            ${Tree1[1].bands.SubBand1[0].fields.header}
-        </p>
-    </body>
-</html>
+include::{sourcesdir}/examples_html_8.html[]
 ----
 
 * Список:
 +
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> List </title>
-    </head>
-    <body>
-        <#assign Table1Header = Root.bands.HeaderBand>
-
-        <#if Table1Header?has_content>
-        <ol>
-            <#list Table1Header as header>
-            <li> ${header.fields.name} </li>
-            </#list>
-        </ol>
-        </#if>
-    </body>
-</html>
+include::{sourcesdir}/examples_html_9.html[]
 ----
 
 * Таблица:
 +
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> Table </title>
-    </head>
-    <body>
-        <#assign Table1Header = Root.bands.HeaderBand>
-        <#assign Table1 = Root.bands.Band1>
-        <table border="1" cellpadding="5" cellspacing="0" width="200">
-            <thead>
-                <tr>
-                <#list Table1Header as header>
-                    <td> ${header.fields.name} </td>
-                </#list>
-                </tr>
-            </thead>
-            <tbody>
-            <#list Table1 as row>
-                <tr>
-                    <td>
-                        ${row.fields.field1}
-                    </td>
-                    <td>
-                        ${row.fields.field2}
-                    </td>
-                </tr>
-            </#list>
-            </tbody>
-        </table>
-    </body>
-</html>
+include::{sourcesdir}/examples_html_10.html[]
 ----
 
 * Многоуровневый список:
 +
 [source, html]
 ----
-<!doctype html>
-<html>
-    <head>
-        <title> Multi-level list </title>
-    </head>
-    <body>
-        <#assign Tree1 = Root.bands.Band2>
-        <ul>
-            <#list Tree1 as item>
-            <li>
-                <h2> ${item.fields.header} </h2>
-                <#if item.bands.SubBand1?has_content>
-                <ul>
-                    <#list item.bands.SubBand1 as subitem>
-                    <li>
-                        <h3> ${subitem.fields.header} </h3>
-                    </li>
-                    </#list>
-                </ul>
-                </#if>
-            </li>
-            </#list>
-        </ul>
-    </body>
-</html>
+include::{sourcesdir}/examples_html_11.html[]
 ----
 
 *Добавление изображений*
@@ -767,22 +723,39 @@ image::chart_template_serial.png[align="center"]
 * *Type* - вид отображения ряда.
 * *Color field* - поле, из которого будут взяты коды цветов сегментов. Код цвета должен быть в https://en.wikipedia.org/wiki/Web_colors[web] формате. Если код цвета не предоставлен, он будет выбран автоматически.
 
+[[table_output]]
+==== Вывод отчёта в виде таблицы
+
+Для всех отчётов доступен вывод в виде таблицы. Для его использования выберите *Table* в поле формата вывода в редакторе шаблона отчёта.
+
+image::report_table_output.png[align="center"]
+
+Генератор отчётов получит данные из полос и создаст для каждой из них, начиная с первого уровня иерархии, сортируемую таблицу.
+
+Если в отчёте использованы наборы данных SQL или JPQL, в таблице будут созданы колонки для всех полей. Для наборов данных Entity/List of Entities в таблице будут отображаться только колонки для выбранных в отчёте атрибутов. Кроме того, в последнем случае имена колонок необходимо локализовать.
+
+Результирующая таблица будет отображаться на экране приложения *Reports > Show Report Table*. Кнопка *Excel* позволяет скачать таблицу с отчётом в формате файла Excel.
+
+image::show_report_table.png[align="center"]
+
 [[template_to_output]]
 ==== Соответствие типа шаблона типу вывода
 
-|===
-|Шаблон / Вывод   |XLSX|XLS|DOCX|DOC|PDF  |HTML|Chart
-|XLSX             |+   |   |    |   |+ ^1^|    |
-|XLS              |    |+  |    |   |+ ^1^|    |
-|DOCX             |    |   |+   |   |+ ^2^|+   |
-|DOC              |    |   |    |  +|+ ^1^|    |
-|HTML             |    |   |    |   |+    |+   |
-|Chart            |    |   |    |   |     |    |+
-|===
+[options="header"]
+|===============
+|Шаблон / Вывод|XLSX|XLS|CSV|DOCX|DOC|PDF  |HTML |Chart
+|XLSX          |+   |   |+  |    |   |+ ^1^|+ ^1^|
+|XLS           |    |+  |   |    |   |+ ^1^|     |
+|CSV           |    |+  |+  |    |   |+ ^1^|     |
+|DOCX          |    |   |   |+   |   |+ ^2^|+ ^2^|
+|DOC           |    |   |   |    |  +|+ ^1^|     |
+|HTML          |    |   |   |    |   |+    |+    |
+|Chart         |    |   |   |    |   |     |     |+
+|===============
 
-^1^ - для вывода требуется <<open_office,установка>> OpenOffice.
+^1^ - для вывода требуется <<open_office,установка>> OpenOffice/LibreOffice.
 
-^2^ - в зависимости от значения свойства приложения <<reporting.openoffice.docx.useOfficeForPdfConversion,reporting.openoffice.docx.useOfficeForPdfConversion>> вывод может осуществляться либо через OpenOffice, либо без него. В последнем случае необходимо обеспечить наличие нужных шрифтов, как описано в <<html_to_pdf>>.
+^2^ - в зависимости от значения свойства приложения <<reporting.openoffice.docx.useOfficeForPdfConversion,reporting.openoffice.docx.useOfficeForPdfConversion>> вывод может осуществляться либо через OpenOffice/LibreOffice, либо без него. В последнем случае необходимо обеспечить наличие нужных шрифтов, как описано в <<html_to_pdf>>.
 
 [[parameters]]
 === Внешние параметры отчета
@@ -795,19 +768,16 @@ image::report_parameter.png[align="center"]
 
 Вкладка *Properties*:
 
-* *Parameter name* - имя параметра, как оно будет отображено в форме ввода параметров при старте отчета.
-
+* *Caption* - имя параметра, как оно будет отображено в форме ввода параметров при старте отчета.
 * *Parameter alias* - алиас параметра, который нужно использовать для обращения к нему в наборах данных.
-
 * *Parameter type* - тип параметра.
-
-* *Required parameter* - признак того, что параметр должен быть обязательно передан в отчет.
-
+* *Hidden* - признак того, что параметр является условием, скрытым от пользователей.
+* *Required parameter?* - признак того, что параметр должен быть обязательно передан в отчет.
 * *Entity* - если указан тип параметра *Entity* или *List of entities*, то в данном поле необходимо выбрать тип сущности.
-
-* *Enumeration* - если указан тип параметра *Enumeration*, то в данном поле необходимо выбрать тип перечисления.
-
 * *Entity selection screen* - необязательный идентификатор экрана, который будет использоваться для выбора экземпляров сущности. Если экран не указан, выбор будет осуществляться через специальный общий для всех сущностей экран.
+* *Enumeration* - если указан тип параметра *Enumeration*, то в данном поле необходимо выбрать тип перечисления.
+* *Default value* - значение параметра, которое будет использовано по умолчанию, если пользователь не указал другого значения.
+* *Default date(time) is current* -  если указан временной тип параметра (`Date`, `Time` или `Date and time`), этот флажок позволяет использовать текущее значение времени в качестве значения по умолчанию.
 
 На вкладке *Localization* можно определить названия параметра для различных локалей. Для этого в отдельных строках текстового поля следует ввести пары `++имя_локали = имя_параметра++`, например:
 
@@ -815,6 +785,49 @@ image::report_parameter.png[align="center"]
 ----
 ru = Книга
 ----
+
+На вкладке *Transformation* можно задать скрипт Groovy для преобразования параметра перед использованием его в отчёте.
+
+На вкладке *Validation* можно задать Groovy-скрипт с некоторым условием для валидации значения параметра, см. ниже.
+
+[[report_parameter_validation]]
+Валидация внешних параметров::
++
+--
+Вы можете настроить как валидацию отдельных параметров, так и перекрёстную валидацию параметров относительно друг друга.
+
+. Валидацию одного параметра можно разрешить, установив флажок *Validate* на вкладке *Validation* редактора параметров. Логика валидации задаётся в скрипте Groovy. Скрипт должен проверять значение параметра и вызывать метод `invalid()`, если введено некорректное значение. Метод отобразит пользователю уведомление с переданным сообщением об ошибке валидации.
++
+В скрипте доступны следующие переменные:
++
+* `value` - значение параметра, введённое пользователем.
++
+* `dataManager` - объект типа `DataManager`, предоставляющий CRUD-функциональность для работы с персистентными хранилищами данных.
++
+* `metadata` - объект типа `Metadata`, позволяющий обращаться к метаданным приложения.
++
+* `security` - объект типа `Security`, используемый для проверки прав пользователя на доступ к различным объектам системы.
++
+* `userSession` - объект типа `UserSession`, связанный с текущим пользователем системы.
++
+image::report_parameter_validation.png[align="center"]
+
+. Перекрёстную валидацию можно включить флажком *Validate* в разделе *Cross parameters validation* на вкладке *Parameters and Formats*. Логика валидации задаётся в скрипте Groovy. Скрипт должен проверить, не противоречат ли друг другу значения введённых параметров, и вызвать метод `invalid()`, если набор значений некорректен. Метод отобразит пользователю уведомление с переданным сообщением об ошибке валидации.
++
+В скрипте доступны следующие переменные:
++
+* `params` - набор значений параметров, введённый пользователем.
++
+* `dataManager` - объект типа `DataManager`, предоставляющий CRUD-функциональность для работы с персистентными хранилищами данных.
++
+* `metadata` - объект типа `Metadata`, позволяющий обращаться к метаданным приложения.
++
+* `security` - объект типа `Security`, используемый для проверки прав пользователя на доступ к различным объектам системы.
++
+* `userSession` - объект типа `UserSession`, связанный с текущим пользователем системы.
++
+image::cross_parameter_validation.png[align="center"]
+--
 
 [[formatters]]
 === Форматы значений полей
