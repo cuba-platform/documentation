@@ -41,52 +41,70 @@ This section describes the following basic types of screens:
 [[frame]]
 ====== Frame
 
-Frames are parts of the screen intended for decomposition and reuse.
+Frames are reusable parts of screens. Frames are included in screens using the <<gui_Frame,frame>> XML element.
 
-The <<gui_Frame,frame>> element of the screen's XML is used to add a frame to the screen. It defines either path to the frame's XML descriptor, or its identifier, if the frame is registered in <<screens.xml,screens.xml>>.
+A frame controller must extend the <<abstractFrame,AbstractFrame>> class.
 
-A frame controller should be derived from the `AbstractFrame` class.
+[TIP]
+====
+You can create a frame in Studio using the *Blank frame* template.
+====
 
-Rules for interaction between a screen and its enclosed frame are the following:
+Below are the rules of interaction between a frame and its enclosing screen:
 
-* Frame components can be referenced from a screen using a dot: `++frame_id.component_id++`
+* Frame components can be referenced from a screen using dot: `++frame_id.component_id++`
 
-* List of screen components can be obtained from a frame controller by invoking `++getComponent(component_id)++` method but only if there is no component with the same name in the frame itself. I.e. frame components mask screen components.
+* List of screen components can be obtained from a frame controller by invoking `++getComponent(component_id)++` method, but only if there is no component with the same name in the frame itself. I.e. frame components mask screen components.
 
-* Screen <<datasources,datasource>> can be obtained from a frame by invoking `++getDsContext().get(ds_id)++` method or <<screen_controller_injection,injection>>, or using `++ds$ds_id++` in <<datasource_query,query>>, but only if the datasource with a matching name is not declared in the frame itself (same as for components).
+* Screen <<datasources,datasource>> can be obtained from a frame by invoking `++getDsContext().get(ds_id)++` method or <<screen_controller_injection,injection>>, or using `++ds$ds_id++` in <<datasource_query,query>>, but only if the datasource with the same name is not declared in the frame itself (same as for components).
 
-* From a screen, frame datasource can be obtained only by iterating `getDsContext().getChildren()` collection.
+* From a screen, frame datasource can be obtained only by iterating the `getDsContext().getChildren()` collection.
 
-Screen commit also causes commits of modified datasources of the frame it uses.
+The screen commit causes commit of modified datasources of all frames included in the screen.
 
 [[screen_simple]]
 ====== Simple Screen
 
-Simple screens enable displaying and editing of arbitrary information including individual instances and lists of entities. This screen type has only core functionality to display it in the application's main window, close it and to work with <<datasources,datasources>>.
+Simple screens enable displaying and editing of arbitrary information including individual instances and lists of entities. Screens of this type have only the core functionality for opening in the application's main window and working with <<datasources,datasources>>.
 
-Screen identifier in <<screens.xml,screens.xml>> may have an arbitrary format.
+The controller of a simple screen must be inherited from the <<abstractWindow,AbstractWindow>> class.
 
-The controller of a simple screen should be inherited from the `AbstractWindow` class.
+[TIP]
+====
+You can create a simple screen in Studio using the *Blank screen* template.
+====
 
 [[screen_lookup]]
 ====== Lookup Screen
 
-When a lookup screen is invoked by `openLookup()` method, it displays a panel at the bottom with the buttons designed to pass an instance of the currently selected entity to the calling code. That is the main difference between lookup and simple screen. When being invoked by `openWindow()` method or, for example, from the main menu, the panel with the buttons is not displayed.
+Lookup screens are designed to select and return instances or lists of entities. The standard <<lookupAction,LookupAction>> in visual components like <<gui_PickerField,PickerField>> and <<gui_LookupPickerField,LookupPickerField>> invokes lookup screens to select related entities.
 
-Lookup screens are recommended to be used to display lists of entities. Visual components intended to display and edit links between entities (such as <<gui_PickerField,PickerField>>, <<gui_LookupPickerField,LookupPickerField>>, <<gui_SearchPickerField,SearchPickerField>>) invoke lookup screens to find related entities.
+When a lookup screen is invoked by the `openLookup()` method, it contains a panel with the buttons for selection. When a user selects an instance or multiple instances, the lookup screen invokes the handler which was passed to it, thus returning results to the calling code. When being invoked by `openWindow()` method or, for example, from the main menu, the selection panel is not displayed, effectively transforming the lookup screen into a <<screen_simple,simple screen>>.
 
-For <<standard_actions,standard actions>> to work correctly, an identifier of a lookup screen in <<screens.xml,screens.xml>> should have the format of `++{entity_name}.lookup++`, for example, `sales$Customer.lookup`.
+The controller of a lookup screen should be inherited from the <<abstractLookup,AbstractLookup>> class. The `lookupComponent` attribute of the screen's XML must point to a component (for example <<gui_Table,Table>>), from which the selected entity instance should be taken as a result of the lookup.
 
-The controller of a lookup screen should be inherited from the `AbstractLookup` class. The `lookupComponent` attribute of the screen's XML should refer to the component (for example <<gui_Table,Table>>), from which the selected entity instance should be taken as a result of the lookup.
+[TIP]
+====
+You can create a lookup screen for an entity in Studio using the *Entity browser* or *Entity combined screen* templates.
+====
+
+By default, the <<lookupAction,LookupAction>> uses a lookup screen registered in <<screens.xml,screens.xml>> with the `{entity_name}.lookup` or `{entity_name}.browse` identifier, for example, `sales$Customer.lookup`. So make sure you have one when using components mentioned above. Studio registers browse screens with `{entity_name}.browse` identifiers, so they are automatically used as lookup screens.
 
 [[screen_edit]]
 ====== Edit Screen
 
-Edit screen is designed to display and edit entity instances. It initializes the instance being edited and supports <<gui_Action,actions>> for committing changes to the database. Edit screen should be opened by the `openEditor()` method passing an entity instance as an argument.
+Edit screen is designed to display and edit entity instances. It initializes the instance being edited and contains <<gui_Action,actions>> for committing changes to the database. Edit screen should be opened by the `openEditor()` method accepting an entity instance as an argument.
 
-For <<standard_actions,standard actions>> to work correctly, an identifier of an edit screen in <<screens.xml,screens.xml>> should have the format of `++{entity_name}.edit++`, for example, `sales$Customer.edit`.
+By default, the standard <<createAction,CreateAction>> and <<editAction,EditAction>> open a screen, registered in <<screens.xml,screens.xml>> with the `{entity_name}.edit` identifier, for example, `sales$Customer.edit`.
 
-Edit screen controller should be inherited from the `AbstractEditor` class. The `datasource` attribute of a screen's XML should refer to a datasource containing the edited entity instance. The following standard button frames in the XML can be used to display actions that commit or cancel changes:
+Edit screen controller must be inherited from the <<abstractEditor,AbstractEditor>> class.
+
+[TIP]
+====
+You can create an edit screen for an entity in Studio using the *Entity editor* template.
+====
+
+The `datasource` attribute of a screen's XML should refer to a datasource containing the edited entity instance. The following standard button frames in the XML can be used to display actions that commit or cancel changes:
 
 * `editWindowActions` (file `com/haulmont/cuba/gui/edit-window.actions.xml`) – contains *OK* and *Cancel* buttons
 
@@ -102,7 +120,7 @@ The following actions are implicitly initialized in the edit screen:
 
 Thus, if the screen contains an `editWindowActions` frame, the *OK* button commits the changes and closes the screen, and the *Cancel* button – closes the screen without committing the changes. If the screen contains an `extendedEditWindowActions` frame, the *OK* button only commits the changes, *OK & Close* button commits the changes and closes the screen, and the *Cancel* button closes the screen without committing the changes.
 
-Instead of standard frames actions can be visualized using arbitrary components, for example, <<gui_LinkButton,LinkButton>>. 
+Instead of standard frames, the actions can be visualized using arbitrary components, for example, <<gui_LinkButton,LinkButton>>.
 
 [[screen_xml]]
 ===== XML-Descriptor
