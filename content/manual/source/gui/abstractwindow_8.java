@@ -1,0 +1,1 @@
+getDialogOptions().setMaximized(true);
