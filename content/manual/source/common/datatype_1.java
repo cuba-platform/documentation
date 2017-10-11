@@ -1,54 +1,51 @@
-package com.company.sample;
+package com.company.sample.entity;
 
-import com.haulmont.chile.core.datatypes.Datatypes;
-import com.haulmont.chile.core.datatypes.FormatStrings;
-import com.haulmont.chile.core.datatypes.impl.DoubleDatatype;
-import org.apache.commons.lang.StringUtils;
-import org.dom4j.Element;
+import com.google.common.base.Strings;
+import com.haulmont.chile.core.annotations.JavaClass;
+import com.haulmont.chile.core.datatypes.Datatype;
 
+import javax.annotation.Nullable;
 import java.text.DecimalFormat;
-import java.text.NumberFormat;
 import java.text.ParseException;
 import java.util.Locale;
 
-public class GeoCoordinateDatatype extends DoubleDatatype {
+@JavaClass(Integer.class)
+public class YearDatatype implements Datatype<Integer> {
 
-    // This field is required for Studio even if you don't use it in code
-    public static final String NAME = "geocoordinate";
-
-    // The format is the same for all locales but may differ in decimal points
-    public static final String FORMAT = "#0.000000";
-
-    public GeoCoordinateDatatype(Element element) {
-        super(element);
-    }
+    private static final String PATTERN = "##00";
 
     @Override
-    public String getName() {
-        return NAME;
-    }
-
-    @Override
-    public String format(Object value, Locale locale) {
+    public String format(@Nullable Object value) {
         if (value == null)
             return "";
-        FormatStrings formatStrings = Datatypes.getFormatStrings(locale);
-        if (formatStrings == null)
-            return format(value);
 
-        NumberFormat format = new DecimalFormat(FORMAT, formatStrings.getFormatSymbols());
+        DecimalFormat format = new DecimalFormat(PATTERN);
         return format.format(value);
     }
 
     @Override
-    public Double parse(String value, Locale locale) throws ParseException {
-        if (StringUtils.isBlank(value))
-            return null;
-        FormatStrings formatStrings = Datatypes.getFormatStrings(locale);
-        if (formatStrings == null)
-            return parse(value);
+    public String format(@Nullable Object value, Locale locale) {
+        return format(value);
+    }
 
-        NumberFormat format = new DecimalFormat(FORMAT, formatStrings.getFormatSymbols());
-        return parse(value, format).doubleValue();
+    @Nullable
+    @Override
+    public Integer parse(@Nullable String value) throws ParseException {
+        if (Strings.isNullOrEmpty(value))
+            return null;
+
+        DecimalFormat format = new DecimalFormat(PATTERN);
+        int year = format.parse(value).intValue();
+        if (year > 2100 || year < 0)
+            throw new ParseException("Invalid year", 0);
+        if (year < 100)
+            year += 2000;
+        return year;
+    }
+
+    @Nullable
+    @Override
+    public Integer parse(@Nullable String value, Locale locale) throws ParseException {
+        return parse(value);
     }
 }

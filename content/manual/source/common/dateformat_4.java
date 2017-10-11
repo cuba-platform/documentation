@@ -1,4 +1,7 @@
 @Inject
 private DatatypeFormatter formatter;
-...
-String localDate = formatter.formatDate(dateField.getValue());
+
+void sample() {
+    String dateStr = formatter.formatDate(dateField.getValue());
+    // ...
+}

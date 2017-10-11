@@ -1,5 +1,11 @@
 @Inject
 protected UserSessionSource userSessionSource;
-...
-Date date = ...;
-String dateStr = Datatypes.getNN(Date.class).format(date, userSessionSource.getLocale());
+@Inject
+protected DatatypeRegistry datatypes;
+
+void sample() {
+    Date date;
+    // ...
+    String dateStr = datatypes.getNN(Date.class).format(date, userSessionSource.getLocale());
+    // ...
+}

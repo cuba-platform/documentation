@@ -2,9 +2,13 @@
 protected Messages messages;
 @Inject
 protected UserSessionSource userSessionSource;
-...
-String coordinateFormat = messages.getMainMessage("coordinateFormat");
-FormatStrings formatStrings = Datatypes.getFormatStrings(userSessionSource.getLocale());
-NumberFormat format = new DecimalFormat(coordinateFormat, formatStrings.getFormatSymbols());
+@Inject
+protected FormatStringsRegistry formatStringsRegistry;
 
-String formattedValue = format.format(value);
+void sample() {
+    String coordinateFormat = messages.getMainMessage("coordinateFormat");
+    FormatStrings formatStrings = formatStringsRegistry.getFormatStrings(userSessionSource.getLocale());
+    NumberFormat format = new DecimalFormat(coordinateFormat, formatStrings.getFormatSymbols());
+    String formattedValue = format.format(value);
+    // ...
+}

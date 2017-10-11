@@ -662,6 +662,42 @@ public String getLocValue() {
 ----
 --
 
+[[numberFormat_annotation]]
+@NumberFormat::
++
+--
+Specifies a format for an attribute of the `Number` type (it can be `BigDecimal`, `Integer`, `Long` or `Double`). Values of such attribute will be formatted and parsed throughout the UI according to the provided annotation parameters:
+
+* `pattern` - format pattern as described for https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html[DecimalFormat].
+
+* `decimalSeparator` - character used as a decimal sign (optional).
+
+* `groupingSeparator` - character used as a thousands separator (optional).
+
+If `decimalSeparator` and/or `groupingSeparator` are not specified, the framework uses corresponding values from the format strings for the current user's locale. The server system locale characters are used in this case for formatting the attribute values with locale-independent methods.
+
+For example:
+
+[source, java]
+----
+@Column(name = "PRECISE_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "0.0000")
+protected BigDecimal preciseNumber;
+
+@Column(name = "WEIRD_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#,##0.0000", decimalSeparator = "_", groupingSeparator = "`")
+protected BigDecimal weirdNumber;
+
+@Column(name = "SIMPLE_NUMBER")
+@NumberFormat(pattern = "#")
+protected Integer simpleNumber;
+
+@Column(name = "PERCENT_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#%")
+protected BigDecimal percentNumber;
+----
+--
+
 [[onDelete_annotation]]
 @OnDelete::
 +
@@ -1214,68 +1250,83 @@ Metaclass and metaproperty parameters are determined on the base of the listed <
 [[datatype]]
 ===== Datatype
 
-`Datatype` interface describes a valid data type for an entity attribute if it is not a reference.
+`Datatype` interface defines methods for converting values to and from strings (formatting and parsing). Each entity attribute, if it is not a reference, has a corresponding `Datatype`, which is used by the framework to format and parse the attribute value.
 
-Datatypes are registered in the `Datatypes` class, which loads and initializes `Datatype` implementation classes in the following way:
+Datatypes are registered in the `DatatypeRegistry` bean, which loads and initializes `Datatype` implementation classes from the <<metadata.xml,metadata.xml>> files of the project and its <<app_components,application components>>.
 
-* Default `Datatypes` implementations are loaded from the `/com/haulmont/chile/core/datatypes/datatypes.xml` classpath resource.
+Datatype of an entity attribute can be obtained from the corresponding <<metaProperty,meta-property>> using `getRange().asDatatype()` call.
 
-* <<metadata.xml,metadata.xml>> files from <<app_components,application components>> and from the project itself are scanned for the `datatypes` element and if it is found, custom `Datatype` implementations are loaded. See an example of a custom datatype <<datatype_custom_example,below>>.
+You can also use registered datatypes to format or parse arbitrary values of supported types. To do this, obtain a datatype instance from `DatatypeRegistry` using its `get(Class)` or `getNN(Class)` methods, passing the Java type that you want to convert.
 
-* For backward compatibility, the platform searches for the `datatypes.xml` file in `CLASSPATH` root, and if it is found, default `Datatype` implementations are loaded from it instead of the resource mentioned above.
+Datatypes are associated with entity attributes according to the following rules:
 
-`Datatype` instance can be obtained in two ways:
-
-* For an entity attribute – from the corresponding meta-property using `getRange().asDatatype()` call.
-
-* Using `Datatypes.get()` static method by passing to it the name of the `Datatype` implementation or Java class it was created for.
-
-`Datatypes` are associated with entity attributes during application start according to the following rules: 
-
-* If `@MetaProperty` annotation is defined on the field or method having a non-empty `datatype` value, the attribute is associated with the `Datatype` instance with the given name.
+* In most cases, an attribute is associated with a registered `Datatype` instance that can handle the attribute's Java type.
 +
-For instance, if the entity attribute is declared as in the example below, it will be associated with a custom type – `GeoCoordinateDatatype`:
+In the example below, the `amount` attribute will get `BigDecimalDatatype`
 +
 [source, java]
 ----
-@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
-@Column(name = "LATITUDE")
-private Double latitude;
+@Column(name = "AMOUNT")
+private BigDecimal amount;
+----
++
+because `cuba-metadata.xml` has the following entry:
++
+[source, xml]
+----
+<datatype id="decimal" class="com.haulmont.chile.core.datatypes.impl.BigDecimalDatatype"
+          default="true"
+          format="0.####" decimalSeparator="." groupingSeparator=""/>
 ----
 
-* In most cases, explicit specification is omitted, and the attribute is associated with the `Datatype` instance from repository, which is returned by `Datatypes.get(Class)` by supplied field or method type.
+* You can specify a datatype explicitly using the <<metaProperty_annotation,@MetaProperty>> annotation and its `datatype` attribute.
 +
-In the example below, `latitude` attribute will get a standard `DoubleDatatype` type registered in the `/com/haulmont/chile/core/datatypes/datatypes.xml` resource:
+In the example below, the `issueYear` entity attribute will be associated with the `year` datatype:
 +
 [source, java]
 ----
-@Column(name = "LATITUDE")
-private Double latitude;
+@MetaProperty(datatype = "year")
+@Column(name = "ISSUE_YEAR")
+private Integer issueYear;
 ----
++
+if the project's `metadata.xml` file has the following entry:
++
+[source, xml]
+----
+<datatype id="year" class="com.company.sample.YearDatatype"/>
+----
++
+As you can see, the `datatype` attribute of `@MetaProperty` contains identifier, which is used when registering the datatype implementation in `metadata.xml`.
 
-Basic methods of `Datatype` interfaces:
-
-* `getName()` – returns the unique name of the implementation.
+Basic methods of the `Datatype` interface:
 
 * `format()` – converts the passed value into a string.
 
 * `parse()` – transforms a string into the value of corresponding type.
 
-`Datatype` determines two sets of methods for formatting and parsing: considering and not considering locale. Conversion considering locale is applied everywhere in user interface, ignoring locale – in system mechanisms, for example, serialization in <<rest_api_v2,REST API>>.
+* `getJavaClass()` – returns the Java type which this datatype is designed for. This method has a default implementation that returns a value of the `@JavaClass` annotation if it is present on the class.
 
-Parsing formats ignoring locale are specified in the above mentioned `datatypes.xml` resource or in the `datatypes` element of the `metadata.xml` file.
+`Datatype` defines two sets of methods for formatting and parsing: considering and not considering locale. Conversion considering locale is applied everywhere in user interface, ignoring locale – in system mechanisms, for example, serialization in <<rest_api_v2,REST API>>.
 
-The parsing formats considering locale are provided in the <<main_message_pack,main messages pack>>, in the strings with the following keys:
+Parsing formats ignoring locale are hardcoded or specified in the `metadata.xml` file when registering the datatype.
 
-* `numberDecimalSeparator` – specifies decimal separator for numeric types. 
+See the next section for how to specify locale-dependent parsing formats.
 
-* `numberGroupingSeparator` – defines separator between digits groups for numeric types (e.g. when space is used as separator, number will be formatted as 1 000 000).
+[[datatype_format_strings]]
+====== Datatype Format Strings
+
+Locale-dependent parsing formats are provided in the <<main_message_pack,main messages pack>> of the application or its <<app_components,components>>, in the strings with the following keys:
+
+* `numberDecimalSeparator` – decimal separator for numeric types.
+
+* `numberGroupingSeparator` – thousands separator for numeric types.
 
 * `integerFormat` – format for `Integer` and `Long` types.
 
 * `doubleFormat` – format for `Double` type.
 
-* `decimalFormat` – format for `BigDecimal `type.
+* `decimalFormat` – format for `BigDecimal` type.
 
 * `dateTimeFormat` – format for `java.util.Date` type.
 
@@ -1287,75 +1338,17 @@ The parsing formats considering locale are provided in the <<main_message_pack,m
 
 * `falseString` – string corresponding to `Boolean.FALSE`.
 
-All the listed formats are specified in the main message pack of CUBA <<app_components,application component>> by default, and can be overridden in the similar files of the application project.
+[TIP]
+====
+Studio allows you to set format strings for languages used in your application. Edit *Project Properties*, click the button in the *Available locales* field, then click *Show data format strings*.
+====
 
-[[datatype_ui_format]]
-====== Example of Data Formatting in UI
-
-Let us consider the way `Order.date` attribute is displayed in orders browser table.
-
-`order-browse.xml`
-[source, xml]
-----
-include::{sourcesdir}/common/dateformat_1.xml[]
-----
-
-`date` attribute in `Order` class is defined using "date" type:
-
-[source, java]
-----
-@Column(name = "DATE", nullable = false)
-@Temporal(TemporalType.DATE)
-private Date date;
-----
-
-If the current user is logged in with the Russian locale, the following string is retrieved from the <<main_message_pack,main message pack>> on the client <<app_tiers,tier>>:
-[source, properties]
-----
-dateFormat=dd.MM.yyyy
-----
-
-The result: date "6th August 2012 " is converted into a string "06.08.2012" which is displayed in the table cell. 
-
-[[datatype_date_number_format]]
-====== Examples of Date and Number Formatting in the Application Code
-
-If you need to format or parse values of `BigDecimal`, `Integer`, `Long`, `Double`, `Boolean` or `Date` types depending on the current user locale, use the `DatatypeFormatter` bean. For example:
-
-[source, java]
-----
-include::{sourcesdir}/common/dateformat_4.java[]
-----
-
-Below are examples of using `Datatype` methods directly.
-
-* Date formatting example
-+
-[source, java]
-----
-include::{sourcesdir}/common/dateformat_2.java[]
-----
-
-* Example of formatting of numeric values with high accuracy (up to 5 decimal places) in Web Client:
-+
-`++/com/sample/sales/web/messages_ru.properties++`
-+
-[source, properties]
-----
-coordinateFormat = #,##0.00000
-----
-+
-`SomeClass.java`
-+
-[source, java]
-----
-include::{sourcesdir}/common/dateformat_3.java[]
-----
+Format strings for a locale can be obtained using the `FormatStringsRegistry` bean.
 
 [[datatype_custom_example]]
 ====== Example of a Custom Datatype
 
-Let us consider the implementation of a custom `GeoCoordinateDatatype`, intended for the attributes storing geographical coordinates.
+Suppose that some entity attributes in our application store calendar years, represented by integer numbers. Users should be able to view and edit a year, and if a user enters just two digits, the application should transform it to a year between 2000 and 2100. Otherwise, the whole entered number should be accepted as a year.
 
 First, create the following class in the *global* module:
 
@@ -1383,18 +1376,77 @@ In the `datatype` element, you can also specify the `sqlType` attribute containi
 * `java.util.UUID`
 * `byte[]`
 
-Specify one of the listed Java types in the `javaType` attribute to make this datatype available in the Studio entity attribute editor. In this case, the `sqlType` attribute can be omitted.
+In our case the class is designed to work with `Integer` type (which is declared by the `@JavaClass` annotation with `Integer.class` value), so the `sqlType` attribute can be omitted.
 
 Finally, specify the new datatype for the required attributes (programmatically or with the help of Studio):
 
 [source, java]
 ----
-@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
-@Column(name = "LATITUDE")
-private Double latitude;
+@MetaProperty(datatype = "year")
+@Column(name = "ISSUE_YEAR")
+private Integer issueYear;
 ----
 
-After the above listed operations are completed, the `latitude` attribute will be displayed in the desired format throughout the application.
+[[datatype_ui_format]]
+====== Example of Data Formatting in UI
+
+Let's consider how the `Order.date` attribute is displayed in orders table.
+
+`order-browse.xml`
+[source, xml]
+----
+include::{sourcesdir}/common/dateformat_1.xml[]
+----
+
+The `date` attribute in the `Order` class is defined using "date" type:
+
+[source, java]
+----
+@Column(name = "DATE_", nullable = false)
+@Temporal(TemporalType.DATE)
+private Date date;
+----
+
+If the current user is logged in with the Russian locale, the following string is retrieved from the <<main_message_pack,main message pack>>:
+
+[source, properties]
+----
+dateFormat=dd.MM.yyyy
+----
+
+As a result, date "2012-08-06" is converted into the string "06.08.2012" which is displayed in the table cell.
+
+[[datatype_date_number_format]]
+====== Examples of Date and Number Formatting in the Application Code
+
+If you need to format or parse values of `BigDecimal`, `Integer`, `Long`, `Double`, `Boolean` or `Date` types depending on the current user locale, use the `DatatypeFormatter` bean. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_4.java[]
+----
+
+Below are examples of using `Datatype` methods directly.
+
+* Date formatting example:
++
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_2.java[]
+----
+
+* Example of formatting numeric values with up to 5 decimal places in Web Client:
++
+.com/sample/sales/web/messages_ru.properties
+[source, properties]
+----
+coordinateFormat = #,##0.00000
+----
++
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_3.java[]
+----
 
 [[meta_annotations]]
 ===== Meta-Annotations

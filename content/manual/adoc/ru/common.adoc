@@ -682,6 +682,42 @@ public String getLocValue() {
 ----
 --
 
+[[numberFormat_annotation]]
+@NumberFormat::
++
+--
+Задает формат атрибута типа `Number` (это может быть `BigDecimal`, `Integer`, `Long` или `Double`). Значения такого атрибута будут форматироваться в пользовательском интерфейсе в соответствии с указанными параметрами аннотации:
+
+* `pattern` - паттерн форматирования, задается по правилам, описанным в https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html[DecimalFormat].
+
+* `decimalSeparator` - символ, используемый в качестве разделителя целой и дробной части (опционально).
+
+* `groupingSeparator` - символ, используемый в качестве разделителя групп разрядов (optional).
+
+Если `decimalSeparator` и/или `groupingSeparator` не указаны, фреймворк использует соответствующие значения из format strings для локали текущего пользователя. При форматировании без учета локали в этом случае используются символы из системной локали сервера.
+
+Примеры:
+
+[source, java]
+----
+@Column(name = "PRECISE_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "0.0000")
+protected BigDecimal preciseNumber;
+
+@Column(name = "WEIRD_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#,##0.0000", decimalSeparator = "_", groupingSeparator = "`")
+protected BigDecimal weirdNumber;
+
+@Column(name = "SIMPLE_NUMBER")
+@NumberFormat(pattern = "#")
+protected Integer simpleNumber;
+
+@Column(name = "PERCENT_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#%")
+protected BigDecimal percentNumber;
+----
+--
+
 [[onDelete_annotation]]
 @OnDelete::
 +
@@ -1250,58 +1286,73 @@ assert groupNameProp.getDomain().getName().equals("sec$Group");
 [[datatype]]
 ===== Datatype
 
-Интерфейс `Datatype` описывает тип данных, допустимый для атрибута сущности, не являющегося ссылкой.
+Интерфейс `Datatype` определяет методы конвертации значение в строку и из строки (formatting & parsing). Каждый атрибут сущности, не являющийся ссылкой, имеет некоторый `Datatype`, который и используется фреймворком для конвертации значений данного атрибута.
 
-Экземпляры `Datatype` регистрируются в репозитории - классе `Datatypes`, который выполняет загрузку и инициализацию классов реализации `Datatype` следующим образом:
+Экземпляры `Datatype` регистрируются в бине `DatatypeRegistry`, который выполняет загрузку и инициализацию классов реализации `Datatype` из файлов <<metadata.xml,metadata.xml>> <<app_components,компонентов приложения>> и самого проекта.
 
-* Стандартные реализации `Datatype` загружаются из classpath-ресурса  `/com/haulmont/chile/core/datatypes/datatypes.xml`.
+`Datatype` атрибута сущности может быть получен из соответствующего <<metaProperty,meta-property>> методом `getRange().asDatatype()`.
 
-* Сканируются файлы <<metadata.xml,metadata.xml>> <<app_components,компонентов приложения>> и самого проекта на предмет наличия элемента `datatypes`, и если он найден, загружаются кастомные реализации `Datatype`. См. пример создания кастомного типа данных <<datatype_custom_example,ниже>>.
+Кроме конвертации значений атрибутов сущностей, зарегистрированные экземпляры `Datatype` могут быть использованы для преобразования в строку и из строки произвольных значений поддерживаемых типов. Для этого необходимо получить экземпляр `Datatype` из `DatatypeRegistry` с помощью его методов `get(Class)` или `getNN(Class)`, передавая тип Java, который необходимо конвертировать.
 
-* Для обратной совместимости, в корне `CLASSPATH` ищется файл `datatypes.xml`, и если он найден, стандартные реализации `Datatype` инициализируется из него вместо ресурса, упомянутого выше.
+`Datatype` сопоставляется атрибуту сущности по следующим правилам:
 
-Экземпляр `Datatype` может быть получен двумя способами:
-
-* для атрибута сущности из соответствующего ему мета-свойства типа <<metaProperty.getType,DATATYPE>>, вызовом `getRange().asDatatype()`
-
-* статическим методом `Datatypes.get()`, передавая в него имя реализации `Datatype` или класс Java, для которого он создан.
-
-`Datatype` сопоставляется атрибуту сущности на старте системы по следующим правилам:
-
-* Если для поля или метода задана аннотация `@MetaProperty` с непустым значением `datatype`, то атрибуту сопоставляется экземпляр `Datatype` с данным именем. 
+* Как правило, атрибуту сопоставляется экземпляр `Datatype`, зарегистрированный в `DatatypeRegistry` и предназначенный для конвертации типа атрибута.
 +
-Например, при следующем объявлении атрибута сущности он получит нестандартный тип `GeoCoordinateDatatype` (см. пример ниже):
+Например, в данном случае атрибут `amount` получит `BigDecimalDatatype`:
 +
 [source, java]
 ----
-@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
-@Column(name = "LATITUDE")
-private Double latitude;
+@Column(name = "AMOUNT")
+private BigDecimal amount;
+----
++
+потому что в `cuba-metadata.xml` есть следующий элемент:
++
+[source, xml]
+----
+<datatype id="decimal" class="com.haulmont.chile.core.datatypes.impl.BigDecimalDatatype"
+          default="true"
+          format="0.####" decimalSeparator="." groupingSeparator=""/>
 ----
 
-* Как правило, явное указание отсутствует, и атрибуту сопоставляется экземпляр `Datatype`, возвращаемый репозиторием `Datatypes.get(Class)`, при передаче в него типа поля или метода.
+* Для поля или метода можно задать аннотацию <<metaProperty_annotation,@MetaProperty>>, указав в ней атрибут `datatype`.
 +
-Например, в данном случае атрибут `latitude` получит стандартный тип `DoubleDatatype`, зарегистрированный в ресурсе `/com/haulmont/chile/core/datatypes/datatypes.xml`:
+Например, атрибут `issueYear` получит тип `YearDatatype`:
 +
 [source, java]
 ----
-@Column(name = "LATITUDE")
-private Double latitude;
+@MetaProperty(datatype = "year")
+@Column(name = "ISSUE_YEAR")
+private Integer issueYear;
 ----
++
+если файл `metadata.xml` проекта содержит следующий элемент:
++
+[source, xml]
+----
+<datatype id="year" class="com.company.sample.YearDatatype"/>
+----
++
+Как видно, атрибут `datatype` аннотации `@MetaProperty` указывает на идентификатор, который использован при регистрации класса имплементации `Datatype` в файле `metadata.xml`.
 
 Основные методы интерфейса `Datatype`:
-
-* `getName()` - возвращает уникальное имя данной реализации
 
 * `format()` - преобразовывает переданное значение в строку
 
 * `parse()` - преобразовывает строку в значение нужного типа 
 
+* `getJavaClass()` – возвращает тип Java, для конвертации которого создан данный `Datatype`. Этот метод имеет реализацию по умолчанию, которая считывает значение аннотации `@JavaClass`, если она присутствует на классе.
+
 `Datatype` определяет два набора методов для форматирования/парсинга: с учетом локали и без учета локали. Преобразование с учетом локали используется повсеместно в пользовательском интерфейсе, преобразование без учета локали используется в системных механизмах, например, для сериализации в <<rest_api_v2,REST API>>.
 
-Форматы для преобразований без учета локали задаются в вышеупомянутом ресурсе `datatypes.xml` или в элементе `datatypes` файла `metadata.xml`.
+Форматы для преобразований без учета локали задаются в коде имплементации или в файле `metadata.xml`.
 
-Форматы для преобразований с учетом локали задаются в <<main_message_pack,главном пакете локализованных сообщений>>, в строках со следующими ключами:
+В следующем разделе описано, как задать форматы преобразований с учетом локали.
+
+[[datatype_format_strings]]
+====== Строки форматов Datatype
+
+Форматы для преобразований с учетом локали задаются в <<main_message_pack,главном пакете локализованных сообщений>> проекта или его <<app_components,компонентов>>, в строках со следующими ключами:
 
 * `numberDecimalSeparator` - задает символ разделителя целой и дробной части для числовых типов
 
@@ -1323,77 +1374,17 @@ private Double latitude;
 
 * `falseString` - строка, соответствующая `Boolean.FALSE`
 
-Все перечисленные форматы по умолчанию заданы в главном пакете локализованных сообщений <<app_components,компонента>> CUBA, и могут быть переопределены в аналогичных файлах проекта приложения.
+[TIP]
+====
+Форматы для используемых в приложении языков могут быть заданы в Studio. Для этого откройте на редактирование *Project Properties*, нажмите кнопку в поле *Available locales*, затем нажмите *Show data format strings*.
+====
 
-[[datatype_ui_format]]
-====== Пример форматирования даты в UI
-
-Рассмотрим отображение атрибута `Order.date` в таблице браузера заказов.
-
-`order-browse.xml`
-
-[source, xml]
-----
-include::{sourcesdir}/common/dateformat_1.xml[]
-----
-
-Атрибут `date` в классе `Order` определен с типом "дата":
-
-[source, java]
-----
-@Column(name = "DATE", nullable = false)
-@Temporal(TemporalType.DATE)
-private Date date;
-----
-
-Если текущий пользователь зарегистрирован c русской локалью, то из <<main_message_pack,главного пакета>> локализованных сообщений клиентского <<app_tiers,уровня>>, из файла `messages_ru.properties` извлекается строка:
-
-[source, plain]
-----
-dateFormat=dd.MM.yyyy
-----
-
-Результат: дата "6 августа 2012 года" конвертируется в строку "06.08.2012" для отображения в ячейке таблицы.
-
-[[datatype_date_number_format]]
-====== Примеры форматирования дат и чисел в коде приложения
-
-Если вам необходимо отформатировать или получить из строки значения `BigDecimal`, `Integer`, `Long`, `Double`, `Boolean` или `Date` учитывая локаль текущего пользователя, используйте бин `DatatypeFormatter`. Например:
-
-[source, java]
-----
-include::{sourcesdir}/common/dateformat_4.java[]
-----
-
-Ниже приведены примеры использования методов интерфейса `Datatype` напрямую.
-
-* Пример форматирования даты
-+
-[source, java]
-----
-include::{sourcesdir}/common/dateformat_2.java[]
-----
-
-* Пример форматирования числового значения с повышенной точностью (5 знаков после запятой) в <<app_tiers,блоке>> *Web Client*
-+
-`/com/sample/sales/web/messages_ru.properties`
-+
-[source, plain]
-----
-coordinateFormat = #,##0.00000
-----
-+
-`SomeClass.java`
-+
-[source, java]
-----
-include::{sourcesdir}/common/dateformat_3.java[]
-----
+Строки форматов могут быть получены из бина `FormatStringsRegistry`.
 
 [[datatype_custom_example]]
 ====== Пример специализированного Datatype
 
-Рассмотрим реализацию нестандартного типа GeoCoordinateDatatype, предназначенного для атрибутов, хранящих географические координаты.
+В качестве примера рассмотрим следующую задачу: в приложении есть атрибуты сущностей, хранящие годы в виде целых чисел. Пользователи должны иметь возможность просматривать и редактировать годы, причем если пользователь вводит только две цифры, приложение должно преобразовать их в год между 2000 и 2100. В противном случае, все введенное число считается годом.
 
 Создайте класс в модуле *global*:
 
@@ -1421,18 +1412,80 @@ include::{sourcesdir}/common/datatype_2.xml[]
 * `java.util.UUID`
 * `byte[]`
 
-Укажите один из вышеперечисленных типов Java в атрибуте `javaType`, чтобы новый тип данных был доступен в редакторе атрибутов сущностей Studio. В этом случае атрибут `sqlType` можно не указывать.
+В нашем случае класс предназначен для работы с типом `Integer` (что декларируется аннотацией `@JavaClass` со значением `Integer.class`), поэтому атрибут `sqlType` можно не указывать.
 
 Наконец, укажите новый тип данных для требуемых атрибутов (программно или с помощью интерфейса Studio):
 
 [source, java]
 ----
-@MetaProperty(datatype = GeoCoordinateDatatype.NAME)
-@Column(name = "LATITUDE")
-private Double latitude;
+@MetaProperty(datatype = "year")
+@Column(name = "ISSUE_YEAR")
+private Integer issueYear;
 ----
 
 После выполнения перечисленных действий атрибут `latitude` везде в приложении будет отображаться в нужном формате.
+
+[[datatype_ui_format]]
+====== Пример форматирования даты в UI
+
+Рассмотрим отображение атрибута `Order.date` в таблице браузера заказов.
+
+`order-browse.xml`
+
+[source, xml]
+----
+include::{sourcesdir}/common/dateformat_1.xml[]
+----
+
+Атрибут `date` в классе `Order` определен с типом "дата":
+
+[source, java]
+----
+@Column(name = "DATE", nullable = false)
+@Temporal(TemporalType.DATE)
+private Date date;
+----
+
+Если текущий пользователь зарегистрирован c русской локалью, то из <<main_message_pack,главного пакета>> локализованных сообщений извлекается строка:
+
+[source, plain]
+----
+dateFormat=dd.MM.yyyy
+----
+
+В результате дата "2012-08-06" конвертируется в строку "06.08.2012" для отображения в ячейке таблицы.
+
+[[datatype_date_number_format]]
+====== Примеры форматирования дат и чисел в коде приложения
+
+Если вам необходимо отформатировать или получить из строки значения `BigDecimal`, `Integer`, `Long`, `Double`, `Boolean` или `Date` учитывая локаль текущего пользователя, используйте бин `DatatypeFormatter`. Например:
+
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_4.java[]
+----
+
+Ниже приведены примеры использования методов интерфейса `Datatype` напрямую.
+
+* Пример форматирования даты
++
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_2.java[]
+----
+
+* Пример форматирования числового значения с 5 знаками после запятой в Web Client:
++
+.com/sample/sales/web/messages_ru.properties
+[source, plain]
+----
+coordinateFormat = #,##0.00000
+----
++
+[source, java]
+----
+include::{sourcesdir}/common/dateformat_3.java[]
+----
 
 [[meta_annotations]]
 ===== Мета-аннотации

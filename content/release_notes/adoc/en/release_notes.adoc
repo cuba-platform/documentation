@@ -39,6 +39,12 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 [[platform_breaking_changes]]
 === Breaking Changes
 
+. Due to improvements in <<datatype,datatypes>>, a migration of custom datatypes is needed. Studio does it automatically when you switch to the new platform version. If you don't use Studio and your project has custom datatypes registered in `metadata.xml`, add `id` attribute to the `datatype` element and set it to the value of the `NAME` constant of your datatype class. For example:
++
+[source, xml]
+----
+<datatype id="year" class="com.company.sample.YearDatatype"/>
+----
 
 [[data_model]]
 === Data Model
@@ -46,12 +52,36 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 [[entity_base_classes]]
 ==== Base Classes
 
-Non-persistent entities should be inherited form the same base classes as persistent ones: `BaseUuidEntity`, `BaseLongIdEntity`, and so on. It allows you to have identifiers of any type, which is important when non-persistent entities represent data from some data store. The framework determines if the entity is persistent or not by the file where it is registered: `persistence.xml` or `metadata.xml`.
+Non-persistent entities should be inherited form the same {manual}/base_entity_classes.html[base classes] as persistent ones: `BaseUuidEntity`, `BaseLongIdEntity`, and so on. It allows you to have identifiers of any type, which is important when non-persistent entities represent data from some data store. The framework determines if the entity is persistent or not by the file where it is registered: `persistence.xml` or `metadata.xml`.
 
 `AbstractNotPersistentEntity` has been deprecated, but can still be used for backward compatibility.
 
-[[deployment]]
-=== Deployment
+[[number_format]]
+==== Number Format
+
+Using the new {manual}/entity_attr_annotations.html#numberFormat_annotation[@NumberFormat] annotation, you can define a display format for numeric attributes right in the entity class. So if you need just a specific formatting of an attribute, and don't need some custom conversion algorithm, then you don't have to create a {manual}/datatype.html[Datatype] for the attribute. For example, here is an integer number without grouping separators:
+
+[source, java]
+----
+@Column(name = "SIMPLE_NUMBER")
+@NumberFormat(pattern = "#")
+protected Integer simpleNumber;
+----
+
+[[datatype]]
+==== Datatypes
+
+The {manual}/datatype.html[datatypes] mechanism has been improved for better extensibility.
+
+The `getName()` method of the `Datatype` interface is deprecated, and implementation classes do not need the `NAME` constant. Instead, the `id` XML attribute is used when the implementation class is registered.
+
+The `getJavaClass()` method of the `Datatype` interface now has a default implementation that returns a value of the `@JavaClass` annotation if it is present on the class.
+
+All datatypes are registered in `metadata.xml` files, but if old `datatypes.xml` exists, it is loaded for backward compatibility.
+
+There is no hard-coded list of "standard datatypes" anymore. The `default` XML attribute in `metadata.xml` indicates that the datatype should be used by default for a Java class handled by this datatype, i.e. this datatype will be resolved automatically for entity attributes of appropriate type. Standard datatypes are defined in the `cuba-metadata.xml` of the `cuba` application component. Subsequent `metadata.xml` files can add and override any datatype including default ones.
+
+The `Datatypes` class became a thin wrapper delegating to the `DatatypeRegistry` and `FormatStringsRegistry` beans. It is recommended to use `DatatypeRegistry` directly. Its `getId*()` methods are designed to get an id the datatype is registered with.
 
 [[gui]]
 === Generic UI
