@@ -3133,3 +3133,56 @@ You can perform bean validation programmatically using the `BeanValidation` infr
 include::{sourcesdir}/common/bean_validation_17.java[]
 ----
 --
+
+[[entity_attribute_access]]
+==== Entity Attribute Access Control
+
+The <<security,security subsystem>> allows you to set up access to entity attributes according to user permissions. That is the framework can automatically make an attribute read-only or hidden depending on a set of roles assigned to the current user. But sometimes you may want to change the access to attributes dynamically depending also on the current state of the entity or its linked entities.
+
+The attribute access control mechanism allows you to create rules of what attributes should be hidden, read-only or required for a particular entity instance, and apply these rules automatically to <<gui_framework,Generic UI>> components and <<rest_api_v2,REST API>>.
+
+The mechanism works as follows:
+
+* When <<dataManager,DataManager>> loads an entity, it sends a Spring application event of the `SetupAttributeAccessEvent` type. The event object contains the loaded instance in the managed state, and three collections of attribute names: read-only, hidden and required (they are initially empty).
+
+* You create an event listener that analyzes the state of the entity and fill collections of attribute names in the event appropriately. This event listener is in fact a container for the rules that define the attribute access for a given instance.
+
+* The mechanism saves the attribute names, defined by your rules, in the entity instance itself (in a linked `SecurityState` object).
+
+* On the client tier, Generic UI and REST API use the `SecurityState` object to control the access to entity attributes.
+
+In order to create a rule for particular entity type, do the following:
+
+* Create a <<managed_beans,managed bean>> in the *core* module of your project. The bean must have the default singleton scope.
+
+* Create a method accepting one parameter of the `SetupAttributeAccessEvent` type. The method must be marked with the `org.springframework.context.event.EventListener` annotation. The `SetupAttributeAccessEvent` type is generic and it must be parametrized with the entity type.
+
+* In the method, you should fill the collections of read-only, hidden and required attributes using the `addHidden()`, `addReadOnly()` and `addRequired()` methods of the event. The entity instance, which is available via the `getEntity()` method, is in the managed state, so you can safely access its attributes and attributes of its linked entities.
+
+For example, provided that `Order` entity has `customer` and `amount` attributes, you could create the following rule for restricting access to the `amount` attribute depending on the customer:
+
+[source, java]
+----
+include::{sourcesdir}/common/attr_access_1.java[]
+----
+
+[[entity_attribute_access_gui]]
+Attribute Access Control in Generic UI::
++
+--
+The framework automatically applies attribute access restrictions to a screen right before invoking the `ready()` method of the screen controller. If you don't want this for a particular screen, override its `isAttributeAccessControlEnabled()` method and return `false` from it.
+
+You may want to recompute and apply the restrictions while the screen is opened, in response of user actions. You can do it using the `AttributeAccessSupport` bean, passing the current screen and the entity which state has changed. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/attr_access_2.java[]
+----
+
+The second parameter of the `applyAttributeAccess()` method is a boolean value which specifies whether to reset components access to default before applying new restrictions. If it's true, programmatic changes to the components state (if any) will be lost. When the method is invoked automatically on screen opening, the value of this parameter is false. But when invoking the method in response of UI events, set it to true, otherwise the restrictions on components will be summed and not replaced.
+
+[WARNING]
+====
+Attribute access restrictions are applied only to the components bound to single entity attributes, like <<gui_TextField,TextField>> or <<gui_LookupField,LookupField>>. <<gui_Table,Table>> and other components implementing the `ListComponent` interface are not affected. So if you write a rule that can hide an attribute for some entity instances, we recommend not showing this attribute in tables at all.
+====
+--
