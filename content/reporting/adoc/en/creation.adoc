@@ -355,9 +355,9 @@ image::report_template.png[align="center"]
 
 * *Template code* - template code for its identification.
 
-* *Output type* - report output type. It should be consistent with the template file type according to the rules described in <<template_to_output>>.
-
 * *Template file* - template file, which is loaded from the file system and saved to the database along with the report structure description.
+
+* *Output type* - report output type. It should be consistent with the template file type according to the rules described in <<template_to_output>>.
 
 * *Output name pattern* - optional file name pattern, which will be used for the produced report download.
 It can either be a constant string or contain report parameter as a variable, e.g. `${header.authorName}.xlsx`. More sophisticated patterns with several parameters and string concatenation can also be created as a script in any band of report structure, e.g. `${Root.title}.xlsx`, where `title` is a result of the script:
@@ -367,9 +367,19 @@ It can either be a constant string or contain report parameter as a variable, e.
 [['title' : ('Report for '+params['author'].firstName+' '+params['author'].lastName)]]
 ----
 
-* *Defined with class* - flag to use the template <<template_custom,defined by a class>>.
+* *Is custom* - flag to use custom formatting logic not covered by any provided formatter.
 
-* *Custom class name* - template class name used if the *Defined with class* flag is set.
+* *Defined by* - the way the custom template is defined: by a <<template_custom,class>>, script or URL.
+
+* *Custom definition* - the fully qualified name of the Java class, the path to the Groovy script in the *core* module, or the URL used to create the template.
+
+* *Is alterable output* - flag to let the user choose the output type of a report at runtime in a dialog window.
++
+--
+If the flag is on, a dialog with output type selection will be shown when running a report. If the report has more than one template, the template selection dropdown will be shown as well.
+
+image::report_template_alterable.png[align="center"]
+--
 
 [[template_xls]]
 ==== XLSX and XLS Templates
@@ -456,6 +466,13 @@ image::csv_template.png[align="center"]
 
 .CSV output
 image::csv_report.png[align="center"]
+
+*Inline editor*
+
+CSV templates support inline editing. You can edit the template directly in the *Template editor* window and see the changes without having to re-upload the template file.
+
+.CSV inline editor
+image::csv_report_editor.png[align="center"]
 
 [[template_doc]]
 ==== DOCX and DOC Templates
@@ -605,6 +622,13 @@ An image is added as a byte array within the `src` attribute. This approach allo
 <img alt="SomePicture.png" src="data:image/png;base64,iVBORw0K ..... AcEP9PwxD0hNKK1FCAAAAAElFTkSuQmCC"/>
 ----
 
+*Inline editor*
+
+HTML templates support inline editing. You can edit the template directly in the *Template editor* window and see the changes without having to re-upload the template file.
+
+.HTML inline editor
+image::html_report_editor.png[align="center"]
+
 [[html_to_pdf]]
 ===== Converting HTML to PDF
 
@@ -644,6 +668,60 @@ Another thing to mention is parsing of special characters. To avoid errors when 
 	<td> <![CDATA[${(row.fields('book_name'))!?string!}]]> </td>
 	<td> <![CDATA[${(row.fields('author'))!?string!}]]> </td>
 </tr>
+----
+
+[[template_jasper]]
+==== Jasper Template
+
+Jasper formatter allows you to use Jasper-kind templates without Jasper Server. The template will be processed by the report engine, providing an output of defined type, see <<template_to_output>>.
+
+You can create JRXML templates using Jasper tools (for example, Jaspersoft Studio) or, simply, a text editor. Each report band must have a corresponding `band` element in the template which is, in turn, placed within one of the standard Jasper report sections (which are also named as the bands in Jasper terms):
+
+* `title` — at the beginning of the report;
+* `pageHeader` — on the top of each page;
+* `columnHeader` — on the top of report column;
+* `detail` — one for each band dataset iteration;
+* `columnFooter` — at the bottom of report column;
+* `pageFooter` — at the bottom of each page;
+* `lastPageFooter` — at the bottom of the last page (in place of `pageFooter`);
+* `summary` — at the end of the report;
+* `noData` — in place of all other sections, if a dataset contains no records;
+* `background` — in the background of each page.
+
+The report engine puts all report band data in one datasource: `JRBandDataDataSource`, which contains data as the tree with the `Root` band as the root, and passes the `CubaJRFunction` instance to the template as the main datasource that can be addressed using the `REPORTING` parameter. Declaring this parameter in the report template is not mandatory, it will be added automatically if omitted, but if you want to compile the template in Jasper IDE, you need to declare this parameter explicitly.
+
+The `REPORTING` parameter supports two functions:
+
+* `dataset` -  gets the sub-datasource from the main datasource that can be used, for example, in tables or in subreports as subDataset. This method searches among the children of the root band for the band with specified name and creates a new datasource with this band data as a new root. For example:
++
+[source, xml]
+----
+<subDataset name="Product">
+	<field name="name" class="java.lang.String"/>
+	<field name="price" class="java.lang.Long"/>
+</subDataset>
+...
+<dataSourceExpression><![CDATA[$P{REPORTING}.dataset("Product")]]></dataSourceExpression>
+----
+
+* `bitmap` - transforms the given byte array into `ByteArrayInputStream` and can be used for embedding images into the report. For example:
+
+[source, xml]
+----
+<field name="Main.image" class="java.lang.Object"/> //image from DB as byte array
+...
+<imageExpression><![CDATA[$P{REPORTING}.bitmap($F{Main.image})]]></imageExpression>
+----
+
+Each report band can be used in the template only once, so if you need to represent the same data in different forms within one report (for example, as a table and a chart), you need to create as many bands as the `band` elements in the template. Nested bands are not supported, all bands should be direct children of the *Root* band.
+
+The data can be retrieved from the datasource using the following syntax: `$F{<field name>}`. For example:
+
+[source, xml]
+----
+<textField>
+    <textFieldExpression><![CDATA[$F{library_department_name}]]></textFieldExpression>
+</textField>
 ----
 
 [[template_custom]]
