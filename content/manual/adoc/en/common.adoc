@@ -2739,7 +2739,7 @@ This section describes some access control aspects from the developer's point of
 
 User session is the main element of access control mechanism of CUBA applications. It is represented by the `UserSession` object, which is associated with the currently authenticated user and contains information about user rights. The `UserSession` object can be obtained in any application <<app_tiers,block>> using the <<userSessionSource,UserSessionSource>> infrastructure interface.
 
-The `UserSession` object is created on Middleware during `LoginService.login()` method execution after the user is authenticated using a name and a password. The object is then cached in the Middleware block and returned to the client tier. When running in cluster, the session object is replicated to all cluster members. The client tier also stores the session object after receiving it, associating it with the active user in one way or another (for example, storing it in HTTP session). Further on, all Middleware invocations on behalf of this user are accompanied by passing the session identifier (of `UUID` type). This process does not need any special support in the application code, as the session identifier is passed automatically, regardless of the signature of invoked methods. Processing of client invocations in the Middleware starts from retrieving session from the cache using the obtained identifier. Then the session is associated with the request execution thread. The session object is deleted from the cache when the `LoginService.logout()` method is called or when the timeout defined by <<cuba.userSessionExpirationTimeoutSec,cuba.userSessionExpirationTimeoutSec>> application property expires.
+The `UserSession` object is created on Middleware during `AuthenticationManager.login()` method execution after the user is authenticated using a name and a password. The object is then cached in the Middleware block and returned to the client tier. When running in cluster, the session object is replicated to all cluster members. The client tier also stores the session object after receiving it, associating it with the active user in one way or another (for example, storing it in HTTP session). Further on, all Middleware invocations on behalf of this user are accompanied by passing the session identifier (of `UUID` type). This process does not need any special support in the application code, as the session identifier is passed automatically, regardless of the signature of invoked methods. Processing of client invocations in the Middleware starts from retrieving session from the cache using the obtained identifier. Then the session is associated with the request execution thread. The session object is deleted from the cache when the `AuthenticationManager.logout()` method is called or when the timeout defined by <<cuba.userSessionExpirationTimeoutSec,cuba.userSessionExpirationTimeoutSec>> application property expires.
 
 Thus the session identifier created when the user logs into the system is used for user authentication during each Middleware invocation.
 
@@ -2755,35 +2755,302 @@ The session attributes are replicated in the Middleware cluster, same as the oth
 [[login]]
 ===== Login
 
-Standard user login process: 
+CUBA Platform provides built-in authentication mechanisms that are designed to be extensible. They include different authentication schemes such as login/password, remember me, trusted and anonymous login.
+
+The platform includes the following authentication mechanisms on middleware:
+
+- `AuthenticationManager` implemented by `AuthenticationManagerBean`
+- `AuthenticationProvider` implementations
+- `AuthenticationService` implemented by `AuthenticationServiceBean`
+- `UserSessionLog` - see <<userSession_log,user session logging>>.
+
+image::MiddlewareAuthenticationStructure.png[align="center"]
+
+Also, it employs the following additional components:
+
+- `TrustedClientService` : `TrustedClientServiceBean` - provides anonymous/system sessions to trusted clients.
+- `AnonymousSessionHolder` - creates and holds anonymous session instance for trusted clients.
+- `UserCredentialsChecker` - checks if used credentials can be used, for instance, protect against brute-force attack.
+- `UserAccessChecker` - checks if user can access system from the given context, for instance, from REST or using provided IP address.
+
+The main interface for authentication is `AuthenticationManager` which contains four methods:
+[source, java]
+----
+public interface AuthenticationManager {
+
+    AuthenticationDetails authenticate(Credentials credentials) throws LoginException;
+
+    AuthenticationDetails login(Credentials credentials) throws LoginException;
+
+    UserSession substituteUser(User substitutedUser);
+
+    void logout();
+}
+----
+
+There are two methods with similar responsibility: authenticate and login. Both methods check if provided credentials are valid and corresponds to a valid user, then return `AuthenticationDetails` object. The main difference between them is that `login` method additionally activates user session, thus it can be used for calling service methods later.
+
+Credentials represent a set of credentials for authentication subsystem. The platform has several types of credentials that are supported by `AuthenticationManager`:
+
+Available for all tiers:
+
+* `LoginPasswordCredentials`
+* `RememberMeCredentials`
+* `TrustedClientCredentials`
+
+Available only on middle tier:
+
+* `SystemUserCredentials`
+* `AnonymousUserCredentials`
+
+`AuthenticationManager` login / authenticate methods return `AuthenticationDetails` instance which contains `UserSession` object. This object can be used to check additional permissions, read *User* properties and session attributes. There is only one built-in implementation of `AuthenticationDetails` interface - *SimpleAuthenticationDetails* that stores only user session object, but application can provide its own `AuthenticationDetails` implementation with additional information for clients.
+
+*AuthenticationManager* can do one of three things in its *authenticate()* method:
+
+ - return `AuthenticationDetails` if it can verify that the input represents a valid user.
+ - throw `LoginException` if it cannot authenticate user with the passed credentials object.
+ - throw `UnsupportedCredentialsException` if it does not support the passed credentials object.
+
+The default implementation of `AuthenticationManager` is `AuthenticationManagerBean`, which delegates to a chain of `AuthenticationProvider` instances. An `AuthenticationProvider` is an authentication module that can process a specific `Credentials` implementation, also it has a special method to allow the caller to query if it supports a given `Credentials` type.
+
+image::LoginProcedure.png[align="center"]
+
+Standard user login process:
 
 * The user enters his username and password.
 
-* Application client block hashes the password using `getPlainHash()` method of `PasswordEncryption` bean and invokes `LoginService.login()` Middleware method passing the user login and password hash to it.
+* Application client block hashes the password using `getPlainHash()` method of `PasswordEncryption` bean and invokes `Connection.login()` middleware method passing the user login and password hash to it.
 
-* `LoginService` delegates execution to the `LoginWorker` bean, which loads `User` object by the entered login, hashes the obtained password hash again using user identifier as salt and compares the obtained hash to the password hash stored in the DB. In case of mismatch, `LoginException` is thrown.
+* `Connection` creates `Credentials` object and invokes `login()` method of `AuthenticationService`.
 
-* If the authentication is successful, all the access parameters of the user (roles list, rights, restrictions and session attributes) are loaded to the created <<userSession,UserSession>> instance. 
+* `AuthenticationService` delegates execution to the `AuthenticationManager` bean, which uses chain of `AuthenticationProvider` objects. There is `LoginPasswordAuthenticationProvider` that can work with `LoginPasswordCredentials` objects. It loads `User` object by the entered login, hashes the obtained password hash again using user identifier as salt and compares the obtained hash to the password hash stored in the DB. In case of mismatch, `LoginException` is thrown.
 
-* If the <<userSession_log,user session logging>> is enabled, the record with user session information is saved to the database.
+* If the authentication is successful, all the access parameters of the user (roles list, rights, restrictions and session attributes) are loaded to the created <<userSession,UserSession>> instance.
+
+* If the <<userSession_log,user session logging>> is enabled, the record with the user session information is saved to the database.
 
 Password hashing algorithm is implemented by the `EncryptionModule` type bean and is specified in <<cuba.passwordEncryptionModule,cuba.passwordEncryptionModule>> application property. SHA-1 is used by default.
 
-The platform has a mechanism for the protection against password brute force cracking. The protection is enabled by the <<cuba.bruteForceProtection.enabled,cuba.bruteForceProtection.enabled>> application property on Middleware. If the protection is enabled then the combination of user login and IP address is blocked for a time interval in case of multiple unsuccessful login attempts. A maximum number of login attempts for the combination of user login and IP address is defined by the <<cuba.bruteForceProtection.maxLoginAttemptsNumber,cuba.bruteForceProtection.maxLoginAttemptsNumber>> application property (default value is 5). Blocking interval in seconds is defined by the <<cuba.bruteForceProtection.blockIntervalSec,cuba.bruteForceProtection.blockIntervalSec>> application property (default value is 60).
+[[built-in-authentication-providers]]
+Built-in authentication providers::
++
+--
+The platform contains the following implementations of `AuthenticationProvider` interface:
 
-It is possible that the user password (actually, password hash) is not stored in the database, but is verified by external means, for example, by means of integration with LDAP. In this case the authentication is in fact performed by the client block, while the Middleware "trusts" the client by creating the session based on user login only, without the password, using `LoginService.loginTrusted()` method. This method requires satisfying the following conditions:
+- `LoginPasswordAuthenticationProvider`
+- `RememberMeAuthenticationProvider`
+- `TrustedClientAuthenticationProvider`
+- `SystemAuthenticationProvider`
+- `AnonymousAuthenticationProvider`
 
-* The client block has to pass the so-called trusted password, specified in the <<cuba.trustedClientPassword,cuba.trustedClientPassword>> Middleware and client block application property.
+All the implementations load user from the database, verify the passed credentials object and create a non-active user session using `UserSessionManager`. That session instance can become active later in case of `AuthenticationManager.login()` is called.
 
-* IP address of the client block has to be in the list specified in the <<cuba.trustedClientPermittedIpList,cuba.trustedClientPermittedIpList>> application property.
+`LoginPasswordAuthenticationProvider`, `RememberMeAuthenticationProvider` and `TrustedClientAuthenticationProvider` use additional pluggable checks: beans that implement `UserAccessChecker` interface. If at least one of the `UserAccessChecker` instances throw `LoginException` then authentication is considered failed and `LoginException` is thrown.
 
-Login to the system is also required for scheduled automatic processes as well as for connecting to the Middleware beans using JMX interface. Formally, these actions are considered administrative and they do not require authentication as long as no entities are changed in the database. When an entity is persisted to the database, the process requires login of the user who is making the change so that the login of the user responsible for the changes is stored.
+Besides, `LoginPasswordAuthenticationProvider` and `RememberMeAuthenticationProvider` check credentials instance using *UserCredentialsChecker* beans. There is only one built-in implementation of *UserCredentialsChecker* interface - *BruteForceUserCredentialsChecker* that checks if a user uses brute-force attack to find out valid credentials.
+--
 
+[[login-exceptions]]
+Exceptions::
++
+--
+`AuthenticationManager` and `AuthenticationProvider` can throw *LoginException* or one of its descendants from `authenticate()` and `login()` methods. Also, *UnsupportedCredentialsException* is thrown if passed credentials object cannot be processed by available `AuthenticationProvider` beans.
+
+See the following exception classes:
+
+- `UnsupportedCredentialsException`
+- `LoginException`
+  - `AccountLockedException`
+  - `UserIpRestrictedException`
+  - `RestApiAccessDeniedException`
+
+--
+
+[[login-events]]
+Events::
++
+--
+Standard implementation of `AuthenticationManager` - `AuthenticationManagerBean` fires the following application events during login / authentication procedure:
+
+- `BeforeAuthenticationEvent` / `AfterAuthenticationEvent`
+- `BeforeLoginEvent` / `AfterLoginEvent`
+- `AuthenticationSuccessEvent` / `AuthenticationFailureEvent`
+- `UserLoggedInEvent` / `UserLoggedOutEvent`
+- `UserSubstitutedEvent`
+
+Spring beans of the middle tier can handle these events using Spring ```@EventListener``` subscription:
+
+[source, java]
+----
+@Component
+public class LoginEventListener {
+    @Inject
+    private Logger log;
+
+    @EventListener
+    private void onUserLoggedIn(UserLoggedInEvent event) {
+        User user = event.getSource().getUser();
+        log.info("Logged in user {}", user.getInstanceName());
+    }
+}
+----
+
+All the event handlers (excluding `AfterLoginEvent`, `UserSubstitutedEvent` and `UserLoggedInEvent`) can throw `LoginException` to interrupt authentication / login process.
+
+For instance, we can implement maintenance mode valve for our application that will block login attempts if maintenance mode is active.
+
+[source, java]
+----
+@Component
+public class MaintenanceModeValve {
+    private volatile boolean maintenance = true;
+
+    public boolean isMaintenance() {
+        return maintenance;
+    }
+
+    public void setMaintenance(boolean maintenance) {
+        this.maintenance = maintenance;
+    }
+
+    @EventListener
+    private void onBeforeLogin(BeforeLoginEvent event) throws LoginException {
+        if (maintenance && event.getCredentials() instanceof AbstractClientCredentials) {
+            throw new LoginException("Sorry, system is unavailable");
+        }
+    }
+}
+----
+
+--
+
+[[login-extension-points]]
+Extension points::
++
+--
+
+You can extend authentication mechanisms using the following types of extension points:
+
+- `AuthenticationService` - replace existing `AuthenticationServiceBean`.
+- `AuthenticationManager` - replace existing `AuthenticationManagerBean`.
+- `AuthenticationProvider` implementations - implement additional or replace existing `AuthenticationProvider`.
+- Events - implement event handler.
+
+You can replace existing beans using Spring Framework mechanisms, for instance by registering a new bean in Spring XML config of the *core* module.
+
+[source, xml]
+----
+<bean id="cuba_LoginPasswordAuthenticationProvider"
+      class="com.company.authext.core.CustomLoginPasswordAuthenticationProvider"/>
+----
+
+[source, java]
+----
+public class CustomLoginPasswordAuthenticationProvider extends LoginPasswordAuthenticationProvider {
+    @Inject
+    public CustomLoginPasswordAuthenticationProvider(Persistence persistence, Messages messages) {
+        super(persistence, messages);
+    }
+
+    @Override
+    public AuthenticationDetails authenticate(Credentials credentials) throws LoginException {
+        LoginPasswordCredentials loginPassword = (LoginPasswordCredentials) credentials;
+        // for instance, add new check before login
+        if ("demo".equals(loginPassword.getLogin())) {
+            throw new LoginException("Demo account is disabled");
+        }
+
+        return super.authenticate(credentials);
+    }
+}
+----
+
+Event handlers can be ordered using the ```@Order``` annotation. All the platform beans and event handlers use order value between 100 and 1000, thus you can add your custom handling before or after the platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
+
+Ordering for an event handler:
+[source, java]
+----
+@Component
+public class DemoEventListener {
+    @Inject
+    private Logger log;
+
+    @Order(10)
+    @EventListener
+    private void onUserLoggedIn(UserLoggedInEvent event) {
+        log.info("Demo");
+    }
+}
+----
+
+AuthenticationProviders can use *Ordered* interface and implement `getOrder()` method.
+[source, java]
+----
+@Component
+public class DemoAuthenticationProvider extends AbstractAuthenticationProvider
+        implements AuthenticationProvider, Ordered {
+    @Inject
+    private UserSessionManager userSessionManager;
+
+    @Inject
+    public DemoAuthenticationProvider(Persistence persistence, Messages messages) {
+        super(persistence, messages);
+    }
+
+    @Nullable
+    @Override
+    public AuthenticationDetails authenticate(Credentials credentials) throws LoginException {
+        // ...
+    }
+
+    @Override
+    public boolean supports(Class<?> credentialsClass) {
+        return LoginPasswordCredentials.class.isAssignableFrom(credentialsClass);
+    }
+
+    @Override
+    public int getOrder() {
+        return 10;
+    }
+}
+----
+
+--
+
+[[login-additional-features]]
+Additional Features::
++
+--
+* The platform has a mechanism for the protection against password brute force cracking. The protection is enabled by the <<cuba.bruteForceProtection.enabled,cuba.bruteForceProtection.enabled>> application property on Middleware. If the protection is enabled then the combination of user login and IP address is blocked for a time interval in case of multiple unsuccessful login attempts. A maximum number of login attempts for the combination of user login and IP address is defined by the <<cuba.bruteForceProtection.maxLoginAttemptsNumber,cuba.bruteForceProtection.maxLoginAttemptsNumber>> application property (default value is 5). Blocking interval in seconds is defined by the <<cuba.bruteForceProtection.blockIntervalSec,cuba.bruteForceProtection.blockIntervalSec>> application property (default value is 60).
+
+* It is possible that the user password (actually, password hash) is not stored in the database, but is verified by external means, for example, by means of integration with LDAP. In this case the authentication is in fact performed by the client block, while the Middleware "trusts" the client by creating the session based on user login only, without the password, using `AuthenticationService.login()` method with `TrustedClientCredentials`. This method requires satisfying the following conditions:
+
+   - The client block has to pass the so-called trusted password, specified in the <<cuba.trustedClientPassword,cuba.trustedClientPassword>> Middleware and client block application property.
+
+   - IP address of the client block has to be in the list specified in the <<cuba.trustedClientPermittedIpList,cuba.trustedClientPermittedIpList>> application property.
+
+* Login to the system is also required for scheduled automatic processes as well as for connecting to the Middleware beans using JMX interface. Formally, these actions are considered administrative and they do not require authentication as long as no entities are changed in the database. When an entity is persisted to the database, the process requires login of the user who is making the change so that the login of the user responsible for the changes is stored.
++
 An additional benefit from login to the system for an automatic process or for JMX call is that the server log output is displayed with the current user login if the user session is set to the execution thread. This simplifies searching messages created by specific process during log parsing.
-
-System access for the processes within Middleware is done using `LoginWorker.loginSystem()` call passing the login (without password) of the user on whose behalf the process will be executed. As result, <<userSession,UserSession>> object will be created and cached in the corresponding Middleware block but it will not be replicated in the cluster.
++
+System access for the processes within Middleware is done using `AuthenticationManager.login()` with `SystemUserCredentials` containing the login (without password) of the user on whose behalf the process will be executed. As result, <<userSession,UserSession>> object will be created and cached in the corresponding Middleware block but it will not be replicated in the cluster.
 
 See more about processes authentication inside Middleware in <<system_authentication>>.
+
+--
+
+[[login-obsolete]]
+Obsolete/Deprecated::
++
+--
+
+The following components now are considered deprecated:
+
+- `LoginService` delegates login methods execution to `AuthenticationService`
+- `LoginWorker` delegates login methods execution to `AuthenticationManager`
+
+Do not use these components in your code. They will be removed in the next version of the platform.
+--
 
 [[securityContext]]
 ===== SecurityContext
