@@ -2757,21 +2757,21 @@ CUBA Platform provides built-in authentication mechanisms that are designed to b
 
 The platform includes the following authentication mechanisms on middleware:
 
-- AuthenticationManager : AuthenticationManagerBean
-- AuthenticationProvider implementations
-- AuthenticationService : AuthenticationServiceBean
-- UserSessionLog - see <<userSession_log,user session logging>>.
+- `AuthenticationManager` implemented by `AuthenticationManagerBean`
+- `AuthenticationProvider` implementations
+- `AuthenticationService` implemented by `AuthenticationServiceBean`
+- `UserSessionLog` - see <<userSession_log,user session logging>>.
 
 image::MiddlewareAuthenticationStructure.png[align="center"]
 
 Also, it employs the following additional components:
 
-- `TrustedClientService` : `TrustedClientServiceBean` - provides anonymous/system sessions to trusted clients
-- `AnonymousSessionHolder` - creates and holds anonymous session instance for trusted clients
-- `UserCredentialsChecker` - checks if used credentials can be used, for instance, protect against brute-force attack
-- `UserAccessChecker` - checks if user can access system from the passed context, for instance, from REST or using provided IP address
+- `TrustedClientService` : `TrustedClientServiceBean` - provides anonymous/system sessions to trusted clients.
+- `AnonymousSessionHolder` - creates and holds anonymous session instance for trusted clients.
+- `UserCredentialsChecker` - checks if used credentials can be used, for instance, protect against brute-force attack.
+- `UserAccessChecker` - checks if user can access system from the given context, for instance, from REST or using provided IP address.
 
-The main interface for authentication is `AuthenticationManager` which contains 4 methods:
+The main interface for authentication is `AuthenticationManager` which contains four methods:
 [source, java]
 ----
 public interface AuthenticationManager {
@@ -2788,42 +2788,44 @@ public interface AuthenticationManager {
 
 There are two methods with similar responsibility: authenticate and login. Both methods check if provided credentials are valid and corresponds to a valid user, then return `AuthenticationDetails` object. The main difference between them is that `login` method additionally activates user session, thus it can be used for calling service methods later.
 
-Credentials represents a set of credentials for authentication subsystem. The platform has several types of credentials that are supported by `AuthenticationManager`:
+Credentials represent a set of credentials for authentication subsystem. The platform has several types of credentials that are supported by `AuthenticationManager`:
 
 Available for all tiers:
-- LoginPasswordCredentials
-- RememberMeCredentials
-- TrustedClientCredentials
+
+* `LoginPasswordCredentials`
+* `RememberMeCredentials`
+* `TrustedClientCredentials`
 
 Available only on middle tier:
-- SystemUserCredentials
-- AnonymousUserCredentials
 
-`AuthenticationManager` login / authenticate methods return `AuthenticationDetails` instance which contains UserSession object. This object can be used to check additional permissions, read User properties and session attributes. There is only one built-in implementation of `AuthenticationDetails` interface - SimpleAuthenticationDetails that stores only user session object, but application can provide its own `AuthenticationDetails` implementation with additional information for clients.
+* `SystemUserCredentials`
+* `AnonymousUserCredentials`
 
-An AuthenticationManager can do one of 3 things in its authenticate() method:
+`AuthenticationManager` login / authenticate methods return `AuthenticationDetails` instance which contains `UserSession` object. This object can be used to check additional permissions, read *User* properties and session attributes. There is only one built-in implementation of `AuthenticationDetails` interface - *SimpleAuthenticationDetails* that stores only user session object, but application can provide its own `AuthenticationDetails` implementation with additional information for clients.
 
- - return an `AuthenticationDetails` if it can verify that the input represents a valid user.
- - throw an `LoginException` if it cannot authenticate user with the passed credentials object.
+*AuthenticationManager* can do one of three things in its *authenticate()* method:
+
+ - return `AuthenticationDetails` if it can verify that the input represents a valid user.
+ - throw `LoginException` if it cannot authenticate user with the passed credentials object.
  - throw `UnsupportedCredentialsException` if it does not support the passed credentials object.
 
-The default implementation of `AuthenticationManager` is `AuthenticationManagerBean`, which delegates to a chain of `AuthenticationProvider` instances. An `AuthenticationProvider` is a authentication module that can process a specific `Credentials` implementation, also it has a special method to allow the caller to query if it supports a given `Credentials` type.
+The default implementation of `AuthenticationManager` is `AuthenticationManagerBean`, which delegates to a chain of `AuthenticationProvider` instances. An `AuthenticationProvider` is an authentication module that can process a specific `Credentials` implementation, also it has a special method to allow the caller to query if it supports a given `Credentials` type.
 
 image::LoginProcedure.png[align="center"]
 
-Standard user login process: 
+Standard user login process:
 
 * The user enters his username and password.
 
-* Application client block hashes the password using `getPlainHash()` method of `PasswordEncryption` bean and invokes `Connection.login()` Middleware method passing the user login and password hash to it.
+* Application client block hashes the password using `getPlainHash()` method of `PasswordEncryption` bean and invokes `Connection.login()` middleware method passing the user login and password hash to it.
 
-* `Connection` creates `Credentials` object and invokes `login` method of `AuthenticationService`.
+* `Connection` creates `Credentials` object and invokes `login()` method of `AuthenticationService`.
 
 * `AuthenticationService` delegates execution to the `AuthenticationManager` bean, which uses chain of `AuthenticationProvider` objects. There is `LoginPasswordAuthenticationProvider` that can work with `LoginPasswordCredentials` objects. It loads `User` object by the entered login, hashes the obtained password hash again using user identifier as salt and compares the obtained hash to the password hash stored in the DB. In case of mismatch, `LoginException` is thrown.
 
 * If the authentication is successful, all the access parameters of the user (roles list, rights, restrictions and session attributes) are loaded to the created <<userSession,UserSession>> instance.
 
-* If the <<userSession_log,user session logging>> is enabled, the record with user session information is saved to the database.
+* If the <<userSession_log,user session logging>> is enabled, the record with the user session information is saved to the database.
 
 Password hashing algorithm is implemented by the `EncryptionModule` type bean and is specified in <<cuba.passwordEncryptionModule,cuba.passwordEncryptionModule>> application property. SHA-1 is used by default.
 
@@ -2833,32 +2835,32 @@ Built-in authentication providers::
 --
 The platform contains the following implementations of `AuthenticationProvider` interface:
 
-- LoginPasswordAuthenticationProvider
-- RememberMeAuthenticationProvider
-- TrustedClientAuthenticationProvider
-- SystemAuthenticationProvider
-- AnonymousAuthenticationProvider
+- `LoginPasswordAuthenticationProvider`
+- `RememberMeAuthenticationProvider`
+- `TrustedClientAuthenticationProvider`
+- `SystemAuthenticationProvider`
+- `AnonymousAuthenticationProvider`
 
-All the implementations load user from a database, verify the passed credentials object and create a non-active user session using `UserSessionManager`. That session instance can become active later in case `AuthenticationManager.login()` is called.
+All the implementations load user from the database, verify the passed credentials object and create a non-active user session using `UserSessionManager`. That session instance can become active later in case of `AuthenticationManager.login()` is called.
 
-`LoginPasswordAuthenticationProvider`, `RememberMeAuthenticationProvider` and `TrustedClientAuthenticationProvider` use additional pluggable checks: beans that implement `UserAccessChecker` interface. If at least one of the `UserAccessChecker` instances throw `LoginException` then authentication is considered failed and `LoginException` thrown.
+`LoginPasswordAuthenticationProvider`, `RememberMeAuthenticationProvider` and `TrustedClientAuthenticationProvider` use additional pluggable checks: beans that implement `UserAccessChecker` interface. If at least one of the `UserAccessChecker` instances throw `LoginException` then authentication is considered failed and `LoginException` is thrown.
 
-Besides, `LoginPasswordAuthenticationProvider` and `RememberMeAuthenticationProvider` check credentials instance using UserCredentialsChecker beans. There is only one built-in implementation of UserCredentialsChecker interface - BruteForceUserCredentialsChecker that checks if a user use brute-force attack to find out valid credentials.
+Besides, `LoginPasswordAuthenticationProvider` and `RememberMeAuthenticationProvider` check credentials instance using *UserCredentialsChecker* beans. There is only one built-in implementation of *UserCredentialsChecker* interface - *BruteForceUserCredentialsChecker* that checks if a user uses brute-force attack to find out valid credentials.
 --
 
 [[login-exceptions]]
 Exceptions::
 +
 --
-`AuthenticationManager` and `AuthenticationProvider` can throw LoginException or one of its descendants from authenticate() and login() methods. Also, UnsupportedCredentialsException is thrown if passed credentials object cannot be processed by available `AuthenticationProvider` beans.
+`AuthenticationManager` and `AuthenticationProvider` can throw *LoginException* or one of its descendants from `authenticate()` and `login()` methods. Also, *UnsupportedCredentialsException* is thrown if passed credentials object cannot be processed by available `AuthenticationProvider` beans.
 
 See the following exception classes:
 
-- UnsupportedCredentialsException
-- LoginException
-  - AccountLockedException
-  - UserIpRestrictedException
-  - RestApiAccessDeniedException
+- `UnsupportedCredentialsException`
+- `LoginException`
+  - `AccountLockedException`
+  - `UserIpRestrictedException`
+  - `RestApiAccessDeniedException`
 
 --
 
@@ -2868,13 +2870,13 @@ Events::
 --
 Standard implementation of `AuthenticationManager` - `AuthenticationManagerBean` fires the following application events during login / authentication procedure:
 
-- BeforeAuthenticationEvent / AfterAuthenticationEvent
-- BeforeLoginEvent / AfterLoginEvent
-- AuthenticationSuccessEvent / AuthenticationFailureEvent
-- UserLoggedInEvent / UserLoggedOutEvent
-- UserSubstitutedEvent
+- `BeforeAuthenticationEvent` / `AfterAuthenticationEvent`
+- `BeforeLoginEvent` / `AfterLoginEvent`
+- `AuthenticationSuccessEvent` / `AuthenticationFailureEvent`
+- `UserLoggedInEvent` / `UserLoggedOutEvent`
+- `UserSubstitutedEvent`
 
-Spring Beans of middle tier can handle these events using Spring ```@EventListener``` subscription:
+Spring beans of the middle tier can handle these events using Spring ```@EventListener``` subscription:
 
 [source, java]
 ----
@@ -2891,9 +2893,9 @@ public class LoginEventListener {
 }
 ----
 
-All the event handlers (excluding `AfterLoginEvent`, `UserSubstitutedEvent` and `UserLoggedInEvent`) can throw LoginException to interrupt authentication / login process.
+All the event handlers (excluding `AfterLoginEvent`, `UserSubstitutedEvent` and `UserLoggedInEvent`) can throw `LoginException` to interrupt authentication / login process.
 
-For instance, we can implement maintenance mode valve for our application that will block attempts of login if maintenance mode is active.
+For instance, we can implement maintenance mode valve for our application that will block login attempts if maintenance mode is active.
 
 [source, java]
 ----
@@ -2927,12 +2929,12 @@ Extension points::
 
 You can extend authentication mechanisms using the following types of extension points:
 
-- `AuthenticationService` - replace existing `AuthenticationServiceBean`
-- `AuthenticationManager` - replace existing `AuthenticationManagerBean`
-- `AuthenticationProvider` implementations - implement additional or replace existing `AuthenticationProvider`
-- Events - implement event handler
+- `AuthenticationService` - replace existing `AuthenticationServiceBean`.
+- `AuthenticationManager` - replace existing `AuthenticationManagerBean`.
+- `AuthenticationProvider` implementations - implement additional or replace existing `AuthenticationProvider`.
+- Events - implement event handler.
 
-You can replace existing beans using Spring Framework mechanisms, for instance by registering a new bean in Spring XML config of core module.
+You can replace existing beans using Spring Framework mechanisms, for instance by registering a new bean in Spring XML config of the *core* module.
 
 [source, xml]
 ----
@@ -2961,7 +2963,7 @@ public class CustomLoginPasswordAuthenticationProvider extends LoginPasswordAuth
 }
 ----
 
-Event handlers can be ordered using ```@Order``` annotation. All the platform beans and event handlers use order value between 100 and 1000, thus you can add your custom handling before or after platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
+Event handlers can be ordered using the ```@Order``` annotation. All the platform beans and event handlers use order value between 100 and 1000, thus you can add your custom handling before or after the platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
 
 Ordering for an event handler:
 [source, java]
@@ -2979,7 +2981,7 @@ public class DemoEventListener {
 }
 ----
 
-AuthenticationProviders can use Ordered interface and implement `getOrder()` method.
+AuthenticationProviders can use *Ordered* interface and implement `getOrder()` method.
 [source, java]
 ----
 @Component
@@ -3017,18 +3019,18 @@ public class DemoAuthenticationProvider extends AbstractAuthenticationProvider
 Additional Features::
 +
 --
-The platform has a mechanism for the protection against password brute force cracking. The protection is enabled by the <<cuba.bruteForceProtection.enabled,cuba.bruteForceProtection.enabled>> application property on Middleware. If the protection is enabled then the combination of user login and IP address is blocked for a time interval in case of multiple unsuccessful login attempts. A maximum number of login attempts for the combination of user login and IP address is defined by the <<cuba.bruteForceProtection.maxLoginAttemptsNumber,cuba.bruteForceProtection.maxLoginAttemptsNumber>> application property (default value is 5). Blocking interval in seconds is defined by the <<cuba.bruteForceProtection.blockIntervalSec,cuba.bruteForceProtection.blockIntervalSec>> application property (default value is 60).
+* The platform has a mechanism for the protection against password brute force cracking. The protection is enabled by the <<cuba.bruteForceProtection.enabled,cuba.bruteForceProtection.enabled>> application property on Middleware. If the protection is enabled then the combination of user login and IP address is blocked for a time interval in case of multiple unsuccessful login attempts. A maximum number of login attempts for the combination of user login and IP address is defined by the <<cuba.bruteForceProtection.maxLoginAttemptsNumber,cuba.bruteForceProtection.maxLoginAttemptsNumber>> application property (default value is 5). Blocking interval in seconds is defined by the <<cuba.bruteForceProtection.blockIntervalSec,cuba.bruteForceProtection.blockIntervalSec>> application property (default value is 60).
 
-It is possible that the user password (actually, password hash) is not stored in the database, but is verified by external means, for example, by means of integration with LDAP. In this case the authentication is in fact performed by the client block, while the Middleware "trusts" the client by creating the session based on user login only, without the password, using `AuthenticationService.login()` method with `TrustedClientCredentials`. This method requires satisfying the following conditions:
+* It is possible that the user password (actually, password hash) is not stored in the database, but is verified by external means, for example, by means of integration with LDAP. In this case the authentication is in fact performed by the client block, while the Middleware "trusts" the client by creating the session based on user login only, without the password, using `AuthenticationService.login()` method with `TrustedClientCredentials`. This method requires satisfying the following conditions:
 
-* The client block has to pass the so-called trusted password, specified in the <<cuba.trustedClientPassword,cuba.trustedClientPassword>> Middleware and client block application property.
+   - The client block has to pass the so-called trusted password, specified in the <<cuba.trustedClientPassword,cuba.trustedClientPassword>> Middleware and client block application property.
 
-* IP address of the client block has to be in the list specified in the <<cuba.trustedClientPermittedIpList,cuba.trustedClientPermittedIpList>> application property.
+   - IP address of the client block has to be in the list specified in the <<cuba.trustedClientPermittedIpList,cuba.trustedClientPermittedIpList>> application property.
 
-Login to the system is also required for scheduled automatic processes as well as for connecting to the Middleware beans using JMX interface. Formally, these actions are considered administrative and they do not require authentication as long as no entities are changed in the database. When an entity is persisted to the database, the process requires login of the user who is making the change so that the login of the user responsible for the changes is stored.
-
+* Login to the system is also required for scheduled automatic processes as well as for connecting to the Middleware beans using JMX interface. Formally, these actions are considered administrative and they do not require authentication as long as no entities are changed in the database. When an entity is persisted to the database, the process requires login of the user who is making the change so that the login of the user responsible for the changes is stored.
++
 An additional benefit from login to the system for an automatic process or for JMX call is that the server log output is displayed with the current user login if the user session is set to the execution thread. This simplifies searching messages created by specific process during log parsing.
-
++
 System access for the processes within Middleware is done using `AuthenticationManager.login()` with `SystemUserCredentials` containing the login (without password) of the user on whose behalf the process will be executed. As result, <<userSession,UserSession>> object will be created and cached in the corresponding Middleware block but it will not be replicated in the cluster.
 
 See more about processes authentication inside Middleware in <<system_authentication>>.
