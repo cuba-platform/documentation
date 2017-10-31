@@ -18,7 +18,7 @@ it can be developed further by front-end developers separately using the standar
 around the data model and middleware services of the project. Studio contains an extendable set of templates for
 creation of application level components.
 
-Our current approach is to stick to Polymer’s https://www.polymer-project.org/1.0/start/toolbox/set-up[techniques and tools]
+Our current approach is to stick to Polymer’s https://www.polymer-project.org/2.0/start/install-2-0[techniques and tools]
 which are used for creating https://developers.google.com/web/progressive-web-apps/[Progressive Web Apps].
 The aim is to follow Polymer's guidelines and best practices to provide similar learning curve and development experience.
 Polymer applications have component-based architecture and consist of https://www.webcomponents.org/[Web Components].
@@ -30,8 +30,8 @@ another components by specifying custom templates in Studio.
 
 In order to start developing effectively you need to be familiar with basic Polymer concepts.
 Here is a very quick intro to the Polymer:
-https://github.com/Polymer/polymer/tree/1.x#polymer-in-1-minute. However it’s better to learn it more in depth:
-https://www.polymer-project.org/1.0/start/. Since the Polymer is built around the standards by learning it in most cases you
+https://github.com/Polymer/polymer#polymer-in-1-minute. However it’s better to learn it more in depth:
+https://www.polymer-project.org/2.0/start/. Since the Polymer is built around the standards by learning it in most cases you
 learn the web platform itself.
 
 
@@ -43,7 +43,7 @@ It’s required for https://bower.io/[bower] - package manager for front-end app
 
 [[polymer_supported_browsers]]
 ==== Supported Browsers
-See the list of supported browsers on the Polymer’s https://www.polymer-project.org/1.0/docs/browsers[website]
+See the list of supported browsers on the Polymer’s https://www.polymer-project.org/2.0/docs/browsers[website]
 
 [WARNING]
 ====
@@ -72,12 +72,44 @@ The following tools are used in Polymer client build chain:
 
 * https://nodejs.org/en/[Node.js]
 * https://bower.io/[bower]
-* http://gulpjs.com/[gulp]
-* https://github.com/Polymer/polymer-build[polymer-build]
+* https://github.com/Polymer/polymer-cli[polymer-cli]
 
 By default Gradle handles installation and invocation of these tools. It's possible to use them directly,
 see <<polymer_tools,Using Native Polymer Tools>>.
 
+Polymer 2.x and its native elements are written using es6 thus it requires additional build step (es6 → es5 compilation) in order to support old browsers.
+
+[WARNING]
+====
+The default preset used in Polymer client is `es6-unbundled`. It means if you are targeting old browsers and production deployment you should change it to `es5-bundled`.
+====
+
+In order to change build preset open `polymer.json` and change `builds` property accordingly e.g.:
+
+[source,json]
+----
+  "builds": [
+    {
+      "preset": "es5-bundled",
+      "basePath": "/app-front/",
+      "addServiceWorker": false
+    }
+  ]
+----
+
+You can specify several presets or customize build process in `polymer.json`. More info about presets and options is available on https://www.polymer-project.org/2.0/toolbox/build-for-production[Polymer website].
+
+In order the results of specific preset build being deployed to Tomcat you need to change `deploy` task in gradle file:
+
+[source,json]
+----
+    task deploy(type: Copy, dependsOn: [assemble, deployUnbundled]) {
+        from file('build/es5-unbundled')
+        into "$cuba.tomcat.dir/webapps/$frontAppDir"
+    }
+----
+
+Notice `es6-bundled` → `es5-unbundled` change in `polymer.json` and `build.gradle`.
 
 [[polymer_directory_structure]]
 ===== Directory Structure
@@ -92,7 +124,6 @@ polymer-client/
 |   |-- favicon.ico
 |-- .gitignore
 |-- bower.json
-|-- gulpfile.js
 |-- index.html
 |-- manifest.json
 |-- package.json
@@ -108,9 +139,6 @@ package.json:: Lists dependencies on Node.js modules which will be used in a bui
 bower.json:: Lists dependencies on web libraries (primarily web components) which will be used in runtime.
 
 polymer.json:: Polymer https://www.polymer-project.org/1.0/docs/tools/polymer-cli#build[build configuration].
-
-gulpfile.js:: http://gulpjs.com/[Gulp] build file. It’s a right place to add some processing like
- minification/preprocessors etc. More info: https://github.com/Polymer/polymer-build#polymerproject.
 
 index.html:: An application entry point. Contains logic on loading polyfills and <appname>-shell.html import.
 
@@ -130,6 +158,11 @@ according to the configuration in `polymer.json` file. By default it will bundle
  Also it will replace bundled `app-shell.html` with unbundled version in order changes to be picked.
 Keep it in mind if you deploy your application on production directly from `tomcat/webapps`.
 
+[WARNING]
+====
+If you use `es5-bundled` build preset hot deploy will not work as expected since Studio does not perform any javascript transpilation on the fly.
+====
+
 [[polymer_tools]]
 ===== Using Native Polymer Tools
 
@@ -137,11 +170,11 @@ You can use native Polymer framework toolchain when developing Polymer UI compon
 It can be convenient if a separate team of front-end developers works on the project.
 In this case `Node.js` should be installed on the system.
 
-Install `bower` and `gulp` globally:
+Install `bower` and `polymer-cli` globally:
 
 [source]
 ----
-npm install bower gulp-cli -g
+npm install bower polymer-cli -g
 ----
 
 Then you can build and run the web application without Gradle:
@@ -151,27 +184,17 @@ Then you can build and run the web application without Gradle:
 cd modules/polymer-client
 npm install
 bower install
-gulp serve
+polymer serve
 ----
 
-You need to apply the following changes in the source code if you want to serve app by polymer server
-(instead of Tomcat):
+You need to specify absolute path to REST API in `modules/polymer-client/index.html` if you want to serve the app by polymer server (instead of Tomcat), e.g.:
 
-* Open `modules/polymer-client/index.html` and edit `base` element as follows:
-+
 [source,html]
 ----
-<base href="/">
+<myapp-shell api-url="http://localhost:8080/app/rest/"></myapp-shell>
 ----
 
-* Open `modules/polymer-client/src/<appname>-shell.html` and edit `cuba-app` element as follows:
-+
-[source,html]
-----
-<cuba-app api-url="http://localhost:8080/app/rest/" on-cuba-token-expired="_handleTokenExpired"></cuba-app>
-----
-
-After that, the web application will be available at `++http://localhost:8081++` and it will work with the REST API
+After that, the web application will be available at `++http://localhost:8081++` (see the particular port in command line output) and it will work with the REST API
  running at `++http://localhost:8080/app/rest/++`.
 
 
@@ -307,10 +330,10 @@ forcing users to log in.
 
 [[polymer_styling]]
 ==== Styling
-See the Polymer's https://www.polymer-project.org/1.0/docs/devguide/styling[styling guide].
+See the Polymer's https://www.polymer-project.org/2.0/docs/devguide/style-shadow-dom[styling guide].
 The most noticeable difference between traditional approach is how global styles are specified.
 Since Polymer elements use Shadow DOM global styles do not leak inside the components.
-You need to use https://www.polymer-project.org/1.0/docs/devguide/styling#style-modules[style-modules] instead.
+You need to use https://www.polymer-project.org/2.0/docs/devguide/style-shadow-dom#style-modules[style-modules] instead.
 There is a `shares-styles.html` file in Polymer client which is automatically being imported to any new component created in Studio.
 
 [[polymer_offline]]
@@ -334,16 +357,10 @@ There are two main approaches:
 
 * Service Workers which primarily used to cache the app itself.
 Take a look at `sw-precache-config.js` file generated with Polymer client.
-In order to enable service worker generation change `assemble` task of  Polymer module in the following way:
-```
-    ...
-    task assemble(type: NodeTask, dependsOn: installBowerPackages) {
-        script = file("node_modules/gulp/bin/gulp.js")
-        args = ['build-sw']
-    ...
-```
+In order to enable service worker generation set `"addServiceWorker": true` in `polymer.json`.
+
 More info on how to setup and use service workers can be found
-https://www.polymer-project.org/1.0/toolbox/service-worker[here].
+https://www.polymer-project.org/2.0/toolbox/service-worker[here].
 
 * https://developer.mozilla.org/en-US/docs/Web/API/Storage/LocalStorage[Local storage] and
 https://developer.mozilla.org/en/docs/Web/API/IndexedDB_API[Indexed DB] which used to store data locally.

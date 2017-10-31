@@ -183,6 +183,133 @@ button.setAction(new BaseAction("unmaximize"){
 });
 ----
 
+[[polymer_client]]
+=== Polymer UI
+
+[[polymer2]]
+==== Polymer 2
+{manual}/polymer_ui.html[Polymer Client] and https://cuba-elements.github.io/cuba-elements/[CUBA elements] have been updated in order to be compatible with Polymer 2.0 which comes with the following major features:
+
+* compatibility with custom elements v1 and shadow DOM v1 standards which are agreed to be implemented in most modern browsers;
+* support ES6 class-based syntax for defining elements.
+
+More info about new features on https://www.polymer-project.org/2.0/docs/about_20[Polymer website].
+
+==== Changes in build process
+Dependency on Gulp and `gulpfile.js` were removed in favour of direct `polymer-cli` usage. By default Polymer client is targeting browsers with es6 support however it's possible to specify different build target. More info in {manual}/polymer_build_and_structure.html[documentation].
+
+==== Manual Migration
+Studio does not provide automatic migration however Polymer templates are compatible with both Polymer 1 and Polymer 2 based clients.
+
+You can migrate your project manually by performing the following steps:
+
+. Bump components versions in `bower.json`. Here is the example of components which are used in Polymer 2.0 compatible client
++
+[source, json]
+----
+   "dependencies": {
+     "fetch": "github/fetch#^2.0.2",
+     "polymer": "Polymer/polymer#^2.0.1",
+     "app-route": "PolymerElements/app-route#^2.0.0",
+     "app-layout": "PolymerElements/app-layout#^2.0.1",
+     "iron-lazy-pages": "TimvdLippe/iron-lazy-pages#^2.0.2",
+     "iron-icons": "PolymerElements/iron-icons#^2.0.1",
+     "vaadin-combo-box": "vaadin/vaadin-combo-box#^2.0.0",
+     "vaadin-date-picker": "vaadin/vaadin-date-picker#^2.0.0",
+     "paper-button": "PolymerElements/paper-button#^2.0.0",
+     "paper-input": "PolymerElements/paper-input#^2.0.0",
+     "paper-checkbox": "PolymerElements/paper-checkbox#^2.0.0",
+     "paper-radio-group": "PolymerElements/paper-radio-group#^2.0.0",
+     "paper-radio-button": "PolymerElements/paper-radio-button#^2.0.0",
+     "paper-icon-button": "PolymerElements/paper-icon-button#^2.0.0",
+     "paper-card": "PolymerElements/paper-card#^2.0.0",
+     "paper-toolbar": "PolymerElements/paper-toolbar#^2.0.0",
+     "paper-spinner": "PolymerElements/paper-spinner#^2.0.0",
+     "paper-toast": "PolymerElements/paper-toast#^2.0.0",
+     "paper-listbox": "PolymerElements/paper-listbox#^2.0.0",
+     "paper-item": "PolymerElements/paper-item#^2.0.0",
+     "paper-drawer-panel": "PolymerElements/paper-drawer-panel#^2.0.0",
+     "paper-header-panel": "PolymerElements/paper-header-panel#^2.0.0",
+     "paper-dropdown-menu": "PolymerElements/paper-dropdown-menu#^2.0.0",
+     "cuba-app": "cuba-elements/cuba-app#^0.3.0",
+     "cuba-data": "cuba-elements/cuba-data#^0.3.0",
+     "cuba-form": "cuba-elements/cuba-form#^0.4.0",
+     "cuba-login": "cuba-elements/cuba-login#^0.3.0",
+     "cuba-styles": "cuba-elements/cuba-styles#^0.3.0",
+     "cuba-ui": "cuba-elements/cuba-ui#^0.3.0",
+     "cuba-file-field": "cuba-elements/cuba-file-field#^0.3.0",
+     "webcomponentsjs": "webcomponents/webcomponentsjs#^1.0.0",
+     "web-animations-js": "web-animations/web-animations-js#^2.3.1"
+   }
+----
+. Change `scripts` and `devDependencies` in `package.json`:
++
+[source,json]
+----
+  "scripts": {
+    "build": "polymer build"
+  },
+  "devDependencies": {
+    "bower": "^1.8.2",
+    "polymer-cli": "^1.5.7"
+  },
+----
+
+. Change `extraDependencies` and `build` properties in `polymer.json`:
++
+[source,json]
+----
+  "extraDependencies": [
+    "manifest.json",
+    "service-worker.js",
+    "bower_components/webcomponentsjs/*.js",
+    "bower_components/fetch/fetch.js"
+  ],
+  "builds": [
+    {
+      "preset": "es6-unbundled",
+      "basePath": "/app-front/",
+      "addServiceWorker": false
+    }
+  ]
+----
+
+. Change `assemble` and `deploy` tasks in `build.gradle`:
++
+[source, groovy]
+----
+configure(polymerClientModule) {
+    ...
+
+    def frontAppDir = 'app-front'
+    ...
+
+    task assemble(type: NodeTask, dependsOn: installBowerPackages) {
+        script = file("node_modules/polymer-cli/bin/polymer")
+        args = ['build']
+        inputs.dir "./"
+        outputs.dir "build"
+    }
+
+    task deployUnbundled(type: Copy) {
+        from file('./')
+        include 'bower_components/**'
+        include 'src/**'
+        into "$cuba.tomcat.dir/webapps/$frontAppDir"
+    }
+
+    task deploy(type: Copy, dependsOn: [assemble, deployUnbundled]) {
+        from file('build/es6-unbundled')
+        into "$cuba.tomcat.dir/webapps/$frontAppDir"
+    }
+----
+
+. Migrate components of your application according to Polymer's https://www.polymer-project.org/2.0/docs/upgrade[upgrade guide]
+
+Polymer 2 client uses https://www.webcomponents.org/element/PolymerElements/app-layout[app-layout] elements instead of deprecated `paper-*` layout elements.
+
+Also pages included in `iron-lazy-pages` should not be wrapped with `template` anymore.
+
 [[rest_api]]
 === REST API
 
