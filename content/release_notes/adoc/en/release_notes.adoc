@@ -47,6 +47,34 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 ----
 <datatype id="year" class="com.company.sample.YearDatatype"/>
 ----
++
+The `Datatypes` class became a wrapper around the `DatatypeRegistry` bean, so now you cannot invoke its methods until the Spring container is fully initialized. If you have initialized datatype instances in fields of Spring beans like this:
++
+[source,java]
+----
+@Component
+public class MyBean {
+    // will throw a NPE on start
+    private Datatype<BigDecimal> decimalDatatype = Datatypes.getNN(BigDecimal.class);
+    //...
+}
+----
++
+you should move the initialization to a place where the Spring container is already initialized, for example:
++
+[source,java]
+----
+@Component
+public class MyBean {
+
+    @Inject
+    private DatatypeRegistry datatypeRegistry;
+
+    public void myMethod(BigDecimal value) {
+        Datatype<BigDecimal> decimalDatatype = datatypeRegistry.getNN(BigDecimal.class);
+    //...
+}
+----
 
 . {manual}/list_actions.html#removeAction[RemoveAction] and `BulkEditAction` do not have `remove` and `update` constraint operation types by default anymore. The reason is as follows: {manual}/constraints.html[constraint] scripts are normally executed on middleware and expect entities in the managed state. But when you assign a constraint operation type on an action, the same scripts are executed also on the client with detached entities, which may result in unexpected "unfetched attribute" errors. So it should be a developer's decision whether to assign constraint operation types to actions and hence execute constraint scripts on the client side.
 
