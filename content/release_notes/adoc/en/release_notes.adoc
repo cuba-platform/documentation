@@ -349,11 +349,110 @@ configure(polymerClientModule) {
     }
 ----
 
-. Migrate components of your application according to Polymer's https://www.polymer-project.org/2.0/docs/upgrade[upgrade guide]
+. Open `index.html` and *delete* webcomponents polyfill loading code:
++
+----
+      var onload = function() {
+        // For native Imports, manually fire WebComponentsReady so user code
+        // can use the same code path for native and polyfill'd imports.
+        if (!window.HTMLImports) {
+          document.dispatchEvent(
+            new CustomEvent('WebComponentsReady', {bubbles: true})
+          );
+        }
+      };
 
-Polymer 2 client uses https://www.webcomponents.org/element/PolymerElements/app-layout[app-layout] elements instead of deprecated `paper-*` layout elements.
+      var webComponentsSupported = (
+        'registerElement' in document
+        && 'import' in document.createElement('link')
+        && 'content' in document.createElement('template')
+      );
 
-Also pages included in `iron-lazy-pages` should not be wrapped with `template` anymore.
+      if (!webComponentsSupported) {
+        var script = document.createElement('script');
+        script.async = true;
+        script.src = 'bower_components/webcomponentsjs/webcomponents-lite.min.js';
+        script.onload = onload;
+        document.head.appendChild(script);
+      } else {
+        onload();
+      }
+----
+Instead of the code above `webcomponents-loader` should be used now. Paste the script below inside the `head` tag:
++
+----
+  <script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+----
+
+
+. There are no `paper-elements` bundle for Polymer 2.0 so it's required to import each paper-* element used in app separately.
+Open `app-shell.html` and change
+
++
+----
+<link rel="import" href="../bower_components/paper-elements/paper-elements.html">
+----
+to
++
+----
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../bower_components/paper-radio-group/paper-radio-group.html">
+<link rel="import" href="../bower_components/paper-radio-button/paper-radio-button.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../bower_components/paper-toolbar/paper-toolbar.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-drawer-panel/paper-drawer-panel.html">
+<link rel="import" href="../bower_components/paper-header-panel/paper-header-panel.html">
+<link rel="import" href="../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
+----
+
+
+. One of the main breaking https://www.polymer-project.org/2.0/docs/upgrade#dom-template[changes] of Polymer 2 is using `slot` instead of `content` tags.
+So we need to explicitly specify `slot` for nested elements e.g.:
++
+----
+  <paper-drawer-panel id="drawerPanel">
+    <paper-header-panel drawer>
+      <paper-toolbar>
+    ...
+    <paper-header-panel main>
+     <paper-toolbar class="main-toolbar">
+----
+should be
++
+----
+  <paper-drawer-panel id="drawerPanel">
+    <paper-header-panel slot="drawer">
+      <paper-toolbar slot="header">
+    ...
+    <paper-header-panel slot="main">
+     <paper-toolbar slot="header" class="main-toolbar">
+----
+You may also want to use https://www.webcomponents.org/element/PolymerElements/app-layout[app-layout] elements instead of deprecated `paper-*` layout elements.
+
+. Pages included in `iron-lazy-pages` should not be wrapped with `template` anymore, change:
++
+----
+  <iron-lazy-pages selected="[[_computeSelectedPage(routeData.page)]]" attr-for-selected="data-route" class="content fit">
+    <template is="iron-lazy-page" data-route="">
+      <myapp-page></myapp-page>
+    </template>
+  </iron-lazy-pages>
+----
+to
++
+----
+  <iron-lazy-pages selected="[[_computeSelectedPage(routeData.page)]]" attr-for-selected="data-route" selected-attribute="active" class="content fit">
+    <myapp-page data-route=""></myapp-page>
+  </iron-lazy-pages>
+----
+
+Also in order to migrate your own component see the full Polymer https://www.polymer-project.org/2.0/docs/upgrade[upgrade guide]
 
 [[rest_api]]
 === REST API
