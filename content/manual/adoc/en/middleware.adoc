@@ -412,14 +412,9 @@ A variant of the method with `implicitConversions = false` does not perform such
 
 * `getDelegate()` – returns an instance of `javax.persistence.Query`, provided by the ORM implementation.
 
-When a request is executed through `Query`, changes in the current persistence context are ignored, i.e. the query just runs on the database. If the results are the instances already contained in the persistence context, the query result will contain instances from context and not the ones read from the database. The following test fragment should clarify this:
+If the current persistence context contains changed entity instances, these instances will be saved to the database prior to the query execution. In other words, ORM first synchronizes the states of entities in the persistence context and in the database, and only after that runs the query. It guarantees that the query results contain all relevant instances, even if they have not been saved to the database explicitly yet. The downside of this is that you will have an implicit flush, i.e. execution of SQL update statements for all currently changed entity instances, which may affect performance.
 
-[source, java]
-----
-include::{sourcesdir}/middleware/jpqlquery_2.java[]
-----
-
-Queries that change data (`update`, `delete`) cause flush of the current persistence context to the database prior to execution. In other words, ORM first synchronizes the states of entities in the persistence context and in the database, and only after that runs the modifying query. We recommend to run such queries in an unchanged persistence context in order to prevent implicit actions by ORM, which may have negative impact on performance.
+You can avoid implicit flushes if you set flush mode to `FlushModeType.COMMIT` using the `setFlushMode()` method of the `Query` interface. Keep in mind though, that apart from the possibility of not getting all relevant results, there is the following caveat: if an entity instance is loaded with a <<views,view>>, then changed, and after that you execute a query with `FlushModeType.COMMIT` loading the same instance, the changes will be lost. So never use `FlushModeType.COMMIT` when you are loading entities with views.
 
 [[jpql_functions]]
 ====== JPQL Functions
