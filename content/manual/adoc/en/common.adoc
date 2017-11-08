@@ -2241,6 +2241,154 @@ The `SYS_QUERY_RESULT` table should be periodically cleaned of all unnecessary q
 include::{sourcesdir}/common/sequentialqueries_1.xml[]
 ----
 
+[[events]]
+===== Events
+
+`Events` bean encapsulates application-scope event publication functionality. Application events can be used to exchange information between loosely coupled components. `Events` bean is a simple facade for ApplicationEventPublisher of the Spring Framework.
+
+[source, java]
+----
+public interface Events {
+    String NAME = "cuba_Events";
+
+    void publish(ApplicationEvent event);
+}
+----
+
+It has only one method `publish()` that receive an event object. `Events.publish()` notifies all matching listeners registered with this application of an application event. You can use `PayloadApplicationEvent` to publish any object as an event.
+
+See also https://spring.io/blog/2015/02/11/better-application-events-in-spring-framework-4-2[Spring Framework tutorial].
+
+[[bean-events]]
+Event handling in beans::
++
+--
+
+Usually,
+
+First of all, we have to create a new event class. It should extend ApplicationEvent class. An event class can contain any additional data. For instance:
+[source, java]
+----
+public class DemoEvent extends ApplicationEvent {
+    public DemoEvent(User source) {
+        super(source);
+    }
+
+    @Override
+    public User getSource() {
+        return (User) super.getSource();
+    }
+}
+----
+
+Beans can publish an event using Events bean:
+[source, java]
+----
+@Component
+public class DemoBean {
+    @Inject
+    private Events events;
+    @Inject
+    private UserSessionSource userSessionSource;
+
+    public void demo() {
+        UserSession userSession = userSessionSource.getUserSession();
+        events.publish(new DemoEvent(userSession.getUser()));
+    }
+}
+----
+
+By default, all events are handled synchronously.
+
+There are two ways to handle events:
+
+- Implement `ApplicationListener` interface.
+- Use `@EventListener` annotation.
+
+In the first case, we have to create a bean that implements `ApplicationListener` with type of an event:
+[source, java]
+----
+@Component
+public class DemoEventListener implements ApplicationListener<DemoEvent> {
+    @Inject
+    private Logger log;
+
+    @Override
+    public void onApplicationEvent(DemoEvent event) {
+        log.debug("Demo event is published");
+    }
+}
+----
+
+The second way can be used to hide implementation details and listen for multiple events in a single bean:
+[source, java]
+----
+@Component
+public class MultipleEventListener {
+    @Order(10)
+    @EventListener
+    private void handleDemoEvent(DemoEvent event) {
+        // handle event
+    }
+
+    @Order(1010)
+    @EventListener
+    private void handleUserLoginEvent(UserLoggedInEvent event) {
+        // handle event
+    }
+}
+----
+
+You can use Spring Framework `Ordered` interface and `@Order` annotation for event handlers ordering. All the platform beans and event handlers use `order` value between 100 and 1000, thus you can add your custom handling before or after the platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
+
+--
+
+[[ui-events]]
+Event handling in UI screens::
++
+--
+Usually, `Events` delegates event publishing to the ApplicationContext. On web tier you can use a special interface for event classes - `UiEvent`. It is a marker interface for events that are sent to UIs screens in the current UI instance (the current web browser tab). Please note that UiEvent instances are not sent to Spring Framework beans.
+
+Sample event class:
+[source, java]
+----
+public class UserRemovedEvent extends ApplicationEvent implements UiEvent {
+    public UserRemovedEvent(User source) {
+        super(source);
+    }
+
+    @Override
+    public User getSource() {
+        return (User) super.getSource();
+    }
+}
+----
+
+It can be fired using Events bean from a window controller the same way as from a bean:
+[source, java]
+----
+@Inject
+Events events;
+// ...
+UserRemovedEvent event = new UserRemovedEvent(removedUser);
+events.publish(event);
+----
+
+In order to handle an event you have to define methods in UI screens with a special annotation `@EventListener` (ApplicationListener interface is not supported):
+[source, java]
+----
+@Order(15)
+@EventListener
+protected void onUserRemove(UserRemovedEvent event) {
+    showNotification("User is removed " + event.getSource());
+}
+----
+
+You can use @Order annotation for event listener ordering.
+
+If an event is `UiEvent` and fired using Events bean from UI thread then opened windows / frames with such methods will receive the event. Event handling is synchronous. Only opened UI screens of current web browser tab of a User receive the event.
+--
+
 [[persistenceHelper]]
 ==== PersistenceHelper
 
@@ -2865,7 +3013,7 @@ See the following exception classes:
 Events::
 +
 --
-Standard implementation of `AuthenticationManager` - `AuthenticationManagerBean` fires the following application events during login / authentication procedure:
+Standard implementation of `AuthenticationManager` - `AuthenticationManagerBean` fires the following application <<events, events>> during login / authentication procedure:
 
 - `BeforeAuthenticationEvent` / `AfterAuthenticationEvent`
 - `BeforeLoginEvent` / `AfterLoginEvent`
@@ -2915,7 +3063,7 @@ You can replace existing beans using Spring Framework mechanisms, for instance b
 include::{sourcesdir}/common/customAuthenticationProvider.java[]
 ----
 
-Event handlers can be ordered using the `@Order` annotation. All the platform beans and event handlers use order value between 100 and 1000, thus you can add your custom handling before or after the platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
+Event handlers can be ordered using the `@Order` annotation. All the platform beans and event handlers use `order` value between 100 and 1000, thus you can add your custom handling before or after the platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
 
 Ordering for an event handler:
 [source, java]
