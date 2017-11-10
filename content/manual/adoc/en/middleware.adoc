@@ -412,9 +412,13 @@ A variant of the method with `implicitConversions = false` does not perform such
 
 * `getDelegate()` – returns an instance of `javax.persistence.Query`, provided by the ORM implementation.
 
-If the current persistence context contains changed entity instances, these instances will be saved to the database prior to the query execution. In other words, ORM first synchronizes the states of entities in the persistence context and in the database, and only after that runs the query. It guarantees that the query results contain all relevant instances, even if they have not been saved to the database explicitly yet. The downside of this is that you will have an implicit flush, i.e. execution of SQL update statements for all currently changed entity instances, which may affect performance.
+If a <<views,view>> is set for a query, then by default the query has `FlushModeType.AUTO`, which affects the case when the current persistence context contains changed entity instances: these instances will be saved to the database prior to the query execution. In other words, ORM first synchronizes the state of entities in the persistence context and in the database, and only after that runs the query. It guarantees that the query results contain all relevant instances, even if they have not been saved to the database explicitly yet. The downside of this is that you will have an implicit flush, i.e. execution of SQL update statements for all currently changed entity instances, which may affect performance.
 
-You can avoid implicit flushes if you set flush mode to `FlushModeType.COMMIT` using the `setFlushMode()` method of the `Query` interface. Keep in mind though, that apart from the possibility of not getting all relevant results, there is the following caveat: if an entity instance is loaded with a <<views,view>>, then changed, and after that you execute a query with `FlushModeType.COMMIT` loading the same instance, the changes will be lost. So never use `FlushModeType.COMMIT` when you are loading entities with views.
+If a query is executed without a view, then by default the query has `FlushModeType.COMMIT`, which means that the query will not cause a flush,  and the query results will not respect the contents of the current persistence context.
+
+In most cases ignoring the current persistence context is acceptable, and is a preferred behavior because it doesn't lead to extra SQL updates. But there is the following issue when using views: if there is a changed entity instance in the persistence context, and you execute a query with a view and `FlushModeType.COMMIT` loading the same instance, the changes will be lost. That is why we use `FlushModeType.AUTO` by default when running queries with views.
+
+You can also set flush mode explicitly using the `setFlushMode()` method of the `Query` interface. It will override the default settings described above.
 
 [[jpql_functions]]
 ====== JPQL Functions
