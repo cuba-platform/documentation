@@ -2248,11 +2248,7 @@ include::{sourcesdir}/common/sequentialqueries_1.xml[]
 
 [source, java]
 ----
-public interface Events {
-    String NAME = "cuba_Events";
-
-    void publish(ApplicationEvent event);
-}
+include::{sourcesdir}/common/events.java[]
 ----
 
 It has only one method `publish()` that receives an event object. `Events.publish()` notifies all matching listeners registered with this application of an application event. You can use `PayloadApplicationEvent` to publish any object as an event.
@@ -2267,33 +2263,13 @@ Event handling in beans::
 First of all, we have to create a new event class. It should extend the `ApplicationEvent` class. An event class can contain any additional data. For instance:
 [source, java]
 ----
-public class DemoEvent extends ApplicationEvent {
-    public DemoEvent(User source) {
-        super(source);
-    }
-
-    @Override
-    public User getSource() {
-        return (User) super.getSource();
-    }
-}
+include::{sourcesdir}/common/events_DemoEvent.java[]
 ----
 
 Beans can publish an event using the `Events` bean:
 [source, java]
 ----
-@Component
-public class DemoBean {
-    @Inject
-    private Events events;
-    @Inject
-    private UserSessionSource userSessionSource;
-
-    public void demo() {
-        UserSession userSession = userSessionSource.getUserSession();
-        events.publish(new DemoEvent(userSession.getUser()));
-    }
-}
+include::{sourcesdir}/common/events_DemoBean.java[]
 ----
 
 By default, all events are handled synchronously.
@@ -2301,40 +2277,18 @@ By default, all events are handled synchronously.
 There are two ways to handle events:
 
 - Implement the `ApplicationListener` interface.
-- Use the `@EventListener` annotation.
+- Use the `@EventListener` annotation for a method.
 
 In the first case, we have to create a bean that implements `ApplicationListener` with the type of our event:
 [source, java]
 ----
-@Component
-public class DemoEventListener implements ApplicationListener<DemoEvent> {
-    @Inject
-    private Logger log;
-
-    @Override
-    public void onApplicationEvent(DemoEvent event) {
-        log.debug("Demo event is published");
-    }
-}
+include::{sourcesdir}/common/events_DemoEventListener.java[]
 ----
 
 The second way can be used to hide implementation details and listen for multiple events in a single bean:
 [source, java]
 ----
-@Component
-public class MultipleEventListener {
-    @Order(10)
-    @EventListener
-    private void handleDemoEvent(DemoEvent event) {
-        // handle event
-    }
-
-    @Order(1010)
-    @EventListener
-    private void handleUserLoginEvent(UserLoggedInEvent event) {
-        // handle event
-    }
-}
+include::{sourcesdir}/common/events_MultipleEventListener.java[]
 ----
 
 You can use Spring Framework `Ordered` interface and `@Order` annotation for event handlers ordering. All the platform beans and event handlers use `order` value between 100 and 1000, thus you can add your custom handling before or after the platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
@@ -2350,36 +2304,19 @@ Usually, `Events` delegates event publishing to the `ApplicationContext`. On the
 Sample event class:
 [source, java]
 ----
-public class UserRemovedEvent extends ApplicationEvent implements UiEvent {
-    public UserRemovedEvent(User source) {
-        super(source);
-    }
-
-    @Override
-    public User getSource() {
-        return (User) super.getSource();
-    }
-}
+include::{sourcesdir}/common/events_UserRemovedEvent.java[]
 ----
 
 It can be fired using `Events` bean from a window controller the same way as from a bean:
 [source, java]
 ----
-@Inject
-Events events;
-// ...
-UserRemovedEvent event = new UserRemovedEvent(removedUser);
-events.publish(event);
+include::{sourcesdir}/common/events_publish.java[]
 ----
 
 In order to handle an event you have to define methods in UI screens with a special annotation `@EventListener` (`ApplicationListener` interface is not supported):
 [source, java]
 ----
-@Order(15)
-@EventListener
-protected void onUserRemove(UserRemovedEvent event) {
-    showNotification("User is removed " + event.getSource());
-}
+include::{sourcesdir}/common/events_EventListener.java[]
 ----
 
 You can use `@Order` annotation for event listener ordering.

@@ -2312,6 +2312,89 @@ include::{sourcesdir}/common/dataManager_2.java[]
 include::{sourcesdir}/common/sequentialqueries_1.xml[]
 ----
 
+[[events]]
+===== Events
+
+Бин `Events` реализует функциональность публикации объектов-событий уровня приложения. События могут использоваться для передачи данных между слабо связанными компонентами приложения. Бин `Events` является простым фасадом для объекта `ApplicationEventPublisher` Spring Framework.
+
+[source, java]
+----
+include::{sourcesdir}/common/events.java[]
+----
+
+Этот бин имеет только один метод - `publish()`, принимающий объект события. Метод `Events.publish()` уведомляет все слушатели, зарегистрированные в приложении и подписанные на события того же типа, что и переданный объект. Вы может использовать класс-обёртку `PayloadApplicationEvent` для публикации любых объектов в качестве событий.
+
+См. также https://spring.io/blog/2015/02/11/better-application-events-in-spring-framework-4-2[руководство Spring Framework].
+
+[[bean-events]]
+Обработка событий в компонентах приложения::
++
+--
+
+Прежде всего, необходимо создать класс события. Он должен быть наследником класса `ApplicationEvent`. Класс события может включать любые дополнительные данные. Например:
+[source, java]
+----
+include::{sourcesdir}/common/events_DemoEvent.java[]
+----
+
+Бины могут публиковать события, используя бин `Events`:
+[source, java]
+----
+include::{sourcesdir}/common/events_DemoBean.java[]
+----
+
+По умолчанию все события обрабатываются синхронно.
+
+Есть два способа обработки событий:
+
+- Реализовать интерфейс `ApplicationListener`.
+- Использовать аннотацию `@EventListener` для метода.
+
+В первом случае, мы должны создать бин, реализующий интерфейс `ApplicationListener` с указанием типа события:
+[source, java]
+----
+include::{sourcesdir}/common/events_DemoEventListener.java[]
+----
+
+Второй способ может использоваться для сокрытия деталей реализации обработчика событий и обработки множества различных событий в одном бине:
+[source, java]
+----
+include::{sourcesdir}/common/events_MultipleEventListener.java[]
+----
+
+Вы можете использовать интерфейс `Ordered` и аннотацию `@Order` Spring Framework для указания порядка исполнения обработчиков событий. Все бины и обработчики событий платформы используют значение `order` от 100 до 1000, таким образом, вы можете добавить обработчик событий как до, так и после обработчиков события платформы. Если вы хотите добавить свой обработчик события до обработчиков из платформы, то используйте значение меньше 100.
+
+--
+
+[[ui-events]]
+Обработка событий в экранах::
++
+--
+Обычно, бин `Events` делегирует публикацию события объекту `ApplicationContext`. Для блоков Web Client / Desktop Client это поведение отличается от стадартного, вы можете использовать дополнительный интерфейс для классов событий - `UiEvent`. Это интерфейс-маркер для событий, которые должны быть доставлены в экраны пользовательского интерфейса текущего экземпляра UI (текущей вкладки веб-браузера). Важно отметить, что экземпляры событий, реализующих `UiEvent`, не доставляются в бины Spring и не могут быть обработаны за пределами UI.
+
+Пример класса события:
+[source, java]
+----
+include::{sourcesdir}/common/events_UserRemovedEvent.java[]
+----
+
+События публикуются при помощи бина `Events` из контроллера экрана так же, как и из бинов Spring:
+[source, java]
+----
+include::{sourcesdir}/common/events_publish.java[]
+----
+
+Чтобы обработать событие, вы должны объявить в экране метод с аннотацией `@EventListener` (Интерфейс `ApplicationListener` не поддерживается):
+[source, java]
+----
+include::{sourcesdir}/common/events_EventListener.java[]
+----
+
+Вы можете использовать аннотацию `@Order`, чтобы задать порядок вызова обработчиков события.
+
+Если класс события реализует `UiEvent`, и объект такого события опубликован при помощи бина `Events` из потока UI, то будут вызваны обработчики событий этого типа в открытых на данный момент окнах и фреймах. Обработка событий синхронная. Только экраны и фреймы текущей активной вкладки веб-браузера получат уведомление о событии.
+--
+
 [[persistenceHelper]]
 ==== PersistenceHelper
 
@@ -2953,7 +3036,7 @@ image::LoginProcedure.png[align="center"]
 События::
 +
 --
-Стандартная реализация `AuthenticationManager` - `AuthenticationManagerBean` публикует следующие события во время аутентификации / входа пользователей:
+Стандартная реализация `AuthenticationManager` - `AuthenticationManagerBean` публикует следующие <<events, события>> во время аутентификации / входа пользователей:
 
 - `BeforeAuthenticationEvent` / `AfterAuthenticationEvent`
 - `BeforeLoginEvent` / `AfterLoginEvent`
@@ -2983,14 +3066,14 @@ include::{sourcesdir}/common/maintenanceModeValve.java[]
 Точки расширения::
 +
 --
-You can extend authentication mechanisms using the following types of extension points:
+Вы можете расширить механизм аутентификации, используя следующие точки расширения:
 
-- `AuthenticationService` - replace existing `AuthenticationServiceBean`.
-- `AuthenticationManager` - replace existing `AuthenticationManagerBean`.
-- `AuthenticationProvider` implementations - implement additional or replace existing `AuthenticationProvider`.
-- Events - implement event handler.
+- `AuthenticationService` - заменить существующий `AuthenticationServiceBean`.
+- `AuthenticationManager` - заменить существующий `AuthenticationManagerBean`.
+- `AuthenticationProvider` - реализовать новый или заменить существующий бин `AuthenticationProvider`.
+- Events - реализовать обработчик одного из доступных событий.
 
-You can replace existing beans using Spring Framework mechanisms, for instance by registering a new bean in Spring XML config of the *core* module.
+Вы можете заменить существующие бины, задействуя механизмы Spring Framework, например, зарегистрировав новую реализацию в XML конфигурации Spring модуля *core*:
 
 [source, xml]
 ----
