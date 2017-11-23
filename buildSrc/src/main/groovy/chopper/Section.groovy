@@ -82,10 +82,19 @@ class Section {
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
         for (name in vars.stringPropertyNames()) {
-            if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts')))
+            if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts'))) {
                 html = html.replace('{{scripts}}', '')
-            else
-                html = html.replace("{{" + name + "}}", vars.getProperty(name))
+            } else {
+                def scriptProperties = vars.getProperty(name)
+                if (name == 'scripts') {
+                    def anchorPath = context.etcDir.getPath() + "/anchors"
+                    def anchorScript = new File(anchorPath, 'anchors.js').getText(UTF_8)
+                    def anchorCss = new File(anchorPath, 'anchors.css').getText(UTF_8)
+                    scriptProperties <<= "<script>${anchorScript}</script>"
+                    scriptProperties <<= "<style>${anchorCss}</style>"
+                }
+                html = html.replace("{{" + name + "}}", scriptProperties)
+            }
         }
         return html
     }
