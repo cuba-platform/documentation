@@ -81,20 +81,24 @@ class Section {
         vars.setProperty("content", (parent == null) ? headerEl.outerHtml() : element.outerHtml())
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
+
+        def anchorPath = context.etcDir.getPath() + "/anchors"
+        def anchorScript = new File(anchorPath, 'anchors.js').getText(UTF_8)
+        def anchorCss = new File(anchorPath, 'anchors.css').getText(UTF_8)
+
         for (name in vars.stringPropertyNames()) {
-            if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts'))) {
-                html = html.replace('{{scripts}}', '')
-            } else {
-                def scriptProperties = vars.getProperty(name)
-                if (name == 'scripts') {
-                    def anchorPath = context.etcDir.getPath() + "/anchors"
-                    def anchorScript = new File(anchorPath, 'anchors.js').getText(UTF_8)
-                    def anchorCss = new File(anchorPath, 'anchors.css').getText(UTF_8)
-                    scriptProperties <<= "<script>${anchorScript}</script>"
-                    scriptProperties <<= "<style>${anchorCss}</style>"
-                }
-                html = html.replace("{{" + name + "}}", scriptProperties)
+            def value = vars.getProperty(name)
+
+            if (name == 'scripts') {
+                value <<= "<script>${anchorScript}</script>"
+
+                if (Boolean.valueOf(System.getProperty('noScripts')))
+                    value = "<script>${anchorScript}</script>"
+
+                value <<= "<style>${anchorCss}</style>"
             }
+
+            html = html.replace("{{" + name + "}}", value)
         }
         return html
     }
