@@ -39,6 +39,10 @@ class PostProcessDocHtml extends DefaultTask {
                 "<script type=\"text/javascript\" src=\"js/jquery.nearest.min.js\"/>\n" +
                 "<script type=\"text/javascript\" src=\"js/toc-controller.js\"/>\n")
 
+        if (docName == 'polymer') {
+            doc.body().append("<script type=\"text/javascript\" src=\"js/polymer-polyfill/webcomponents-loader.js\"/>\n")
+        }
+
         doc.body().append("<a href=\"#\" id=\"toc-position-marker\">. . .</a>");
 
         doc.head().prepend("<link rel=\"stylesheet\" href=\"styles/jquery.treeview.css\"/>")

@@ -82,10 +82,21 @@ class Section {
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
         for (name in vars.stringPropertyNames()) {
-            if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts')))
+            if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts'))) {
                 html = html.replace('{{scripts}}', '')
-            else
-                html = html.replace("{{" + name + "}}", vars.getProperty(name))
+            } else {
+
+                def property = vars.getProperty(name);
+
+                if (name == 'scripts' && vars.getProperty('docName') == 'polymer') {
+                    property += '<script type="text/javascript" src="./js/polymer-polyfill/webcomponents-loader.js"></script>'
+                    property += '<script type="text/javascript" src="./js/highlight-js/highlight.min.js"></script>'
+                    property += '<script type="text/javascript" src="./js/highlight-js/highlight-init.js"></script>'
+                    property += '<link rel="stylesheet" href="./js/highlight-js/styles/default.min.css"></link>'
+                }
+
+                html = html.replace("{{" + name + "}}", property)
+            }
         }
         return html
     }
