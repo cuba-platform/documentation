@@ -82,22 +82,27 @@ class Section {
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
 
-        def anchorPath = context.etcDir.getPath() + "/anchors"
-        def anchorScript = new File(anchorPath, 'anchors.js').getText(UTF_8)
-        def anchorCss = new File(anchorPath, 'anchors.css').getText(UTF_8)
-
         for (name in vars.stringPropertyNames()) {
             if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts'))) {
                 html = html.replace('{{scripts}}', '')
             } else {
 
-                def property = vars.getProperty(name);
+                def property = vars.getProperty(name)
 
                 if (name == 'scripts' && vars.getProperty('docName') == 'polymer') {
                     property += '<script type="text/javascript" src="./js/polymer-polyfill/webcomponents-loader.js"></script>'
                     property += '<script type="text/javascript" src="./js/highlight-js/highlight.min.js"></script>'
                     property += '<script type="text/javascript" src="./js/highlight-js/highlight-init.js"></script>'
                     property += '<link rel="stylesheet" href="./js/highlight-js/styles/github.min.css"></link>'
+                }
+
+                if (name == 'scripts') {
+                    def anchorPath = context.etcDir.getPath() + "/anchors"
+                    def anchorScript = new File(anchorPath, 'anchors.js').getText(UTF_8)
+                    def anchorCss = new File(anchorPath, 'anchors.css').getText(UTF_8)
+
+                    property += "<script>${anchorScript}</script>"
+                    property += "<style>${anchorCss}</style>"
                 }
 
                 html = html.replace("{{" + name + "}}", property)
