@@ -81,6 +81,11 @@ class Section {
         vars.setProperty("content", (parent == null) ? headerEl.outerHtml() : element.outerHtml())
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
+
+        def anchorPath = context.etcDir.getPath() + "/anchors"
+        def anchorScript = new File(anchorPath, 'anchors.js').getText(UTF_8)
+        def anchorCss = new File(anchorPath, 'anchors.css').getText(UTF_8)
+
         for (name in vars.stringPropertyNames()) {
             if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts'))) {
                 html = html.replace('{{scripts}}', '')
