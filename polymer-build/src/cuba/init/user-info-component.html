@@ -1,0 +1,54 @@
+<link rel="import" href="../../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../../bower_components/polymer/lib/elements/dom-if.html">
+<link rel="import" href="../../../bower_components/cuba-app/cuba-app.html">
+<link rel="import" href="../../../bower_components/cuba-app/cuba-app-aware-behavior.html">
+
+<dom-module id="user-info-component">
+  <template>
+
+    <cuba-app api-url="/app/rest/"></cuba-app>
+
+    <template is="dom-if" if="[[userInfoLoaded]]">
+      <p><b>First name:</b> [[userInfo.firstName]]</p>
+      <p><b>Last name:</b> [[userInfo.lastName]]</p>
+      <p><b>Locale:</b> [[userInfo.locale]]</p>
+    </template>
+
+  </template>
+  <script>
+    // CUBA elements are currently in hybrid mode.
+    // So, we have to use special mixin syntax to extend its behaviors.
+    class UserInfoComponent extends Polymer.mixinBehaviors([CubaAppAwareBehavior], Polymer.Element) {
+      static get is() {
+        return 'user-info-component';
+      }
+
+      static get observers() {
+        // In the most cases an observer on `app` is not required
+        //  because 'app' is usually used when we are 100% sure that
+        //  the application is already initialized
+        return [
+          '_requestUserInfo(app)'
+        ];
+      }
+
+      static get properties() {
+        return {
+          userInfo: Object,
+          userInfoLoaded: Boolean
+        };
+      }
+
+      _requestUserInfo() {
+        // CubaAppAwareBehavior provided us with the 'app' property.
+        this.app.getUserInfo().then(function(userInfo) {
+          this.set('userInfo', userInfo);
+          this.set('userInfoLoaded', true);
+        }.bind(this));
+      }
+
+    }
+
+    customElements.define(UserInfoComponent.is, UserInfoComponent);
+  </script>
+</dom-module>

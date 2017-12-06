@@ -1,0 +1,86 @@
+<link rel="import" href="../../../../bower_components/polymer/polymer-element.html">
+
+<dom-module id="disco-lights">
+  <template>
+    <style>
+      .square {
+        background: black;
+        display: inline-block;
+        height: 20px;
+        width: 20px;
+      }
+    </style>
+
+    <div class="square" id="square"></div>
+
+    Current color: [[_currentColor]]
+
+  </template>
+  <script>
+    class DiscoLights extends Polymer.Element {
+      static get is() {
+        return 'disco-lights';
+      }
+
+      static get properties() {
+        return {
+          // 'colorChangeInterval' is a public property because
+          //  it's very possible that a client of the component might want
+          //  to change it
+          colorChangeInterval: {
+            type: Number,
+            value: 800
+          },
+          // Scheduler id is used for some internal work.
+          // Therefore, it's a private member.
+          _schedulerId: {
+            type: Number,
+            value: null
+          },
+          // The current color is displayed in the UI of this component.
+          _currentColor: String
+        }
+      }
+
+      // It's definitely a public method because it's intended
+      //  to be used by some outer component
+      start() {
+        if (!this._schedulerId) {
+          this._startChangingColor();
+        }
+      }
+
+      stop() {
+        if (!!this._schedulerId) {
+          clearInterval(this._schedulerId);
+          this.set('_schedulerId', null);
+        }
+      }
+
+      // It's not a public member but we have no means to change a name
+      //  of a standard lifecycle callback method
+      connectedCallback() {
+        super.connectedCallback();
+        this._startChangingColor();
+      }
+
+      // The method is supposed to be used only by the component itself.
+      // So, it's a private member.
+      _startChangingColor() {
+        const schedulerId = setInterval(function() {
+          let color = '#';
+          for (let i = 0; i < 6; i++) {
+            color += '0123456789ABCDEF'[Math.floor(Math.random() * 16)];
+          }
+          this.$.square.style.backgroundColor = color;
+          this.set('_currentColor', color);
+        }.bind(this), this.colorChangeInterval);
+
+        this.set('_schedulerId', schedulerId);
+
+      }
+    }
+
+    customElements.define(DiscoLights.is, DiscoLights);
+  </script>
+</dom-module>

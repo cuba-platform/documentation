@@ -53,6 +53,19 @@ class Asciidoc2Html extends DefaultTask {
             from "js"
             into "$dstDocDir/js"
         }
+
+        if (docName == 'polymer') {
+
+            project.copy {
+                include '**/*.html'
+                include '**/*.js'
+                exclude '**/node_modules/'
+                exclude '**/gulpfile.js'
+                from "polymer-build"
+                into "$dstDocDir/html"
+            }
+
+        }
     }
 
     def postProcessHtml() {

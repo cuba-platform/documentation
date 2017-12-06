@@ -1,0 +1,188 @@
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/cuba-app/cuba-app-aware-behavior.html">
+
+<!-- This component stubs cuba.getApp().fetch method. So, we can demonstrate cuba components in our documentation. -->
+<!-- This component is not supposed to be shown to readers. -->
+<!-- If you are a documentation reader who isn't supposed to read this and you by some chance are reading it out of curiosity -->
+<!--  then "Hello" :-) -->
+<dom-module id="cuba-app-stub">
+  <template>
+
+  </template>
+  <script>
+    class CubaAppStub extends Polymer.mixinBehaviors([CubaAppAwareBehavior], Polymer.Element) {
+      static get is() {
+        return 'cuba-app-stub';
+      }
+
+      static get observers() {
+        return [
+          '_init(app)'
+        ];
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+        // XMLHttpRequest is used in vaadin-upload.html. vaadin-upload.html is used in cuba-file-field.html
+        XMLHttpRequest.prototype.send = function(formData) {
+          const file = !!formData ? Array.from(formData.entries())[0][1] : {name: 'undefined'};
+
+          Object.defineProperty(this, 'readyState', {
+            value: 4
+          });
+          Object.defineProperty(this, 'status', {
+            value: 200
+          });
+          Object.defineProperty(this, 'responseText', {
+            value: '{"id":"e91ca295-85d1-0a79-2290-b01be217c5da","name":"' + file.name + '","size":81513}'
+          });
+          this.onreadystatechange();
+        };
+
+        const oldWindowFunction = open;
+        open = function(url) {
+          if (url.indexOf('v2/files/') !== -1) {
+            // This message will shown to the documentation reader who are trying to open a file
+            //  loaded by 'cuba-file-field'
+            alert('We are sorry, but this feature is disabled for this sampler. ' +
+              'In real application the uploaded file will be opened in a new tab.');
+          } else {
+            oldWindowFunction.apply(null, arguments);
+          }
+        };
+      }
+
+      apiToken() {
+        return '8208e0b8-da21-465c-90e9-69b8c683526d';
+      }
+
+      books() {
+        return [{
+          id: '5746b777-99b2-276a-3bca-bbf25e2d9c01',
+          title: 'The Green Mile',
+          genre: 'dark fantasy',
+          publicationYear: 1996,
+          author: {
+            name: 'Stephen King',
+            born: 1947,
+            died: null
+          }
+        }, {
+          id: '5746b777-99b2-276a-3bca-bbf25e2d9c02',
+          title: 'Crime and Punishment',
+          genre: 'psychological novel',
+          publicationYear: 1866,
+          author: {
+            name: 'Fyodor Dostoyevsky',
+            born: 1821,
+            died: 1881
+          }
+        }, {
+          id: '5746b777-99b2-276a-3bca-bbf25e2d9c03',
+          title: 'The Colour of Magic',
+          genre: 'fantasy',
+          publicationYear: 1823,
+          author: {
+            name: 'Terry Pratchett',
+            born: 1948,
+            died: 2015
+          }
+        }, {
+          id: '5746b777-99b2-276a-3bca-bbf25e2d9c04',
+          title: 'Three Comrades',
+          genre: 'war novel',
+          publicationYear: 1937,
+          author: {
+            name: 'Erich Maria Remarque',
+            born: 1898,
+            died: 1970
+          }
+        }, {
+          id: '5746b777-99b2-276a-3bca-bbf25e2d9c05',
+          title: 'The Three Musketeers',
+          genre: 'historical novel',
+          publicationYear: 1844,
+          author: {
+            name: 'Alexandre Dumas',
+            born: 1802,
+            died: 1870
+          }
+        }];
+      }
+
+
+      _isValidCredentials(login, password) {
+        return (login === 'test' && password === 'test')
+          || (login === 'marketer' && password === 'marketer!')
+          || (login === 'manager' && password === 'manager:-)')
+          || (login === 'admin' && password === 'admin123');
+      }
+
+      _init(app) {
+        this.app.login = function(login, password) {
+          if (this._isValidCredentials(login, password)) {
+            this.app.restApiToken = this.apiToken();
+            return Promise.resolve({
+              access_token: this.apiToken(),
+              expires_in: 40000,
+              scope: 'rest-api',
+              token_type: 'bearer'
+            });
+          } else {
+            return Promise.reject({
+              error: "invalid_grant",
+              error_description: "Bad credentials"
+            });
+          }
+        }.bind(this);
+
+        this.app.loadEntities = function(name) {
+          let result = [];
+
+          if (name === 'cuba$Book') {
+            result = this.books();
+          }
+
+          return Promise.resolve(result);
+        }.bind(this);
+
+        this.app.loadEntity = function(name, id) {
+          let result = null;
+
+          if (name === 'cuba$Book') {
+            this.books().forEach(function(book) {
+              if (book.id === id) {
+                result = book;
+              }
+            }.bind(this));
+          }
+
+          return new Promise(function(resolved) {
+            setTimeout(function() {
+              resolved(result);
+            }.bind(this), 1000);
+          });
+        }.bind(this);
+
+        this.app.commitEntity = function() {
+          return new Promise(function(resolved) {
+            setTimeout(function() {
+              resolved({});
+            }.bind(this), 500);
+          });
+        };
+
+        this.app.getUserInfo = function() {
+          return Promise.resolve({
+            login: 'manager',
+            firstName: 'Albert',
+            lastName: 'Einstein',
+            locale: 'en'
+          });
+        };
+      }
+    }
+
+    customElements.define(CubaAppStub.is, CubaAppStub);
+  </script>
+</dom-module>

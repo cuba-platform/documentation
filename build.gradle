@@ -1,4 +1,8 @@
-ext.docVersion = '6.7'
+plugins {
+    id "com.moowork.node" version "1.1.0"
+}
+
+ext.docVersion = '6.8'
 
 repositories {
     mavenLocal()
@@ -335,6 +339,56 @@ task warBiRu(dependsOn: [chopBiRu], type: CreateWar) {
     docLang = 'ru'
 }
 
+/* ============= Polymer =================*/
+
+configure(project(':polymer-module')) {
+
+    apply plugin: 'com.moowork.node'
+
+    node {
+        version = '7.8.0'
+        npmVersion = '4.2.0'
+        download = true
+    }
+
+    task installBowerPackages(type: NodeTask, dependsOn: npmInstall) {
+        script = file("node_modules/bower/bin/bower")
+        args = ['install','-F']
+        inputs.file "bower.json"
+        outputs.dir "bower_components"
+    }
+
+    task assemblePolymer(type: NodeTask, dependsOn: installBowerPackages) {
+        script = file("node_modules/gulp/bin/gulp.js")
+        args = ['build']
+        inputs.dir "./"
+        outputs.dir "../content/polymer/source/polymer-build"
+    }
+}
+
+task generatePolymerHtmlEn(type: Asciidoc2Html, dependsOn: [':polymer-module:assemblePolymer']) {
+    docName = 'polymer'
+    docLang = 'en'
+}
+
+task postPolymerManualEn(type: PostProcessDocHtml, dependsOn: [':polymer-module:assemblePolymer']) {
+    docName = 'polymer'
+    docLang = 'en'
+}
+
+task buildPolymerEn(dependsOn: [generatePolymerHtmlEn, postPolymerManualEn])
+
+task chopPolymerEn(dependsOn: [buildPolymerEn], type: CreateMultiPageDoc) {
+    docName = 'polymer'
+    docLang = 'en'
+    docTitle = "Polymer manual"
+}
+
+task warPolymerEn(dependsOn: [chopPolymerEn], type: CreateWar) {
+    docName = 'polymer'
+    docLang = 'en'
+}
+
 /* ============= Release Notes =================*/
 
 task generateRnHtmlEn(type: Asciidoc2Html) {
@@ -376,3 +430,5 @@ task warBpmAll(dependsOn: [warBpmEn, warBpmRu])
 task buildBiAll(dependsOn: [buildBiEn, buildBiRu])
 task chopBiAll(dependsOn: [chopBiEn, chopBiRu])
 task warBiAll(dependsOn: [warBiEn, warBiRu])
+
+task warPolymerAll(dependsOn: [warPolymerEn])

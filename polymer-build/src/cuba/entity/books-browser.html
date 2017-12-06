@@ -1,0 +1,99 @@
+<link rel="import" href="../../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../../bower_components/polymer/lib/elements/dom-if.html">
+<link rel="import" href="../../../bower_components/polymer/lib/elements/dom-repeat.html">
+<link rel="import" href="../../../bower_components/cuba-app/cuba-app.html">
+<link rel="import" href="../../../bower_components/cuba-data/cuba-entities.html">
+<link rel="import" href="../../../bower_components/cuba-data/cuba-entity.html">
+
+<link rel="import" href="../../../bower_components/paper-spinner/paper-spinner.html">
+
+<dom-module id="books-browser">
+  <template>
+    <style>
+      .book-option {
+        color: #0b6ec7;
+        padding: 5px 0;
+      }
+      .book-option-value {
+        cursor: pointer;
+      }
+      .book-option:before {
+        content: '\25cf';
+      }
+      .book-description {
+        padding-top: 10px;
+      }
+    </style>
+
+    <cuba-app api-url="/app/rest/"></cuba-app>
+
+    <!-- Entities will be loaded automatically on the component initialization. -->
+    <!-- The result of the request will be stored into 'books' property. -->
+    <cuba-entities view="bookBrowse" entity-name="cuba$Book" data="{{books}}"></cuba-entities>
+
+    <!-- auto="false" indicates that no loading happens on initialization. -->
+    <!-- So, we need to use this component programmatically. -->
+    <!-- While a request is going on the 'bookLoading' property will be set to true. -->
+    <cuba-entity view="bookEdit" id="entityLoader" entity-name="cuba$Book" auto="false" loading="{{bookLoading}}"></cuba-entity>
+
+    <h3>
+      Please select a book to see more info:
+    </h3>
+
+    <template id="bookRepeater" is="dom-repeat" items="[[books]]">
+      <div class="book-option">
+        <span class="book-option-value" on-click="_onBookSelect">[[item.title]]</span>
+      </div>
+    </template>
+
+    <div class="book-description">
+      <template is="dom-if" if="[[bookLoading]]">
+        <paper-spinner active></paper-spinner>
+      </template>
+      <template is="dom-if" if="[[selectedBook]]">
+        Book <b>[[selectedBook.title]]</b> of [[selectedBook.genre]] genre was written by
+        [[selectedBook.author.name]] ([[selectedBook.author.born]] - [[_formatDeathDate(selectedBook.author.died)]])
+        and published in [[selectedBook.publicationYear]] year.
+      </template>
+    </div>
+
+  </template>
+  <script>
+    class BooksBrowser extends Polymer.Element {
+      static get is() {
+        return 'books-browser';
+      }
+
+      static get properties() {
+        return {
+          books: {
+            type: Array,
+            value: function() {
+              return [];
+            }
+          },
+          selectedBook: Object,
+          bookLoading: Boolean
+        };
+      }
+
+      _onBookSelect(e) {
+        this.set('selectedBook', null);
+
+        // It's how we can obtain a clicked item from 'dom-repeat'
+        const bookId = this.$.bookRepeater.modelForElement(e.target).get('item.id');
+        this.$.entityLoader.entityId = bookId;
+        this.$.entityLoader.load().then(function(book) {
+          this.set('selectedBook', book);
+        }.bind(this));
+      }
+
+      _formatDeathDate(date) {
+        return !!date ? date : 'Present days';
+      }
+
+    }
+
+    customElements.define(BooksBrowser.is, BooksBrowser);
+  </script>
+</dom-module>

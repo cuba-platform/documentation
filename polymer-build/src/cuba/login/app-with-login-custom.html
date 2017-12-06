@@ -1,0 +1,87 @@
+<link rel="import" href="../../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../../bower_components/polymer/lib/elements/dom-if.html">
+<link rel="import" href="../../../bower_components/cuba-app/cuba-app.html">
+<link rel="import" href="../../../bower_components/cuba-app/cuba-app-aware-behavior.html">
+
+<dom-module id="app-with-login-custom">
+  <template>
+
+    <cuba-app api-url="/app/rest/"></cuba-app>
+
+    <template is="dom-if" if="[[!authenticated]]">
+
+      <label>
+        Please choose your login:
+      </label>
+      <br/>
+      <br/>
+      <select id="typeSelect">
+        <option value="marketer">Marketer</option>
+        <option value="manager">Manager</option>
+        <option value="admin">Admin</option>
+      </select>
+      <br/>
+      <br/>
+      <button on-click="_login">Login</button>
+    </template>
+
+    <template is="dom-if" if="[[authenticated]]">
+      <h3>Congratulations! You are authenticated and now can use cuba REST API!</h3>
+      <div>
+        <button on-click="_logout">Logout</button>
+      </div>
+    </template>
+
+  </template>
+  <script>
+    class AppWithLoginCustom extends Polymer.mixinBehaviors([CubaAppAwareBehavior], Polymer.Element) {
+      static get is() {
+        return 'app-with-login-custom';
+      }
+
+      static get properties() {
+        return {
+          authenticated: {
+            type: Boolean,
+            value: false
+          }
+        };
+      }
+
+      _login() {
+        const login = this.shadowRoot.querySelector('#typeSelect').value;
+
+        let password;
+
+        // In accordance with the best security anti-patterns
+        switch (login) {
+          case 'marketer':
+            password = 'marketer!';
+            break;
+          case 'manager':
+            password = 'manager:-)';
+            break;
+          case 'admin':
+            password = 'admin123';
+            break;
+        }
+
+        this.app.login(login, password).then(function() {
+          this.set('authenticated', true);
+        }.bind(this));
+      }
+
+      _logout() {
+        this.set('authenticated', false);
+        this.app.logout();
+      }
+
+      _onLoginError() {
+        alert('Bad credentials');
+      }
+
+    }
+
+    customElements.define(AppWithLoginCustom.is, AppWithLoginCustom);
+  </script>
+</dom-module>
