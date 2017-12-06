@@ -209,3 +209,23 @@ tools = AppBeans.get(PersistenceTools.NAME);
 assertTrue(tools instanceof ExtPersistenceTools);
 ----
 
+Таким же образом можно переопределять логику сервисов, например, из <<app_components_sample,компонентов приложения>>: для подмены реализации бина нужно создать класс, расширяющий функциональность исходного сервиса. В следующем примере мы создали новый класс `NewOrderServiceBean`, чтобы переопределить в нём метод из исходного сервиса `OrderServiceBean`:
+
+[source, java]
+----
+public class NewOrderServiceBean extends OrderServiceBean {
+    @Override
+    public BigDecimal calculateOrderAmount(Order order) {
+        BigDecimal total = super.calculateOrderAmount(order);
+        BigDecimal vatPercent = new BigDecimal(0.18);
+        return total.multiply(BigDecimal.ONE.add(vatPercent));
+    }
+}
+----
+
+Теперь, после регистрации нового класса в `spring.xml`, новая реализация будет использоваться в приложении вместо исходной, заданной в `OrderServiceBean`. Обратите внимание, что в определении бина используется идентификатор из компонента приложения и полное имя нового класса:
+
+[source, xml]
+----
+<bean id="workshop_OrderService" class="com.company.retail.service.NewOrderServiceBean"/>
+----
