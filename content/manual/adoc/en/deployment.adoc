@@ -155,6 +155,8 @@ This section describes different ways to deploy CUBA applications:
 
 * <<heroku_deployment,Heroku Cloud>>
 
+* <<docker_deployment,Uber JAR deployment to Docker>>
+
 [[fast_deployment]]
 ==== Fast Deployment in Tomcat
 
@@ -1226,6 +1228,405 @@ heroku logs --tail --app space-sheep-02453
 
 Tomcat logs are also available in web application: *Menu > Administration > Server Log*
 --
+
+[[docker_deployment]]
+==== Deployment to Docker
+
+The section describes how to deploy CUBA applications to the https://www.docker.com/[Docker®] platform.
+
+[TIP]
+=====
+This tutorial covers deployment of a project using PostgreSQL database.
+=====
+
+The simplest way to run your CUBA application in a production environment is to use the Uber JAR approach. You can build an all-in-one JAR file using the
+Gradle task and then you will be able to run the application from the command line using the java executable, there is
+no need to use special web servers or servlet containers. Simply start your application as an executable. All parameters
+of the application are defined at the build time but can be overridden when running.
+
+
+We will show you how to set up monolithic and distributed application configurations.
+
+
+[[single_jar_deployment]]
+===== Single Uber JAR deployment
+
+Open your CUBA project in Studio, navigate to *Deployment settings*, go to *Uber JAR* tab and then configure options as described below.
+
+. Select *Build Uber JAR*
+. Select *Single Uber JAR* if it is not selected.
+. Click *Generate* button next to the *Logback configuration file* field.
+. Click *Generate* button next to the *Custom Jetty environment file* field. Fill your database connection details in modal window.
+To use standard PostgreSQL container in application, change the `localhost` to `postgres` in the Database URL field.
+
+Studio adds the <<build.gradle_buildUberJar>> task to the `build.gradle` file. Run this task to create the jar file.
+
+A Docker image with the CUBA app should be based on OpenJDK. To specify the information that Docker needs to know to run the app — a base Docker image to run from,
+the location of your project code, any dependencies it has, and what commands to run at start-up we recommend to use a `Dockerfile`.
+
+
+. Create the `docker-image` folder in the project.
+. Copy the jar file into this folder.
+. Create a `Dockerfile` with the simple instructions:
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar
+----
+
+* The `FROM` instruction initializes a new build stage and sets the Base Image for subsequent instructions.
+* The `COPY` instruction copies new files or directories from <src> and adds them to the filesystem of the container at the path <dest>.
+  Multiple <src> resource may be specified but they must be relative to the source directory that is being built (the context of the build).
+. The main purpose of a `CMD` is to provide defaults for an executing container. These defaults can include an executable, or they can omit the executable,
+in which case you must specify an `ENTRYPOINT` instruction as well.
+
+Now build the image.
+
+. Open the Terminal from the `docker-image` folder
+. Run the build command. The docker `build` command is quite simple - it takes an optional tag name with the `-t` flag
+and the location of the directory containing the Dockerfile - the `.` indicates the current directory.
+
+----
+docker build -t cuba-sample-sales .
+----
+
+If you don't have the openjdk:8 image the client will first pull the base image and then create the image.
+
+To define and run multi-container docker applicftion use the Docker Compose tool. With Compose, you use a YAML file to configure your application’s services, so they can be run together in an isolated environment.
+
+A `docker-compose.yml` file looks like this:
+----
+version: '2'
+
+services:
+  postgres:
+    image: postgres:9.6.6
+    environment:
+      - POSTGRES_PASSWORD=cuba
+      - POSTGRES_USER=cuba
+      - POSTGRES_DB=sales
+    ports:
+     - "5433:5432"
+    networks:
+     - sales-network
+  web:
+    image: cuba-sample-sales
+    ports:
+     - "8080:8080"
+    networks:
+     - sales-network
+
+networks:
+  sales-network:
+----
+
+This Compose file defines two services, `web` and `postgres`. The web service:
+
+* Uses an image that’s built from the Dockerfile in the current directory.
+* Forwards the exposed port 8080 on the container to port 8080 on the host machine.
+
+The `postgres` service uses a public Postgres image pulled from the Docker Hub registry.
+
+To start the application, go to the directory of the `docker-compose.yml` file and run:
+
+----
+docker-compose up
+----
+
+After the task is complete you should be able to open the application at http://localhost:8080/app
+
+===== Distributed Uber JAR deployment
+
+To set up the distributed application configuration open your CUBA project in Studio, navigate to *Deployment settings*, go to *Uber JAR* tab and then configure options as described below.:
+
+. Open the *Uber JAR* tab
+. Untick *Single Uber JAR* property.
+
+Add the following changes to the appProperties:
+----
+appProperties = ['cuba.automaticDatabaseUpdate': true,
+                     'cuba.webHostName':'sales-core',
+                     'cuba.connectionUrlList': 'http://sales-core:8079/app-core',
+                     'cuba.webAppUrl': 'http://sales-web:8080/app',
+                     'cuba.useLocalServiceInvocation': false,
+                     'cuba.trustedClientPermittedIpList': '*.*.*.*']
+----
+
+* <<cuba.webHostName,cuba.webHostName>> property defines the host name of the machine, on which this application block is running. The name has to correspond to the core service name described in `Dockerfile`.
+* <<cuba.connectionUrlList,cuba.connectionUrlList>> property sets Middleware server connection URL for client blocks. The host has to be named the same as the core service described in  `Dockerfile` and the contextName has to correspond to the core *.jar file name.
+* <<cuba.webAppUrl,cuba.webAppUrl>> property defines URL of the Web Client application. The host has to be named the same as the web service described in  `Dockerfile`.
+* <<cuba.useLocalServiceInvocation,cuba.useLocalServiceInvocation>> property  should be set to `false` in our case, because we deploy core and web servers in the different
+containers.
+* <<cuba.trustedClientPermittedIpList,cuba.trustedClientPermittedIpList>> property defines the list of IP addresses, from which the login to the application
+is allowed.
+
+[TIP]
+====
+If you have more than one Middleware server you have to list all of them in the <<cuba.connectionUrlList,cuba.connectionUrlList>> property and configure a cluster of Web Client servers, as it describes in the <<scaling>> section.
+====
+
+Run the <<build.gradle_buildUberJar>> task to regenerate the jars.
+
+Create two sub folders in the `docker-image` folder for the web and core jars. You should create a separate
+containers for each jar, so you need to configure two `Dockerfiles`.
+
+`Dockerfile` for the core:
+
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app-core.jar
+----
+
+`Dockerfile` for the web:
+
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar
+----
+
+A `docker-compose.yml` file contains separated core and web containers and looks like this:
+
+----
+version: '2'
+
+services:
+  postgres:
+    image: postgres:9.6.6
+    environment:
+      - POSTGRES_PASSWORD=cuba
+      - POSTGRES_USER=cuba
+      - POSTGRES_DB=sales
+    ports:
+     - "5433:5432"
+    networks:
+     - sales-network
+  sales-core:
+    image: cuba-sample-sales-core
+    networks:
+     - sales-network
+  sales-web:
+    image: cuba-sample-sales-web
+    ports:
+     - "8080:8080"
+    networks:
+     - sales-network
+
+networks:
+  sales-network:
+----
+
+Build the images with the following commands:
+
+----
+docker build -t cuba-sample-sales-web ./web
+----
+
+----
+docker build -t cuba-sample-sales-core ./core
+----
+
+To start the application, go to the directory of the `docker-compose.yml` file and run:
+
+----
+docker-compose up
+----
+
+After the task is complete you should be able to open the application at http://localhost:8080/app
+
+[TIP]
+=====
+For deploying containers on several physical machines, you may be required to install and configure Docker Swarm or Kubernetes.
+=====
+
+
+===== Gradle plugin for Docker
+
+In this section we cover the building and pushing the Docker images with the single Uber JAR using Gradle.
+Set up the single Uber JAR as it desctibes in the <<single_jar_deployment>> section.
+
+There are many Gradle plugins for Docker.
+We are going to use the https://github.com/bmuschko/gradle-docker-plugin[bmuschko/gradle-docker-plugin].
+
+In the build.gradle file import the necessary classes for managing images and add the buildscript dependency on the plugin:
+----
+buildscript {
+
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:X.Y.Z'
+    }
+}
+
+import com.bmuschko.gradle.docker.tasks.image.Dockerfile
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.DockerPushImage
+import com.bmuschko.gradle.docker.DockerRegistryCredentials
+----
+
+The plugin `com.bmuschko.docker-remote-api` allows for interacting with Docker via its remote API. You can model any workflow imaginable by creating enhanced task of the custom task provided by the plugin.
+To use the plugin, include the following code snippet in your build script:
+----
+apply plugin: 'com.bmuschko.docker-remote-api'
+----
+
+
+A Dockerfile can be created by the Dockerfile custom tasks. The Dockerfile instructions need to be declare in the correct order.
+
+[source, groovy]
+----
+task createDockerfile(type: Dockerfile, dependsOn: buildUberJar)  {
+    destFile = project.file('build/distributions/uberJar/Dockerfile')
+    from 'openjdk:8'
+    addFile("app.jar", "/usr/src/cuba-sales/app.jar")
+    defaultCommand("java", "-Dapp.home=/usr/src/cuba-sales/home", "-jar", "/usr/src/cuba-sales/app.jar")
+}
+----
+
+* `from` property adds the base Docker image used during building images.
+* `addFile` property defines the path to the source jar that will be copied to the image. Note, that the source jar should be in the same folder as the `Dockerfile`.
+* `defaultCommand` property defines the command for running the application.
+
+Image pull or push operations against the public Docker Hub registry or a private registry may require authentication.
+You can provide those credentials in the registryCredentials closure. Set your credentials in the gradle.properties file. You can access a project property in your build script simply by using its name as you would use a variable:
+[source, groovy]
+----
+def dockerRegistryCredentials = new DockerRegistryCredentials()
+dockerRegistryCredentials.email = dockerHubEmail
+dockerRegistryCredentials.password = dockerHubPassword
+dockerRegistryCredentials.username = dockerHubUsername
+----
+
+Define the following tasks to build a Docker image from a Dockerfile and to push this image to the public Docker Hub registry:
+
+[source, groovy]
+----
+task buildImage(type: DockerBuildImage, dependsOn: createDockerfile) {
+    inputDir = createDockerfile.destFile.parentFile
+    tags = ['sample-sales', '{docker-hub-username}/{default-repo-folder-name}:sample-sales']
+    registryCredentials = dockerRegistryCredentials
+}
+
+task pushImage(type: DockerPushImage, dependsOn: buildImage) {
+    tag = 'sample-sales'
+    imageName = '{docker-hub-username}/{default-repo-folder-name}'
+    registryCredentials = dockerRegistryCredentials
+}
+----
+
+Run the `pushImage` task from the terminal or from the *Search* field in Studio. Task
+successively built Uber JAR, generates the `Dockerfile`, built the image and push this image to your Docker Hub registry.
+
+===== Container deployment to Heroku
+
+Set up the single Uber JAR as it desctibes in the <<single_jar_deployment>> section.
+
+Create a Heroku account and install Heroku CLI as it describes in the <<heroku_war_deployment>> section.
+
+Create the app and connect it to the database with the following command
+
+----
+heroku create cuba-sales-docker --addons heroku-postgresql:hobby-dev
+----
+
+After the task is complete you have to configure the database credentials in the `jetty-env.xlm` file for the connection
+to the database created by Heroku.
+
+. Go to the https://dashboard.heroku.com.
+. Select you project, open the *Resources* tab and select the database.
+. In the newly opened window open the *Settings* tab and click the *View Credentials* button.
+
+image::heroku-db.png[Db,1200,1000]
+
+Go to the Idea and open the `jetty-env.xlm` file. You have to change the url (host and database name), username and password.
+Copy credentials from the site and past in the file.
+[source, html]
+----
+<?xml version="1.0"?>
+<!DOCTYPE Configure PUBLIC "-" "http://www.eclipse.org/jetty/configure_9_0.dtd">
+<Configure id='wac' class="org.eclipse.jetty.webapp.WebAppContext">
+    <New id="CubaDS" class="org.eclipse.jetty.plus.jndi.Resource">
+        <Arg/>
+        <Arg>jdbc/CubaDS</Arg>
+        <Arg>
+            <New class="org.apache.commons.dbcp2.BasicDataSource">
+                <Set name="driverClassName">org.postgresql.Driver</Set>
+                <Set name="url">jdbc:postgresql://<Host>/<Database></Set>
+                <Set name="username"><User></Set>
+                <Set name="password"><Password></Set>
+                <Set name="maxIdle">2</Set>
+                <Set name="maxTotal">20</Set>
+                <Set name="maxWaitMillis">5000</Set>
+            </New>
+        </Arg>
+    </New>
+</Configure>
+----
+
+Build the single Uber JAR file using the Gradle task.
+
+Also, you have to add some changes to the `Dockerfile`. First of all, if you use the free account, you have to restrict the amount of memory consumed by
+the application. Then you need to obtain the port to the app from the Heroku and add it to the image.
+
+The `Dockerfile` should looks like the following:
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Xmx512m -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar -port $PORT
+----
+
+Set up Git with the following commands
+
+----
+git init
+heroku git:remote -a cuba-sales-docker
+git add .
+git commit -am "Initial commit"
+----
+
+Then log in to Container Registry. It's Heroku location for storing images.
+
+----
+heroku container:login
+----
+
+Then build the image and push it to Container Registry
+
+----
+heroku container:push web
+----
+
+Here `web` is the process type of the application. When you run this command, by default Heroku is going to build the
+image using the `Dockerfile` in the current directory, and then push it to Heroku.
+
+After the deployment process is completed your application will be accessible in web browser by an URL like https://cuba-sales-docker.herokuapp.com/app
+
+You can also open the application from the Heroku dashboard using the *Open app* button.
+
+The third way to open the application is running the following command, but you have to add the `app` context to the link:
+
+----
+heroku open
+----
+
+
+
 
 [[scaling]]
 === Application Scaling
