@@ -2072,95 +2072,6 @@ You can add custom fonts to your web theme. To add a font family, import it in t
 ----
 --
 
-[[web_theme_extension_icons]]
-Adding icons::
-+
---
-Image files that will be used in the <<gui_attr_icon,icon>> properties for <<gui_Action,actions>> and visual components, e.g. <<gui_Button,Button>>, can be added to your theme extension.
-
-For example, to add an icon to the Halo theme extension, you have to add the image file to the `modules/web/themes/halo` directory described above (it is recommended to create a subfolder):
-
-[source, plain]
-----
-themes/
-  halo/
-    images/
-      address-book.png
-----
-
-After that, you can use the icon in the application by specifying the path relatively to the theme directory in the <<gui_attr_icon,icon>> property:
-
-[source, xml]
-----
-include::{sourcesdir}/gui/themes/themes_2.xml[]
-----
-
-Font elements of link:http://fortawesome.github.io/Font-Awesome[Font Awesome] can be used instead of icons. You should specify the name of the required constant of the `com.vaadin.server.FontAwesome` class in the `icon` property with a `font-icon:` prefix, for example:
-
-[source, xml]
-----
-include::{sourcesdir}/gui/themes/themes_3.xml[]
-----
---
-
-Adding icons from other font libraries::
-+
---
-To enhance your theme extension, you may need to create icons and embed them into fonts, as well as use any external icons library.
-
-In the *web* module create the `enum` class implementing `com.vaadin.server.FontIcon` interface for the new icons:
-
-[source, java]
-----
-include::{sourcesdir}/gui/add_icons_enum.java[]
-----
-
-Add new styles to the theme extension. We recommend creating a special subfolder `fonts` in the main folder of theme extension, for example, `modules/web/themes/halo/com.company.demo/fonts`. Put the styles and font files in their own subfolders, for example, `fonts/icomoon`.
-Files of fonts are represented by the following extensions: `.eot`, `.svg`, `.ttf`, `.woff`. The set of fonts `icomoon` from an open library, used in this example, consists of 4 joint used files: `icomoon.eot`, `icomoon.svg`, `icomoon.ttf`, `icomoon.woff`.
-
-Create a file with styles that includes `@font-face` and a CSS class with the icon style. Below is an example of the `icomoon.scss` file, where `IcoMoon` class name corresponds to the value returned by `FontIcon#getFontFamily` method:
-
-[source, css]
-----
-include::{sourcesdir}/gui/add_icons_icomoon.scss[]
-----
-
-Create a reference to the file with font styles in `halo-ext.scss` or other file of theme extension:
-
-[source, css]
-----
-include::{sourcesdir}/gui/add_icons_halo-ext.scss[]
-----
-
-Create new class `App.java` extending `DefaultApp` in the root package of your *web* module and register it in <<spring.xml,web-spring.xml>> as the `cuba_App` bean to override the bean for central class of the application infrastructure, for example:
-
-[source, xml]
-----
-include::{sourcesdir}/gui/app_bean.xml[]
-----
-
-Register new alias for icons in `App.java`:
-
-[source, java]
-----
-include::{sourcesdir}/gui/add_icons_App.java[]
-----
-
-Now you can use new icons by direct reference to their class and `enum` element in XML-descriptor of the screen:
-[source, xml]
-----
-include::{sourcesdir}/gui/add_icons_usage.xml[]
-----
-or in the Java controller:
-[source, java]
-----
-include::{sourcesdir}/gui/add_icons_usage.java[]
-----
-As a result, new icons are added to the buttons:
-
-image::add_icons.png[align="center"]
---
-
 [[web_theme_extension_styles]]
 Creating new styles::
 +
@@ -2613,6 +2524,222 @@ include::{sourcesdir}/gui/themes/themes_16.xml[]
 The button with the custom style:
 
 image::gui_themes_example6.png[align="center"]
+--
+
+[[gui_icons]]
+==== Using Icons
+
+Image files that will be used in the <<gui_attr_icon,icon>> properties for <<gui_Action,actions>> and visual components, e.g. <<gui_Button,Button>>, can be added to your theme extension.
+
+For example, to add an icon to the Halo theme extension, you have to add the image file to the `modules/web/themes/halo` directory described in the <<web_theme_extension>> section (it is recommended to create a subfolder):
+
+[source, plain]
+----
+themes/
+  halo/
+    images/
+      cool-icon.png
+----
+
+[[icon_set]]
+===== Icon Sets
+
+Icon sets are enumerations that implement `Icons.Icon` interface with only one parameter: a string identifier which is the path to an icon, for example, `"font-icon:CHECK"` or `"icons/myawesomeicon.png"` etc. This path to the given icon will be resolved by the `Icons` <<infrastructure_interfaces,bean>>.
+
+Icon sets should be created in the *gui* module to be accessible from *desktop* and *web* modules. If only *web* module will be used, icon set can be created in the *web* module. All names of icon set options should match the regexp: `[A-Z]_`, i.e. they should contain only upper-case letters and underscores.
+
+For example:
+
+[source, java]
+----
+public enum MyIcon implements Icons.Icon {
+
+    COOL_ICON("icons/cool-icon.png");
+
+    protected String id;
+
+    MyIcon(String id) {
+        this.id = id;
+    }
+
+    @Override
+    public String id() {
+        return id;
+    }
+}
+----
+
+Icon sets should be registered in <<cuba.icons.iconSets,`web/desktop-app.properties`>>, depending on the client that will be used:
+
+[source, plain]
+----
+cuba.icons.iconSets = +com.company.demo.gui.icons.MyIcon
+----
+
+[TIP]
+====
+To make the icon set from an app component accessible in the main project, this property should be added to the app component descriptor.
+====
+
+Now you can use the icons from this icon set simply by its name declaratively:
+
+[source, xml]
+----
+<button icon="COOL_ICON"/>
+----
+
+or in the screen controller:
+
+[source, java]
+----
+button.setIconByName(MyIcon.COOL_ICON);
+----
+
+There is one predefined icon set - `CubaIcon`. It includes almost full `FontAwesome` icon set and CUBA-specific icons. These icons can be selected in Studio icon editor:
+
+image::icon_set.png[align="center"]
+
+
+[[icon_provider]]
+===== Using Icons from Other Font Libraries
+
+To enhance the theme extension, you may need to create icons and embed them into fonts, as well as use any external icons library.
+
+. In the *web* module create the `enum` class implementing `com.vaadin.server.FontIcon` interface for the new icons:
++
+[source, java]
+----
+include::{sourcesdir}/gui/add_icons_enum.java[]
+----
+
+. Add new styles to the theme extension. We recommend creating a special subfolder `fonts` in the main folder of theme extension, for example, `modules/web/themes/halo/com.company.demo/fonts`. Put the styles and font files in their own subfolders, for example, `fonts/icomoon`.
++
+Files of fonts are represented by the following extensions:
++
+** `.eot`,
++
+** `.svg`,
++
+** `.ttf`,
++
+** `.woff`.
++
+The set of fonts `icomoon` from an open library, used in this example, consists of 4 joint used files: `icomoon.eot`, `icomoon.svg`, `icomoon.ttf`, `icomoon.woff`.
+
+. Create a file with styles that includes `@font-face` and a CSS class with the icon style. Below is an example of the `icomoon.scss` file, where `IcoMoon` class name corresponds to the value returned by `FontIcon#getFontFamily` method:
++
+[source, css]
+----
+include::{sourcesdir}/gui/add_icons_icomoon.scss[]
+----
+
+. Create a reference to the file with font styles in `halo-ext.scss` or other file of theme extension:
++
+[source, css]
+----
+include::{sourcesdir}/gui/add_icons_halo-ext.scss[]
+----
+
+. Then create new <<icon_set,icon set>> which is an enumeration implementing the `Icons.Icon` interface:
++
+[source, java]
+----
+include::{sourcesdir}/gui/IcoMoonIcon.java[]
+----
+
+. Create new `IconProvider`.
++
+--
+For managing custom icon sets CUBA platform provides the mechanism that consists of `IconProvider` and `IconResolver`.
+
+`IconProvider` is a marker interface that exists only in the *web* module and can provide resources (`com.vaadin.server.Resource`) by the icon path.
+
+The `IconResolver` bean obtains all beans that implement `IconProvider` interface and iterates over them to find the one that can provide a resource for the icon.
+
+There are two `IconResolver` interfaces and two corresponding implementations for *desktop* and *web* modules. They both are facade beans designed for resolving module-specific icon objects by the icon paths:
+
+* `com.vaadin.server.Resource` in the *web* module,
+* `javax.swing.Icon` for the *desktop* module.
+
+In order to use this mechanism, you should create your implementation of `IconProvider`:
+
+[source, java]
+----
+include::{sourcesdir}/gui/IcoMoonIconProvider.java[]
+----
+--
+
+. Register you icon set in the application properties file:
++
+[source, plain]
+----
+cuba.icons.iconSets = +com.company.demo.gui.icons.IcoMoonIcon
+----
+
+Now you can use new icons by direct reference to their class and `enum` element in XML-descriptor of the screen:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/add_icons_usage.xml[]
+----
+
+or in the Java controller:
+
+[source, java]
+----
+include::{sourcesdir}/gui/add_icons_usage.java[]
+----
+
+As a result, new icons are added to the buttons:
+
+image::add_icons.png[align="center"]
+
+Overriding icons with icon sets::
++
+--
+The mechanism of icon sets enables you to override icons from other sets. In order to do this, you should create and register a new icon set (enumeration) with the same icons (options) but with different icon paths (`id` 's). In the following example the new `MyIcon` enum is created to override the standard icons from `CubaIcon` set.
+
+. The default icon set:
++
+[source, java]
+----
+include::{sourcesdir}/gui/CubaIcon.java[]
+----
+
+. The new icon set:
++
+[source, java]
+----
+include::{sourcesdir}/gui/MyIcon.java[]
+----
+
+. Register the new icon set in `web-app.properties`:
++
+[source, plain]
+----
+cuba.icons.iconSets = +com.company.demo.gui.icons.MyIcon
+----
+
+Now, the new *OK* icon will be used instead of the standard one:
+
+[source, java]
+----
+include::{sourcesdir}/gui/overridden_icon.java[]
+----
+
+In case you need to ignore redefinitions, you still can use the standard icons by using the path to an icon instead of the option name:
+
+[source, xml]
+----
+<button caption="Created" icon="icons/create.png"/>
+----
+
+or
+
+[source, java]
+----
+button.setIcon(CubaIcon.CREATE_ACTION.id());
+----
 --
 
 [[gui_web]]
