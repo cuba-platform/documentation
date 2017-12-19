@@ -81,12 +81,14 @@ image::chart/charts_balloon.png[align="center"]
 The balloon text is defined by the `balloonText` attribute of each chart graph.
 
 [[chart_additionalFields]]
+** `additionalFields` attribute
++
 Interpolation of chart data is available for all fields used in the chart, such as `titleField`, `valueField`, `category`, `value`, `description`, `percents`, `open` etc, as well as HTML tags.
-
++
 You can also fetch more entity attributes from the data provider using the `additionalFields` attribute. This attribute allows you to add the passed entity attributes to the chart query and send the extracted data to the UI, so that you can use the entity attribute names directly in the chart configuration.
-
++
 In the example below `title` is the graph title, `category` is the value on the category axis, `value` is the value on the value axis, and `optional` is the `IncomeExpenses` entity attribute fetched to be interpolated in the `balloonText`:
-
++
 [source, xml]
 ----
 <chart:serialChart additionalFields="optional"
@@ -106,18 +108,18 @@ In the example below `title` is the graph title, `category` is the value on the 
    </chart:graphs>
 </chart:serialChart>
 ----
-
++
 image::chart/charts_balloon_additiional.png[align="center"]
-
++
 The list of fields can be added declaratively as a comma-separated string:
-
++
 [source, xml]
 ----
 additionalFields="income,expense,vat"
 ----
-
++
 or programmatically in the screen controller:
-
++
 [source, java]
 ----
 List<String> fields = Arrays.asList("income", "expense", "vat");
@@ -181,6 +183,8 @@ image::chart/charts_cursor.png[align="center"]
                    valueZoomable="true"/>
 ----
 --
+
+* `chart:data` - an optional element for <<chart_data,data binding>> used mostly for prototyping.
 
 * `chart:export` - an optional element that enables chart <<chart_export,export>>. The default export implementation adds a floating *download* button on the chart:
 +
@@ -361,21 +365,58 @@ PRINT::
 There are three ways how you can pass data to a chart: through the `DataProvider` interface, using the datasource mechanism, or the <<chart_data_simplified,simplified data binding API>>, which allows adding the data directly using the `addData()` method and convenient `MapDataItem` constructors for those charts that are not bound to a datasource.
 
 [[chart_data_provider]]
-* The `DataProvider` interface has a standard implementation: `ListDataProvider` class. It contains a list of `DataItem` instances from which the data for the chart will be taken. There are several standard implementations of `DataItem` interface:
-** `EntityDataItem` takes an instance of any entity.
-** `MapDataItem` is a set of key-value pairs.
-** `SimpleDataItem` takes an instance of any `public` class.
+DataProvider: ::
++
+--
+The `DataProvider` interface has a standard implementation: `ListDataProvider` class. It contains a list of `DataItem` instances from which the data for the chart will be taken. There are several standard implementations of `DataItem` interface:
+* `EntityDataItem` takes an instance of any entity.
+* `MapDataItem` is a set of key-value pairs.
+* `SimpleDataItem` takes an instance of any `public` class.
 
 An instance of `DataProvider` is passed to the `setDataProvider()` method of chart configuration. This approach to providing chart data is the most universal, but it requires creating instances of `DataProvider` and `DataItem` in a screen controller.
+--
 
 [[chart_datasource]]
-* A `CollectionDatasource` type datasource can be assigned to a `Chart` component by invoking the `setDatasource()` method. This approach requires an entity that will represent chart data. It may be convenient when such entity already exists in the application data model and also when chart data should be displayed as a table.
+Datasource: ::
++
+--
+A `CollectionDatasource` type datasource can be assigned to a `Chart` component by invoking the `setDatasource()` method. This approach requires an entity that will represent chart data. It may be convenient when such entity already exists in the application data model and also when chart data should be displayed as a table.
 
 <<chart_example>> illustrates all three approaches to providing chart data.
 
 Entity properties or the values contained in an instance of `DataProvider` which are used for display purposes are defined in the chart attributes. The set of chart attributes may differ for different chart types. For example, for the `chart:pieChart` component, you should define the `valueField` and `titleField` attributes. The following types are allowed for attribute values: `Integer`, `Long`, `Double`, `String`, `Boolean`, `Date`.
 
 Dynamic addition of data to an existing chart is supported for both the datasource and the data provider mechanisms.
+--
+
+[[chart_data]]
+chart:data element: ::
++
+--
+This option is useful for quick prototyping of charts. The `chart:data` element and its nested `item` elements enable you to set key-value pairs of data directly in the XML descriptor of the chart, for example:
+
+[source, xml]
+----
+<chart:pieChart id="pieChart"
+                titleField="key"
+                valueField="value">
+    <chart:data>
+        <chart:item>
+            <chart:property name="key" value="piece of apple pie"/>
+            <chart:property name="value" value="70"/>
+        </chart:item>
+        <chart:item>
+            <chart:property name="key" value="piece of blueberry pie"/>
+            <chart:property name="value" value="20"/>
+        </chart:item>
+        <chart:item>
+            <chart:property name="key" value="piece of cherry pie"/>
+            <chart:property name="value" value="10"/>
+        </chart:item>
+    </chart:data>
+</chart:pieChart>
+----
+--
 
 [[chart_listeners]]
 === Events
@@ -535,10 +576,8 @@ XML name of the component: `chart:funnelChart`.
 Data binding: ::
 +
 --
-. Using a datasource.
-+
 You can assign a datasource of a `CollectionDatasource` type to the chart and then define the `titleField` and `valueField` attributes for the `funnelChart` element:
-+
+
 [source, xml]
 ----
 <chart:funnelChart id="ratingChart"
@@ -553,32 +592,6 @@ You can assign a datasource of a `CollectionDatasource` type to the chart and th
                    titleField="mechanic"
                    valueField="count"
                    width="500px">
-</chart:funnelChart>
-----
-
-. Using the `chart:data` element.
-+
-The `item` elements enable you to set fixed values for the chart.
-+
-[source, xml]
-----
-<chart:funnelChart id="ratingChart"
-                   titleField="mechanic"
-                   valueField="count">
-    <chart:data>
-        <chart:item>
-            <chart:property name="mechanic" value="Jack"/>
-            <chart:property name="count" value="1"/>
-        </chart:item>
-        <chart:item>
-            <chart:property name="mechanic" value="Bob"/>
-            <chart:property name="count" value="2"/>
-        </chart:item>
-        <chart:item>
-            <chart:property name="mechanic" value="Sam"/>
-            <chart:property name="count" value="3"/>
-        </chart:item>
-    </chart:data>
 </chart:funnelChart>
 ----
 --
@@ -628,6 +641,8 @@ Attributes of `chart:ganttChart`: ::
 +
 --
 * `segmentsField` - segments field of the chart.
+
+* `additionalSegmentFields` - the list of additional segment fields that correspond to the entity attributes to be fetched from the data provider, similarly to the <<chart_additionalFields,additionalFields>> attribute.
 
 * `endField`/`endDateField` - the end value or the end date of the chart.
 
