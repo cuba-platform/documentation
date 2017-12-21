@@ -2018,7 +2018,7 @@ A platform theme can be modified in the project. In the modified theme, you can:
 
 * Change branding images.
 
-* Add icons to use them in visual components.
+* Add icons to use them in visual components. See the <<icons,>> section below.
 
 * Create new styles for visual components and use them in the <<gui_attr_stylename,stylename>> attribute. This requires some expertise in CSS.
 
@@ -2527,9 +2527,9 @@ image::gui_themes_example6.png[align="center"]
 --
 
 [[gui_icons]]
-==== Using Icons
+==== Icons
 
-Image files that will be used in the <<gui_attr_icon,icon>> properties for <<gui_Action,actions>> and visual components, e.g. <<gui_Button,Button>>, can be added to your theme extension.
+Image files used in the <<gui_attr_icon,icon>> properties for <<gui_Action,actions>> and visual components, e.g. <<gui_Button,Button>>, can be added to your theme extension.
 
 For example, to add an icon to the Halo theme extension, you have to add the image file to the `modules/web/themes/halo` directory described in the <<web_theme_extension>> section (it is recommended to create a subfolder):
 
@@ -2541,12 +2541,16 @@ themes/
       cool-icon.png
 ----
 
+In the following sections, we consider using the icons in visual components and adding icons from arbitrary font libraries.
+
 [[icon_set]]
 ===== Icon Sets
 
-Icon sets are enumerations that implement `Icons.Icon` interface with only one parameter: a string identifier which is the path to an icon, for example, `"font-icon:CHECK"` or `"icons/myawesomeicon.png"` etc. This path to the given icon will be resolved by the `Icons` <<infrastructure_interfaces,bean>>.
+Icon sets allow you to decouple usage of icons in visual components from real paths to images in theme or font element constants. They also simplify overriding of icons used in the UI inherited from application components.
 
-Icon sets should be created in the *gui* module to be accessible from *desktop* and *web* modules. If only *web* module will be used, icon set can be created in the *web* module. All names of icon set options should match the regexp: `[A-Z]_`, i.e. they should contain only upper-case letters and underscores.
+Icon sets are enumerations with items corresponding to icons. An icon set must implement the `Icons.Icon` interface which has one parameter: a string which denotes the source of an icon, for example, `font-icon:CHECK` or `icons/myawesomeicon.png`. To obtain the source, use the `Icons` bean provided by the platform.
+
+Icon sets should be created in the *gui* module to be accessible from *desktop* and *web* modules. If only *web* module is used, the icon set can be created in the *web* module. All names of icon set items should match the regexp: `[A-Z]_`, i.e. they should contain only upper-case letters and underscores.
 
 For example:
 
@@ -2554,48 +2558,53 @@ For example:
 ----
 public enum MyIcon implements Icons.Icon {
 
-    COOL_ICON("icons/cool-icon.png");
+    // adding new icon
+    COOL_ICON("icons/cool-icon.png"),
 
-    protected String id;
+    // overriding a CUBA default icon
+    OK("icons/my-ok.png");
 
-    MyIcon(String id) {
-        this.id = id;
+    protected String source;
+
+    MyIcon(String source) {
+        this.source = source;
     }
 
     @Override
-    public String id() {
-        return id;
+    public String source() {
+        return source;
     }
 }
 ----
 
-Icon sets should be registered in <<cuba.icons.iconSets,`web/desktop-app.properties`>>, depending on the client that will be used:
+Icon sets should be registered in <<cuba.iconsConfig,cuba.iconsConfig>> application property, e.g:
 
+.web-app.properties
 [source, plain]
 ----
-cuba.icons.iconSets = +com.company.demo.gui.icons.MyIcon
+cuba.iconsConfig = +com.company.demo.gui.icons.MyIcon
 ----
 
 [TIP]
 ====
-To make the icon set from an app component accessible in the main project, this property should be added to the app component descriptor.
+To make the icon set from an application component accessible in the target project, this property should be added to the <<app-component.xml,component descriptor>>.
 ====
 
-Now you can use the icons from this icon set simply by its name declaratively:
+Now you can use the icons from this icon set simply by its name declaratively in screen XML:
 
 [source, xml]
 ----
 <button icon="COOL_ICON"/>
 ----
 
-or in the screen controller:
+or programmatically in the screen controller:
 
 [source, java]
 ----
 button.setIconByName(MyIcon.COOL_ICON);
 ----
 
-There is one predefined icon set - `CubaIcon`. It includes almost full `FontAwesome` icon set and CUBA-specific icons. These icons can be selected in Studio icon editor:
+There is one predefined icon set provided by the platform - `CubaIcon`. It includes almost full `FontAwesome` icon set and CUBA-specific icons. These icons can be selected in Studio icon editor:
 
 image::icon_set.png[align="center"]
 
@@ -2673,7 +2682,7 @@ include::{sourcesdir}/gui/IcoMoonIconProvider.java[]
 +
 [source, plain]
 ----
-cuba.icons.iconSets = +com.company.demo.gui.icons.IcoMoonIcon
+cuba.iconsConfig = +com.company.demo.gui.icons.IcoMoonIcon
 ----
 
 Now you can use new icons by direct reference to their class and `enum` element in XML-descriptor of the screen:
@@ -2717,7 +2726,7 @@ include::{sourcesdir}/gui/MyIcon.java[]
 +
 [source, plain]
 ----
-cuba.icons.iconSets = +com.company.demo.gui.icons.MyIcon
+cuba.iconsConfig = +com.company.demo.gui.icons.MyIcon
 ----
 
 Now, the new *OK* icon will be used instead of the standard one:

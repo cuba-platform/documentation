@@ -2602,11 +2602,11 @@ image::gui_themes_example6.png[align="center"]
 --
 
 [[gui_icons]]
-==== Добавление значков
+==== Значки
 
-В расширенную тему можно также добавить файлы значков для использования в свойствах <<gui_attr_icon,icon>> для <<gui_Action,действий>> и визуальных компонентов, например <<gui_Button,Button>>.
+В расширенную тему можно также добавить файлы значков для использования в свойствах <<gui_attr_icon,icon>> <<gui_Action,действий>> и визуальных компонентов, например <<gui_Button,Button>>.
 
-Например, чтобы добавить в расширение темы Halo значок, достаточно в описанный выше каталог `modules/web/themes/halo` добавить файл значка (желательно в некоторый подкаталог):
+Например, чтобы добавить в расширение темы Halo значок, достаточно в описанный в разделе <<web_theme_extension>> каталог `modules/web/themes/halo` добавить файл значка (желательно в некоторый подкаталог):
 
 [source, plain]
 ----
@@ -2616,10 +2616,14 @@ themes/
       cool-icon.png
 ----
 
+В следующих разделах рассматривается использование значков в визуальных компонентах и добавление значков из произвольных библиотек шрифтов.
+
 [[icon_set]]
 ===== Наборы значков
 
-Наборы значков - это перечисления (enumerations), реализующие интерфейс `Icons.Icon` с единственным параметром - строковым идентификатором, который, в свою очередь, является путём к значку, например, `"font-icon:CHECK"` или `"icons/myawesomeicon.png"`, и т.п. Этот путь к заданному значку будет обработан <<infrastructure_interfaces,бином>> `Icons` платформы.
+Наборы значков (icon sets) позволяют отвязать использование значков в визуальных компонентах от конкретных путей к изображениям в теме или констант элементов шрифтов. Кроме того, они упрощают переопределение значков, используемых в UI, унаследованном от компонентов приложения.
+
+Наборы значков - это перечисления (enumerations), каждый элемент которых соответствует некоторому значку. Класс перечисления должен реализовывать интерфейс `Icons.Icon` с единственным параметром - строкой, задающей источник получения значка, например, `font-icon:CHECK` или `icons/myawesomeicon.png`. Для получения источника значка следует использовать бин платформы `Icons`.
 
 Чтобы наборы значков были доступны из модулей *desktop* и *web*, их следует создавать в модуле *gui* приложения. В случае, если вы планируете использовать только модуль *web*, наборы значков можно создавать в веб-модуле. Имена элементов перечисления в наборе должны соответствовать регулярному выражению `[A-Z]_`, то есть содержать только заглавные буквы и нижнее подчёркивание.
 
@@ -2629,31 +2633,36 @@ themes/
 ----
 public enum MyIcon implements Icons.Icon {
 
-    COOL_ICON("icons/cool-icon.png");
+    // adding new icon
+    COOL_ICON("icons/cool-icon.png"),
 
-    protected String id;
+    // overriding a CUBA default icon
+    OK("icons/my-ok.png");
 
-    MyIcon(String id) {
-        this.id = id;
+    protected String source;
+
+    MyIcon(String source) {
+        this.source = source;
     }
 
     @Override
-    public String id() {
-        return id;
+    public String source() {
+        return source;
     }
 }
 ----
 
-Наборы значков необходимо зарегистрировать в файле <<cuba.icons.iconSets,`web/desktop-app.properties`>>, в зависимости типа используемого клиента.
+Наборы значков необходимо зарегистрировать в свойстве приложения <<cuba.iconsConfig,cuba.iconsConfig>>, например:
 
+.web-app.properties
 [source, plain]
 ----
-cuba.icons.iconSets = +com.company.demo.gui.icons.MyIcon
+cuba.iconsConfig = +com.company.demo.gui.icons.MyIcon
 ----
 
 [TIP]
 ====
-Чтобы наборы значков из компонента приложения были доступны в основном проекте, необходимо добавить свойство приложения `cuba.icons.iconSets` в дескриптор компонента.
+Чтобы наборы значков из компонента приложения были доступны в проекте, необходимо добавить данное свойство приложения в <<app-component.xml,дескриптор компонента>>.
 ====
 
 Теперь вы можете использовать значки из созданного набора, декларативно указывая имя соответствующего элемента enum в XML-дескрипторе:
@@ -2663,7 +2672,7 @@ cuba.icons.iconSets = +com.company.demo.gui.icons.MyIcon
 <button icon="COOL_ICON"/>
 ----
 
-или контроллере экрана:
+или программно в контроллере экрана:
 
 [source, java]
 ----
@@ -2747,7 +2756,7 @@ include::{sourcesdir}/gui/IcoMoonIconProvider.java[]
 +
 [source, plain]
 ----
-cuba.icons.iconSets = +com.company.demo.gui.icons.IcoMoonIcon
+cuba.iconsConfig = +com.company.demo.gui.icons.IcoMoonIcon
 ----
 
 Теперь вы можете использовать значки по прямой ссылке на класс и элемент `enum` в XML-дескрипторе экрана:
@@ -2791,7 +2800,7 @@ include::{sourcesdir}/gui/MyIcon.java[]
 +
 [source, plain]
 ----
-cuba.icons.iconSets = +com.company.demo.gui.icons.MyIcon
+cuba.iconsConfig = +com.company.demo.gui.icons.MyIcon
 ----
 
 Теперь вместо стандартного значка *OK* будет использовано новое изображение:
