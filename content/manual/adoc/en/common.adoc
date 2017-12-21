@@ -2379,32 +2379,57 @@ When the application is started, `AppContext` is initialized using loader classe
 include::{sourcesdir}/common/appcontext_1.java[]
 ----
 +
-Alternatively, the <<events, application events>> mechanism can be used for the same purpose, for example:
-+
-[source, java]
-----
-include::{sourcesdir}/common/appcontext_2.java[]
-----
-+
---
-At the moment of `applicationStarted()` call:
+[WARNING]
+====
+Please note that the recommended way to run code on the application startup and shutdown is using <<app_lifecycle_events>>.
+====
 
-** All the <<managed_beans,beans>> are fully initialized and their `@PostConstruct` methods are executed.
-** Static `AppBeans.get()` methods can be used for obtaining beans.
-** The `AppContext.isStarted()` method returns `true`.
-** The `AppContext.isReady()` method returns `false`.
-** If <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property is enabled, all database update scripts are successfully executed (in the Middleware block).
---
+[[app_lifecycle_events]]
+==== Application Lifecycle Events
+
+There are the following types of lifecycle <<events,events>> in a CUBA application:
+
+AppContextInitializedEvent::
 +
 --
-At the moment of `applicationStopped()` call:
+It is sent right after <<appContext, AppContext>> is initialized.
+At this moment:
+
+* All the <<managed_beans,beans>> are fully initialized and their `@PostConstruct` methods are executed.
+* Static `AppBeans.get()` methods can be used for obtaining beans.
+* The `AppContext.isStarted()` method returns `false`.
+* The `AppContext.isReady()` method returns `false`.
+--
+
+AppContextStartedEvent::
++
+--
+It is sent after `AppContextInitializedEvent` and after running all `AppContext.Listener.applicationStarted()`. At this moment:
+
+* The `AppContext.isStarted()` method returns `true`.
+* The `AppContext.isReady()` method returns `false`.
+* On the middleware, if <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property is enabled, all database update scripts are successfully executed.
+--
+
+AppContextStoppedEvent::
++
+--
+It is sent before the application shutdown and after running all `AppContext.Listener.applicationStopped()`.
+At this moment:
 
 ** All the beans are operational and can be obtained via `AppBeans.get()` methods.
 ** `AppContext.isStarted()` method returns `false`.
 ** The `AppContext.isReady()` method returns `false`.
 --
-+
-A real example of using `AppContext.Listener` can be found in <<app_start_recipe>>.
+
+You can affect the order of listeners invocation by specifying the `@Order` annotation. The `Events.HIGHEST_PLATFORM_PRECEDENCE` and `Events.LOWEST_PLATFORM_PRECEDENCE` constants define the range which is used by listeners defined in the platform.
+
+For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/appLifecycleEvents_1.java[]
+----
 
 [[app_properties]]
 ==== Application Properties

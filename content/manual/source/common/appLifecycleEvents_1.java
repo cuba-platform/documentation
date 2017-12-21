@@ -1,7 +1,7 @@
 package com.company.demo.core;
 
-import com.haulmont.cuba.core.sys.events.AppContextStartedEvent;
-import com.haulmont.cuba.core.sys.events.AppContextStoppedEvent;
+import com.haulmont.cuba.core.global.Events;
+import com.haulmont.cuba.core.sys.events.*;
 import org.slf4j.Logger;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -14,6 +14,15 @@ public class MyAppLifecycleBean {
     @Inject
     private Logger log;
 
+    // event type is defined by annotation parameter
+    @EventListener(AppContextInitializedEvent.class)
+    // run after all platform listeners
+    @Order(Events.LOWEST_PLATFORM_PRECEDENCE + 100)
+    private void appInitialized() {
+        log.info("Initialized");
+    }
+
+    // event type is defined by method parameter
     @EventListener
     private void appStarted(AppContextStartedEvent event) {
         log.info("Started");

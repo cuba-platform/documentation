@@ -2454,34 +2454,57 @@ include::{sourcesdir}/common/events_EventListener.java[]
 include::{sourcesdir}/common/appcontext_1.java[]
 ----
 +
-Кроме того, для этой же цели можно использовать механизм <<events, событий приложения>>, например:
+[WARNING]
+====
+Рекомендуемый способ выполнения кода в момент запуска и остановки приложения - это использование <<app_lifecycle_events>>.
+====
+
+[[app_lifecycle_events]]
+==== Application Lifecycle Events
+
+В приложении на CUBA существуют следующие типы <<events,событий>> жизненного цикла:
+
+AppContextInitializedEvent::
 +
-[source, java]
-----
-include::{sourcesdir}/common/appcontext_2.java[]
-----
-+
-В момент вызова `applicationStarted()`:
+--
+Посылается сразу после инициализации <<appContext, AppContext>>.
+В этот момент:
 
 ** Полностью инициализированы все <<managed_beans,бины>>, в том числе выполнены их методы `@PostConstruct`.
-
 ** Можно использовать статические методы получения бинов `AppBeans.get()`.
+** Метод `AppContext.isStarted()` возвращает `false`.
+** Метод `AppContext.isReady()` возвращает `false`.
+--
+
+AppContextStartedEvent::
++
+--
+Посылается после `AppContextInitializedEvent` и после запуска всех `AppContext.Listener.applicationStarted()`. В этот момент:
 
 ** Метод `AppContext.isStarted()` возвращает `true`.
-
 ** Метод `AppContext.isReady()` возвращает `false`.
-
 ** В блоке Middleware: если свойство приложения <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> включено, все скрипты обновления БД успешно выполнены.
+--
+
+AppContextStoppedEvent::
 +
-В момент вызова `applicationStopped()`:
+--
+Посылается перед остановкой приложения и после запуска всех `AppContext.Listener.applicationStopped()`.
+В этот момент:
 
 ** Все бины работоспособны и доступны через статические методы `AppBeans.get()`.
-
 ** Метод `AppContext.isStarted()` возвращает `false`.
-
 ** Метод `AppContext.isReady()` возвращает `false`.
-+
-Практический пример использования `AppContext.Listener` см. в <<app_start_recipe,Выполнение кода на старте приложения>>.
+--
+
+Порядком исполнения слушателей можно управлять с помощью аннотации `@Order`. Константы `Events.HIGHEST_PLATFORM_PRECEDENCE` и `Events.LOWEST_PLATFORM_PRECEDENCE` определяют диапазон значений, используемый слушателями платформы.
+
+Пример:
+
+[source, java]
+----
+include::{sourcesdir}/common/appLifecycleEvents_1.java[]
+----
 
 [[app_properties]]
 ==== Свойства приложения
