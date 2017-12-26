@@ -922,15 +922,66 @@ include::{sourcesdir}/rest/rest-validateOrder-service-response.json[]
 [[rest_api_v2_ex_file_download]]
 ==== Files Downloading
 
-When downloading a file, passing a security token in the request header is often inconvenient. It is desirable to have a URL for downloading that may be put to the *src* attribute of the *img* tag.
+When <<http://files.cuba-platform.com/swagger/6.7/#!/Files/get_files_id,downloading a file>>, passing a security token in the request header is often inconvenient. It is desirable to have a URL for downloading that may be put to the *src* attribute of the *img* tag.
 
-As a solution, an OAuth token can also be passed in the request URL as a parameter with the *access_token* name.
+As a solution, an <<rest_api_v2_ex_get_token,OAuth token>> can also be passed in the request URL as a parameter with the *access_token* name.
 
 For example, an image is uploaded to the application. Its FileDescriptor id is `44809679-e81c-e5ae-dd81-f56f223761d6`.
 
 In this case a URL for downloading the image will look like this:
 
   http://localhost:8080/app/rest/v2/files/44809679-e81c-e5ae-dd81-f56f223761d6?access_token=a2f0bb4e-773f-6b59-3450-3934cbf0a2d6
+
+[[rest_api_v2_ex_file_upload]]
+==== Files Uploading
+
+In order to upload a file, you should get an <<rest_api_v2_ex_get_token,access token>> which will be used in the subsequent requests.
+
+Suppose we have the following form for the file input:
+
+[source, html]
+----
+<form id="fileForm">
+    <h2>Select a file:</h2>
+    <input type="file" name="file" id="fileUpload"/>
+    <br/>
+    <button type="submit">Upload</button>
+</form>
+
+<h2>Result:</h2>
+<img id="uploadedFile" src="" style="display: none"/>
+----
+
+We will use jQuery for the upload and get a JSON with http://files.cuba-platform.com/swagger/6.7/#!/Files/post_files[data] which is the newly created `FileDescriptor` instance. We can access the uploaded file by its `FileDescriptor` id with the access token as a parameter:
+
+[source, js]
+----
+$('#fileForm').submit(function (e) {
+    e.preventDefault();
+
+    var file = $('#fileUpload')[0].files[0];
+    var url = 'http://localhost:8080/app/rest/v2/files?name=' + file.name; // send file name as parameter
+
+    $.ajax({
+        type: 'POST',
+        url: url,
+        headers: {
+            'Authorization': 'Bearer ' + oauthToken // add header with access token
+        },
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        data: file,
+        success: function (data) {
+            alert('Upload successful');
+
+            $('#uploadedFile').attr('src',
+                'http://localhost:8080/app/rest/v2/files/' + data.id + '?access_token=' + oauthToken); // update image url
+            $('#uploadedFile').show();
+        }
+    });
+});
+----
 
 [[rest_api_v2_ex_javascript_usage]]
 ==== JavaScript Usage Example
