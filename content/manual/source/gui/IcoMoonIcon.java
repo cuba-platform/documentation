@@ -4,14 +4,14 @@ public enum IcoMoonIcon implements Icons.Icon {
     HEADPHONES("ico-moon:HEADPHONES"),
     SPINNER("ico-moon:SPINNER");
 
-    protected String id;
+    protected String source;
 
-    IcoMoonIcon(String id) {
-        this.id = id;
+    IcoMoonIcon(String source) {
+        this.source = source;
     }
 
     @Override
-    public String id() {
-        return id;
+    public String source() {
+        return source;
     }
 }
