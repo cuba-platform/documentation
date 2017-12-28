@@ -16,7 +16,7 @@ public void init(Map<String, Object> params) {
             try {
                 fileUploadingAPI.putFileIntoStorage(fileId, fd);
             } catch (FileStorageException e) {
-                new RuntimeException("Error saving file to FileStorage", e);
+                throw new RuntimeException("Error saving file to FileStorage", e);
             }
             // save file descriptor to database
             dataSupplier.commit(fd);
