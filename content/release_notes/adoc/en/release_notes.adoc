@@ -265,3 +265,45 @@ image::studio_no_removal_2.png[align="center"]
 As you can see, the script containing DROP statement is highlighted in red to emphasize the fact that you can lose some data.
 
 Additionally, we have added an ability to exclude scripts from automatic execution, but still have them in the project to be able to execute manually when needed. If you click the *Exclude selected* button, you will have an option to move the script to a special directory: `modules/core/db/update-manually`. The script will not be executed automatically, so the `FOO__UNUSED` column will remain in the table, but you will be able to execute the script manually and drop the column later.
+
+[[custom_db]]
+=== Support for Custom Databases (experimental)
+
+At the moment, the platform and Studio supports a limited number of databases out-of-the-box. These are HSQL, PostgreSQL, Microsoft SQL Server, MySQL and Oracle. But now you have an ability to implement support for a different DBMS right in your project.
+
+This feature works in the following way:
+
+* You click *Custom database* link on the *Project properties* panel and enter ID and user-friendly name of your database type, e.g. `firebird` and `Firebird`.
+
+* Studio generates two sets of files in the `core` module of your project:
+
+** In the `com.haulmont.cuba.core.sys.persistence` package, implementations of the `DbmsFeatures`, `DbTypeConverter` and `SequenceSupport` interfaces of the platform. These implementations will be used by the application at runtime.
+** In the `com.haulmont.studio.db.{db_id}` package, files that will be used by Studio at design time:
+*** `{db_id}DbProperties`, which defines database properties that are needed to configure projects using the custom database.
+*** `{db_id}DdlGenerator`, which is used by Studio for generation of database init and update scripts and for creating model from an existing database.
+
+* All these files contain sample code suitable for Microsoft SQL Server 2012. You should fix the generated files to conform to your database properties, SQL and DDL statements.
+
+* After that, you can switch your project to use the custom database. It will appear in the *Project properties > Database type* list after you reopen the project.
+
+* If you use the custom database as a main data store, when you generate database scripts, Studio will create init scripts for all application components (as described <<comp_db_scripts,above>>), including CUBA. These scripts won't include some required initialization data, so you have to add it to the *Init data* script of your project (`30.create-db.sql`):
++
+[source,sql]
+----
+insert into SEC_GROUP (ID, CREATE_TS, VERSION, NAME, PARENT_ID)
+values ('0fa2b1a5-1d68-4d69-9fbd-dff348347f93', current_timestamp, 0, 'Company', null)^
+
+insert into SEC_USER (ID, CREATE_TS, VERSION, LOGIN, LOGIN_LC, PASSWORD, NAME, GROUP_ID, ACTIVE)
+values ('60885987-1b61-4247-94c7-dff348347f93', current_timestamp, 0, 'admin', 'admin',
+'cc2229d1b8a052423d9e1c9ef0113b850086586a',
+'Administrator', '0fa2b1a5-1d68-4d69-9fbd-dff348347f93', 1)^
+
+insert into SEC_USER (ID, CREATE_TS, VERSION, LOGIN, LOGIN_LC, PASSWORD, NAME, GROUP_ID, ACTIVE)
+values ('a405db59-e674-4f63-8afe-269dda788fe8', current_timestamp, 0, 'anonymous', 'anonymous', null,
+'Anonymous', '0fa2b1a5-1d68-4d69-9fbd-dff348347f93', 1)^
+----
+
+[WARNING]
+====
+Please keep in mind that this is an experimental feature and its implementation can be changed significantly in the future versions of Studio. This is especially relevant to the `{db_id}DdlGenerator` class, which is not clear and convenient enough at the moment.
+====
