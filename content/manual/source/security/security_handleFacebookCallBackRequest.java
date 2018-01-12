@@ -14,8 +14,7 @@ public boolean handleFacebookCallBackRequest(VaadinSession session, VaadinReques
                 Connection connection = app.getConnection();
                 Locale defaultLocale = messages.getTools().getDefaultLocale();
 
-                ((ExternallyAuthenticatedConnection) connection)
-                        .loginAfterExternalAuthentication(user.getLogin(), defaultLocale);
+                connection.login(new ExternalUserCredentials(user.getLogin(), defaultLocale));
             } catch (Exception e) {
                 log.error("Unable to login using Facebook", e);
             } finally {
@@ -24,7 +23,7 @@ public boolean handleFacebookCallBackRequest(VaadinSession session, VaadinReques
         });
 
         ((VaadinServletResponse) response).getHttpServletResponse().
-        sendRedirect(ControllerUtils.getLocationWithoutParams(redirectUri));
+            sendRedirect(ControllerUtils.getLocationWithoutParams(redirectUri));
 
         return true;
     }

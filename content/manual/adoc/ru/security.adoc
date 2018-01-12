@@ -599,26 +599,22 @@ image::local_admins_role.png[align="center"]
 
 Если логин пользователя перечислен в свойстве приложения <<cuba.web.standardAuthenticationUsers,cuba.web.standardAuthenticationUsers>>, то он всегда аутентифицируется обычным способом через хранимый в базе данных приложения хэш пароля. Поэтому если для некоторого пользователя из данного списка пароль в приложении задан, он сможет войти в систему с этим паролем, если в LDAP такого пользователя нет.
 
-Взаимодействие CUBA-приложения с LDAP осуществляется через интерфейс `CubaAuthProvider`. Платформа содержит единственную реализацию данного интерфейса - `LdapAuthProvider`, предназначенную для решения первой задачи.
+Взаимодействие CUBA-приложения с LDAP осуществляется через бин `LdapLoginProvider`.
 
 Для расширенной интеграции с Active Directory и обеспечения Single Sign-On для пользователей домена Windows можно использовать библиотеку *Jespa* и соответствующую имплементацию `CubaAuthProvider`, которая описана в <<jespa,>>.
 
-При необходимости можно также создать собственный класс имплементации `CubaAuthProvider` и использовать его, установив следующие свойства приложения:
-
-[source, properties]
-----
-cuba.web.externalAuthentication = true
-cuba.web.externalAuthenticationProviderClass = com.company.sample.web.MyAuthProvider
-----
+Вы можете реализовать свой механизм входа при помощи интерфейсов `LoginProvider`, `HttpRequestFilter` и обработчиков событий, как это описано в разделе <<web-login, Специфика процесса входа в Web Client>>.
 
 Также вы можете включить LDAP аутентификацию для клиентов REST API: <<rest_api_v2_ldap,LDAP аутентификация для REST API>>.
 
 [[ldap_basic]]
 ==== Базовая интеграция с LDAP
 
-Класс `LdapAuthProvider` используется по умолчанию при включенном свойстве приложения <<cuba.web.externalAuthentication,cuba.web.externalAuthentication>>. В этом случае для аутентификации пользователей используется библиотека *Spring LDAP*.
+Класс `LdapAuthProvider` используется по умолчанию при включенном свойстве приложения <<cuba.web.ldap.enabled,cuba.web.ldap.enabled>>. В этом случае для аутентификации пользователей используется библиотека *Spring LDAP*.
 
 Для настройки интеграции используются следующие свойства приложения блока Web Client:
+
+* `cuba.web.ldap.enabled` - включить/выключить интеграцию с LDAP.
 
 * `cuba.web.ldap.urls` - URL сервера LDAP.
 
@@ -634,7 +630,7 @@ cuba.web.externalAuthenticationProviderClass = com.company.sample.web.MyAuthProv
 
 [source, properties]
 ----
-cuba.web.externalAuthentication = true
+cuba.web.ldap.enabled = true
 cuba.web.ldap.urls = ldap://192.168.1.1:389
 cuba.web.ldap.base = ou=Employees,dc=mycompany,dc=com
 cuba.web.ldap.user = cn=System User,ou=Employees,dc=mycompany,dc=com
@@ -772,9 +768,7 @@ cuba.idp.serviceProviderLogoutUrls = http://foo:8081/app/dispatch/idpc/logout,ht
 cuba.webAppUrl = http://foo:8081/app/
 ----
 
-*** <<cuba.web.externalAuthentication,cuba.web.externalAuthentication>> должно быть установлено в `true`.
-
-*** <<cuba.web.externalAuthenticationProviderClass,cuba.web.externalAuthenticationProviderClass>> должно быть установлено в `com.haulmont.cuba.web.auth.IdpAuthProvider`.
+*** <<cuba.web.idp.enabled,cuba.web.idp.enabled>> должно быть установлено в `true`.
 
 *** <<cuba.web.idp.baseUrl,cuba.web.idp.baseUrl>> - на данном URL IDP принимает запросы на аутентификацию. Стандартный CUBA IDP использует адрес `idp/` (символ `/` в конце обязателен). Например:
 +
@@ -973,22 +967,6 @@ include::{sourcesdir}/security/security_handleFacebookCallBackRequest.java[]
 ----
 --
 
-. Последним шагом необходимо запретить встроенный механизм аутентификации <<ldap,LDAP>> в проекте. Создайте свою реализацию `CubaAuthProvider` в пакете `auth` в корневом каталоге модуля *web* и просто переопределите в ней следующие методы, не внося в них никаких изменений:
-+
---
-[source,java]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/auth/NoOpAuthProvider.java[NoOpAuthProvider.java]
-----
-include::{sourcesdir}/security/security_NoOpAuthProvider.java[]
-----
-
-Зарегистрируйте эту реализацию в файле `web-app.properties` в модуле *web*:
-
-[source, properties]
-.web-app.properties
-----
-cuba.web.externalAuthenticationProviderClass = com.company.demo.web.auth.NoOpAuthProvider
-----
---
-
 Теперь при нажатии кнопки *Facebook* на экране входа приложение запросит разрешение на использование учётных данных пользователя Facebook, и если разрешение будет получено, пользователь после логина будет перенаправлен на главную страницу приложения.
+
+Вы можете реализовать свой механизм входа при помощи интерфейсов `LoginProvider`, `HttpRequestFilter` и обработчиков событий, как это описано в разделе <<web-login, Специфика процесса входа в Web Client>>.
