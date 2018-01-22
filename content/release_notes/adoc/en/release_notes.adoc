@@ -122,6 +122,27 @@ If you are experiencing any problem with indexing files of specific formats, try
 
 . The `CATALINA_HOME` and `CATALINA_BASE` global environment variables are not used by the Tomcat installed by Studio and `setupTomcat` Gradle task. So if you deploy your application by copying Tomcat from the development environment and rely on these variables in production environment, edit `catalina.sh` or `catalina.bat` scripts and remove the commands right after the `CUBA` comment.
 
+. In the `ProcInstance` entity of the BPM module the `entityId` field of the `UUID` datatype was replaced with the `entity` field of the `ReferenceToEntity` type. This will break JPQL queries that use the `entityId` field. For example, the following query:
++
+----
+select pi from bpm$ProcInstance pi where pi.entityId = :entityId
+----
++
+should be transformed to the:
++
+----
+select pi from bpm$ProcInstance pi where pi.entity.entityId = :entityId
+----
++
+This modification was made to support references to entities that have primary keys with non-UUID types. For example, in case of referenced entity with String primary key, a reference to such entity in JPQL query should be defined this way:
++
+----
+select pi from bpm$ProcInstance pi where pi.entity.stringEntityId = :entityId
+----
++
+Along with `entityId` and `stringEntityId` fields a `ReferenceToEntity` entity has other properties: `intEntityId` and `longEntityId`.
+
+
 [[data_model]]
 === Data Model
 
@@ -170,6 +191,30 @@ When you request an OAuth token, now by default you get a JSON object with two t
 
 [[reporting]]
 === Reporting
+
+[[bpm]]
+=== BPM
+
+[[bpm_hsql_database_migration_issue]]
+==== HSQL Database Migration Issue
+
+In case of migrating the project with BPM module and HSQL database from the release 6.7, database update scripts errors may occur. To prevent it, perform a migration according to the next instruction:
+
+1. Change the platform version to the latest one available for the release 6.7 (6.7.8+).
+
+2. Run the *Update database* command in Cuba Studio.
+
+3. Execute the *Generate DB scrips* command  in Cuba Studio. Studio will generate the following script:
++
+----
+alter table BPM_PROC_INSTANCE drop column STRING_ENTITY_ID__UNUSED cascade ;
+alter table BPM_PROC_INSTANCE drop column INT_ENTITY_ID__UNUSED cascade ;
+alter table BPM_PROC_INSTANCE drop column LONG_ENTITY_ID__UNUSED cascade ;
+----
+
+4. Apply the script.
+
+5. Only after that change the platform version to 6.8
 
 [[misc]]
 === Miscellaneous
