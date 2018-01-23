@@ -37,7 +37,7 @@ class CreateMultiPageDoc extends DefaultTask {
         chopper.process()
 
         project.copy {
-            from "${project.rootDir}/buildSrc/build/classes/main/chopper/server"
+            from "${project.rootDir}/buildSrc/build/classes/java/main/chopper/server"
             into "${dstDir}/WEB-INF/classes/chopper/server"
         }
 
