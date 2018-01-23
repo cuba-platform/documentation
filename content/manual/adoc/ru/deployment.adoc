@@ -1611,6 +1611,123 @@ admin admin
 
 <<cuba.web.pushEnabled,cuba.web.pushEnabled>>
 
+Информация ниже взята из статьи с веб-сайта Vaadin - https://vaadin.com/docs/v8/framework/articles/ConfiguringPushForYourEnvironment.html[Configuring push for your environment].
+
+[[server_push_settings_err_incomplete_chunked_encoding]]
+Chrome показывает ERR_INCOMPLETE_CHUNKED_ENCODING::
++
+--
+Это совершенно нормально и означает, что (long-polling) push-соединение было прервано третьей стороной. Обычно это происходит, когда между браузером и сервером имеется прокси-сервер, а прокси-сервер имеет настроенный тайм-аут и отключает соединение, когда тайм-аут достигнут. После этого браузер должен повторно подключиться к серверу.
+--
+
+[[server_push_settings_]]
+Tomcat 8 + Websockets::
++
+--
+[source, plain]
+----
+java.lang.ClassNotFoundException: org.eclipse.jetty.websocket.WebSocketFactory$Acceptor
+----
+
+Это означает, что где то в classpath развернут Jetty. Atmosphere путается и использует реализацию Websocket от Jetty сервера вместо Tomcat. Одной из распространенных причин этого является то, что Вы случайно развернули `vaadin-client-compiler`, у которого Jetty есть в качестве зависимости (требуется, например, для SuperDevMode).
+--
+
+[[server_push_settings_glassfish_streaming]]
+Glassfish 4 + Streaming::
++
+--
+Чтобы Streaming режим работал в Glassfish 4, необходимо включить опцию *comet*.
+
+
+Для этого установите
+
+[source, plain]
+----
+(Configurations → server-config → Network Config → Protocols → http-listener-1 → HTTP → Comet Support)
+----
+
+или используйте
+
+[source, plain]
+----
+asadmin set server-config.network-config.protocols.protocol.http-listener-1.http.comet-support-enabled="true"
+----
+--
+
+[[server_push_settings_glassfish_websockets]]
+Glassfish 4 + Websockets::
++
+--
+Если Вы используете Glassfish 4.0, то для избежания проблем Вам необходимо обновиться на версию Glassfish 4.1.
+--
+
+[[server_push_settings_weblogic_websockets]]
+Weblogic 12 + Websockets::
++
+--
+Используйте WebLogic 12.1.3 или новее. По умолчанию, WebLogic 12 имеет 30 сек. таймаут для websocket соединений. Чтобы избежать постоянных повторных соединений, вы можете установить параметр `weblogic.websocket.tyrus.session-max-idle-timeout` либо в значение `-1` (т.е. без таймаута), либо в большее чем `30000` (значение в миллисекундах).
+--
+
+[[server_push_settings_jboss_websockets]]
+JBoss EAP 6.4 + Websockets::
++
+--
+JBoss EAP 6.4 включает поддержку websockets, но по умолчанию они отключены. Чтобы включить websockets, Вам необходимо переключить JBoss в режим использования NIO-коннектора, запустив:
+
+[source, plain]
+----
+$ bin/jboss-cli.sh --connect
+----
+
+затем выполнив следующие команды:
+
+[source, plain]
+----
+batch
+/subsystem=web/connector=http/:write-attribute(name=protocol,value=org.apache.coyote.http11.Http11NioProtocol)
+run-batch
+:reload
+----
+
+Чтобы включить websockets, необходимо добавить *WEB-INF/jboss-web.xml* в Ваш war-файл со следующим содержанием:
+
+[source, xml]
+----
+<jboss-web version="7.2" xmlns="http://www.jboss.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.jboss.com/xml/ns/javaee schema/jboss-web_7_2.xsd">
+    <enable-websockets>true</enable-websockets>
+</jboss-web>
+----
+--
+
+[[server_push_settings_duplicate_resource]]
+Duplicate resource::
++
+--
+Если логи сервера содержат
+
+[source, plain]
+----
+Duplicate resource xyz-abc-def-ghi-jkl. Could be caused by a dead connection not detected by your server. Replacing the old one with the fresh one
+----
+
+Это указывает на то, что сначала браузер подключился к серверу и использовал данный идентификатор для push-соединения. Позже браузер (возможно, тот же самый) снова подключился с использованием того же идентификатора, но сервер считает, что старое соединение с браузером все еще активно. Сервер закрывает старое соединение и регистрирует предупреждение.
+
+Это происходит из-за того, что между браузером и сервером существует прокси-сервер, а прокси-сервер настроен так, чтобы убивать открытые соединения после определенного таймаута бездействия (данные не отправляются до того, как сервер выдает команду push). Из-за того, как работает TCP/IP, сервер не знает, что соединение было убито и продолжает думать, что старый клиент подключен, и все в порядке.
+
+У вас есть несколько вариантов, чтобы избежать этой проблемы:
+
+. Если вы контролируете прокси-сервер, настройте его не закрывать push-соединения (подключения к URL-адресу `/PUSH`).
+. Если Вы знаете какой таймаут задан на прокси-сервере, установить таймаут для push в приложении немного меньше. Тогда сервер будет завершать неактивное соединение до того, как сработает таймаут прокси-сервера.
+.. Установить параметр `cuba.web.pushLongPolling` в значение `true` чтобы включить long polling вместо websocket.
+.. Используйте параметр `cuba.web.pushLongPollingSuspendTimeoutMs`, чтобы установить таймаут push в миллисекундах.
+--
+
+[[server_push_settings_using_proxy]]
+Использование Proxy::
++
+--
 Если пользователи подключаются к серверу приложения через прокси, не поддерживающий WebSocket, рекомендуется установить свойство `cuba.web.pushLongPolling` в `true` и увеличить таймаут запроса на прокси до 10 минут или больше.
 
 Ниже приведен пример конфигурации веб-сервера *Nginx* для использования WebSocket:
