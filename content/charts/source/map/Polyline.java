@@ -1,0 +1,11 @@
+List<GeoPoint> coordinates = new ArrayList<>();
+coordinates.add(map.createGeoPoint(53.4491, -1.9955));
+coordinates.add(map.createGeoPoint(53.6200, -1.9539));
+coordinates.add(map.createGeoPoint(53.4425, -1.6196));
+coordinates.add(map.createGeoPoint(53.1900, -1.4969));
+coordinates.add(map.createGeoPoint(53.1926, -1.6197));
+Polyline polyline = map.createPolyline(coordinates);
+polyline.setStrokeWeight(5);
+polyline.setStrokeOpacity(0.5);
+polyline.setStrokeColor("#7341f4");
+map.addPolyline(polyline);
