@@ -1,0 +1,11 @@
+HeatMapLayer heatMapLayer = map.createHeatMapLayer();
+List<GeoPoint> data = new ArrayList<>();
+data.add(map.createGeoPoint(53.450, -2.090));
+data.add(map.createGeoPoint(53.451, -2.095));
+data.add(map.createGeoPoint(53.452, -2.092));
+data.add(map.createGeoPoint(53.453, -2.093));
+data.add(map.createGeoPoint(53.454, -2.093));
+data.add(map.createGeoPoint(53.454, -2.092));
+data.add(map.createGeoPoint(53.453, -2.092));
+heatMapLayer.setData(data);
+map.addHeatMapLayer(heatMapLayer);
