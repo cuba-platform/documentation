@@ -3240,6 +3240,72 @@ There are three levels of integration of a new component into the platform.
 
 * On the third level, the new component is available on the Studio components palette and can be used in the WYSIWYG layout editor. See an example in the <<own_component_in_studio>> section.
 
+[[pluggable_component_factories]]
+==== Pluggable Component Factories
+
+The Pluggable Component Factories mechanism allows to extend the components generation mechanism and creates components according to the given `ComponentGenerationContext` object. This mechanism is used by *FieldGroup*, *Table* and *DataGrid* components.
+
+The `ComponentsFactory#createComponent(ComponentGenerationContext)` method is used in order to create a component using the Pluggable Field Factories mechanism.
+
+The implementation of this method works as follows:
+
+* Trying to find `ComponentGenerationStrategy` realizations. If at least one strategy exists, then:
+** Iterates over strategies according to the `org.springframework.core.Ordered` interface.
+** The first not `null` component will be returned.
+
+`com.haulmont.cuba.gui.components.ComponentGenerationStrategy` is an interface which realizations are used to create UI components. A project can contain any number of strategies.
+
+`com.haulmont.cuba.gui.components.ComponentGenerationContext` is a class which stores information that can be used to create a component.
+
+It stores the following information:
+
+* `metaClass` - an instance of `MetaClass` for which a component should be created.
+* `property` - a property of meta class for which a component should be created.
+* `datasource` - a datasource that can be used to create the component.
+* `optionsDatasource` - a datasource that can be used as optional to create the component.
+* `xmlDescriptor` - an XML descriptor which contains additional information, in case the component is declared in an XML descriptor.
+* `componentClass` - a component class for which a component should be created, e.g. *FieldGroup*, *Table*, *DataGrid*.
+
+There are two built-in component strategies:
+
+* `DefaultComponentGenerationStrategy` - used to create a component according to the given `ComponentGenerationContext` object. Has en order equal to `ComponentGenerationStrategy#LOWEST_PLATFORM_PRECEDENCE` (1000).
+* `DataGridEditorComponentGenerationStrategy` - used to create a component according to the given `ComponentGenerationContext` object for a DataGrid Editor. Has en order equal to `ComponentGenerationStrategy#HIGHEST_PLATFORM_PRECEDENCE + 30` (130).
+
+The sample below shows how to replace the default *FieldGroup* component generation for a certain attribute of a specific entity.
+
+[source, java]
+----
+include::{sourcesdir}/gui/pluggable_field_factories1.java[]
+----
+
+[WARNING]
+====
+Pay attention that overriding existing generation strategies may produce errors in case of changing returned component type, because some screen controllers may have code that refers to another component type.
+
+
+For example, in case of using the strategy above, the following injection will produce the exception:
+
+[source, java]
+----
+@Named("fieldGroup.date")
+private DateField dateField;
+----
+
+If you try to open a screen you will get the following exception:
+
+----
+IllegalArgumentException: Can not set com.haulmont.cuba.gui.components.DateField field com.company.sales.web.order.OrderEdit.dateField to com.haulmont.cuba.web.gui.components.WebDatePicker
+----
+
+====
+
+The sample below shows how to define a `ComponentGenerationStrategy` for a specific *Datatype*.
+
+[source, java]
+----
+include::{sourcesdir}/gui/pluggable_field_factories2.java[]
+----
+
 [[shortcuts]]
 ==== Keyboard Shortcuts
 
