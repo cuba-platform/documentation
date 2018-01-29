@@ -3243,33 +3243,29 @@ There are three levels of integration of a new component into the platform.
 [[pluggable_component_factories]]
 ==== Pluggable Component Factories
 
-The Pluggable Component Factories mechanism allows to extend the components generation mechanism and creates components according to the given `ComponentGenerationContext` object. This mechanism is used by *FieldGroup*, *Table* and *DataGrid* components.
+The Pluggable Component Factories mechanism allows you to extend the components generation mechanism and create components according to a given `ComponentGenerationContext` object. This mechanism is used by <<gui_FieldGroup, FieldGroup>>, <<gui_Table, Table>> and <<gui_DataGrid, DataGrid>> components.
 
-The `ComponentsFactory#createComponent(ComponentGenerationContext)` method is used in order to create a component using the Pluggable Field Factories mechanism.
+An entry point to the mechanism is the `ComponentsFactory.createComponent(ComponentGenerationContext)` method. It works as follows:
 
-The implementation of this method works as follows:
-
-* Trying to find `ComponentGenerationStrategy` realizations. If at least one strategy exists, then:
+* Tries to find `ComponentGenerationStrategy` implementations. If at least one strategy exists, then:
 ** Iterates over strategies according to the `org.springframework.core.Ordered` interface.
-** The first not `null` component will be returned.
+** Returns the first created not `null` component.
 
-`com.haulmont.cuba.gui.components.ComponentGenerationStrategy` is an interface which realizations are used to create UI components. A project can contain any number of strategies.
+`ComponentGenerationStrategy` implementations are used to create UI components. A project can contain any number of such strategies.
 
-`com.haulmont.cuba.gui.components.ComponentGenerationContext` is a class which stores information that can be used to create a component.
+`ComponentGenerationContext` is a class which stores the following information that can be used when creating a component:
 
-It stores the following information:
-
-* `metaClass` - an instance of `MetaClass` for which a component should be created.
-* `property` - a property of meta class for which a component should be created.
-* `datasource` - a datasource that can be used to create the component.
-* `optionsDatasource` - a datasource that can be used as optional to create the component.
+* `metaClass` - defines the entity for which the component is created.
+* `property` - defines the entity attribute for which the component is created.
+* `datasource` - a datasource.
+* `optionsDatasource` - a datasource that can be used to show options.
 * `xmlDescriptor` - an XML descriptor which contains additional information, in case the component is declared in an XML descriptor.
-* `componentClass` - a component class for which a component should be created, e.g. *FieldGroup*, *Table*, *DataGrid*.
+* `componentClass` - a component class for which a component is created, e.g. `FieldGroup`, `Table`, `DataGrid`.
 
 There are two built-in component strategies:
 
-* `DefaultComponentGenerationStrategy` - used to create a component according to the given `ComponentGenerationContext` object. Has en order equal to `ComponentGenerationStrategy#LOWEST_PLATFORM_PRECEDENCE` (1000).
-* `DataGridEditorComponentGenerationStrategy` - used to create a component according to the given `ComponentGenerationContext` object for a DataGrid Editor. Has en order equal to `ComponentGenerationStrategy#HIGHEST_PLATFORM_PRECEDENCE + 30` (130).
+* `DefaultComponentGenerationStrategy` - used to create a component according to the given `ComponentGenerationContext` object. Has the order value `ComponentGenerationStrategy.LOWEST_PLATFORM_PRECEDENCE` (1000).
+* `DataGridEditorComponentGenerationStrategy` - used to create a component according to the given `ComponentGenerationContext` object for a DataGrid Editor. Has the order value `ComponentGenerationStrategy.HIGHEST_PLATFORM_PRECEDENCE + 30` (130).
 
 The sample below shows how to replace the default *FieldGroup* component generation for a certain attribute of a specific entity.
 
@@ -3280,7 +3276,7 @@ include::{sourcesdir}/gui/pluggable_field_factories1.java[]
 
 [WARNING]
 ====
-Pay attention that overriding existing generation strategies may produce errors in case of changing returned component type, because some screen controllers may have code that refers to another component type.
+Pay attention that overriding existing generation strategies may produce errors in case of changing returned component type, because some screen controllers may have code that expects a certain component type.
 
 
 For example, in case of using the strategy above, the following injection will produce the exception:
@@ -3291,7 +3287,7 @@ For example, in case of using the strategy above, the following injection will p
 private DateField dateField;
 ----
 
-If you try to open a screen you will get the following exception:
+If you try to open such screen you will get the following exception:
 
 ----
 IllegalArgumentException: Can not set com.haulmont.cuba.gui.components.DateField field com.company.sales.web.order.OrderEdit.dateField to com.haulmont.cuba.web.gui.components.WebDatePicker
@@ -3299,7 +3295,7 @@ IllegalArgumentException: Can not set com.haulmont.cuba.gui.components.DateField
 
 ====
 
-The sample below shows how to define a `ComponentGenerationStrategy` for a specific *Datatype*.
+The sample below shows how to define a `ComponentGenerationStrategy` for a specific <<datatype,datatype>>.
 
 [source, java]
 ----

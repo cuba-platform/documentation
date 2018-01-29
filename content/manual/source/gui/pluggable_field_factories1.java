@@ -1,5 +1,6 @@
-@org.springframework.stereotype.Component(SalesComponentGenerationStrategy.NAME)
+@Component(SalesComponentGenerationStrategy.NAME)
 public class SalesComponentGenerationStrategy implements ComponentGenerationStrategy, Ordered {
+
     public static final String NAME = "sales_SalesComponentGenerationStrategy";
 
     @Inject
