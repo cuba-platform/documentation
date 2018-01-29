@@ -3318,35 +3318,31 @@ public class CubaFileUpload extends CubaAbstractUploadComponent {
 [[pluggable_component_factories]]
 ==== Подключаемые фабрики компонентов
 
-Механизм подключаемых фабрик компонентов позволяет позволяет расширять механизм генерации компонентов и создавать компоненты в соответвии c переданным объектом `ComponentGenerationContext`. Данных механизм используется при генерации компонентов в *FieldGroup*, *Table* и *DataGrid*.
+Механизм подключаемых фабрик компонентов позволяет позволяет расширять механизм генерации компонентов и создавать компоненты в соответствии c переданным объектом `ComponentGenerationContext`. Данных механизм используется при генерации компонентов в <<gui_FieldGroup, FieldGroup>>, <<gui_Table, Table>> и <<gui_DataGrid, DataGrid>>.
 
-Для того, чтобы воспользоваться данным механизмом следует использовать метод `ComponentsFactory#createComponent(ComponentGenerationContext)`.
-
-Реализация данного метода работает следующим образом:
+Для того, чтобы воспользоваться данным механизмом, следует использовать метод `ComponentsFactory.createComponent(ComponentGenerationContext)`. Он работает следующим образом:
 
 * Пытается найти все реализации интерфейса `ComponentGenerationStrategy`. Если как минимум одна реализация существует:
 ** Обходит все реализации в соответствии с интерфейсом `org.springframework.core.Ordered`.
-** Возвращается первый не нулевой компонент.
+** Возвращается первый созданный не нулевой компонент.
 
-`com.haulmont.cuba.gui.components.ComponentGenerationStrategy` - интерфейс, реализации которого используются при создании UI компонентов. Проект может содержать любое количество стратегий.
+Реализации интерфейса `ComponentGenerationStrategy` используются при создании UI компонентов. Проект может содержать любое количество таких стратегий.
 
-`com.haulmont.cuba.gui.components.ComponentGenerationContext` - класс, который содержит информацию, которая может быть использованна при создании компонента.
+`ComponentGenerationContext` - класс, содержащий следующую информацию, которая может быть использована при создании компонента:
 
-Данный класс содержит следующую информацию:
-
-* `metaClass` - объект `MetaClass`, для которого должен быть создан компонент.
-* `property` - свойство объекта `MetaClass`, для которого должен быть создан компонент.
+* `metaClass` - задает сущность, для которой создается компонент.
+* `property` - задает атрибут сущности, для которой создается компонент.
 * `datasource` - источник данных, который может быть связан с компонентом.
-* `optionsDatasource` - источник данных, который может быть связан с компонентом в качестве опционального.
+* `optionsDatasource` - источник данных, который может быть связан с компонентом для показа опций.
 * `xmlDescriptor` - XML дескриптор с дополнительной информацией, в случае, если компонент описан в XML дескрипторе.
-* `componentClass` - сласс коспонента для которого должен быть создан компонент (например, *Table*, *FieldGroup*, *DataGrid*).
+* `componentClass` - класс компонента для которого должен быть создан компонент (например, `Table`, `FieldGroup`, `DataGrid`).
 
-Существует две стандартных реализации `ComponentGenerationStrategy` в платформе:
+В платформе существуют две стандартных реализации `ComponentGenerationStrategy`:
 
-* `DefaultComponentGenerationStrategy` - используется для создания компонентов в соответствии с переданным `ComponentGenerationContext`. Имеет значение _order_ равное `ComponentGenerationStrategy#LOWEST_PLATFORM_PRECEDENCE` (1000).
-* `DataGridEditorComponentGenerationStrategy` - используется для создания компонентов для DataGrid Editor в соответствии с переданным `ComponentGenerationContext`. Имеет значение _order_ равное `ComponentGenerationStrategy#HIGHEST_PLATFORM_PRECEDENCE + 30` (130).
+* `DefaultComponentGenerationStrategy` - используется для создания компонентов в соответствии с переданным `ComponentGenerationContext`. Имеет значение _order_ равное `ComponentGenerationStrategy.LOWEST_PLATFORM_PRECEDENCE` (1000).
+* `DataGridEditorComponentGenerationStrategy` - используется для создания компонентов для DataGrid Editor в соответствии с переданным `ComponentGenerationContext`. Имеет значение _order_ равное `ComponentGenerationStrategy.HIGHEST_PLATFORM_PRECEDENCE + 30` (130).
 
-Пример ниже показывает как заменить стандартную генерацию компонента в *FieldGroup* для определенного атрибута некоторой сущности.
+Пример ниже показывает, как заменить стандартную генерацию компонента в `FieldGroup` для определенного атрибута некоторой сущности.
 
 [source, java]
 ----
@@ -3355,7 +3351,7 @@ include::{sourcesdir}/gui/pluggable_field_factories1.java[]
 
 [WARNING]
 ====
-Обратите внимание, что переопределение существующих стратегий генерации компонентов может приводить к ошибкам в случае изменения типа возвращаемого компонента, поскольку некоторые контроллеры экрана могут иметь код, ссылающийся на другой тип компонента.
+Обратите внимание, что переопределение существующих стратегий генерации компонентов может приводить к ошибкам в случае изменения типа возвращаемого компонента, поскольку некоторые контроллеры экрана могут иметь код, ожидающий определенный тип компонента.
 
 Например, в случае использования вышеприведенной стратегии, следующая инжекция приведет к исключению:
 
@@ -3365,7 +3361,7 @@ include::{sourcesdir}/gui/pluggable_field_factories1.java[]
 private DateField dateField;
 ----
 
-Если вы попытаетесь открыть экран, то получите следующее исключение:
+Если вы попытаетесь открыть такой экран, то получите следующее исключение:
 
 ----
 IllegalArgumentException: Can not set com.haulmont.cuba.gui.components.DateField field com.company.sales.web.order.OrderEdit.dateField to com.haulmont.cuba.web.gui.components.WebDatePicker
@@ -3373,7 +3369,7 @@ IllegalArgumentException: Can not set com.haulmont.cuba.gui.components.DateField
 
 ====
 
-Пример ниже показывает как определить `ComponentGenerationStrategy` для специализированного *Datatype*.
+Пример ниже показывает, как определить `ComponentGenerationStrategy` для специализированного <<datatype,datatype>>.
 
 [source, java]
 ----

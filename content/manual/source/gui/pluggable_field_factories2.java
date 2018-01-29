@@ -1,6 +1,7 @@
 @Order(100)
-@org.springframework.stereotype.Component(ColorComponentGenerationStrategy.NAME)
+@Component(ColorComponentGenerationStrategy.NAME)
 public class ColorComponentGenerationStrategy implements ComponentGenerationStrategy {
+
     public static final String NAME = "colordatatype_ColorComponentGenerationStrategy";
 
     @Inject
