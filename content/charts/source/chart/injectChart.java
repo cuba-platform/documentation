@@ -1,0 +1,2 @@
+@Inject
+private Chart pieChart;
