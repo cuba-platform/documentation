@@ -90,6 +90,65 @@ ru = Книги по автору
 
 You can <<running, run>> report from the generic browser in the *Reports* -> *Run Reports* screen.
 
+[[crosstab_xls]]
+=== Sample Crosstab Report
+
+To create a crosstab report, select *Crosstab* band orientation on the <<structure,Report structure>> tab of the report editor. This orientation automatically adds three datasets to the band:
+
+. `<band_name>`*_dynamic_header* - this band is copied to the right like a vertical band with table columns header.
+
+. `<band_name>`*_master_data* - this band is copied downwards like a horizontal band with table rows header.
+
+. an empty matrix content band that will fulfil the matrix cells.
+
+These datasets can have any of available dataset types: <<structure_sql,SQL>>, <<structure_jpql,JPQL>>, <<structure_groovy,Groovy>>, and so on.
+
+For example, a crosstab report for the `Order` entity of the https://github.com/cuba-platform/sample-sales[Sales] sample application may have the following structure:
+
+image::crosstab_structure.png[align="center"]
+
+* Here, the `orders_dynamic_header` dataset will return the list of months names:
++
+[source, groovy]
+.orders_dynamic_header dataset
+----
+include::{sourcesdir}/crosstab_dynamic_header.groovy[]
+----
+
+* The `orders_master_data` dataset returns names and identifiers of the customers selected by the user as an <<parameters,external report parameter>>:
++
+[source, sql]
+.orders_master_data dataset
+----
+include::{sourcesdir}/crosstab_master_data.sql[]
+----
+
+* The `orders` dataset will provide data for the matrix cells, which is the order amounts sum for the particular month and customer. It takes `orders_master_data@customer_id` (the customer id) as the Y-coordinate of the cell, and `orders_dynamic_header@header_id` (the month name) as the X-coordinate, and fills the matrix cell with the `amount` value.
++
+In the example below the report has two more external parameters: the `start_date` and the `end_date` that define the range of order dates. It would be a good idea to set up <<report_parameter_validation,cross-parameter validation>> to make sure the range makes sense.
++
+[source, sql]
+.orders dataset
+----
+include::{sourcesdir}/crosstab_orders.sql[]
+----
+
+Then you can create a report template using Microsoft Office or LibreOffice.
+
+The report template should contain <<template_xls_regions,named regions>> for all three datasets of the crosstab band and, additionally, the named region for the column header: `<band_name>_header`. In our case it is `orders_header`.
+
+Below is an example of a template which outputs the list of `Customers` vertically and `Orders` made by each customer horizontally grouped by the months the orders were placed.
+
+image::crosstab_template_2.png[align="center"]
+
+image::crosstab_names_regions.png[align="center"]
+
+As a result, the report is extended both vertically and horizontally and aggregates the order amounts for each customer and each month:
+
+image::crosstab_result.png[align="center"]
+
+If you want to add totals for the report, you should do it in separate bands with their own datasets.
+
 [[example_jasper]]
 === Sample JRXML Report
 
