@@ -17,7 +17,7 @@ public class OrderEdit extends AbstractEditor<Order> {
 
         ProcInstance procInstance = metadata.create(ProcInstance.class);
         procInstance.setProcDefinition(procDefinition);
-        procInstance.setEntityId(getItem().getUuid());
+        procInstance.setObjectEntityId(getItem().getId());
         procInstance.setEntityName(getItem().getMetaClass().getName());
 
         Set<ProcActor> procActors = new HashSet<>();
