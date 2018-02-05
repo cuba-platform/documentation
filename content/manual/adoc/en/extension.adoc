@@ -229,3 +229,30 @@ Then, if you register the new class in `spring.xml`, the new implementation will
 ----
 <bean id="workshop_OrderService" class="com.company.retail.service.NewOrderServiceBean"/>
 ----
+
+[[servlet_registration]]
+==== Registration of Servlets and Filters
+
+To use servlets and security filters defined in the <<app_components,application component>>, you need to register them in the owning application. The servlets are normally registered in the <<web.xml,web.xml>> configuration file, however, this configuration is not propagated in the application where this app component is used.
+
+The `ServletRegistrationManager` bean enables to register servlets dynamically with correct classloader and enables using such static classes as <<appContext,AppContext>>. It also guarantees the correct work for all <<deployment_variants,deployment options>>
+
+`ServletRegistrationManager` has two methods:
+
+. `createServlet()` - creates a servlet with the given servlet class. It loads the servlet class with the correct `ClassLoader` that is obtained from the context  object. It means that a new servlet will be able to use static classes as `AppContext` or <<messages,Messages>> bean.
+
+. `createFilter()` - create filters in the same way.
+
+In order to use this bean, we recommend creating a managed initializer bean in the application component. This bean should be annotated with the `@Component` annotation and contain one or, optionally, two methods - <<app_lifecycle_events,event listeners>> that are subscribed to the application context initialization and destroy: `ServletContextInitializedEvent` and `ServletContextDestroyedEvent`.
+
+An example of such bean:
+
+[source, java]
+----
+include::{sourcesdir}/extension/WebInitializer.java[]
+----
+
+Here, the `WebInitializer` class has only one event listener which is used to register an HTTP servlet from an application component in the owner application. Now, if you add this app component to you application, `MyHttpServlet` will be registered right after the initialization of servlet and application contexts.
+
+For more complex example, see the <<servlet_registration_sample,Registering Servlets from Application Components>> section.
+
