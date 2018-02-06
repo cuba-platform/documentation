@@ -1590,6 +1590,28 @@ include::{sourcesdir}/cookbook/app_comp_upload_1.groovy[]
 
 . Теперь можно собрать и запустить приложение - компонент Customer Management будет загружен из удаленного репозитория.
 
+[[servlet_registration_sample]]
+==== Регистрация DispatcherServlet из компонента приложения
+
+В этом разделе мы рассмотрим, как настроить динамическую регистрацию сервлетов и фильтров, настроенных в <<app_components,компоненте приложения>>, в родительском приложении. Чтобы избежать дублирования кода в файле конфигурации <<web.xml,web.xml>>, необходимо зарегистрировать сервлеты и фильтры с помощью специального бина `ServletRegistrationManager`.
+
+Простой пример такой регистрации рассмотрен на примере <<servlet_registration,HTTP-сервлета>>. Здесь мы рассмотрим более сложный случай: частную реализацию сервлета `DispatcherServlet` в компоненте приложения. Этот сервлет будет загружать параметры своей конфигурации  из файла `demo-dispatcher-spring.xml`, поэтому, чтобы попробовать этот пример на практике, вы должны создать пустой файл с этим именем в корневом каталоге ресурсов проекта (например, `web/src`).
+
+[source,java]
+----
+include::{sourcesdir}/cookbook/servlet_sample.java[]
+----
+
+Чтобы зарегистрировать `DispatcherServlet`, вам нужно вручную загрузить класс, создать его экземпляр и проинициализировать его, в противном случае использование разных типов `ClassLoader` может вызвать проблемы при <<deployment_variants,развёртывании>> в SingleWAR/SingleUberJAR. Кроме того, собственная реализация `DispatcherServlet` должна выдерживать двойную инициализацию - сначала вручную, а затем с помощью servlet container.
+
+Пример компонента для инициализации `WebDispatcherServlet`:
+
+[source,java]
+----
+include::{sourcesdir}/cookbook/servlet_sample_2.java[]
+----
+
+Метод `createServlet()` инжектированного бина `ServletRegistrationManager` принимает <<appContext,контекст приложения>>, полученный из события `ServletContextInitializedEvent`, и полное имя класса `WebDispatcherServlet`. Для инициализации сервлета мы передаём экземпляр `ServletContext`, также полученный из события `ServletContextInitializedEvent`, и имя сервлета. В методе `addMapping()` задаём HTTP-мэппинг для отображения на URL: `/webd/`.
 
 [[own_component_samples]]
 ==== Создание собственных визуальных компонентов
