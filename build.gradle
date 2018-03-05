@@ -5,18 +5,18 @@ plugins {
 ext.docVersion = '6.9'
 
 repositories {
-    mavenLocal()
-    maven {
-        credentials {
-            username System.getenv('HAULMONT_REPOSITORY_USER')
-            password System.getenv('HAULMONT_REPOSITORY_PASSWORD')
-        }
-        url "http://repository.haulmont.com:8587/nexus/content/groups/work"
-    }
+    mavenCentral()
 }
 
-apply(plugin: 'idea')
 apply(plugin: 'doc')
+
+configurations {
+    tomcat
+}
+
+dependencies {
+    tomcat(group: 'org.apache.tomcat', name: 'tomcat', version: '8.5.28', ext: 'zip')
+}
 
 task clean(type: Delete) {
     delete 'build', 'buildSrc/build'
@@ -26,31 +26,24 @@ task buildCubaTheme(type: BuildAsciidoctorTheme) {
     themeName = 'cuba'
 }
 
+def tomcatDir = "$rootDir/deploy/tomcat"
+def webappsDir = "$tomcatDir/webapps"
+
+task setupTomcat(type: SetupTomcat) {
+    dir = tomcatDir
+}
+
 /* ============= Manual =================*/
 
-task generateManualHtmlEn(type: Asciidoc2Html) {
+task buildManualEn(type: Asciidoc2Html) {
     docName = 'manual'
     docLang = 'en'
 }
 
-task generateManualHtmlRu(type: Asciidoc2Html) {
+task buildManualRu(type: Asciidoc2Html) {
     docName = 'manual'
     docLang = 'ru'
 }
-
-task postProcessManualEn(type: PostProcessDocHtml) {
-    docName = 'manual'
-    docLang = 'en'
-}
-
-task postProcessManualRu(type: PostProcessDocHtml) {
-    docName = 'manual'
-    docLang = 'ru'
-}
-
-task buildManualEn(dependsOn: [generateManualHtmlEn, postProcessManualEn])
-
-task buildManualRu(dependsOn: [generateManualHtmlRu, postProcessManualRu])
 
 task chopManualEn(dependsOn: [buildManualEn], type: CreateMultiPageDoc) {
     docName = 'manual'
@@ -74,31 +67,27 @@ task warManualRu(dependsOn: [chopManualRu], type: CreateWar) {
     docLang = 'ru'
 }
 
+task deployManualEn(dependsOn: warManualEn, type: Copy) {
+    from warManualEn
+    into webappsDir
+}
+
+task deployManualRu(dependsOn: warManualRu, type: Copy) {
+    from warManualRu
+    into webappsDir
+}
+
 /* ============= Reporting =================*/
 
-task generateReportingHtmlEn(type: Asciidoc2Html) {
+task buildReportingEn(type: Asciidoc2Html) {
     docName = 'reporting'
     docLang = 'en'
 }
 
-task generateReportingHtmlRu(type: Asciidoc2Html) {
+task buildReportingRu(type: Asciidoc2Html) {
     docName = 'reporting'
     docLang = 'ru'
 }
-
-task postProcessReportingEn(type: PostProcessDocHtml) {
-    docName = 'reporting'
-    docLang = 'en'
-}
-
-task postProcessReportingRu(type: PostProcessDocHtml) {
-    docName = 'reporting'
-    docLang = 'ru'
-}
-
-task buildReportingEn(dependsOn: [generateReportingHtmlEn, postProcessReportingEn])
-
-task buildReportingRu(dependsOn: [generateReportingHtmlRu, postProcessReportingRu])
 
 task chopReportingEn(dependsOn: [buildReportingEn], type: CreateMultiPageDoc) {
     docName = 'reporting'
@@ -122,57 +111,27 @@ task warReportingRu(dependsOn: [chopReportingRu], type: CreateWar) {
     docLang = 'ru'
 }
 
-/* ============= Workflow =================*/
-
-task generateWorkflowHtmlEn(type: Asciidoc2Html) {
-    docName = 'workflow'
-    docLang = 'en'
+task deployReportingEn(dependsOn: warReportingEn, type: Copy) {
+    from warReportingEn
+    into webappsDir
 }
 
-task generateWorkflowHtmlRu(type: Asciidoc2Html) {
-    docName = 'workflow'
-    docLang = 'ru'
+task deployReportingRu(dependsOn: warReportingRu, type: Copy) {
+    from warReportingRu
+    into webappsDir
 }
-
-task postProcessWorkflowEn(type: PostProcessDocHtml) {
-    docName = 'workflow'
-    docLang = 'en'
-}
-
-task postProcessWorkflowRu(type: PostProcessDocHtml) {
-    docName = 'workflow'
-    docLang = 'ru'
-}
-
-task buildWorkflowEn(dependsOn: [generateWorkflowHtmlEn, postProcessWorkflowEn])
-
-task buildWorkflowRu(dependsOn: [generateWorkflowHtmlRu, postProcessWorkflowRu])
 
 /* ============= Charts =================*/
 
-task generateChartsHtmlEn(type: Asciidoc2Html) {
+task buildChartsEn(type: Asciidoc2Html) {
     docName = 'charts'
     docLang = 'en'
 }
 
-task generateChartsHtmlRu(type: Asciidoc2Html) {
+task buildChartsRu(type: Asciidoc2Html) {
     docName = 'charts'
     docLang = 'ru'
 }
-
-task postProcessChartsEn(type: PostProcessDocHtml) {
-    docName = 'charts'
-    docLang = 'en'
-}
-
-task postProcessChartsRu(type: PostProcessDocHtml) {
-    docName = 'charts'
-    docLang = 'ru'
-}
-
-task buildChartsEn(dependsOn: [generateChartsHtmlEn, postProcessChartsEn])
-
-task buildChartsRu(dependsOn: [generateChartsHtmlRu, postProcessChartsRu])
 
 task chopChartsEn(dependsOn: [buildChartsEn], type: CreateMultiPageDoc) {
     docName = 'charts'
@@ -196,30 +155,27 @@ task warChartsRu(dependsOn: [chopChartsRu], type: CreateWar) {
     docLang = 'ru'
 }
 
+task deployChartsEn(dependsOn: warChartsEn, type: Copy) {
+    from warChartsEn
+    into webappsDir
+}
+
+task deployChartsRu(dependsOn: warChartsRu, type: Copy) {
+    from warChartsRu
+    into webappsDir
+}
+
 /* ============= FTS =================*/
-task generateFtsHtmlEn(type: Asciidoc2Html) {
+
+task buildFtsEn(type: Asciidoc2Html) {
     docName = 'fts'
     docLang = 'en'
 }
 
-task generateFtsHtmlRu(type: Asciidoc2Html) {
+task buildFtsRu(type: Asciidoc2Html) {
     docName = 'fts'
     docLang = 'ru'
 }
-
-task postProcessFtsEn(type: PostProcessDocHtml) {
-    docName = 'fts'
-    docLang = 'en'
-}
-
-task postProcessFtsRu(type: PostProcessDocHtml) {
-    docName = 'fts'
-    docLang = 'ru'
-}
-
-task buildFtsEn(dependsOn: [generateFtsHtmlEn, postProcessFtsEn])
-
-task buildFtsRu(dependsOn: [generateFtsHtmlRu, postProcessFtsRu])
 
 task chopFtsEn(dependsOn: [buildFtsEn], type: CreateMultiPageDoc) {
     docName = 'fts'
@@ -243,31 +199,27 @@ task warFtsRu(dependsOn: [chopFtsRu], type: CreateWar) {
     docLang = 'ru'
 }
 
+task deployFtsEn(dependsOn: warFtsEn, type: Copy) {
+    from warFtsEn
+    into webappsDir
+}
+
+task deployFtsRu(dependsOn: warFtsRu, type: Copy) {
+    from warFtsRu
+    into webappsDir
+}
+
 /* ============= BPM =================*/
 
-task generateBpmHtmlEn(type: Asciidoc2Html) {
+task buildBpmEn(type: Asciidoc2Html) {
     docName = 'bpm'
     docLang = 'en'
 }
 
-task generateBpmHtmlRu(type: Asciidoc2Html) {
+task buildBpmRu(type: Asciidoc2Html) {
     docName = 'bpm'
     docLang = 'ru'
 }
-
-task postProcessBpmEn(type: PostProcessDocHtml) {
-    docName = 'bpm'
-    docLang = 'en'
-}
-
-task postProcessBpmRu(type: PostProcessDocHtml) {
-    docName = 'bpm'
-    docLang = 'ru'
-}
-
-task buildBpmEn(dependsOn: [generateBpmHtmlEn, postProcessBpmEn])
-
-task buildBpmRu(dependsOn: [generateBpmHtmlRu, postProcessBpmRu])
 
 task chopBpmEn(dependsOn: [buildBpmEn], type: CreateMultiPageDoc) {
     docName = 'bpm'
@@ -291,31 +243,27 @@ task warBpmRu(dependsOn: [chopBpmRu], type: CreateWar) {
     docLang = 'ru'
 }
 
+task deployBpmEn(dependsOn: warBpmEn, type: Copy) {
+    from warBpmEn
+    into webappsDir
+}
+
+task deployBpmRu(dependsOn: warBpmRu, type: Copy) {
+    from warBpmRu
+    into webappsDir
+}
+
 /* ============= BI =================*/
 
-task generateBiHtmlEn(type: Asciidoc2Html) {
+task buildBiEn(type: Asciidoc2Html) {
     docName = 'bi'
     docLang = 'en'
 }
 
-task generateBiHtmlRu(type: Asciidoc2Html) {
+task buildBiRu(type: Asciidoc2Html) {
     docName = 'bi'
     docLang = 'ru'
 }
-
-task postProcessBiEn(type: PostProcessDocHtml) {
-    docName = 'bi'
-    docLang = 'en'
-}
-
-task postProcessBiRu(type: PostProcessDocHtml) {
-    docName = 'bi'
-    docLang = 'ru'
-}
-
-task buildBiEn(dependsOn: [generateBiHtmlEn, postProcessBiEn])
-
-task buildBiRu(dependsOn: [generateBiHtmlRu, postProcessBiRu])
 
 task chopBiEn(dependsOn: [buildBiEn], type: CreateMultiPageDoc) {
     docName = 'bi'
@@ -337,6 +285,16 @@ task warBiEn(dependsOn: [chopBiEn], type: CreateWar) {
 task warBiRu(dependsOn: [chopBiRu], type: CreateWar) {
     docName = 'bi'
     docLang = 'ru'
+}
+
+task deployBiEn(dependsOn: warBiEn, type: Copy) {
+    from warBiEn
+    into webappsDir
+}
+
+task deployBiRu(dependsOn: warBiRu, type: Copy) {
+    from warBiRu
+    into webappsDir
 }
 
 /* ============= Polymer =================*/
@@ -366,17 +324,10 @@ configure(project(':polymer-module')) {
     }
 }
 
-task generatePolymerHtmlEn(type: Asciidoc2Html, dependsOn: [':polymer-module:assemblePolymer']) {
+task buildPolymerEn(type: Asciidoc2Html, dependsOn: [':polymer-module:assemblePolymer']) {
     docName = 'polymer'
     docLang = 'en'
 }
-
-task postPolymerManualEn(type: PostProcessDocHtml, dependsOn: [':polymer-module:assemblePolymer']) {
-    docName = 'polymer'
-    docLang = 'en'
-}
-
-task buildPolymerEn(dependsOn: [generatePolymerHtmlEn, postPolymerManualEn])
 
 task chopPolymerEn(dependsOn: [buildPolymerEn], type: CreateMultiPageDoc) {
     docName = 'polymer'
@@ -389,46 +340,46 @@ task warPolymerEn(dependsOn: [chopPolymerEn], type: CreateWar) {
     docLang = 'en'
 }
 
+task deployPolymerEn(dependsOn: warPolymerEn, type: Copy) {
+    from warPolymerEn
+    into webappsDir
+}
+
 /* ============= Release Notes =================*/
 
-task generateRnHtmlEn(type: Asciidoc2Html) {
+task buildRnEn(type: Asciidoc2Html) {
     docName = 'release_notes'
     docLang = 'en'
 }
-
-task postProcessRnEn(type: PostProcessDocHtml) {
-    docName = 'release_notes'
-    docLang = 'en'
-}
-
-task buildRnEn(dependsOn: [generateRnHtmlEn, postProcessRnEn])
 
 /* ============= Build all =================*/
 
 task buildManualAll(dependsOn: [buildManualEn, buildManualRu])
 task chopManualAll(dependsOn: [chopManualEn, chopManualRu])
 task warManualAll(dependsOn: [warManualEn, warManualRu])
+task deployManualAll(dependsOn: [deployManualEn, deployManualRu])
 
 task buildReportingAll(dependsOn: [buildReportingEn, buildReportingRu])
 task chopReportingAll(dependsOn: [chopReportingEn, chopReportingRu])
 task warReportingAll(dependsOn: [warReportingEn, warReportingRu])
-
-task buildWorkflowAll(dependsOn: [buildWorkflowEn, buildWorkflowRu])
+task deployReportingAll(dependsOn: [deployReportingEn, deployReportingRu])
 
 task buildChartsAll(dependsOn: [buildChartsEn, buildChartsRu])
 task chopChartsAll(dependsOn: [chopChartsEn, chopChartsRu])
 task warChartsAll(dependsOn: [warChartsEn, warChartsRu])
+task deployChartsAll(dependsOn: [deployChartsEn, deployChartsRu])
 
 task buildFtsAll(dependsOn: [buildFtsEn, buildFtsRu])
 task chopFtsAll(dependsOn: [chopFtsEn, chopFtsRu])
 task warFtsAll(dependsOn: [warFtsEn, warFtsRu])
+task deployFtsAll(dependsOn: [deployFtsEn, deployFtsRu])
 
 task buildBpmAll(dependsOn: [buildBpmEn, buildBpmRu])
 task chopBpmAll(dependsOn: [chopBpmEn, chopBpmRu])
 task warBpmAll(dependsOn: [warBpmEn, warBpmRu])
+task deployBpmAll(dependsOn: [deployBpmEn, deployBpmRu])
 
 task buildBiAll(dependsOn: [buildBiEn, buildBiRu])
 task chopBiAll(dependsOn: [chopBiEn, chopBiRu])
 task warBiAll(dependsOn: [warBiEn, warBiRu])
-
-task warPolymerAll(dependsOn: [warPolymerEn])
+task deployBiAll(dependsOn: [deployBiEn, deployBiRu])
