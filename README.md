@@ -37,11 +37,10 @@ Gradle is used as a build tool. Build task names have the following structure: `
 
 __{purpose}__ can be one of the following:
 
-* build - build single-HTML document.
-* chop - build multi-page document.
-* war - build a WAR file. The resulting WAR file will have a name corresponding to the document name and a version which is set by the `ext.docVersion` property defined in `build.gradle`.
-* deploy - deploy WAR to Tomcat (installed by separate task, see below).
-
+* `build` - build single-HTML document.
+* `chop` - build multi-page document.
+* `war` - build a WAR file. The resulting WAR file will have a name corresponding to the document name and a version which is set by the `ext.docVersion` property defined in `build.gradle`, for example `manual-6.9.war`.
+* `deploy` - deploy WAR to Tomcat (installed by the `setupTomcat` task, see below).
 
 __{doc}__ is the document name (`Manual`, `Bpm`, etc.)
 
