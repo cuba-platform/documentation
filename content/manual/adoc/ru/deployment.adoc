@@ -1706,6 +1706,178 @@ heroku container:push web
 heroku open
 ----
 
+[[proxy_configuration]]
+=== Конфигурация прокси для Tomcat
+
+Для задач интеграции может потребоваться прокси-сервер. В этом разделе описывается конфигурация HTTP-сервера Nginx в качестве прокси для приложения на платформе CUBA.
+
+[NOTE]
+====
+Если вы настраиваете прокси, то не забудьте задать значение в параметре <<cuba.webAppUrl,cuba.webAppUrl>>.
+====
+
+NGINX::
+--
+Для Nginx предлагается 2 конфигурации проксирования, описанных ниже. Все примеры подготовлены и проверены на Ubuntu 16.04.
+
+. <<direct_proxy,Прямое проксирование>>
+. <<redirect_to_path,Проксирование с перенаправлением>>
+
+К примеру, ваше веб-приложение работает по ссылке `++http://localhost:8080/app++`.
+
+[NOTE]
+====
+Кроме Nginx следует настроить еще и <<tomcat_for_proxy,Tomcat>>.
+====
+
+[[tomcat_for_proxy]]
+.Настройка Tomcat
+
+Сначала добавьте в конфигурационный файл Tomcat `conf/server.xml` следующий код:
+[source,xml]
+----
+<Valve className="org.apache.catalina.valves.RemoteIpValve"
+        remoteIpHeader="X-Forwarded-For"
+        requestAttributesEnabled="true"
+        internalProxies="127\.0\.0\.1"  />
+----
+и перезапустите Tomcat:
+----
+sudo service tomcat restart
+----
+Это требуется для того, чтобы Tomcat мог обрабатывать заголовки от Nginx без модификации веб-приложения.
+
+Затем установите Nginx:
+----
+sudo apt-get install nginx
+----
+
+Откройте в браузере ссылку `++http://localhost++` и убедитесь, что стартовая страница Nginx работает.
+
+Теперь вы можете удалить символьную ссылку на тестовый сайт Nginx:
+----
+rm /etc/nginx/sites-enabled/default
+----
+
+Далее сконфигурируйте прокси одной из выбранных схем:
+
+[[direct_proxy]]
+.Прямое проксирование
+
+В этом случае все запросы обрабатывает прокси, прозрачно перенаправляя их в приложение.
+
+Создайте конфигурационный файл Nginx `/etc/nginx/sites-enabled/direct_proxy`:
+----
+include::{sourcesdir}/deployment/direct_proxy[]
+----
+и перезапустите Nginx:
+----
+sudo service nginx restart
+----
+
+Вы можете открыть свой сайт по ссылке `++http://localhost/app++`.
+
+[[redirect_to_path]]
+.Проксирование с перенаправлением
+
+В этом примере описано, как изменить путь к приложению в URL с /app на /, как если бы приложение было развёрнуто в корневом контексте (аналог /ROOT). Это позволит вам обращаться к приложению по адресу `++http://localhost++`.
+
+Создайте конфигурационный файл Nginx `/etc/nginx/sites-enabled/direct_proxy`:
+----
+include::{sourcesdir}/deployment/root_proxy[]
+----
+и перезапустите Nginx
+----
+sudo service nginx restart
+----
+
+Ваше приложение доступно по ссылке `++http://localhost++`.
+--
+
+[[NOTE]]
+====
+Обратите внимание, аналогичные инструкции развертывания прокси справедливы для конфигураций <<proxy_configuration_uberjar,Jetty>>, `WildFly` и др. В таких случаях вам может понадобиться дополнительная конфигурация этих серверов.
+====
+
+
+[[proxy_configuration_uberjar]]
+=== Конфигурация прокси для Uber JAR
+
+В этой части рассказывается, как настроить HTTP-сервер Nginx в качестве прокси для приложения CUBA Uber JAR.
+
+NGINX::
+--
+Для Nginx предлагается 2 конфигурации проксирования, описанных ниже. Все примеры подготовлены и проверены на Ubuntu 16.04.
+
+. Прямое проксирование
+. Проксирование с перенаправлением
+
+К примеру, ваше веб-приложение работает по ссылке `++http://localhost:8080/app++`.
+
+[NOTE]
+====
+Приложение Uber JAR использует сервер Jetty версии 9.2. Jetty внутри <<proxy_for_jetty,JAR>> следует сконфигурировать таким образом, чтобы он обрабатывал заголовки Nginx.
+====
+
+[[proxy_for_jetty]]
+.Настройка Jetty
+
+* Настройка внутри JAR
+
+Сначала создайте конфигурационный файл `jetty.xml` в корне проекта и вставьте в него следующий код:
+[source,xml]
+----
+include::{sourcesdir}/deployment/jetty.xml[]
+----
+
+Добавьте свойство `webJettyConfPath` в задачу `buildUberJar` вашего файла `build.gradle`:
+[source,groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    singleJar = true
+    coreJettyEnvPath = 'modules/core/web/META-INF/jetty-env.xml'
+    appProperties = ['cuba.automaticDatabaseUpdate' : true]
+    webJettyConfPath = 'jetty.xml'
+}
+----
+
+Соберите Uber JAR, используя следующую команду:
+----
+gradlew buildUberJar
+----
+
+Ваше приложение будет расположено в папке `build/distributions/uberJar`, имя по-умолчанию: `app.jar`.
+
+Запустите приложение:
+----
+java -jar app.jar
+----
+
+Затем установите и настройте Nginx, как описано в <<install_nginx,секции Tomcat>>.
+
+В зависимости от выбранной схемы проксирования, ваш сайт будет доступен по одной из ссылок: `++http://localhost/app++` или `++http://localhost++`.
+
+* Настройка с помощью внешнего файла
+
+Используйте тот же самый конфигурационный файл `jetty.xml` в корне проекта, как описано выше, но не изменяйте `build.gradle`.
+
+Соберите Uber JAR, используя следующую команду:
+----
+gradlew buildUberJar
+----
+
+Ваше приложение будет расположено в папке `build/distributions/uberJar`, имя по-умолчанию: `app.jar`.
+
+Запустите приложение с параметром `-jettyConfPath`:
+----
+java -jar app.jar -jettyConfPath jetty.xml
+----
+
+Затем установите и настройте Nginx, как описано в <<install_nginx,секции Tomcat>>.
+
+В зависимости от выбранной схемы проксирования и настроек в `jetty.xml`, ваш сайт будет доступен по одной из ссылок: `++http://localhost/app++` или `++http://localhost++`.
+--
+
 
 [[scaling]]
 === Масштабирование приложения

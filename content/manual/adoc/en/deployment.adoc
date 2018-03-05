@@ -1758,6 +1758,179 @@ The third way to open a running application is to use the following command (rem
 heroku open
 ----
 
+[[proxy_configuration_tomcat]]
+=== Proxy Configuration for Tomcat
+
+For integration tasks, you may need a proxy server. This part describes the configuration of Nginx HTTP-server as a proxy for CUBA application.
+
+[NOTE]
+====
+If you set up a proxy, do not forget to set <<cuba.webAppUrl,cuba.webAppUrl>> value.
+====
+
+NGINX::
+--
+For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 16.04.
+
+. <<direct_proxy,Direct Proxy>>
+. <<redirect_to_path,Redirect to Path>>
+
+For example, your web application works on `++http://localhost:8080/app++`.
+
+[NOTE]
+====
+<<tomcat_for_proxy,Tomcat>> should be configured as well.
+====
+
+[[tomcat_for_proxy]]
+.Tomcat Setup
+
+First add `Valve` to Tomcat configuration `conf/server.xml`, copy and paste the following code:
+[source,xml]
+----
+<Valve className="org.apache.catalina.valves.RemoteIpValve"
+        remoteIpHeader="X-Forwarded-For"
+        requestAttributesEnabled="true"
+        internalProxies="127\.0\.0\.1"  />
+----
+and restart Tomcat:
+----
+sudo service tomcat restart
+----
+This is required to dispatch Nginx headers by Tomcat without modifying the web application.
+
+[[install_nginx]]
+Then install Nginx:
+----
+sudo apt-get install nginx
+----
+
+Navigate to `++http://localhost++` and ensure that Nginx works, you will see Nginx welcome page.
+
+Now you may delete the symlink to default Nginx site:
+----
+rm /etc/nginx/sites-enabled/default
+----
+
+Next, configure your proxy one of the options selected below.
+
+[[direct_proxy]]
+.Direct Proxy
+
+In this case the requests are handled by proxy, transparently passing to the application.
+
+Create Nginx site configuration file `/etc/nginx/sites-enabled/direct_proxy`:
+[source]
+----
+include::{sourcesdir}/deployment/direct_proxy[]
+----
+and restart Nginx
+----
+sudo service nginx restart
+----
+
+Now you can access your site via `++http://localhost/app++`.
+
+[[redirect_to_path]]
+.Redirect to Path
+
+This example describes how to change the application's URL path from /app to /, as if the application were deployed in the root context (similar to /ROOT). This will allow you to access the application at `++http://localhost++`.
+
+Create Nginx site configuration file `/etc/nginx/sites-enabled/root_proxy` and restart Nginx:
+----
+include::{sourcesdir}/deployment/root_proxy[]
+----
+----
+sudo service nginx restart
+----
+
+Now you can access your site via `++http://localhost++`.
+--
+
+[[NOTE]]
+====
+Please note, that similar deployment instructions are valid for <<proxy_configuration_uberjar,Jetty>>, `WildFly` etc. In such cases, you may need an additional configuration of those servers.
+====
+
+[[proxy_configuration_uberjar]]
+=== Proxy Configuration for Uber JAR
+
+This part describes the configuration of Nginx HTTP-server as a proxy for CUBA Uber JAR application.
+
+NGINX::
+--
+For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 16.04.
+
+. Direct Proxy
+. Redirect to Path
+
+For example, your web application works on `++http://localhost:8080/app++`.
+
+[NOTE]
+====
+Uber JAR application uses Jetty 9.2 server. It is required to preconfigure Jetty in <<proxy_for_jetty,JAR>> to dispatch Nginx headers by Jetty.
+====
+
+[[proxy_for_jetty]]
+.Jetty Setup
+
+* Using Internal jetty.xml
+
+First, create Jetty configuration file `jetty.xml` in the root of your project, copy and paste the following code:
+[source,xml]
+----
+include::{sourcesdir}/deployment/jetty.xml[]
+----
+
+Add `webJettyConfPath` property to the task `buildUberJar` in your `build.gradle`:
+[source,groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    singleJar = true
+    coreJettyEnvPath = 'modules/core/web/META-INF/jetty-env.xml'
+    appProperties = ['cuba.automaticDatabaseUpdate' : true]
+    webJettyConfPath = 'jetty.xml'
+}
+----
+
+Build Uber JAR using the following command:
+----
+gradlew buildUberJar
+----
+
+Your application will be located in `build/distributions/uberJar`, the default name is `app.jar`.
+
+Run your application:
+----
+java -jar app.jar
+----
+
+Then install and configure Nginx as described in <<install_nginx,Tomcat section>>.
+
+Depending on your schema, you can access your site via `++http://localhost/app++` or `++http://localhost++` URL.
+
+* Using External jetty.xml
+
+Use the same configuration file `jetty.xml` from the project root, as described above. Place it in your home folder and do not modify `buildUberJar` task in `build.gradle`.
+
+Build Uber JAR using the following command:
+----
+gradlew buildUberJar
+----
+
+Your application will be located in `build/distributions/uberJar` folder, default name is `app.jar`.
+
+First, run the application with a parameter `-jettyConfPath`:
+----
+java -jar app.jar -jettyConfPath jetty.xml
+----
+
+Then install and configure Nginx as described in <<install_nginx,Tomcat section>>.
+
+Depending on your schema and setings in `jetty.xml` file, you can access your site via `++http://localhost/app++` or `++http://localhost++` URL.
+--
+
+
 [[scaling]]
 === Application Scaling
 
