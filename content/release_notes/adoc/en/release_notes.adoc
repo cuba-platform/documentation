@@ -33,12 +33,31 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 
 === All Resolved Issues
 
-* https://youtrack.cuba-platform.com/issues/PL?q=Milestone:%20%7BRelease%206.8%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.8.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Platform 6.8.0 Resolved Issues]
+* {youtrack}/issues/PL?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.8.3%20Fix%20versions:%206.8.2%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Platform 6.8.2-6.8.3 Resolved Issues]
+* {youtrack}/issues/PL?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.8.1%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Platform 6.8.1 Resolved Issues]
+* {youtrack}/issues/PL?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.8.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Platform 6.8.0 Resolved Issues]
 
 [[platform_breaking_changes]]
 === Breaking Changes
 
 . The build system requires Gradle 4.3.1 or above. If you are using Studio, it will create a corresponding Gradle wrapper in your project on first opening.
+
+. The login process and some mechanisms of the Web Client have been changed significantly.
++
+--
+** Removed `AbstractConnection`, `DefaultConnection` classes.
+** Removed `cuba-web-auth` artifact.
+** The `App` and `Connection` beans now must have `vaadin` scope in Spring context.
+** The `cuba.web.externalAuthenticationProviderClass` application property is set `to com.haulmont.cuba.web.auth.NoOpAuthProvider` by default. If you use {manual}/ldap_basic.html[LDAP authentication], you have to enable it explicitly using `cuba.web.ldap.enabled` property.
+** Deprecated `CubaAuthProvider` interface - use `LoginProvider` and `HttpRequestFilter` beans instead.
+** Deprecated application properties: `cuba.web.externalAuthentication`, `cuba.web.externalAuthenticationProviderClass`.
+
+Please note that the old `LdapAuthProvider` and `IdpAuthProvider` settings should work as before.
+
+See {manual}/web_login.html[documentation] for details.
+--
+
+. `AuthenticationManager` uses separate session with user "server" for `authenticate` and `login` processing. This server session is instantiated directly without login procedure. See details in the {youtrack}/issue/PL-10140[issue].
 
 . `UserSessionsAPI` has been changed; now it contains two sets of methods for obtaining a session by id:
 +
@@ -73,7 +92,7 @@ DOM now:
 </div>
 ----
 
-. In order to reduce size of CUBA applications using the Full-Text Search premium add-on, the following dependencies where removed:
+. In order to reduce size of CUBA applications using the Full-Text Search premium add-on, the following dependencies were removed:
 +
 ----
 group: 'edu.ucar', module: 'netcdf4'
@@ -105,6 +124,27 @@ If you are experiencing any problem with indexing files of specific formats, try
 
 . The `CATALINA_HOME` and `CATALINA_BASE` global environment variables are not used by the Tomcat installed by Studio and `setupTomcat` Gradle task. So if you deploy your application by copying Tomcat from the development environment and rely on these variables in production environment, edit `catalina.sh` or `catalina.bat` scripts and remove the commands right after the `CUBA` comment.
 
+. In the `ProcInstance` entity of the BPM module the `entityId` field of the `UUID` datatype was replaced with the `entity` field of the `ReferenceToEntity` type. This will break JPQL queries that use the `entityId` field. For example, the following query:
++
+----
+select pi from bpm$ProcInstance pi where pi.entityId = :entityId
+----
++
+should be transformed to the:
++
+----
+select pi from bpm$ProcInstance pi where pi.entity.entityId = :entityId
+----
++
+This modification was made to support references to entities that have primary keys with non-UUID types. For example, in case of referenced entity with String primary key, a reference to such entity in JPQL query should be defined this way:
++
+----
+select pi from bpm$ProcInstance pi where pi.entity.stringEntityId = :entityId
+----
++
+Along with `entityId` and `stringEntityId` fields a `ReferenceToEntity` entity has other properties: `intEntityId` and `longEntityId`.
+
+
 [[data_model]]
 === Data Model
 
@@ -115,6 +155,15 @@ In the previous versions, the `Metadata.create()` method assigned `Long` and `In
 
 [[gui]]
 === Generic UI
+
+[[help_icons]]
+==== Context Help Icons
+
+Introduced new attributes for UI fields: `contextHelpText`, `contextHelpTextHtmlEnabled`. If `contextHelpText` is set, then a special ? icon will be added for a field. If the field has an external caption, i.e. either caption or icon attribute is set, then the context help icon will be displayed next to the caption text, otherwise next to the field itself.
+
+In the Web Client the context help tooltip appears when the users hovers over the ? icon, in the Desktop Client the user has to click on the ? icon to see the tooltip.
+
+See details in the {manual}/gui_attributes.html#gui_attr_contextHelpText[documentation]
 
 [[icon_sets]]
 ==== Icon Sets
@@ -142,12 +191,60 @@ The pluggable component factories mechanism extends the standard component creat
 
 
 [[suggestion_field]]
-==== SuggestionPickerField Options
+==== SuggestionField Options
 
-`SuggestionPickerField` can work not only with entities, but also with strings or enum values. See examples in the {manual}/gui_SuggestionPickerField.html#gui_suggestionPickerField_SearchExecutor[documentation].
+`SuggestionField` can work not only with entities, but also with strings or enum values. See examples in the {manual}/gui_SuggestionField.html[documentation].
 
 [[polymer_client]]
 === Polymer UI
+
+[[polymer_class_based_templates]]
+==== Polymer 2.0 Class-based Templates
+Studio now generates Polymer UI components which use https://www.polymer-project.org/blog/es6#defining-custom-elements-from-a-class[class-based syntax] instead of `Polymer` factory method:
+
+[source,javascript]
+----
+  /**
+   * @extends {Polymer.Element}
+   */
+  class MyappLocaleSelect extends Polymer.Element {
+    static get is() {
+      return 'myapp-locale-select';
+    }
+
+    static get properties() {
+      return {
+        locale: {
+          type: String,
+          value: function () {
+            return cuba.getApp().locale;
+          }
+        }
+      }
+    }
+  }
+
+  customElements.define(MyappLocaleSelect.is, MyappLocaleSelect);
+----
+
+[[polymer_login]]
+==== Improved Login Form Style
+The login form generated by Studio has more sophisticated design now:
+
+image::polymer_ui_login.png[align="center"]
+
+[[polymer_serve]]
+==== Running "polymer serve" from Studio
+Now in order to run native Polymer development server - https://www.polymer-project.org/2.0/docs/tools/polymer-cli-commands#serve[polymer serve], you do not need to have Node.js installed locally. Studio allows you to do it from UI using project's `node` and `polymer-cli`.
+Use *Run > Start "polymer serve"* item in the main menu:
+
+image::studio_polymer_serve.png[align="center"]
+
+Watch the console output for the URL server is launched at:
+
+image::studio_polymer_serve_address.png[align="center"]
+
+Specify absolute `api-url` in `index.html` in case of using `polymer serve`.
 
 [[rest_api]]
 === REST API
@@ -157,8 +254,29 @@ The pluggable component factories mechanism extends the standard component creat
 
 When you request an OAuth token, now by default you get a JSON object with two tokens: `access_token` and `refresh_token`. The latter cannot be used for accessing protected resources, but it has a longer lifetime than the access token and it can be used to obtain new access token when the current one is expired. See details in the {manual}/rest_api_v2_ex_get_token.html[documentation].
 
-[[reporting]]
-=== Reporting
+[[bpm]]
+=== BPM
+
+[[bpm_hsql_database_migration_issue]]
+==== HSQL Database Migration Issue
+
+In case of migrating the project with BPM module and HSQL database from the release 6.7, database update scripts errors may occur. To prevent it, perform a migration according to the next instruction:
+
+1. Change the platform version to the latest one available for the release 6.7 (6.7.8+).
+
+2. Run the *Update database* command in Studio.
+
+3. Execute the *Generate DB scrips* command  in Studio. Studio will generate the following script:
++
+----
+alter table BPM_PROC_INSTANCE drop column STRING_ENTITY_ID__UNUSED cascade ;
+alter table BPM_PROC_INSTANCE drop column INT_ENTITY_ID__UNUSED cascade ;
+alter table BPM_PROC_INSTANCE drop column LONG_ENTITY_ID__UNUSED cascade ;
+----
+
+4. Apply the script.
+
+5. Only after that change the platform version to 6.8
 
 [[misc]]
 === Miscellaneous
@@ -181,7 +299,7 @@ Java:
 ----
 com.fasterxml.jackson = 2.9.2
 com.thoughtworks.xstream/xstream = 1.4.10
-com.vaadin = 7.7.11.cuba.3
+com.vaadin = 7.7.13.cuba.2
 org.hibernate/hibernate-validator = 5.4.2.Final
 org.springframework = 4.3.12.RELEASE
 org.thymeleaf = 3.0.8.RELEASE
@@ -197,8 +315,14 @@ Node.js 8.9.1 (LTS)
 [[studio]]
 == Studio
 
+=== Known Issues
+
+If you use in-place update in Studio SE on macOS, it will completely replace your application folder. If you previously added some JDBC drivers to `/Applications/Cuba Studio SE.app/Contents/Resources/app/studio/lib`, they will be lost and you have to add them again.
+
 === All Resolved Issues
 
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.8%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.8.2%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.8.2 Resolved Issues]
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.8%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.8.1%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.8.1 Resolved Issues]
 * https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.8%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.8.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.8.0 Resolved Issues]
 
 [[new_features]]
