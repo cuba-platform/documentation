@@ -21,6 +21,9 @@ public class SliderServerComponent extends AbstractJavaScriptComponent {
             double[] values = new double[2];
             values[0] = array.getNumber(0);
             values[1] = array.getNumber(1);
+
+            getState(false).values = values;
+
             listener.valueChanged(values);
         });
     }
@@ -52,6 +55,11 @@ public class SliderServerComponent extends AbstractJavaScriptComponent {
     @Override
     protected SliderState getState() {
         return (SliderState) super.getState();
+    }
+
+    @Override
+    public SliderState getState(boolean markAsDirty) {
+        return (SliderState) super.getState(markAsDirty);
     }
 
     public ValueChangeListener getListener() {
