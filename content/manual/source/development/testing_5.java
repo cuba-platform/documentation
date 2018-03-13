@@ -1,14 +1,14 @@
 public class CustomerLoadTest {
 
     @ClassRule
-    public static SalesTestContainer cont = new SalesTestContainer();
+    public static SalesTestContainer cont = SalesTestContainer.Common.INSTANCE;
 
     private Customer customer;
 
     @Before
     public void setUp() throws Exception {
         customer = cont.persistence().createTransaction().execute(em -> {
-            Customer customer = new Customer();
+            Customer customer = cont.metadata().create(Customer.class);
             customer.setName("testCustomer");
             em.persist(customer);
             return customer;
