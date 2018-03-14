@@ -1,7 +1,7 @@
-@Component("cuba_OptimisticExceptionHandler")
-public class OptimisticExceptionHandler extends AbstractGenericExceptionHandler implements Ordered {
+@Component("sample_ForeignKeyViolationExceptionHandler")
+public class ForeignKeyViolationExceptionHandler extends AbstractGenericExceptionHandler {
 
-    public OptimisticExceptionHandler() {
-        super("javax.persistence.OptimisticLockException");
+    public ForeignKeyViolationExceptionHandler() {
+        super("java.sql.SQLIntegrityConstraintViolationException");
     }
 ...

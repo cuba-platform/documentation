@@ -1,7 +1,7 @@
-@Component("cuba_EntityAccessExceptionHandler")
-public class EntityAccessExceptionHandler extends AbstractGenericExceptionHandler {
+@Component("sample_ZeroBalanceExceptionHandler")
+public class ZeroBalanceExceptionHandler extends AbstractGenericExceptionHandler {
 
-    public EntityAccessExceptionHandler() {
-        super(EntityAccessException.class.getName());
+    public ZeroBalanceExceptionHandler() {
+        super(ZeroBalanceException.class.getName());
     }
 ...
