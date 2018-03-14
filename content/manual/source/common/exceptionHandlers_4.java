@@ -1,12 +1,12 @@
-@Component("cuba_NumericOverflowExceptionHandler")
-public class NumericOverflowExceptionHandler extends AbstractGenericExceptionHandler {
+@Component("sample_ZeroBalanceExceptionHandler")
+public class ZeroBalanceExceptionHandler extends AbstractGenericExceptionHandler {
 
-    public NumericOverflowExceptionHandler() {
-        super(EclipseLinkException.class.getName());
+    public ZeroBalanceExceptionHandler() {
+        super(ZeroBalanceException.class.getName());
     }
 
     @Override
     protected boolean canHandle(String className, String message, @Nullable Throwable throwable) {
-        return StringUtils.containsIgnoreCase(message, "Numeric field overflow");
+        return StringUtils.containsIgnoreCase(message, "Insufficient or zero funds in your account");
     }
 ...
