@@ -11,6 +11,16 @@ class Asciidoc2Html extends DefaultTask {
         return project.file("content/$docName/adoc/$docLang")
     }
 
+    @InputDirectory
+    File getSourceCodeDir() {
+        return project.file("content/$docName/source")
+    }
+
+    @InputDirectory
+    File getImagesDir() {
+        return project.file("content/$docName/img")
+    }
+
     @OutputDirectory
     File getDstDir() {
         return project.file("$project.buildDir/$docName/$docLang/html-single")
