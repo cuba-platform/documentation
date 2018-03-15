@@ -982,6 +982,49 @@ The recommended way to create a new project is to use *CUBA Studio*. An example 
 
 Once the project is created, you can keep developing it in the Studio, or create *IntelliJ IDEA* or *Eclipse* project files and open the project in the IDE.
 
+[[hot_deploy]]
+=== Hot Deploy
+
+CUBA Platform supports Hot Deploy technology which helps to apply project changes to the running application immediately without the need to restart the application server. In essence, hot deployment is performed by copying the updated resources and classes of the project into the configuration directory of the application, and then the running application uses new classes and resources.
+
+How it works::
++
+--
+At the application server startup, Studio assembles the web client by creating the appropriate JAR files in the `build/tomcat/webapps/app` directory. Now, when you make some changes in screen resources in Studio or IDE, Studio will create a copy of these screens in the configuration directory of the web client (`tomcat/conf/app` by default).
+
+The resources of the `conf/app` directory have priority over the JAR files of the application, so the running application will use these resources on the fly. If some resource is not found in the configuration directory, the screen loader will call the JAR files for it.
+
+When the application server is restarted, all files in the `tomcat/conf/app` directory are removed, and the changes are saved in the application JAR files.
+--
+
+What can be hot deployed::
++
+--
+* <<screen_xml,XML descriptors>> and <<screen_controller,screen controllers>> (including static methods), located in *web* and *gui* <<app_modules,modules>>,
+* Middleware <<services,service>> implementations located in *core* module.
+--
+
+What cannot be hot deployed::
++
+--
+* Any classes of the *global* module, including middleware service interfaces, <<base_entity_classes,entities>>, <<entity_listeners,entity listeners>> etc.
+
+[TIP]
+====
+Other UI and middleware classes and beans, including their static methods, are hot deployed only if some screen file or a middleware service implementation has also been changed.
+
+The reason for this is that class reloading is started by some signal: for screen controllers it is the screen reopening, for services - Studio generates the special trigger file that is recognized by the server and is used to reload the particular service class and all its dependencies.
+====
+--
+
+Hot deploy settings can be configured in Studio or using the corresponding <<cuba.confDir,application property>>:
+
+image::hot_deploy.png[align="center"]
+
+The instant hot deploy is available by default for all Studio projects. To disable this option, uncheck the *Instant hot deploy* checkbox in Studio settings.
+
+When instant hot deploy is disabled, you can intentionally trigger it by running *Run > Hot deploy conf* in Studio or *CUBA > Deploy file to Tomcat* in CUBA <<ide_integration,IDE plugin>> context menu.
+
 [[logging]]
 === Logging
 
