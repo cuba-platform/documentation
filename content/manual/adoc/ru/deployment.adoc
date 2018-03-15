@@ -972,21 +972,7 @@ URI postgres://nmmd:9c05@compute.amazonaws.com:5432/d2tk
 +
 [source, xml]
 ----
-<Context>
-    <!-- Database connection -->
-    <Resource
-      name="jdbc/CubaDS"
-      type="javax.sql.DataSource"
-      maxTotal="20"
-      maxIdle="2"
-      maxWaitMillis="5000"
-      driverClassName="org.postgresql.Driver"
-      url="jdbc:postgresql://compute.amazonaws.com/d2tk"
-      username="nmmd"
-      password="9c05"/>
-
-      <!-- ... -->
-</Context>
+include::{sourcesdir}/deployment/war-context.xml[]
 ----
 +
 ** Отметьте галочкой *Single WAR for Middleware and Web Client*
@@ -1158,19 +1144,7 @@ URI postgres://artd:367f@compute.amazonaws.com:5432/zodt
 +
 [source, xml]
 ----
-<Context>
-    <Resource driverClassName="org.postgresql.Driver"
-              maxIdle="2"
-              maxTotal="20"
-              maxWaitMillis="5000"
-              name="jdbc/CubaDS"
-              password="367f"
-              type="javax.sql.DataSource"
-              url="jdbc:postgresql://compute.amazonaws.com/zodt"
-              username="artd"/>
-
-    <Manager pathname=""/>
-</Context>
+include::{sourcesdir}/deployment/heroku-context.xml[]
 ----
 --
 
@@ -1247,7 +1221,6 @@ git push
 ----
 
 Контроль процесса развертывания осуществляется в панели Heroku на вкладке *Activity*. Перейдите по ссылке *View build log*, чтобы отслеживать лог.
-
 
 После завершения процесса развертывания ваше приложение будет доступно в браузере по ссылке `++https://space-sheep-02453.herokuapp.com/++`
 
@@ -1535,7 +1508,6 @@ import com.bmuschko.gradle.docker.DockerRegistryCredentials
 apply plugin: 'com.bmuschko.docker-remote-api'
 ----
 
-
 Dockerfile можно создать с помощью  пользовательской задачи `Dockerfile`. Инструкции для `Dockerfile` должны соответствовать определенной структуре. Инструкции в файле обрабатываются сверху вниз. Каждая инструкция добавляет новый слой в образ и фиксирует изменения. Docker исполняет инструкции, следуя процессу:
 
 * Запуск контейнера из образа.
@@ -1580,20 +1552,12 @@ dockerRegistryCredentials.username = dockerHubUsername
 ----
 
 Для создания образа приложения CUBA с помощью с `Dockerfile` и публикации этого образа в публичный репозиторий Docker Hub нужно определить следующие задачи:
+
 [source, groovy]
 ----
-task buildImage(type: DockerBuildImage, dependsOn: createDockerfile) {
-    inputDir = createDockerfile.destFile.parentFile
-    tags = ['sample-sales', '{docker-hub-username}/{default-repo-folder-name}:sample-sales']
-    registryCredentials = dockerRegistryCredentials
-}
-
-task pushImage(type: DockerPushImage, dependsOn: buildImage) {
-    tag = 'sample-sales'
-    imageName = '{docker-hub-username}/{default-repo-folder-name}'
-    registryCredentials = dockerRegistryCredentials
-}
+include::{sourcesdir}/deployment/dockerFile.groovy[]
 ----
+
 Настройте и соберите монолитный Uber JAR как показано в разделе <<single_jar_deployment>>. После этого запустите задачу `pushImage` из терминала или из поля *Search* в Студии.
 
 [source, plain]
@@ -1622,29 +1586,12 @@ heroku create cuba-sales-docker --addons heroku-postgresql:hobby-dev
 
 image::heroku-db.png[Db,1200,1000]
 
+[[jetty-env]]
 Откройте проект в IDE, откройте файл `jetty-env.xml`. Необходимо поменять URL (имя хоста и базы данных), имя пользователя и пароль. Для этого нужно скопировать данные, указанные на сайте, в файл.
 
-[source, html]
+[source, xml]
 ----
-<?xml version="1.0"?>
-<!DOCTYPE Configure PUBLIC "-" "http://www.eclipse.org/jetty/configure_9_0.dtd">
-<Configure id='wac' class="org.eclipse.jetty.webapp.WebAppContext">
-    <New id="CubaDS" class="org.eclipse.jetty.plus.jndi.Resource">
-        <Arg/>
-        <Arg>jdbc/CubaDS</Arg>
-        <Arg>
-            <New class="org.apache.commons.dbcp2.BasicDataSource">
-                <Set name="driverClassName">org.postgresql.Driver</Set>
-                <Set name="url">jdbc:postgresql://<Host>/<Database></Set>
-                <Set name="username"><User></Set>
-                <Set name="password"><Password></Set>
-                <Set name="maxIdle">2</Set>
-                <Set name="maxTotal">20</Set>
-                <Set name="maxWaitMillis">5000</Set>
-            </New>
-        </Arg>
-    </New>
-</Configure>
+include::{sourcesdir}/deployment/jetty-env.xml[]
 ----
 
 Соберите монолитный Uber JAR-файл с помощью команды Gradle:
@@ -1799,7 +1746,6 @@ sudo service nginx restart
 Обратите внимание, аналогичные инструкции развертывания прокси справедливы для конфигураций <<proxy_configuration_uberjar,Jetty>>, `WildFly` и др. В таких случаях вам может понадобиться дополнительная конфигурация этих серверов.
 ====
 
-
 [[proxy_configuration_uberjar]]
 === Конфигурация прокси для Uber JAR
 
@@ -1877,7 +1823,6 @@ java -jar app.jar -jettyConfPath jetty.xml
 
 В зависимости от выбранной схемы проксирования и настроек в `jetty.xml`, ваш сайт будет доступен по одной из ссылок: `++http://localhost/app++` или `++http://localhost++`.
 --
-
 
 [[scaling]]
 === Масштабирование приложения
