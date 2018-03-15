@@ -3596,7 +3596,7 @@ include::{sourcesdir}/common/bean_validation_17.java[]
 
 Механизм контроля доступа к атрибутам позволяет создавать правила того, какие атрибуты должны быть скрыты, нередактируемы или обязательны к заполнению для некоторого экземпляра сущности, и применять эти правила к компонентам <<gui_framework,Generic UI>> и в <<rest_api_v2,REST API>>.
 
-Данный механизм работает следующим образом:
+Данный механизм работает следующим образом (см. также <<entity_attribute_access_changes,изменения в версии 6.8.1>> ниже):
 
 * Когда <<dataManager,DataManager>> загружает сущность, он посылает Spring application event типа `SetupAttributeAccessEvent`. Объект события содержит загруженный экземпляр в состоянии managed и три коллекции имен атрибутов: read-only, hidden и required (изначально они пустые).
 
@@ -3620,6 +3620,26 @@ include::{sourcesdir}/common/bean_validation_17.java[]
 ----
 include::{sourcesdir}/common/attr_access_1.java[]
 ----
+
+[[entity_attribute_access_changes]]
+Изменения в версии 6.8.1::
++
+--
+В связи с проблемами, найденными в случае имплементации обработчиков в виде Spring application event listeners, данный механизм был изменен в версии 6.8.1 платформы. Правила, описанные выше, по прежнему действуют по умолчанию, но в дополнение был введен альтернативный способ объявления обработчиков. Данный способ включается с помощью свойства приложения <<cuba.useSpringApplicationEventsToSetupAttributeAccess,cuba.useSpringApplicationEventsToSetupAttributeAccess>>, и будет основным и единственным способом начиная с версии 6.9. Поэтому мы рекомендуем изменить ваши обработчики в соответствии с правилами, описанными далее.
+
+Обработчик должен быть <<managed_beans,управляемый бином>> модуля *core* проекта и реализовывать интерфейс `SetupAttributeAccessHandler`. Бин должен иметь дефолтный singleton scope. Вам необходимо реализовать методы интерфейса:
+
+* `supports(Class)` - возвращает true если данный обработчик предназначен для работы с сущностями переданного класса.
+
+* `setupAccess(SetupAttributeAccessEvent)` - оперирует коллекциями атрибутов для настройки доступа.
+
+Например:
+
+[source, java]
+----
+include::{sourcesdir}/common/attr_access_3.java[]
+----
+--
 
 [[entity_attribute_access_gui]]
 Контроль доступа к атрибутам в Generic UI::

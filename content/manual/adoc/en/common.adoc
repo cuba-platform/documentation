@@ -3514,7 +3514,7 @@ The <<security,security subsystem>> allows you to set up access to entity attrib
 
 The attribute access control mechanism allows you to create rules of what attributes should be hidden, read-only or required for a particular entity instance, and apply these rules automatically to <<gui_framework,Generic UI>> components and <<rest_api_v2,REST API>>.
 
-The mechanism works as follows:
+The mechanism works as follows (see also <<entity_attribute_access_changes,changes in version 6.8.1>> below):
 
 * When <<dataManager,DataManager>> loads an entity, it sends a Spring application event of the `SetupAttributeAccessEvent` type. The event object contains the loaded instance in the managed state, and three collections of attribute names: read-only, hidden and required (they are initially empty).
 
@@ -3538,6 +3538,26 @@ For example, provided that `Order` entity has `customer` and `amount` attributes
 ----
 include::{sourcesdir}/common/attr_access_1.java[]
 ----
+
+[[entity_attribute_access_changes]]
+Changes in version 6.8.1::
++
+--
+Due to the problems encountered when access control handlers were implemented as Spring application event listeners, the mechanism was changed in the platform 6.8.1. The above rules are still in place by default, but the alternative way of implementing handlers has been introduced. The new way is turned on by the <<cuba.useSpringApplicationEventsToSetupAttributeAccess,cuba.useSpringApplicationEventsToSetupAttributeAccess>> application property and will be the default and only way for version 6.9+. So we recommend you refactoring your handlers to conform to the new rules explained below.
+
+The handler must be a <<managed_beans,managed bean>> defined in the *core* module of your project and implementing the `SetupAttributeAccessHandler` interface. The bean must have the default singleton scope. You have to implement the interface methods:
+
+* `supports(Class)` returns true if the handler is designed to work with the given entity class.
+
+* `setupAccess(SetupAttributeAccessEvent)` manipulates with the collections of attributes to set up the access.
+
+For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/attr_access_3.java[]
+----
+--
 
 [[entity_attribute_access_gui]]
 Attribute Access Control in Generic UI::
