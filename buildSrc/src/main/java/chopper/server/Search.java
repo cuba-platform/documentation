@@ -16,7 +16,7 @@ public class Search {
 
     private static final int LEN = 70;
 
-    private static class Sect {
+    static class Sect {
         final String fileName;
         final String captionPath;
         final String captionName;
@@ -54,8 +54,22 @@ public class Search {
         }
     }
 
+    public Search(List<Sect> sections) {
+        this.sections.addAll(sections);
+    }
+
     public List<SearchResult> search(String term, boolean caseSensitive) {
         List<SearchResult> results = new ArrayList<>();
+
+        term = term.trim();
+        boolean exactMatch = false;
+        if (term.startsWith("\"") && term.endsWith("")) {
+            term = term.substring(1, term.length() - 1);
+            exactMatch = true;
+        }
+        if (term.length() < 3) {
+            return results;
+        }
 
         for (Sect sect : sections) {
             String text;
@@ -67,7 +81,7 @@ public class Search {
             }
             int idx = text.indexOf(term);
             if (idx > -1) {
-                SearchResult result = new SearchResult(sect.fileName, sect.captionPath, sect.captionName);
+                SearchResult result = new SearchResult(sect.fileName, sect.captionPath, sect.captionName, text);
 
                 String caption = caseSensitive ? sect.captionName : sect.captionName.toLowerCase();
                 result.setCaptionWeight(StringUtils.countMatches(caption, term));
@@ -104,6 +118,40 @@ public class Search {
         }
 
         results.sort(null);
+
+        if (!exactMatch && term.contains(" ")) {
+            List<SearchResult> allPartResults = new ArrayList<>();
+            String[] termParts = StringUtils.split(term);
+            for (String part : termParts) {
+                List<SearchResult> partResults = search(part, caseSensitive);
+                partResults.stream()
+                        .filter(partResult -> results.stream()
+                                .noneMatch(searchResult -> searchResult.captionPath.equals(partResult.captionPath)))
+                        .filter(partResult -> allPartResults.stream()
+                                .noneMatch(searchResult -> searchResult.captionPath.equals(partResult.captionPath)))
+                        .forEach(allPartResults::add);
+            }
+
+            for (SearchResult partResult : allPartResults) {
+                String caption = caseSensitive ? partResult.captionName : partResult.captionName.toLowerCase();
+                int captionMultiplier = 1;
+                int bodyMultiplier = 1;
+                for (String termPart : termParts) {
+                    if (!caseSensitive)
+                        termPart = termPart.toLowerCase();
+                    if (caption.contains(termPart))
+                        captionMultiplier++;
+                    if (partResult.body.contains(termPart))
+                        bodyMultiplier++;
+                }
+                partResult.setCaptionWeight(partResult.getCaptionWeight() * captionMultiplier);
+                partResult.setBodyWeight(partResult.getBodyWeight() * bodyMultiplier);
+            }
+
+            allPartResults.sort(null);
+            results.addAll(allPartResults);
+        }
+
         return results;
     }
 
