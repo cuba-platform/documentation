@@ -1,18 +1,96 @@
-@Inject
-private ProcessRuntimeService processRuntimeService;
-
-private static String PROCESS_CODE = "orderProcessing";
-
 public class OrderEdit extends AbstractEditor<Order> {
+
+    private static final String PROCESS_CODE = "orderApproval";
+
+    @Inject
+    private CollectionDatasource<OrderLine, UUID> linesDs;
+    @Inject
+    private ProcActionsFrame procActionsFrame;
+    @Inject
+    private GroupBoxLayout procActionsBox;
+    @Inject
+    private DataManager dataManager;
+    @Inject
+    private Metadata metadata;
+    @Inject
+    private UserSession userSession;
+    @Inject
+    private ProcessRuntimeService processRuntimeService;
+    @Inject
+    private Button startProcessBtn;
+
+    @Override
+    protected void initNewItem(Order item) {
+        startProcessBtn.setVisible(true);
+    }
+
+    @Override
+    public void init(Map<String, Object> params) {
+        linesDs.addCollectionChangeListener(e -> calculateAmount());
+        startProcessBtn.setVisible(!processExists());
+    }
+
+    @Override
+    protected boolean preCommit() {
+        calculateAmount();
+        return super.preCommit();
+    }
+
+    @Override
+    protected void postInit() {
+        initProcActionsFrame();
+        if (!PersistenceHelper.isNew(getItem())) {
+            procActionsBox.setVisible(true);
+        }
+    }
+
+    private void calculateAmount() {
+        BigDecimal amount = BigDecimal.ZERO;
+        for (OrderLine line : linesDs.getItems()) {
+            amount = amount.add(line.getProduct().getPrice().multiply(line.getQuantity()));
+        }
+        getItem().setAmount(amount);
+    }
+
+    private boolean processExists() {
+        ProcDefinition procDefinition = dataManager.load(
+                LoadContext.create(ProcDefinition.class)
+                        .setQuery(new LoadContext.Query("select pd from bpm$ProcDefinition pd where pd.code = :code")
+                                .setParameter("code", PROCESS_CODE))
+                        .setView("procDefinition-procInstanceEdit")
+        );
+        return (processRuntimeService.getActiveProcessesCount(procDefinition) > 0);
+    }
+
+    private void initProcActionsFrame() {
+        if (!PersistenceHelper.isNew(getItem())) {
+            procActionsFrame.initializer()
+                    .setBeforeStartProcessPredicate(this::commit)
+                    .setAfterStartProcessListener(() -> {
+                        showNotification("Process started");
+
+                        close(CLOSE_ACTION_ID);
+                    })
+                    .setBeforeCompleteTaskPredicate(this::commit)
+                    .setAfterCompleteTaskListener(() -> {
+                        showNotification("Task completed");
+                        calculateAmount();
+                        close(COMMIT_ACTION_ID);
+                    })
+                    .setCancelProcessEnabled(false)
+                    .init(PROCESS_CODE, getItem());
+        }
+    }
+
 
     public void startProcess() {
         commit();
 
         ProcDefinition procDefinition = dataManager.load(
                 LoadContext.create(ProcDefinition.class)
-                .setQuery(new LoadContext.Query("select pd from bpm$ProcDefinition pd where pd.code = :code")
-                        .setParameter("code", PROCESS_CODE))
-                .setView("procDefinition-procInstanceEdit")
+                        .setQuery(new LoadContext.Query("select pd from bpm$ProcDefinition pd where pd.code = :code")
+                                .setParameter("code", PROCESS_CODE))
+                        .setView("procDefinition-procInstanceEdit")
         );
 
         ProcInstance procInstance = metadata.create(ProcInstance.class);
@@ -28,20 +106,11 @@ public class OrderEdit extends AbstractEditor<Order> {
         manager.setProcInstance(procInstance);
         manager.setProcRole(procDefinition.getProcRoles().get(0));
 
-        ProcActor mechanic = metadata.create(ProcActor.class);
-        mechanic.setUser(getItem().getMechanic().getUser());
-        mechanic.setOrder(1);
-        mechanic.setProcInstance(procInstance);
-        mechanic.setProcRole(procDefinition.getProcRoles().get(1));
-
         procActors.add(manager);
-        procActors.add(mechanic);
-
         procInstance.setProcActors(procActors);
 
         Set<Entity> committed = dataManager.commit(new CommitContext()
                 .addInstanceToCommit(manager)
-                .addInstanceToCommit(mechanic)
                 .addInstanceToCommit(procInstance));
 
         ProcInstance committedProcInstance = (ProcInstance) committed.stream()
@@ -50,7 +119,6 @@ public class OrderEdit extends AbstractEditor<Order> {
                 .orElseThrow(() -> new RuntimeException("Error"));
 
         processRuntimeService.startProcess(committedProcInstance, "Started!", new HashMap<>());
-
         close(COMMIT_ACTION_ID);
     }
 }
