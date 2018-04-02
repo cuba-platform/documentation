@@ -1,9 +1,9 @@
 <!-- Please provide as much as possible of the following information: -->
 
-- Documentation version: X.Y <!-- e.g. 6.8 -->
+### Environment
 
+- Documentation version: 6.8 <!-- e.g. 6.8 -->
 - Part of the documentation: Manual <!-- Manual, Reports, BPM, etc. -->
+- Page: <!-- if any -->
 
-- Description of the bug or enhancement
-
-- Link to the existing documentation page
+### Description of the bug or enhancement
