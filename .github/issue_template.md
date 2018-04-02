@@ -2,7 +2,7 @@
 
 ### Environment
 
-- Documentation version: 6.8 <!-- e.g. 6.8 -->
+- Documentation version: X.Y <!-- e.g. 6.8 -->
 - Part of the documentation: Manual <!-- Manual, Reports, BPM, etc. -->
 - Page: <!-- if any -->
 
