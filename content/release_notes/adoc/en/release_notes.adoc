@@ -13,7 +13,7 @@
 :sectlinks:
 :sectanchors:
 :lang: en
-:revnumber: 6.8
+:revnumber: 6.9
 :version-label: Version
 :revremark: Copyright (c) 2018 Haulmont
 :youtrack: https://youtrack.cuba-platform.com
@@ -33,152 +33,10 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 
 === All Resolved Issues
 
-* https://youtrack.cuba-platform.com/issues/PL?q=Milestone:%20%7BRelease%206.8%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.8.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Platform 6.8.0 Resolved Issues]
-
-[[known_issues]]
-=== Known Issues
-
-* The initial implementation of {manual}/entity_attribute_access.html[Entity Attribute Access Control] handlers as Spring application event listeners caused a number of issues (see for example https://www.cuba-platform.com/discuss/t/upgrading-to-cuba-6-8-abstract-superclass-entity-how-to-circumvent-unable-to-instantiate-entity-issue/4066[this] and {youtrack}/issue/PL-10344[this]). In version 6.8.1, we have introduced a new recommended way of defining such handlers. See {manual}/entity_attribute_access.html#entity_attribute_access_changes[documentation] for details.
+* https://youtrack.cuba-platform.com/issues/PL?q=Milestone:%20%7BRelease%206.9%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.9.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Platform 6.9.0 Resolved Issues]
 
 [[platform_breaking_changes]]
 === Breaking Changes
-
-. The build system requires Gradle 4.3.1 or above. If you are using Studio, it will create a corresponding Gradle wrapper in your project on first opening.
-
-. `UserSessionsAPI` has been changed; now it contains two sets of methods for obtaining a session by id:
-+
---
-** `get()` and `getNN()` do not refresh the session last request timestamp in the cache (i.e. do not prolong the session)
-** `getAndRefresh()` refreshes the session in the cache, and optionally propagates the last request timestamp to the cluster.
-
-So now if you get a session directly from `UserSessionsAPI`, you have to explicitly decide whether these operation should prolong the session life in the cache (normally you don't need it).
---
-
-. A user password is required even if you use {manual}/ldap_basic.html[LDAP] authentication. You can disable this using {manual_app_props}cuba.web.requirePasswordForNewUsers[cuba.web.requirePasswordForNewUsers] application property.
-
-. DOM of the {manual}/gui_Label.html[Label] component with an assigned icon has been changed, so if you have some custom CSS, you may need to adjust it appropriately.
-+
-DOM before:
-+
-[source,html]
-----
-<div class="v-widget v-has-caption v-caption-on-top">
-    <div class="v-caption v-caption-icon v-caption-c-label-caption-on-left" id="gwt-uid-3" for="gwt-uid-4">
-        <span class="v-icon FontAwesome"></span>
-    </div>
-    <div class="v-label v-widget icon v-label-icon c-label-caption-on-left v-label-c-label-caption-on-left
-                v-label-undef-w v-label-empty" id="gwt-uid-4" aria-labelledby="gwt-uid-3">Label</div>
-</div>
-----
-+
-DOM now:
-+
-[source,html]
-----
-<div class="v-label v-widget icon v-label-icon v-label-undef-w">
-    <span class="v-icon FontAwesome"></span>Label
-</div>
-----
-
-. In order to reduce size of CUBA applications using the Full-Text Search premium add-on, the following dependencies where removed:
-+
-----
-group: 'edu.ucar', module: 'netcdf4'
-group: 'edu.ucar', module: 'grib'
-group: 'edu.ucar', module: 'cdm'
-group: 'edu.ucar', module: 'httpservices'
-group: 'com.github.junrar', module: 'junrar'
-group: 'edu.usc.ir', module: 'sentiment-analysis-parser'
-group: 'org.apache.cxf', module: 'cxf-rt-rs-client'
-group: 'org.apache.sis.core', module: 'sis-utility'
-group: 'org.apache.sis.core', module: 'sis-metadata'
-group: 'org.apache.sis.storage', module: 'sis-netcdf'
-group: 'org.gagravarr', module: 'vorbis-java-tika'
-group: 'org.gagravarr', module: 'vorbis-java-core'
-group: 'org.opengis', module: 'geoapi'
-group: 'com.healthmarketscience.jackcess', module: 'jackcess'
-group: 'com.healthmarketscience.jackcess', module: 'jackcess-encrypt'
-group: 'org.tallison', module: 'jmatio'
-group: 'org.codelibs', module: 'jhighlight'
-group: 'com.pff', module: 'java-libpst'
-group: 'org.apache.opennlp', module: 'opennlp-tools'
-group: 'com.rometools', module: 'rome'
-group: 'com.googlecode.mp4parser', module: 'isoparser'
-group: 'org.bouncycastle', module: 'bcmail-jdk15on'
-group: 'org.bouncycastle', module: 'bcprov-jdk15on'
-----
-+
-If you are experiencing any problem with indexing files of specific formats, try to add some of these dependencies to your project.
-
-. The `CATALINA_HOME` and `CATALINA_BASE` global environment variables are not used by the Tomcat installed by Studio and `setupTomcat` Gradle task. So if you deploy your application by copying Tomcat from the development environment and rely on these variables in production environment, edit `catalina.sh` or `catalina.bat` scripts and remove the commands right after the `CUBA` comment.
-
-[[data_model]]
-=== Data Model
-
-[[id_sequences]]
-==== Generation of Integer Identifiers
-
-In the previous versions, the `Metadata.create()` method assigned `Long` and `Integer` identifiers only to entities from the main data store. Now identifiers are assigned to all persistent entities inherited from `BaseLongIdEntity` and `BaseIntegerIdEntity`. The new identifiers are fetched from automatically created database sequences. By default, the sequences are created in the main data store. However, if the {manual_app_props}cuba.useEntityDataStoreForIdSequence[cuba.useEntityDataStoreForIdSequence] application property is set to true, sequences are created in the data store the entity belongs to.
-
-[[gui]]
-=== Generic UI
-
-[[icon_sets]]
-==== Icon Sets
-
-Icon sets allow you to decouple usage of icons in visual components from real paths to images in theme or font element constants. They also simplify overriding of icons used in the UI inherited from application components. See details in the {manual}/icon_set.html[documentation].
-
-[[default_screen]]
-==== Default Screen
-
-We have added a number of application properties to manage a default screen opening after login. It can be the same screen for all users, or users can choose for themselves. Also, there is an option for disabling close button on such screen. See details in the {youtrack}/issue/PL-6844[issue].
-
-[[default_filter]]
-==== Default Filter
-
-A default {manual}/gui_Filter.html[filter] is the one that is selected automatically when the screen is opened. You can now assign a default filter for all users - see *Global default* checkbox on the filter editor dialog:
-
-image::gui_filter_editor.png[align="center"]
-
-The *Default for me* checkbox makes the filter default for the current user. It has a higher priority then the global default.
-
-[[pluggable_component_factories]]
-==== Pluggable Component Factories
-
-The pluggable component factories mechanism extends the standard component creation procedure and allows you to create different edit fields in `FieldGroup`, `Table` and `DataGrid`. It means that application components or your project itself can provide custom strategies that will create non-standard components and/or support custom data types. See details in the {manual}/pluggable_component_factories.html[documentation].
-
-
-[[suggestion_field]]
-==== SuggestionPickerField Options
-
-`SuggestionPickerField` can work not only with entities, but also with strings or enum values. See examples in the {manual}/gui_SuggestionPickerField.html#gui_suggestionPickerField_SearchExecutor[documentation].
-
-[[polymer_client]]
-=== Polymer UI
-
-[[rest_api]]
-=== REST API
-
-[[refresh_token]]
-==== Refresh Token
-
-When you request an OAuth token, now by default you get a JSON object with two tokens: `access_token` and `refresh_token`. The latter cannot be used for accessing protected resources, but it has a longer lifetime than the access token and it can be used to obtain new access token when the current one is expired. See details in the {manual}/rest_api_v2_ex_get_token.html[documentation].
-
-[[reporting]]
-=== Reporting
-
-[[misc]]
-=== Miscellaneous
-
-[[app_lifecycle_events]]
-==== Application Lifecycle Events
-
-The application events mechanism can now be used for registering listeners notified after full initialization and before termination of the application. It can be used instead of adding listeners by the `AppContext.addListener()` static method. See the {manual}/app_lifecycle_events.html[documentation] for details.
-
-[[entity_log_dynamic_attributes]]
-==== Dynamic Attributes in Entity Log
-
-{manual}/entity_log.html[Entity Log] can now track changes in {manual}/dynamic_attributes.html[dynamic attributes] of an entity.
 
 [[upd_dep]]
 === Updated Dependencies
@@ -186,19 +44,11 @@ The application events mechanism can now be used for registering listeners notif
 Java:
 
 ----
-com.fasterxml.jackson = 2.9.2
-com.thoughtworks.xstream/xstream = 1.4.10
-com.vaadin = 7.7.11.cuba.3
-org.hibernate/hibernate-validator = 5.4.2.Final
-org.springframework = 4.3.12.RELEASE
-org.thymeleaf = 3.0.8.RELEASE
-tomcat = 8.5.23
 ----
 
 JavaScript:
 
 ----
-Node.js 8.9.1 (LTS)
 ----
 
 [[studio]]
@@ -206,117 +56,4 @@ Node.js 8.9.1 (LTS)
 
 === All Resolved Issues
 
-* https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.8%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.8.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.8.0 Resolved Issues]
-
-[[new_features]]
-=== New Features Confirmation
-
-Sometimes, new features which we introduce in new versions of Studio affect your existing projects. At the same time they are often optional, i.e. you can continue working with the project without them. An example of such feature is the generation of index on a foreign key in a one-to-one relationship, introduced in this release. On one hand, it's a useful improvement, on the other hand it will generate additional update scripts and may be not needed for your project. So when you open an existing project in the new Studio, you will see a dialog asking you whether you want to enable the new feature for this project:
-
-image::studio_new_func.png[align="center"]
-
-If you select *Enable* or *Disable*, your decision will be saved in project's `studio-settings.xml`. If you are not sure at the moment, select *Ask me later* and Studio will ask you again next time you open this project.
-
-[[theme_variables]]
-=== Theme Variables Editor
-
-This editor enables managing variables which are used to quickly customize a Generic UI {manual}/web_theme_extension.html#web_theme_extension_common[theme]. It is available via the *Manage theme > Edit Halo theme variables* link on the *Project properties* tab. The link becomes active if you have created a theme extension in your project.
-
-image::studio_theme_variables.png[align="center"]
-
-[[app_properties]]
-=== Application Properties Editor
-
-This editor allows you to edit application properties manually. Later we are going to add code completion and validation to it.
-
-image::studio_app_props.png[align="center"]
-
-[[build_scripts]]
-=== Build Scripts
-
-In the previous Studio version, when you changed the module prefix (which is `app` by default), Studio completely rewrote `build.gradle` and `settings.gradle`, which might cause the loss of a custom code in these files. In the new version, when you create a new project, its build scripts have the `modulePrefix` variable, which is used instead of string literals. Thus, when you need to change the module prefix, Studio simply replaces the value of this variable and doesn't rewrite the whole file. For an old project which doesn't have such variable, rewriting is still needed, but it happens only once, and after that the variable is added to the scripts.
-
-[[gradle_version_by_project]]
-=== Gradle Versions
-
-As you know, Studio can work with projects based on different platform versions. These projects can also require different versions of Gradle, which are specified for the project's Gradle wrapper in `gradle/wrapper/gradle-wrapper.properties`. Now Studio determines which version of Gradle is required when opening the project, and downloads it if it is not yet cached locally. When downloading and installing Gradle, Studio shows a modal window.
-
-[[import_from_git]]
-=== Import Project from Git
-
-The *Import project* dialog allows you to import a project directly from a Git repository, if it doesn't require authentication. Select *Git* option, enter a URL and select a local directory where to create the project. Studio will clone the repository and immediately open the project.
-
-image::studio_git_import.png[align="center"]
-
-[[artifact_version]]
-=== Project Artifact Version
-
-The *Advanced* tab of the *Project properties* page now contains the *Artifact* section which allows you to set the project artifact version. If the *Snapshot* checkbox is selected, artifact names will have the SNAPSHOT suffix.
-
-The version parameter is stored in the `build.gradle` file in the `cuba.artifact` section. This section also specifies the artifact group, but we don't provide an option to change it in UI because by convention the artifact group must be equal to the project root package.
-
-image::studio_artifact_version.png[align="center"]
-
-[[comp_db_scripts]]
-=== Database Scripts for Application Components
-
-If your project uses an application component, there is a chance that the component does not contain database initialization scripts for your database. For example, if the component was developed on HSQLDB and you are using PostgreSQL. In such case Studio generates scripts for the component and shows them on the `Init component tables` and `Init component constraints` tabs of the `Database scripts` page:
-
-image::studio_comp_db_scripts.png[align="center"]
-
-[[safe_db_updates]]
-=== Safe Database Updates
-
-Now Studio generates more safe update scripts when you remove an entity, an attribute, or change an attribute's datatype. Such scripts are split to two parts: in the first part, the column or table is renamed to `*__UNUSED`, and in the second part these objects are actually dropped. In the example below, the `foo` attribute was removed from the `Customer` entity. The first script renames the column:
-
-image::studio_no_removal_1.png[align="center"]
-
-The second script drops it:
-
-image::studio_no_removal_2.png[align="center"]
-
-As you can see, the script containing DROP statement is highlighted in red to emphasize the fact that you can lose some data.
-
-Additionally, we have added an ability to exclude scripts from automatic execution, but still have them in the project to be able to execute manually when needed. If you click the *Exclude selected* button, you will have an option to move the script to a special directory: `modules/core/db/update-manually`. The script will not be executed automatically, so the `FOO__UNUSED` column will remain in the table, but you will be able to execute the script manually and drop the column later.
-
-[[custom_db]]
-=== Support for Custom Databases (experimental)
-
-At the moment, the platform and Studio supports a limited number of databases out-of-the-box. These are HSQL, PostgreSQL, Microsoft SQL Server, MySQL and Oracle. But now you have an ability to implement support for a different DBMS right in your project.
-
-This feature works in the following way:
-
-* You click *Custom database* link on the *Project properties* panel and enter ID and user-friendly name of your database type, e.g. `firebird` and `Firebird`.
-
-* Studio generates two sets of files in the `core` module of your project:
-
-** In the `com.haulmont.cuba.core.sys.persistence` package, implementations of the `DbmsFeatures`, `DbTypeConverter` and `SequenceSupport` interfaces of the platform. These implementations will be used by the application at runtime.
-** In the `com.haulmont.studio.db.{db_id}` package, files that will be used by Studio at design time:
-*** `{db_id}DbProperties`, which defines database properties that are needed to configure projects using the custom database.
-*** `{db_id}DdlGenerator`, which is used by Studio for generation of database init and update scripts and for creating model from an existing database.
-
-* All these files contain sample code suitable for Microsoft SQL Server 2012. You should fix the generated files to conform to your database properties, SQL and DDL statements.
-
-* After that, you can switch your project to use the custom database. It will appear in the *Project properties > Database type* list after you reopen the project.
-
-* If you use the custom database as a main data store, when you generate database scripts, Studio will create init scripts for all application components (as described <<comp_db_scripts,above>>), including CUBA. These scripts won't include some required initialization data, so you have to add it to the *Init data* script of your project (`30.create-db.sql`):
-+
-[source,sql]
-----
-insert into SEC_GROUP (ID, CREATE_TS, VERSION, NAME, PARENT_ID)
-values ('0fa2b1a5-1d68-4d69-9fbd-dff348347f93', current_timestamp, 0, 'Company', null)^
-
-insert into SEC_USER (ID, CREATE_TS, VERSION, LOGIN, LOGIN_LC, PASSWORD, NAME, GROUP_ID, ACTIVE)
-values ('60885987-1b61-4247-94c7-dff348347f93', current_timestamp, 0, 'admin', 'admin',
-'cc2229d1b8a052423d9e1c9ef0113b850086586a',
-'Administrator', '0fa2b1a5-1d68-4d69-9fbd-dff348347f93', 1)^
-
-insert into SEC_USER (ID, CREATE_TS, VERSION, LOGIN, LOGIN_LC, PASSWORD, NAME, GROUP_ID, ACTIVE)
-values ('a405db59-e674-4f63-8afe-269dda788fe8', current_timestamp, 0, 'anonymous', 'anonymous', null,
-'Anonymous', '0fa2b1a5-1d68-4d69-9fbd-dff348347f93', 1)^
-----
-
-[WARNING]
-====
-Please keep in mind that this is an experimental feature and its implementation can be changed significantly in the future versions of Studio. This is especially relevant to the `{db_id}DdlGenerator` class, which is not clear and convenient enough at the moment.
-====
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.9%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.9.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.0 Resolved Issues]
