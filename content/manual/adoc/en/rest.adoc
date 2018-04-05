@@ -142,6 +142,8 @@ To set up permissions for anonymous user you must define <<roles, roles>> for th
 
 <<cuba.rest.reuseRefreshToken, cuba.rest.reuseRefreshToken>> - specifies whether a refresh token should be reused.
 
+<<cuba.rest.requiresSecurityToken,cuba.rest.requiresSecurityToken>> - indicates that additional system attribute must be sent in JSON. See details in <<rest_api_v2_security_constraints>>.
+
 [[rest_api_v2_custom_controllers]]
 ==== Creating Custom OAuth2 Protected Controllers
 
@@ -178,14 +180,32 @@ URL of the custom controller MUST NOT start with the `/rest/v2`.
 [[rest_api_v2_security_constraints]]
 ==== Security Constraints for Collection Attributes
 
-If an entity that is returned by the REST API has a collection attribute and entities in the collection are restricted by any <<constraints,constraint>> then a system attribute `+__securityToken+` may be returned in the result JSON. When you send such entity to REST API methods for update you have to specify the `+__securityToken+` property (the one you got on entity read) in the JSON object. Otherwise, the collection property may be saved incorrectly.
+Let's consider the following situation:
 
-Example:
+* Your data model contains `Order` and `OrderLine` entities which form the one-to-many composition.
+
+* Your REST client loads an instance of `Order` together with the nested collection of `OrderLine` instances.
+
+* There are <<constraints,security constraints>> that filter out some `OrderLine` instances, so the client does not load them and doesn't know they exist. Say `line5` is not loaded by the client but exists in the database.
+
+* If your client removes, say, `line2` from the collection and then saves the whole composition using the `/entities/{entityName}/{entityId}` endpoint, there are two outcomes:
++
+--
+. If the constraints were not changed since the entities were loaded, the framework restores the filtered `line5` instance in the collection and deletes only `line2`, which is the correct behavior.
+
+. If the constraints were changed in a way that `line5` is now available to the client, the framework cannot restore the information about filtered collection elements correctly. As a result, both `line2` and `line5` will be deleted.
+--
+
+If you are concerned with the case described above, you can eliminate possible data loss by sending a special system attribute in the JSON representing your entities. This attribute is called `+__securityToken+` and automatically included in resulting JSON if the <<cuba.rest.requiresSecurityToken,cuba.rest.requiresSecurityToken>> application property is set to `true`. The responsibility of your REST client is to return this attribute back when saving entities.
+
+An example of entity JSON including security token:
 
 [source, json]
 ----
 include::{sourcesdir}/features/securityToken.json[]
 ----
+
+The `+__securityToken+` attribute contains encoded identifiers of filtered instances, so the framework can always restore the required information regardless of changes in constraints.
 
 [[rest_api_v2_persistent_token_store]]
 ==== Persistent Token Store
