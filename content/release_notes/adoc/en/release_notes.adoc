@@ -100,16 +100,15 @@ Accessing reference attributes is possible regardless of the specified view. If 
 * `accessibleDescription` property has been added for all charts and can be used both in XML and Java.
 
 [[fts]]
+=== Full-Text Search Addon
 
-=== FTS Addon
+Internal components used by the FTS addon has been refactored. Public method of FTS services used by the client tier remained unchanged. The following changes will affect you only if you've overridden FTS core beans.
 
-Internal components used by the FTS addon has been refactored. Public method of FTS services used by the client tier remained unchanged. The following changes will affect you only if you've overriden FTS core beans.
+The following new components have been added:
 
-The following new components has been added:
+* `IndexWriterProvider` - a class that is used for getting an instance of Lucene `IndexWriter`. Previously a new `IndexWriter` was created for each write operation. Now a single `IndexWriter` is opened and used for all index modifications. See the class Javadoc for details.
 
-* `IndexWriterProvider` - a class that is used for getting an instance of Lucene IndexWriter. Previously a new IndexWriter was created for each write operation. Now a single IndexWriter is opened and used for all index modifications. See the class javadoc for details.
-
-* `IndexSearcherProvider` - a class that is used for obtaining instances of Lucene IndexSearcher using the SearcherManager.
+* `IndexSearcherProvider` - a class that is used for obtaining instances of Lucene `IndexSearcher` using the `SearcherManager`.
 
 * `DirectoryProvider` - a class that is used for getting an instance of the Lucene index Directory.
 
@@ -172,3 +171,60 @@ org.webjars/amcharts = 3.21.12.cuba.1
 === All Resolved Issues
 
 * https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.9%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.9.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.0 Resolved Issues]
+
+[[studio_known_issues]]
+=== Known Issues
+
+If you use in-place update in Studio SE on macOS, it will completely replace your application folder. If you previously added some JDBC drivers to `/Applications/Cuba Studio SE.app/Contents/Resources/app/studio/lib`, they will be lost and you will have to add them again.
+
+[[studio_modules]]
+=== Project Modules
+
+Studio now creates new projects with `global`, `core` and `web` modules (no `gui`). If you need to share some UI code between web and desktop clients, create `gui` and `desktop` modules using the _Manage modules_ link on the _Project properties_ panel.
+
+You can also remove the standard `core` or `web` modules from the project. It makes sense if you work on an {manual}/app_components.html[application component] that provides functionality on a single tier only: web client or middleware.
+
+[[studio_custom_db_url]]
+=== Custom URL for Database Connection
+
+If you need to provide the database connection URL in a non-standard format like Oracle's SID format, use the _Custom database URL_ checkbox when editing the project properties:
+
+image::studio_db_url.png[align="center", width=659]
+
+In this case, in addition to the URL, you have to provide also the database host and name, as they are used by Studio separately.
+
+[[studio_db_schema]]
+=== Database Schema
+
+. Tables can have names without the project namespace prefix. As long as you have selected the _Generate DDL_ checkbox on the entity page, Studio will generate init and update scripts for this table. However, if you delete the entity, Studio won't create the corresponding `drop table` script, and you will have to do it yourself.
+
+. Tables can have names in mixed case. In this case, enclose the table name in double quotes escaped with back slashes, for example:
++
+image::studio_table_name.png[align="center", width=487]
++
+Tables with mixed case names are also supported when generating model from an existing database.
+
+. In the previous version (6.8), we introduced the http://files.cuba-platform.com/cuba/release-notes/6.8/#safe_db_updates[Safe Database Updates] feature. Now you can turn it off using the _Generate DROP statements in separate update scripts_ on the _Help > Settings_ page and have simple update scripts without intermediate renaming of dropped columns.
+
+. When creating names for foreign key constraints and indexes, Studio adds `++_ON_++` between table names. For example, `FK_FOO_ON_BAR` or `IDX_FOO_ON_BAR`. This reduces the risk of name collisions.
++
+When you first time open an existing project, Studio will ask you whether you want to enable this feature for the project. If you turn it on, your existing database init scripts may be changed according to the new rules.
+
+[[studio_custom_theme]]
+=== Creating a Custom Theme
+
+Studio can now scaffold a new theme for you as described in the {manual}/web_theme_creation.html[platform documentation]. Click the _Manage theme > Create custom theme_ link on the _Project properties_ panel, and Studio will ask you the new theme name and what existing theme should be a base for the new one. After that, the new theme files will be created and you will be able to edit SCSS files in IDE and theme variables right in Studio.
+
+[[studio_se_multi_windows]]
+=== Multiple Windows in Standalone Edition
+
+Now you can open multiple windows with different projects in a single Studio SE application. Just press Ctrl+N on Windows and Linux or Cmd+N on macOS.
+
+image::studio_windows.png[align="center", width=716]
+
+[[studio_search_projects]]
+=== Search in the Projects List
+
+As Standalone Edition became the primary distribution of Studio, we could no longer rely on browser search and added the search button to the list of projects:
+
+image::studio_search.png[align="center", width=833]
