@@ -104,5 +104,7 @@ long start = System.currentTimeMillis();
 %>
 	</div>
 </div>
+<script src="./js/jquery-1.11.1.min.js" type="text/javascript"></script>
+<script type="text/javascript" src="./js/desktop-mobile-menu.js"></script>
 </body>
 </html>
