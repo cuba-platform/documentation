@@ -56,10 +56,12 @@ $(document).ready(function () {
             if (mediaQueryList.matches) {
                 // normal desktop menu is shown
                 drawerButton.addClass(drawerGoneStyle);
+                removeContentStyles();
                 closeMenu();
             } else {
                 // switched on the mobile menu
                 drawerButton.removeClass(drawerGoneStyle)
+                addContentStyles();
             }
         }
     }
@@ -114,6 +116,28 @@ $(document).ready(function () {
 
         // save state to the sessionStorage
         setOpenMenu(false);
+    }
+
+    function addContentStyles(){
+        $("#content").addClass(mobileDeskStyle);
+        $("#bottom").addClass(mobileDeskStyle);
+        $("#title-version").addClass(mobileDeskStyle);
+        $("#copyright").addClass(mobileDeskStyle);
+        $(".sect1").addClass(mobileDeskStyle);
+
+        $(".listingblock").addClass(mobileDeskStyle);
+        $(".literalblock").addClass(mobileDeskStyle);
+    }
+
+    function removeContentStyles(){
+        $("#content").removeClass(mobileDeskStyle);
+        $("#bottom").removeClass(mobileDeskStyle);
+        $("#title-version").removeClass(mobileDeskStyle);
+        $("#copyright").removeClass(mobileDeskStyle);
+        $(".sect1").removeClass(mobileDeskStyle);
+
+        $(".listingblock").removeClass(mobileDeskStyle);
+        $(".literalblock").removeClass(mobileDeskStyle);
     }
 
     function createDrawerButton(){
