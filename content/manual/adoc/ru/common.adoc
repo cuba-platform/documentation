@@ -652,6 +652,11 @@ protected Customer customer;
 * `targetEntity` - тип связанной сущности. Необязательный параметр, если коллекция объявлена с использованием *Java generics*.
 
 * `fetch` - (необязательный параметр, по умолчанию `LAZY`) - определяет, будет ли <<jpa,JPA>> <<eager_fetching,жадно>> загружать коллекцию связанных сущностей. Необходимо всегда оставлять значение по умолчанию `LAZY`, так как в CUBA-приложении политика загрузки связей определяется динамически на основе механизма <<views,представлений>>.
+
+[WARNING]
+====
+Использование параметра `cascade` аннотации не рекомендуется. Сущности, сохраняемые неявно при использовании такого объявления, будут пропущены некоторыми системными механизмами. В частности, бин <<entityStates,EntityStates>> некорректно определяет для них состояние managed, а <<entity_listeners, entity listeners>> не вызываются вообще.
+====
 --
 
 [[manyToOne_annotation]]
@@ -676,6 +681,11 @@ protected Customer customer;
 @JoinColumn(name = "CUSTOMER_ID")
 protected Customer customer;
 ----
+
+[WARNING]
+====
+Использование параметра `cascade` аннотации не рекомендуется. Сущности, сохраняемые неявно при использовании такого объявления, будут пропущены некоторыми системными механизмами. В частности, бин <<entityStates,EntityStates>> некорректно определяет для них состояние managed, а <<entity_listeners, entity listeners>> не вызываются вообще.
+====
 --
 
 [[metaProperty_annotation]]
@@ -812,6 +822,11 @@ private Driver driver;
 @OneToMany(mappedBy = "order")
 protected Set<Item> items;
 ----
+
+[WARNING]
+====
+Использование параметра `cascade` аннотации не рекомендуется. Сущности, сохраняемые неявно при использовании такого объявления, будут пропущены некоторыми системными механизмами. В частности, бин <<entityStates,EntityStates>> некорректно определяет для них состояние managed, а <<entity_listeners, entity listeners>> не вызываются вообще. Параметр `orphanRemoval` не принимает во внимание механизм <<soft_deletion, мягкого удаления>>.
+====
 --
 
 [[oneToOne_annotation]]
@@ -2447,6 +2462,48 @@ _Частичная сущность_ - это экземпляр сущност
 
 Таблица `SYS_QUERY_RESULT` периодически очищается от ненужных результатов запросов, оставленных завершенными пользовательскими сессиями. Для этого предназначен метод `deleteForInactiveSessions` бина `QueryResultsManagerAPI`, который вызывается шедулером Spring, объявленным в `cuba-spring.xml`. По умолчанию это происходит раз в 10 минут, но вы можете задать другой интервал в миллисекундах, используя свойство приложения `cuba.deleteOldQueryResultsInterval` в модуле *core*.
 
+[[entityStates]]
+===== EntityStates
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/core/global/EntityStates.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Интерфейс для получения информации о персистентных сущностях, сохраняемых через  <<orm,ORM>>. В отличие от бинов <<persistence,Persistence>> и <<persistenceTools,PersistenceTools>> доступен на всех <<app_tiers,уровнях>> приложения.
+
+Методы `EntityStates`:
+
+* `isNew()` - определяет, является ли переданный экземпляр только что созданным. Он может быть либо в состоянии <<entity_states,New>>, либо <<entity_states,Managed>>, но только что сохраненным в текущей транзакции. Также возвращает `true` для неперсистентных сущностей.
+
+* `isManaged()` - определяет, находится ли переданный экземпляр в состоянии <<entity_states,Managed>>, то есть присоединен к персистентному контексту.
+
+* `isDetached()` - определяет, находится ли переданный экземпляр в состоянии <<entity_states,Detached>>. Возвращает `true`, также если экземпляр не является персистентной сущностью.
+
+*  `isLoaded()` - определяет, загружен ли данный атрибут сущности. Атрибут загружается, если он включен в <<views,представление>>, или если это локальный атрибут и никакое представление не использовалось в процессе загрузки через <<entityManager,EntityManager>> или <<dataManager,DataManager>>. Данный метод поддерживает проверку только непосредственных атрибутов сущностей.
+
+* `checkLoaded()` - то же самое что и `isLoaded()`, но выбрасывает `IllegalArgumentException` если хотя бы один из переданных атрибутов не загружен.
+
+* `isLoadedWithView()` - принимает экземпляр сущности и представление, и возвращает true если все атрибуты требуемые в представлении на самом деле загружены.
+
+* `checkLoadedWithView()` - то же самое что и `isLoadedWithView()`, но выбрасывает `IllegalArgumentException` вместо возврата false.
+
+* `makeDetached()` - принимает только что созданный экземпляр сущности и переводит его в состояние detached. Detached-объект можно передать в `DataManager.commit()` или `EntityManager.merge()` для сохранения его состояния в базе данных. Подробнее см. API docs.
+
+* `makePatch()` - принимает только что созданный экземпляр сущности и превращает его в _patch-объект_. Patch-объект можно передать в `DataManager.commit()` или `EntityManager.merge()` для сохранения его состояния в базе данных, при этом в отличие от detached-объекта, будут сохранены только не-null атрибуты. Подробнее см. API docs.
+
+[[persistenceHelper]]
+====== PersistenceHelper
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/core/global/PersistenceHelper.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Вспомогательный класс со статическими методами, делегирующий выполнение бину <<entityStates, EntityStates>>.
+
 [[events]]
 ===== Events
 
@@ -2536,32 +2593,6 @@ include::{sourcesdir}/common/events_EventListener.java[]
 
 Если класс события реализует `UiEvent`, и объект такого события опубликован при помощи бина `Events` из потока UI, то будут вызваны обработчики событий этого типа в открытых на данный момент окнах и фреймах. Обработка событий синхронная. Только экраны и фреймы текущей активной вкладки веб-браузера получат уведомление о событии.
 --
-
-[[persistenceHelper]]
-==== PersistenceHelper
-
-++++
-<div class="manual-live-demo-container">
-    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/core/global/PersistenceHelper.html" class="api-docs-btn" target="_blank">API DOCS</a>
-</div>
-++++
-
-Вспомогательный класс для получения информации о персистентных сущностях. В отличие от бинов <<persistence,Persistence>> и <<persistenceTools,PersistenceTools>> доступен на всех <<app_tiers,уровнях>> приложения.
-
-Методы `PersistenceHelper`:
-
-*  `isLoaded()` - определяет, загружен ли данный атрибут сущности. Атрибут загружается, если он включен в <<views,представление>>, или если это локальный атрибут и никакое представление не использовалось в процессе загрузки через <<entityManager,EntityManager>> или <<dataManager,DataManager>>. Данный метод поддерживает только непосредственные атрибуты сущностей.
-
-* `isNew()` - определяет, является ли переданный экземпляр только что созданным, т.е. находящимся в состоянии <<entity_states,New>>. Возвращает `true`, также если экземпляр не является персистентной сущностью.
-
-* `isManaged()` - определяет, находится ли переданный экземпляр в состоянии <<entity_states,Managed>>, то есть присоединен к персистентному контексту.
-
-* `isDetached()` - определяет, находится ли переданный экземпляр в состоянии <<entity_states,Detached>>. Возвращает `true`, также если экземпляр не является персистентной сущностью.
-
-* `isSoftDeleted()` - определяет, поддерживает ли переданный класс сущности <<soft_deletion,мягкое удаление>>.
-
-* `getEntityName()` - возвращает имя сущности, заданное в <<entity_annotations,аннотации>> `@Entity`.
-
 
 [[appContext]]
 ==== AppContext
