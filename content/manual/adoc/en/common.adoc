@@ -631,6 +631,11 @@ Parameters:
 * `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using Java generics.
 
 * `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will <<eager_fetching, eagerly>> fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+[WARNING]
+====
+The usage of `cascade` annotation attribute is not recommended. The entities persisted and merged implicitly using such declaration will bypass some system mechanisms. In particular, the <<entityStates,EntityStates>> bean does not detect the managed state correctly and <<entity_listeners, entity listeners>> are not invoked at all.
+====
 --
 
 [[manyToOne_annotation]]
@@ -655,6 +660,11 @@ For example, several `Order` instances refer to the same `Customer` instance. In
 @JoinColumn(name = "CUSTOMER_ID")
 protected Customer customer;
 ----
+
+[WARNING]
+====
+The usage of JPA `cascade` annotation attribute is not recommended. The entities persisted and merged implicitly using such declaration will bypass some system mechanisms. In particular, the <<entityStates,EntityStates>> bean does not detect the managed state correctly and <<entity_listeners, entity listeners>> are not invoked at all.
+====
 --
 
 [[metaProperty_annotation]]
@@ -789,6 +799,11 @@ For example, several `Item` instances refer to the same `Order` instance using `
 @OneToMany(mappedBy = "order")
 protected Set<Item> items;
 ----
+
+[WARNING]
+====
+The usage of JPA `cascade` and `orphanRemoval` annotation attributes is not recommended. The entities persisted and merged implicitly using such declaration will bypass some system mechanisms. In particular, the <<entityStates,EntityStates>> bean does not detect the managed state correctly and <<entity_listeners, entity listeners>> are not invoked at all. The `orphanRemoval` annotation attribute does not respect the <<soft_deletion, soft deletion>> mechanism.
+====
 --
 
 [[oneToOne_annotation]]
@@ -2398,6 +2413,48 @@ The `SYS_QUERY_RESULT` table should be periodically cleaned of all unnecessary q
 include::{sourcesdir}/common/sequentialqueries_1.xml[]
 ----
 
+[[entityStates]]
+===== EntityStates
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.8/com/haulmont/cuba/core/global/EntityStates.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+An interface for obtaining the information on persistent entities managed by <<orm,ORM>>. Unlike the <<persistence,Persistence>> and <<persistenceTools,PersistenceTools>> beans, this interface is available on all <<app_tiers,tiers>>.
+
+The `EntityStates` interface has the following methods:
+
+* `isNew()` – determines if the passed instance is newly created, i.e., in the <<entity_states,New>> state. Also returns `true` if this instance is actually in <<entity_states,Managed>> state but newly-persisted in the current transaction, or if it is not a persistent entity.
+
+* `isManaged()` - determines if the passed instance is Managed, i.e. attached to a persistence context.
+
+* `isDetached()` – determines if the passed instance is in the <<entity_states,Detached>> state. Also returns `true`, if this instance is not a persistent entity.
+
+*  `isLoaded()` - determines if an attribute is loaded from the database. The attribute is loaded if it is included into a <<views,view>>, or if it is a local attribute and a view was not provided to the loading mechanism (<<entityManager,EntityManager>> or <<dataManager,DataManager>>). Only immediate attributes of the entity can be checked by this method.
+
+* `checkLoaded()` - the same as `isLoaded()` but throws `IllegalArgumentException` if at least one of the attributes passed to the method is not loaded.
+
+* `isLoadedWithView()` - accepts an entity instance and a view and returns true if all attributes required by the view are actually loaded.
+
+* `checkLoadedWithView()` - the same as `isLoadedWithView()` but throws `IllegalArgumentException` instead of returning false.
+
+* `makeDetached()` - accepts a newly created entity instance and turns it into the detached state. The detached object can be passed to `DataManager.commit()` or `EntityManager.merge()` to save its state in the database. See details in the API docs.
+
+* `makePatch()` - accepts a newly created entity instance and makes it a _patch object_. The patch object can be passed to `DataManager.commit()` or `EntityManager.merge()` to save its state in the database. Unlike for a detached object, only non-null attributes will be saved. See details in the API docs.
+
+[[persistenceHelper]]
+====== PersistenceHelper
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.8/com/haulmont/cuba/core/global/PersistenceHelper.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+A helper class with static methods delegating to the <<entityStates, EntityStates>> interface.
+
 [[events]]
 ===== Events
 
@@ -2487,31 +2544,6 @@ You can use `@Order` annotation for event listener ordering.
 
 If an event is `UiEvent` and fired using the `Events` bean from UI thread then opened windows and/or frames with such methods will receive the event. Event handling is synchronous. Only UI screens of the current web browser tab opened by the user receive the event.
 --
-
-[[persistenceHelper]]
-==== PersistenceHelper
-
-++++
-<div class="manual-live-demo-container">
-    <a href="http://files.cuba-platform.com/javadoc/cuba/6.8/com/haulmont/cuba/core/global/PersistenceHelper.html" class="api-docs-btn" target="_blank">API DOCS</a>
-</div>
-++++
-
-A helper class for obtaining the information on persistent entities. Unlike the <<persistence,Persistence>> and <<persistenceTools,PersistenceTools>> beans, this class is available on all <<app_tiers,tiers>>.
-
-The `PersistenceHelper` bean has the following methods:
-
-*  `isLoaded()` - determines if an attribute is loaded from the database. The attribute is loaded if it is included into a <<views,view>>, or if it is a local attribute and a view was not provided to the loading mechanism (<<entityManager,EntityManager>> or <<dataManager,DataManager>>). Only immediate attributes of the entity are supported.
-
-* `isNew()` – determines if the passed instance is newly created, i.e., in the <<entity_states,New>> state. Also returns `true` if this instance is actually in <<entity_states,Managed>> state but newly-persisted in the current transaction, or if it is not a persistent entity.
-
-* `isManaged()` - determines if the passed instance is Managed, i.e. attached to a persistence context.
-
-* `isDetached()` – determines if the passed instance is in the <<entity_states,Detached>> state. Also returns `true`, if this instance is not a persistent entity.
-
-* `isSoftDeleted()` – determines if the passed entity class supports the <<soft_deletion,soft deletion>>.
-
-* `getEntityName()` – returns the name of the entity specified in the <<entity_annotation,@Entity>> annotation.
 
 [[appContext]]
 ==== AppContext
