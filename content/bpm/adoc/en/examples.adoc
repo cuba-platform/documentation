@@ -4,86 +4,17 @@
 [[process_runtime_service_usage]]
 === Starting a Process Programmatically
 
-Below is an example of starting a service programmatically from a screen controller with roles assigned using the `ProcessRuntimeService` instance. This sample project is also available on https://github.com/cuba-platform/sample-sales-bpm[GitHub].
+A convenient way to start a new process from the entity editor is to use the `ProcActionsFrame`, but sometimes a process needs to be started programmatically. To do so, we need to create a new ProcInstance object with filled ProcActors collection (if required). The ProcIntance object graph may be created in a regular way (using the Metadata bean), but BPM add-on has a handy method for this: `BpmEntitiesService.createProcInstance(ProcInstanceDetails procInstanceDetails)`. 
 
-. First of all, load the <<ProcDefinition,process definition>> by its code:
-+
---
-[source, java]
-----
-ProcDefinition procDefinition = dataManager.load(
-        LoadContext.create(ProcDefinition.class)
-                .setQuery(new LoadContext.Query("select pd from bpm$ProcDefinition pd where pd.code = :code")
-                        .setParameter("code", PROCESS_CODE))
-                .setView("procDefinition-procInstanceEdit")
-);
-----
---
+Suppose, we have deployed a process definition with the code `orderProcessing`. This process definition has two roles: `manager` and `storekeeper`.
 
-. Next, create the <<ProcInstance,process instance>> and associate it with the process definition and entity:
-+
---
-[source, java]
-----
-ProcInstance procInstance = metadata.create(ProcInstance.class);
-procInstance.setProcDefinition(procDefinition);
-procInstance.setObjectEntityId(getItem().getId());
-procInstance.setEntityName(getItem().getMetaClass().getName());
-----
---
-
-. Create <<ProcActor,process actors>> with the <<ProcRole,roles>> assigned:
-+
---
-[source, java]
-----
-ProcActor manager = metadata.create(ProcActor.class);
-manager.setUser(userSession.getUser());
-manager.setOrder(0);
-manager.setProcInstance(procInstance);
-manager.setProcRole(procDefinition.getProcRoles().get(0));
-----
---
-
-. Associate the set of actors with the process instance:
-+
---
-[source, java]
-----
-Set<ProcActor> procActors = new HashSet<>();
-procActors.add(manager);
-procInstance.setProcActors(procActors);
-----
---
-
-. Commit created actors and process instances to the database:
-+
---
-[source, java]
-----
-Set<Entity> committed = dataManager.commit(new CommitContext()
-        .addInstanceToCommit(manager)
-        .addInstanceToCommit(procInstance));
-----
---
-
-. Start the persisted process instance:
-+
---
-[source, java]
-----
-ProcInstance committedProcInstance = (ProcInstance) committed.stream()
-        .filter(p -> p.equals(procInstance))
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("Error"));
-
-processRuntimeService.startProcess(committedProcInstance, "Started!", new HashMap<>());
-----
---
-
-The complete code of the `startProcess()` method in the screen controller invoked on a button click:
+To create a `ProcInstance` object using the `BpmEntitiesService` you may use a code like this:
 
 [source, java]
 ----
 include::{sourcesdir}/start_process.java[]
 ----
+
+The code above will create a not persistent instance of the `ProcInstance` entity. Its `procDefinition` property will be set to the process definition with the code `orderProcessing` (if such process definition is not found, an exception will be thrown). Also, the process instance object will have two process actors: one for the process role with a code `manager` (the current user), and another one for the process role with a code `storekeeper` (someOtherUser which was evaluated beforehand). If the process definition doesn't have roles with given codes, an exception will be thrown.
+
+After the process instance is created we need to pass it to the `ProcessRuntimeService.startProcess()`. The method will start the process and save the ProcInstance and ProcActors entities to the database.

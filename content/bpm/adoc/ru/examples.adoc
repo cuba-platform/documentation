@@ -4,86 +4,17 @@
 [[process_runtime_service_usage]]
 === Программный запуск процесса
 
-Ниже приведён пример программного запуска отчёта с заданными ролями из контроллера экрана редактирования сущности с помощью сервиса `ProcessRuntimeService`. Полный код данного тестового приложения можно посмотреть  на https://github.com/cuba-platform/sample-sales-bpm[GitHub].
+`ProcActionsFrame` является удобным механизмом запуска процессов из редактора сущности, однако, иногда возникает необходимость запустить процесс программного. Для этого первым делом необходимо создать объект ProcInstance с заполненной коллекцией участников процесса (ProcActor). Можно создавать экземпляры сущностей с помощью бина Metadata, но модуль BPM имеет для этого специальный метод: `BpmEntitiesService.createProcInstance(ProcInstanceDetails procInstanceDetails)`. 
 
-. Для начала загрузите экземпляр описания процесса (<<ProcDefinition,process definition>>) по его коду:
-+
---
-[source, java]
-----
-ProcDefinition procDefinition = dataManager.load(
-        LoadContext.create(ProcDefinition.class)
-                .setQuery(new LoadContext.Query("select pd from bpm$ProcDefinition pd where pd.code = :code")
-                        .setParameter("code", PROCESS_CODE))
-                .setView("procDefinition-procInstanceEdit")
-);
-----
---
+Предположим, мы задеплоили процесс с кодом `orderProcessing`. В процессе объявлены две роли: `manager` и `storekeeper`.
 
-. Затем создайте экземпляр процесса (<<ProcInstance,process instance>>) и свяжите его с описанием процесса и сущностью проекта:
-+
---
-[source, java]
-----
-ProcInstance procInstance = metadata.create(ProcInstance.class);
-procInstance.setProcDefinition(procDefinition);
-procInstance.setObjectEntityId(getItem().getId());
-procInstance.setEntityName(getItem().getMetaClass().getName());
-----
---
-
-. Создайте участников процесса (<<ProcActor,process actors>>), назначив их роли:
-+
---
-[source, java]
-----
-ProcActor manager = metadata.create(ProcActor.class);
-manager.setUser(userSession.getUser());
-manager.setOrder(0);
-manager.setProcInstance(procInstance);
-manager.setProcRole(procDefinition.getProcRoles().get(0));
-----
---
-
-. Свяжите набор участников с экземпляром процесса:
-+
---
-[source, java]
-----
-Set<ProcActor> procActors = new HashSet<>();
-procActors.add(manager);
-procInstance.setProcActors(procActors);
-----
---
-
-. Сохраните созданные сущности участников и процесса в базе данных:
-+
---
-[source, java]
-----
-Set<Entity> committed = dataManager.commit(new CommitContext()
-        .addInstanceToCommit(manager)
-        .addInstanceToCommit(procInstance));
-----
---
-
-. Запустите сохранённый экземпляр процесса:
-+
---
-[source, java]
-----
-ProcInstance committedProcInstance = (ProcInstance) committed.stream()
-        .filter(p -> p.equals(procInstance))
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("Error"));
-
-processRuntimeService.startProcess(committedProcInstance, "Started!", new HashMap<>());
-----
---
-
-В данном примере метод `startProcess()` вызывается в контроллере экрана по нажатию кнопки. Код метода полностью:
+Для создания объекта `ProcInstance` с помощью `BpmEntitiesService` и запуска процесса используется следующий код:
 
 [source, java]
 ----
 include::{sourcesdir}/start_process.java[]
 ----
+
+Этот код создаст новый экземпляр `ProcInstance`. В его свойство `procDefinition` будет проставлена ссылка на ProcDefinition с кодом `orderProcessing` (если процесс с данным кодом не найден, будет выброшено исключение). Коллекция участников процесса (procActors) будет содержать две записи: одна для роли с кодом `manager`, вторая для роли с кодом `storekeeper`. 
+
+`ProcessRuntimeService.startProcess()` запускает процесс, сохраняя объекты ProcInstance и ProcActor в базу данных.

@@ -125,7 +125,48 @@ The following new components have been added:
 
 === BPM Addon
 
-User tasks may have an assignee specified in the _assignee_ property of the User Task node. The property value may be a CUBA user identifier, a process variable holding a user identifier or a service invocation that returns a user identifier. The `ProcActor` object for such cases may be not created beforehand, it will be created automatically. See the {bpm}/user_task.html[BPM manual] for details.
+* User tasks may have an assignee specified in the _assignee_ property of the User Task node. The property value may be a CUBA user identifier, a process variable holding a user identifier or a service invocation that returns a user identifier. The `ProcActor` object for such cases may be not created beforehand, it will be created automatically. See the {bpm}/user_task.html[BPM manual] for details.
+
+* `ProcessRuntimeService.startProcess()` method now accepts not persistent process instances. Previously, before starting a process, an instance of the `ProcInstance` entity had to be persisted. Starting with the current release, the `startProcess()` can perist the process instance and its process actors itself.
+
+* A new service `BpmEntitiesService` contains few methods for searching BPM entities: process instance by code, active process tasks for the user, etc.
++
+Also, the service contains a method `createProcInstance` that allows you not to write boilerplate code for instantiating a new ProcInstnace with ProcActors:
++
+[source, java]
+----
+BpmEntitiesService.ProcInstanceDetails procInstanceDetails = new BpmEntitiesService.ProcInstanceDetails(PROC_DEFINITION_CODE)
+    .addProcActor("manager", userSession.getCurrentOrSubstitutedUser())
+    .addProcActor("storekeeper", someOtherUser)
+    .setEntity(getItem());
+ProcInstance procInstance = bpmEntitiesService.createProcInstance(procInstanceDetails);
+----
+
+* `ProcActionsFrame` API enhancements:
+
+** Methods for settings process variables suppliers were added to the `ProcActionsFrame.Initializer`. Process variable suppliers return a map of process variables that must be added to Activiti process instance on process start or task completion.
+
+** Methods for setting process form screen parameters suppliers were added to the `ProcActionsFrame.Initializer`. These screen parameters suppliers return a map of screen parameters that will be passed to the process form displayed by `StartProcessAction`` or `CompleteTaskAction`.
+
+** `addActionButton()` was added to the `ProcActionsFrame`. It allows adding a custom button to the frame alongside with buttons that were automatically generated.
+
+** Methods for getting automatically generated actions were added to the `ProcActionsFrame`: `getStartProcessAction()`, `getCompleteProcTaskActions()`, `getClaimProcTaskAction()`, `getCancelProcessAction()`. This allows you to disable specific actions, change their captions, etc.
+
+** Standard initialization added to the `ProcActionsFrame.Initializer`.
++
+--
+[source, java]
+----
+procActionsFrame.initializer()
+    .standard()
+    .init(PROCESS_CODE, getItem());
+----
+
+The standard initialization does the following:
+
+* commits the active editor before any process action is performed (start process, complete task, claim task, cancel process)
+* shows a corresponding notification ("Process started", "Task completed", etc.) after the process action is performed and re-initializes the ProcActionsFrame
+--
 
 [[misc]]
 === Miscellaneous
