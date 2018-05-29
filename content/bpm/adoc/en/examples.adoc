@@ -1,20 +1,99 @@
 [[examples]]
 == Examples
 
-[[process_runtime_service_usage]]
-=== Starting a Process Programmatically
+The source code of examples, described in this section, can be found in the `bpm-samples` project at https://github.com/cuba-labs/bpm-samples[GitHub]. You may clone this project, import it with the CUBA Studio and examine all samples.
 
-A convenient way to start a new process from the entity editor is to use the `ProcActionsFrame`, but sometimes a process needs to be started programmatically. To do so, we need to create a new `ProcInstance` object with filled `ProcActor`s collection (if required). The `ProcIntance` object graph may be created in a regular way (using the Metadata bean), but BPM add-on has a <<bpmEntitiesService,handy method>> for this: `BpmEntitiesService.createProcInstance(ProcInstanceDetails procInstanceDetails)`.
+=== Contract Approval Sample
 
-Suppose, we have deployed a process definition with the code `orderProcessing`. This process definition has two roles: `manager` and `storekeeper`.
+The sample demonstrates the usage of custom process forms. To test it, open the `Application - Contracts` screen, create a new contract instance and start the process using the `ProcActionsFrame`. The custom process form will be displayed.
+ 
+Process form XML descriptor: https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/forms/contract/start-contract-approval-form.xml[start-contract-approval-form.xml]
 
-To create a `ProcInstance` object using the `BpmEntitiesService` you may use a code like this:
+Process form Java controller: https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/forms/contract/StartContractApprovalForm.java[StartContractApprovalForm.java]
 
-[source, java]
+Contract editor XML descriptor: https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/contract/contract-edit.xml[contract-edit.xml]
+
+Contract editor Java controller: https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/contract/ContractEdit.java[ContractEdit.java]
+
+Process model name: `Contract approval - 1`
+
+Application screen: `Application - Contracts`
+
+Before the process form may be used, it must be registered in the process forms configuration file: https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/app-bpm-forms.xml[app-bpm-forms.xml]
+
+The `start-contract-approval-form` form functions:
+ 
+1. displays the information about the passed contract
+1. displays the component for entering a timer period (after this period is over, the contract must be automatically approved). The form sets the process variable with the time value that is used in the boundary timer event of the process model
+1. displays the `ProcActorsFrame` for selecting process actors
+ 
+To be able to display the contract entity information in the process form, the contract entity must be passed to the form. In the current sample, the `ProcActionsFrame` is used for working with process actions. The `ProcActionsFrame` has the `setStartProcessActionScreenParametersSupplier()` method to specify form parameters supplier:
+
+[source,java]
 ----
-include::{sourcesdir}/start_process.java[]
+procActionsFrame.initializer()
+    //...
+    .setStartProcessActionScreenParametersSupplier(() -> {
+        Map<String, Object> screenParams = new HashMap<>();
+        screenParams.put("contract", getItem());
+        return screenParams;
+    })
+    //...
 ----
 
-The code above will create a not persistent instance of the `ProcInstance` entity. Its `procDefinition` property will be set to the process definition with the code `orderProcessing` (if such process definition is not found, an exception will be thrown). Also, the process instance object will have two process actors: one for the process role with a code `manager` (the current user), and another one for the process role with a code `storekeeper` (someOtherUser which was evaluated beforehand). If the process definition doesn't have roles with given codes, an exception will be thrown.
+In the `StartContractApprovalForm` controller, you may get the `contract` parameter as a regular window parameter:
 
-After the process instance is created we need to pass it to the `ProcessRuntimeService.startProcess()`. The method will start the process and save the `ProcInstance` and `ProcActors` entities to the database.
+[source,java]
+----
+
+@WindowParam(required = true)
+private Contract contract;
+----
+
+The `getFormResult()` method returns a list of process variables that will be assigned to the Activiti process instance after the form is commited.
+
+[source,java]
+----
+@Override
+public Map<String, Object> getFormResult() {
+    HashMap<String, Object> processVariables = new HashMap<>();
+    processVariables.put("automaticApprovalPeriod", makeTimerExpression(automaticApprovalPeriodField.getValue()));
+    return processVariables;
+}
+----
+
+See the comments in the entity editor and process form source code at GitHub for details.
+
+=== Task Execution Sample
+
+This sample demonstrates the following:
+
+* How to create process actors on process start using the `ProcActionsFrame`
+* How to pass process variables to the process instance using the `ProcActionsFrame`
+* How to get and modify standard process actions created by the `ProcActionsFrame`
+* How to start a process without the `ProcActionsFrame`
+* How to automatically update the `processState` field using the `ActivitiEventListener`
+
+The Task entity editor XML descriptor: https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/task/task-edit.xml[task-edit.xml]
+
+The Task entity editor Java controller: https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/task/TaskEdit.java[TaskEdit.java]
+
+The menu item: `Application - Tasks`
+
+The process model: `Task execution - 1`
+
+In this process, we don't use the `StandardProcForm` to assign process actors. We do it with the help of the before start process predicate of the `ProcActionsFrame`. See the `setBeforeStartProcessPredicate()` method usage in the https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/task/TaskEdit.java[TaskEdit.java]
+
+See the `setStartProcessActionProcessVariablesSupplier()` usage in the https://github.com/cuba-labs/bpm-samples/blob/master/modules/web/src/com/company/bpmsamples/web/task/TaskEdit.java[TaskEdit.java] as an example of how to pass process variables at process start using the `ProcActionsFrame`. The `acceptanceRequired` process variable will be used by one of process gateways.
+
+The `changeStartProcessBtnCaption()` demonstrates that you can get and modify process actions generated by the `ProcActionsFrame`. 
+
+The `startProcessProgrammatically()` method demonstrates how to start a new process instance without the `ProcActionsFrame`.
+
+The https://github.com/cuba-labs/bpm-samples/blob/master/modules/core/src/com/company/bpmsamples/core/bpm/listeners/UpdateProcessStateListener.java[UpdateProcessStateListener.java] is an implementation of the `org.activiti.engine.delegate.event.ActivitiEventListener`. This listener is registered as a process-level listener. It does the following: each time a new process step is reached, the `processState` field of the related `com.company.bpmsamples.entity.Task` entity is updated.
+
+That's how the process-level event listeners configuration looks in the process model.
+
+image::TaskExecution1UpdateProcessStateListener.png[align="center"]
+
+To open this window click somewhere in the modeler, click the "Show advanced properties" link and then to the "Event listeners" property.
