@@ -26,16 +26,7 @@ public class ContractEdit extends AbstractEditor<Contract> {
 
     private void initProcActionsFrame() {
         procActionsFrame.initializer()
-                .setBeforeStartProcessPredicate(this::commit)
-                .setAfterStartProcessListener(() -> {
-                    showNotification(getMessage("processStarted"), NotificationType.HUMANIZED);
-                    close(COMMIT_ACTION_ID);
-                })
-                .setBeforeCompleteTaskPredicate(this::commit)
-                .setAfterCompleteTaskListener(() -> {
-                    showNotification(getMessage("taskCompleted"), NotificationType.HUMANIZED);
-                    close(COMMIT_ACTION_ID);
-                })
+                .standard()
                 .init(PROCESS_CODE, getItem());
     }
 }
