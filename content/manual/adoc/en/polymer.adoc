@@ -127,11 +127,17 @@ sw-precache-config.js:: Config used by https://github.com/GoogleChrome/sw-precac
 
 [[polymer_hot_deploy]]
 ===== Hot Deploy
-When you run and deploy your application using CUBA Studio or gradle the build system will bundle your components according to the configuration in `polymer.json` file. By default, it will bundle the whole application into a single `app-shell.html` file. When you change some of your app components Studio will hot deploy it to the tomcat.  Also, it will replace bundled `app-shell.html` with an unbundled version in order changes to be picked. Keep it in mind if you deploy your application on production directly from `tomcat/webapps`.
+
+When you run and deploy your application using CUBA Studio or Gradle the build system will bundle your components according to the configuration in `polymer.json` file. By default, it will bundle the whole application into a single `app-shell.html` file. When you change some of your app components Studio will hot deploy it to the tomcat.  Also, it will replace bundled `app-shell.html` with an unbundled version in order changes to be picked. Keep it in mind if you deploy your application on production directly from `tomcat/webapps`.
 
 [WARNING]
 ====
 If you use `es5-bundled` build preset, hot deploy will not work as expected since Studio does not perform any JavaScript transpilation on the fly.
+====
+
+[WARNING]
+====
+If you use TypeScript based client you have to run `npm run watch` command manually to hot-deploy changes in components classes.
 ====
 
 [[polymer_tools]]
@@ -318,6 +324,119 @@ This functionality exposed in the corresponding Polymer elements:
 https://elements.polymer-project.org/elements/app-storage?active=app-localstorage-document[app-localstorage-document]
 https://elements.polymer-project.org/elements/app-storage?active=app-indexeddb-mirror[app-indexeddb-mirror].
 
+[[polymer2_typescript]]
+==== TypeScript Support
+
+Since Release 6.9 you can scaffold TypeScript based Polymer client in Studio. When creating Polymer client module you will be able to select `polymer2-typesript` preset of the client. Main differences with basic JavaScript version:
+
+Component classes are placed in separate `*.ts` files::
+
+[source,typescript]
+.myapp-component.ts
+----
+namespace myapp {
+
+  const {customElement} = Polymer.decorators;
+
+  @customElement('myapp-component')
+  class MyappComponent extends Polymer.Element {
+  }
+}
+----
+
+[source,html]
+.myapp-component.html
+----
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<link rel="import" href="./shared-styles.html">
+
+<dom-module id="myapp-component">
+  <template>
+     <!-- some html markup -->
+  </template>
+  <script src="myapp-component.js"></script>
+</dom-module>
+----
+
+There is an additional phase of build process - TypeScript compilation::
+
+See `scripts` section of `package.json`
+
+[source,json]
+----
+{
+  "scripts": {
+    "build": "npm run compile && polymer build",
+    "compile": "tsc",
+    "watch": "tsc -w"
+  }
+}
+----
+
+Now before `polymer build` there is `npm run compile` command which effectively runs TypeScript compilation (`tsc`).
+
+[WARNING]
+====
+If you change the source code of component classes and expect your changes to be picked by Studio's hot deploy you should manually run `npm run watch` command in `modules/polymer-client` directory.
+====
+
+
+[[polymer2_typescript_components]]
+===== Create Polymer Components with TypeScript
+
+TypeScript decorators by Polymer team provide more convenient and less verbose way to create component classes. Let's look at the following example:
+
+[source,typescript]
+----
+/// <reference path="../bower_components/cuba-app/cuba-app.d.ts" />
+/// <reference path="../bower_components/app-layout/app-drawer/app-drawer.d.ts" />
+/// <reference path="../bower_components/app-layout/app-drawer-layout/app-drawer-layout.d.ts" />
+
+namespace myapp {
+
+  // Create shortcuts to decorators
+  const {customElement, property, observe, query} = Polymer.decorators;
+
+  @customElement('myapp-component')
+  class MyappComponent extends (Polymer.mixinBehaviors([CubaAppAwareBehavior, CubaLocalizeBehavior], Polymer.Element) as
+    new () => Polymer.Element & CubaAppAwareBehavior & CubaLocalizeBehavior) {
+
+    @property({type: Boolean})
+    enabled: boolean;
+
+    @property({type: String})
+    caption: string;
+
+    @query('#drawer')
+    drawer: AppDrawerElement;
+
+    @observe('app')
+    _init(app: cuba.CubaApp) {
+      ...
+    }
+
+    @computed('enabled', 'caption')
+    get enabledCaption() {
+      ...
+    }
+  }
+}
+----
+
+* `/// <reference path="..."/>` - allows you to import TypeScript declarations of other elements or libraries.
+
+* `@customElements('element-name')` decorator eliminates necessity to define `static get is()` method and manual invocation of `customElements.define()`.
+
+* `@property()` decorator allows you to specify component's properties.
+
+* `@query('.css-selector')` decorator allows you to select DOM elements of your component.
+
+* `@observe('propertyName')` decorator allows you to define property observers.
+
+* `@computed()` decorator allows you to define computed methods.
+
+See https://github.com/Polymer/polymer-decorators[polymer-decorators] github repository for more examples.
 
 [[polymer_troubleshooting]]
 ==== Troubleshooting
@@ -340,3 +459,18 @@ directory:
 proxy=http://<user>:<password>@<host>:<port>
 https-proxy=http://<user>:<password>@<host>:<port>
 ----
+
+NPM install failed::
+There is a https://github.com/npm/npm/issues/19934[known issue] with `npm install` command on Windows.
+
+You may experience the following error in the build process:
+----
+npm ERR! code EPERM
+npm ERR! errno -4048
+npm ERR! syscall rename
+npm ERR! Error: EPERM: operation not permitted,
+----
+
+As a workaround, you can try to disable Windows Defender/any other antivirus software, make sure you do not open project in any IDE and run build again.
+
+Track the following https://youtrack.cuba-platform.com/issue/STUDIO-4504[issue] for upcoming possible solution.
