@@ -1,89 +1,116 @@
+:proj_bpm_samples: https://github.com/cuba-labs/bpm-samples
+
 [[examples]]
 == Примеры
 
-[[process_runtime_service_usage]]
-=== Программный запуск процесса
+Исходный код примеров, описанных в данном разделе, расположен в проекте *bpm-samples* на {proj_bpm_samples}[GitHub]. Вы можете импортировать проект с помощью CUBA Studio и детально исследовать примеры.
 
-Ниже приведён пример программного запуска отчёта с заданными ролями из контроллера экрана редактирования сущности с помощью сервиса `ProcessRuntimeService`. Полный код данного тестового приложения можно посмотреть  на https://github.com/cuba-platform/sample-sales-bpm[GitHub].
+=== Пример Contract Approval
 
-. Для начала загрузите экземпляр описания процесса (<<ProcDefinition,process definition>>) по его коду:
-+
---
-[source, java]
-----
-ProcDefinition procDefinition = dataManager.load(
-        LoadContext.create(ProcDefinition.class)
-                .setQuery(new LoadContext.Query("select pd from bpm$ProcDefinition pd where pd.code = :code")
-                        .setParameter("code", PROCESS_CODE))
-                .setView("procDefinition-procInstanceEdit")
-);
-----
---
+Пример показывает:
 
-. Затем создайте экземпляр процесса (<<ProcInstance,process instance>>) и свяжите его с описанием процесса и сущностью проекта:
-+
---
-[source, java]
-----
-ProcInstance procInstance = metadata.create(ProcInstance.class);
-procInstance.setProcDefinition(procDefinition);
-procInstance.setObjectEntityId(getItem().getId());
-procInstance.setEntityName(getItem().getMetaClass().getName());
-----
---
+1. Использование кастомных процессных форм
+1. Автоматическое завершение процессных задач по завершению таймера. Длительность таймера устанавливается в кастомной процессной форме запуска процесса
 
-. Создайте участников процесса (<<ProcActor,process actors>>), назначив их роли:
-+
---
-[source, java]
-----
-ProcActor manager = metadata.create(ProcActor.class);
-manager.setUser(userSession.getUser());
-manager.setOrder(0);
-manager.setProcInstance(procInstance);
-manager.setProcRole(procDefinition.getProcRoles().get(0));
-----
---
+Пример использует модель процесса *Contract approval - 1*:
 
-. Свяжите набор участников с экземпляром процесса:
-+
---
-[source, java]
-----
-Set<ProcActor> procActors = new HashSet<>();
-procActors.add(manager);
-procInstance.setProcActors(procActors);
-----
---
+image::examples/ContractApproval1Model.png[align="center"]
 
-. Сохраните созданные сущности участников и процесса в базе данных:
-+
---
-[source, java]
-----
-Set<Entity> committed = dataManager.commit(new CommitContext()
-        .addInstanceToCommit(manager)
-        .addInstanceToCommit(procInstance));
-----
---
+Чтобы посмотреть, как работает пример, откройте экран *Application - Contracts*, создайте новый экземпляр сущность `Contract` и запустите процесс, с помощью `ProcActionsFrame`, расположенного в редакторе сущности. Должна отобразиться кастомная процессная форма.
 
-. Запустите сохранённый экземпляр процесса:
-+
---
-[source, java]
-----
-ProcInstance committedProcInstance = (ProcInstance) committed.stream()
-        .filter(p -> p.equals(procInstance))
-        .findFirst()
-        .orElseThrow(() -> new RuntimeException("Error"));
+Перед тем, как процессная форма может быть использована, она должна быть зарегистрирована в конфигурационном файле процессных форм: {proj_bpm_samples}/blob/master/modules/web/src/app-bpm-forms.xml[app-bpm-forms.xml]
 
-processRuntimeService.startProcess(committedProcInstance, "Started!", new HashMap<>());
-----
---
+Сам файл `app-bpm-forms.xml` должен быть объявлен в `web-app.properties`:
 
-В данном примере метод `startProcess()` вызывается в контроллере экрана по нажатию кнопки. Код метода полностью:
+```
+bpm.formsConfig = +app-bpm-forms.xml
+```
 
-[source, java]
+Функции формы `start-contract-approval-form`:
+ 
+1. Отображает информацию о переданном в форму экземпляре сущности `Contract`
+1. Отображает текстовое поле для ввода значения периода таймера (по истечению заданного периода времени контракт будет автоматически утвержден, и процесс завершится). Форма устанавливает значение процессной переменной, которое впоследствии используется элементом boundary timer event модели процесса.
+1. Отображает `ProcActorsFrame` для задания участников процесса
+
+image::examples/StartContractApprovalForm.png[align="center"]
+ 
+Для того, чтобы форма могла отобразить информацию о сущности `Contract`, экземпляр данной сущности должен быть передан в форму. Текущий пример использует `ProcActionsFrame` для работы с процессными действиями. `ProcActionsFrame` имеет метод `setStartProcessActionScreenParametersSupplier()`, устанавливающий supplier для экранных параметров формы:
+
+[source,java]
 ----
-include::{sourcesdir}/start_process.java[]
+include::{sourcesdir}/examples/ContractApproval1ScreenParametersSupplier.java[]
 ----
+
+После этого в контроллере формы `StartContractApprovalForm` параметр `contract` может быть получен как обычный параметр окна:
+
+[source,java]
+----
+@WindowParam(required = true)
+private Contract contract;
+----
+
+Метод `getFormResult()` возвращает набо процессных переменных, которые должны быть переданы экземпляру процесса Activiti при коммите формы.
+
+[source,java]
+----
+include::{sourcesdir}/examples/ContractApproval1GetFormResult.java[]
+----
+
+В модели процесса переменная `automaticApprovalPeriod` используется для задания значения свойства *Time duration* элемента boundary timer event.
+
+image::examples/StartContractApproval1TimerDuration.png[align="center"]
+
+Больше информации содержится комментариях к исходному коду на GitHub.
+
+XML дескриптор процессной формы: {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/forms/contract/start-contract-approval-form.xml[start-contract-approval-form.xml]
+
+Java контроллер процессной формы: {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/forms/contract/StartContractApprovalForm.java[StartContractApprovalForm.java]
+
+XML дескриптор редактора сущности `Contract`: {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/contract/contract-edit.xml[contract-edit.xml]
+
+Java контроллер редактора сущности `Conract`: {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/contract/ContractEdit.java[ContractEdit.java]
+
+=== Пример Task Execution
+
+Пример показывает:
+
+* Как программно задать участников процесса на старте, используя `ProcActionsFrame`
+* Как передать процессные переменные на старте процесса, используя `ProcActionsFrame`
+* Как получить и изменить стандартные процессные действия, автоматически сгенерированные фреймом `ProcActionsFrame` (например, изменить заголовок кнопки "Запустить процесс")
+* Как программно запустить процесс без использования `ProcActionsFrame`
+* Как с помощью `ActivitiEventListener` автоматически обновлять поле сущности (в данном примере `processState`) при движении по процессу
+
+Пример использует модель *Task execution - 1*:
+
+image::examples/TaskExecution1Model.png[align="center"]
+
+Посмотреть как работает данный пример в приложении можно в экране *Application - Tasks*.
+
+В текущем примере не используется `StandardProcForm`. Для назначения участников процесса мы воспользуемся _before start process predicate_ фрейма `ProcActionsFrame`. См. метод `setBeforeStartProcessPredicate()` в коде {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/task/TaskEdit.java[TaskEdit.java] на GitHub.
+
+Метод `setStartProcessActionProcessVariablesSupplier()` в {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/task/TaskEdit.java[TaskEdit.java] демонстрирует как передать процессные переменные на старте процесса с помощью `ProcActionsFrame`. Процессная переменная `acceptanceRequired` будет использоваться одним из gateway в процессе для принятия решения, должен ли процесс выполнения задачи завершиться, либо же задача должна уйти инициатору для утверждения.
+
+Метод `changeStartProcessBtnCaption()` показывает как можно получить действие запуска процесса, которое было автоматически создано фреймом `ProcActionsFrame`, и поменять заголовок кнопки "Start process" на любой произвольный.
+
+Метод `startProcessProgrammatically()` демонстрирует как программно запустить процесс без использования фрейма `ProcActionsFrame`.
+
+[source,java]
+----
+include::{sourcesdir}/examples/TaskExecution1StartProgrammatically.java[]
+----
+
+{proj_bpm_samples}/blob/master/modules/core/src/com/company/bpmsamples/core/bpm/listeners/UpdateProcessStateListener.java[UpdateProcessStateListener.java] - это реализация интерфейса `org.activiti.engine.delegate.event.ActivitiEventListener`. Данный слушатель зарегистрирован на уровне процесса. Он выполняет следующее: каждый раз, когда процесс входит в новое состояние, в поле `processState` связанной с процессом сущности `com.company.bpmsamples.entity.Task` проставляется имя текущего шага процесса.
+
+Конфигурация данного слушателя в модели процесса:
+
+image::examples/TaskExecution1UpdateProcessStateListener.png[align="center"]
+
+Для открытия данного экрана необходимо щёлкнуть в пусто место в моделере, затем *Show advanced properties*, и далее *Event listeners*.
+
+Больше информации содержится комментариях к исходному коду на GitHub.
+
+XML дескриптор редактора сущности `Task`: {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/task/task-edit.xml[task-edit.xml]
+
+Java контроллер редактора сущности `Task`: {proj_bpm_samples}/blob/master/modules/web/src/com/company/bpmsamples/web/task/TaskEdit.java[TaskEdit.java]
+
+Слушатель Activiti, обновляющий поле `processState`: {proj_bpm_samples}/blob/master/modules/core/src/com/company/bpmsamples/core/bpm/listeners/UpdateProcessStateListener.java[UpdateProcessStateListener.java]
