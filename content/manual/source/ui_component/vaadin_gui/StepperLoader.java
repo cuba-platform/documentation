@@ -1,6 +1,6 @@
-package com.company.addonguidemo.gui.xml.layout.loaders;
+package com.company.addonguidemo.web.gui.xml.layout.loaders;
 
-import com.company.addonguidemo.gui.components.Stepper;
+import com.company.addonguidemo.web.gui.components.Stepper;
 import com.haulmont.cuba.gui.xml.layout.loaders.AbstractFieldLoader;
 
 public class StepperLoader extends AbstractFieldLoader<Stepper> {

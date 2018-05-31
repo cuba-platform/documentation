@@ -14,10 +14,8 @@ public class CustomerEdit extends AbstractEditor<Customer> {
 
     @Inject
     private FieldGroup fieldGroup;
-
     @Inject
     private Datasource<Customer> customerDs;
-
     @Inject
     private BoxLayout scoreBox;
 
@@ -28,10 +26,9 @@ public class CustomerEdit extends AbstractEditor<Customer> {
 
         Layout box = (Layout) WebComponentsHelper.unwrap(scoreBox);
         box.addComponent(stepper);
-
+        stepper.setWidth("250px");
         fieldGroup.addField(fieldGroup.createField("score"));
 
-        stepper.setSizeFull();
         stepper.addValueChangeListener(event ->
                 customerDs.getItem().setValue("score", event.getProperty().getValue())
         );

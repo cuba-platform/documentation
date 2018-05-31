@@ -1,7 +1,8 @@
-package com.company.addonguidemo.gui.components;
+package com.company.addonguidemo.web.gui.components;
 
 import com.haulmont.cuba.gui.components.Field;
 
+// note that Stepper should extend Field
 public interface Stepper extends Field {
 
     String NAME = "stepper";
