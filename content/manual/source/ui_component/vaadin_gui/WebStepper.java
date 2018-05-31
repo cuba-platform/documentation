@@ -1,9 +1,10 @@
 package com.company.addonguidemo.web.gui.components;
 
-import com.company.addonguidemo.gui.components.Stepper;
+import com.company.addonguidemo.web.gui.components.Stepper;
 import com.haulmont.cuba.web.gui.components.WebAbstractField;
 import org.vaadin.risto.stepper.IntStepper;
 
+// note that WebStepper should extend WebAbstractField
 public class WebStepper extends WebAbstractField<IntStepper> implements Stepper {
     public WebStepper() {
         this.component = new org.vaadin.risto.stepper.IntStepper();
