@@ -268,7 +268,6 @@ image::cookbook/composition_recipe_3.png[align="center"]
 
 * {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_1/CustomerEdit.java[CustomerEdit.java] - контроллер экрана. В нем определен метод `initNewItem()`, который создает новый экземпляр `CustomerDetails` и устанавливает его в новый `Customer`. Созданный экземпляр будет доступен через вложенный источник данных и сохранен в базе данных когда экран будет закоммичен.
 
-
 [[composition_recipe]]
 ==== Редактирование композитных сущностей
 
@@ -291,11 +290,11 @@ image::cookbook/composition_recipe_1.png[align="center"]
 
 * {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Terminal.java[Terminal.java] - сущность `Terminal` содержит обязательную ссылку на `Airport`.
 +
-В редакторе сущностей Studio установите следующие свойства для аттрибута `airport`: *Attribute type* - ASSOCIATION, *Cardinality* - MANY_TO_ONE, *Mandatory* - on.
+В редакторе сущностей Studio установите следующие свойства для атрибута `airport`: *Attribute type* - ASSOCIATION, *Cardinality* - MANY_TO_ONE, *Mandatory* - on.
 
 * {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - сущность `Airport` содержит one-to-many коллекцию терминалов. Соответствующее поле аннотировано <<composition_annotation,@Composition>> для реализации композиции, и <<onDelete_annotation,@OnDelete>> для каскадного мягкого удаления.
 +
-В редакторе сущностей Studio установите следующие свойства для аттрибута `terminals`: *Attribute type* - COMPOSITION, *Cardinality* - ONE_TO_MANY, *On delete* - CASCADE.
+В редакторе сущностей Studio установите следующие свойства для атрибута `terminals`: *Attribute type* - COMPOSITION, *Cardinality* - ONE_TO_MANY, *On delete* - CASCADE.
 
 * {proj_model}/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - <<views,представление>> `airport-terminals` экрана редактирования аэропорта содержит атрибут-коллекцию `terminals`. Для этого атрибута используется представление `_local`, так как атрибут `airport` сущности `Terminal` устанавливается только во время создания экземпляра `Terminal` и никогда не изменяется после этого, поэтому загружать его не требуется.
 
@@ -340,7 +339,6 @@ image::cookbook/composition_recipe_2.png[align="center"]
 
 В результате измененные эземпляры `MeetingPoint`, так же как и экземпляры `Terminal`, будут сохраняться в базу данных только вместе с экземпляром `Airport` в одной транзакции.
 
-
 [[composition_deep3_recipe]]
 ===== One-to-Many: три уровня вложенности
 
@@ -373,7 +371,6 @@ CUBA может обеспечить работу с композициями с
 ** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_3/airport/airport-browse.xml[airport-browse.xml] содержит standalone источник данных для списка терминалов. Он связан с источником аэропортов, и загружает терминалы только для выбранного аэропорта.
 
 ** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_3/airport/AirportBrowse.java[AirportBrowse.java] - здесь, в методе `init()` браузера аэропорта, мы управляем состоянием enabled действия создания терминала и передаем выбранный экземпляр аэропорта для инициализации ссылки в создаваемом терминале.
-
 
 [[composition_oto_recipe]]
 ===== Композиция One-to-One
@@ -409,6 +406,138 @@ image::cookbook/composition_recipe_oto_2.png[align="center"]
 * Когда пользователь нажимает *OK* в редакторе `Customer`, измененный экземпляр `Customer` вместе с экземпляром `CustomerDetails` отправляется в метод `DataManager.commit()` на средний слой и сохраняется в БД в одной транзакции.
 
 * Если пользователь вызывает `ClearAction` в поле выбора, экземпляр `CustomerDetails` удаляется и ссылка на него очищается в одной транзакции после коммита редактора `Customer`.
+
+[[association_mtm]]
+==== Ассоциация Many-to-Many
+
+В ассоциации many-to-many множество записей в одной таблице может быть связано со множеством записей в другой таблице, при этом первичные ключи обеих связанных сущностей хранятся в отдельной связующей таблице. При необходимости связующая таблица может содержать дополнительные поля.
+
+В зависимости от того, нужны ли вам дополнительные поля в связующей таблице, отношения many-to-many можно реализовать с использованием связующей сущности или без неё. Далее мы рассмотрим оба подхода.
+
+[[association_mtm_recipe_1]]
+===== Прямая ассоциация Many-to-Many
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airline.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Рассмотрим реализацию ассоциации many-to-many на примере сущностей `Airport` и `Airline`. Один аэропорт может принимать множество авиакомпаний, и одна авиакомпания-перевозчик, в свою очередь, может осуществлять рейсы во множество аэропортов.
+
+image::cookbook/association_recipe_1.png[align="center"]
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - сущность `Airport` содержит many-to-many список авиакомпаний.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `airlines`: *Attribute type* - `ASSOCIATION`, *Cardinality* - `MANY_TO_MANY`.
++
+Сущность `Airport` будет отмечена ведущей стороной ассоциации, и Studio предложит создать соответствующий атрибут `airports` в сущности `Airline` на противоположной стороне отношений.
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_AIRLINE_AIRPORT_LINK",
+    joinColumns = @JoinColumn(name = "AIRPORT_ID"),
+    inverseJoinColumns = @JoinColumn(name = "AIRLINE_ID"))
+@ManyToMany
+protected List<Airline> airlines;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airline.java[Airline.java] - сущность `Airline` теперь содержит many-to-many список аэропортов: *Attribute type* - `ASSOCIATION`, *Cardinality* - `MANY_TO_MANY`.
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_AIRLINE_AIRPORT_LINK",
+    joinColumns = @JoinColumn(name = "AIRLINE_ID"),
+    inverseJoinColumns = @JoinColumn(name = "AIRPORT_ID"))
+@ManyToMany
+protected List<Airport> airports;
+----
++
+Сущность `Airline` также будет отмечена как ведущая сторона отношений, что позволяет редактировать коллекции с обеих сторон.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - представление `airport-airlines` экрана редактирования аэропорта содержит ссылки на  авиакомпании с представлением `_minimal`. Представление `airline-airports`, в свою очередь, также содержит ссылки на аэропорты.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[airport-edit.xml] - XML-дескриптор экрана редактирования аэропорта определяет источник данных для экземпляра аэропорта и вложенный источник для его авиакомпаний. Кроме того, экран содержит таблицу, отображающую авиакомпании, и действия https://doc.cuba-platform.com/manual-latest/list_actions.html#addAction[add] и https://doc.cuba-platform.com/manual-latest/list_actions.html#removeAction[remove] для неё.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airline/airline-edit.xml[airline-edit.xml] - XML-дескриптор экрана редактирования авиакомпании определяет источник данных для экземпляра авиакомпании и вложенный источник данных для её аэропортов. Кроме того, экран содержит таблицу, отображающую аэропорты, и действия *add* и *remove*.
++
+Таким образом, экраны редактирования сущностей `Airport` и `Airline` полностью симметричны.
+
+В результате редактирование экземпляра авиакомпании работает следующим образом:
+
+В экране редактирования авиакомпании отображается список аэропортов.
+
+Пользователь может нажать *Add* и в открывшемся https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-browse.xml[экране выбора] сущности `Airport` либо выбрать аэропорт, который нужно добавить, либо открыть экран его редактирования. При нажатии *OK* в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[экране редактирования] аэропорта изменённый экземпляр аэропорта сохраняется как в базу данных, так и в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airline/airline-edit.xml#L12[источник данных] `airportsDs` экрана редактирования авиакомпании, так как сущность `Airport` является полностью независимой.
+
+Пользователь может создавать новые аэропорты или удалять их, и все изменения будут сохраняться и в базу данных в отдельных транзакциях, и в источник данных `airportsDs`.
+
+Пользователь нажимает *OK* в экране редактирования авиакомпании, и изменённый экземпляр `Airline` вместе со всеми ссылками на экземпляры `Airport` отправляется на middleware в метод <<dataManager,DataManager>>.commit(), чтобы быть сохранённым в базе данных.
+
+На другой стороне отношений в экране редактирования сущности `Aiport` работает ровно тот же принцип.
+
+[[association_mtm_recipe_2]]
+===== Ассоциация Many-to-Many через связующую сущность
+
+Отношения many-to-many всегда требуют создания связующей таблицы в базе данных, однако создание отдельной сущности для отражения этой таблицы является опциональным. Связующую сущность необходимо создать в том случае, если вы хотите хранить в связующей таблице некие дополнительные поля.
+
+Продемонстрируем этот подход на примере сущностей `Airport` и `DutyFree`. В одном аэропорту может располагаться множество разных сетей магазинов беспошлинной торговли, и одна сеть duty-free может быть представлена во множестве разных аэропортов. Предположим, что кроме связи сущностей мы хотим хранить ещё и валюту, используемую в данном магазине в данном аэропорту:
+
+image::cookbook/association_recipe_2.png[align="center"]
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - сущность `Airport` содержит one-to-many коллекцию экземпляров  `AirportDutyFree`.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `dutyFreeShops`: *Attribute type* - `COMPOSITION`, *Cardinality* - `ONE_TO_MANY`.
++
+[source, java]
+----
+@Composition
+@OnDelete(DeletePolicy.CASCADE)
+@OneToMany(mappedBy = "airport")
+protected List<AirportDutyFree> dutyFreeShops;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/DutyFree.java[DutyFree.java] - сущность `DutyFree` также содержит one-to-many коллекцию экземпляров  `AirportDutyFree`.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `airports`: *Attribute type* - `COMPOSITION`, *Cardinality* - `ONE_TO_MANY`.
++
+[source, java]
+----
+@Composition
+@OnDelete(DeletePolicy.CASCADE)
+@OneToMany(mappedBy = "dutyFree")
+protected List<AirportDutyFree> airports;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/AirportDutyFree.java[AirportDutyFree.java] - таким образом, связующая сущность `AirportDutyFree` содержит два ссылочных атрибута с отношением many-to-one: `airport` и `dutyFree`:
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "AIRPORT_ID")
+protected Airport airport;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "DUTY_FREE_ID")
+protected DutyFree dutyFree;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - представление `airport-duty-free` экрана редактирования аэропорта содержит атрибут-коллекцию `dutyFreeShops` (со ссылками на `AirportDutyFree`), а в ней атрибуты `dutyFree` и `currency`.
++
+Представление `dutyFree-airport` следует той же логике: оно содержит атрибут-коллекцию `airports` (со ссылками на `AirportDutyFree`), а в ней атрибуты `airport` и `currency`.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/duty-free-edit.xml[duty-free-edit.xml] - XML-дескриптор экрана редактирования магазина duty-free определяет источник данных для экземпляра `DutyFree` и вложенный источник для его аэропортов. Кроме того, экран содержит таблицу, отображающую аэропорты, и действие, позволяющее выбирать аэропорт напрямую, минуя экран редактирования связующей сущности `AirportDutyFree`.
+
+В результате редактирование экземпляра `DutyFree` работает следующим образом:
+
+В экране редактирования `DutyFree` отображается таблица аэропортов и выпадающий список валют.
+
+По нажатию *Add airport* открывается экран выбора `Airport`, и пользователь может как выбрать аэропорт, так и открыть экран его редактирования. Когда экземпляр аэропорта выбран, создаётся https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/DutyFreeEdit/java#L29[новый экземпляр] сущности `AirportDutyFree`, которому проставляется валюта по умолчанию. Этот экземпляр связующей сущности не сохраняется в базу данных, а добавляется в источник данных `airportsDs` экрана редактирования `DutyFree`.
+
+Когда пользователь нажимает *OK* в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[экране редактирования аэропорта], изменённый экземпляр аэропорта сохраняется и в базу данных, и в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/duty-free-edit.xml#L12[источник данных] `airportsDs` экрана редактирования `DutyFree`, так как сущность `Airport` является полностью независимой.
+
+Пользователь может сохранять новые аэропорты или удалять их, и все изменения будут сохраняться в базу данных в отдельных тракзакциях, а также в источник данных `airportsDs`.
+
+Когда пользователь нажимает *OK* в экране редактирования магазина, изменённый экземпляр `DutyFree` вместе со всеми измененными экземплярами `AirportDutyFree` отправляется на middleware в метод  <<dataManager,DataManager>>.commit() и сохраняется в базе данных в рамках одной транзакции.
 
 [[entity_inheritance]]
 ==== Наследование сущностей
