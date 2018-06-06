@@ -1,4 +1,7 @@
 @Inject
+private Metadata metadata;
+
+@Inject
 protected LookupField colourField;
 
 @Inject
@@ -10,7 +13,7 @@ public void init(Map<String, Object> params) {
     colourField.setNewOptionHandler(new LookupField.NewOptionHandler() {
         @Override
         public void addNewOption(String caption) {
-            Colour colour = new Colour();
+            Colour colour = metadata.create(Colour.class);
             colour.setName(caption);
             coloursDs.addItem(colour);
             colourField.setValue(colour);
