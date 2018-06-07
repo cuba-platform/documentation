@@ -1413,6 +1413,295 @@ In this example, `conditions` collection contains not only condition objects, bu
 
 Notice that the `view` parameter is also passed in the request body.
 
+[[app_components_recipes]]
+=== Working with Application Components
+
+Any CUBA application can be used as a <<app_components,component>> of another application. An application component is a full-stack library providing functionality on all layers - from database schema to business logic and UI.
+
+[[app_components_develop]]
+==== Creating App Components
+
+Naming rules::
++
+--
+. Choose the root package using the standard reverse-DNS notation, e.g. `com.jupiter.amazingsearch`.
++
+Root package should not begin with a root package of any other component or application. For example, if you have an application with `com.jupiter.tickets` root package, you cannot use `com.jupiter.tickets.amazingsearch` package for a component. The reason is that Spring scans the classpath for the beans starting from the specified root package, and this scanning space must be unique for each component.
+
+. Namespace is used as a prefix for DB tables, so for a public component it should be composite, like `jptams`, not just `search`. It will minimize the risk of name collisions in the target application. You cannot use underscores and dashes in namespace, only letters and digits.
+
+. Module prefix should repeat namespace, but can contain dashes, like `jpt-amsearch`.
+
+. Use namespace as a prefix for bean names and application properties, for example:
++
+[source, java]
+----
+@Component("jptams_Finder")
+@Property("jptams.ignoreCase")
+----
+--
+
+[[app_components_deploy]]
+==== Installing App Components
+
+[[app_components_install_local]]
+Deployment into local Maven repository::
++
+--
+. Click to the *App component descriptor* link on the *Project properties* panel. Save the generated <<app-component.xml,descriptor>> by clicking *OK*.
+
+. Install the application component into the local Maven repository by executing the *Run > Install app component* menu command. This command just runs the `install` Gradle task after stopping Gradle daemons.
+--
+
+[[app_components_install_remote]]
+Deployment into remote Maven repository::
++
+--
+. Set up a repository as explained in <<private_repo>>.
+
+. Open `build.gradle` of the component project in a text editor. Replace the repository and its credentials in `buildscript/repositories` section and add the `uploadRepository` to the `cuba` section:
++
+[source,groovy]
+----
+include::{sourcesdir}/cookbook/app_comp_upload_1.groovy[]
+----
+
+. Run the  `gradle assemble` task in command line of the application component project root directory. This ensures your new repository caches CUBA artifacts required for working in Studio.
+
+. In the Studio server window, specify your repository and credentials instead of the standard CUBA repository. Start the Studio server.
+
+. Open the application component project in Studio.
+
+. In the Studio *Search* dialog (Alt-/), find the `uploadArchives` Gradle task and run it. You can also run this task from the command line. The component's artifacts will be uploaded to your repository.
+
+. Remove the component artifacts from your local Maven repository to ensure that they will be downloaded from the remote repository during the next assembling: just delete the `.m2/repository/com/company` folder located in your user home directory.
+
+. Open the application component in Studio. The repository URL in its `build.gradle` will be automatically changed to the one specified in the Studio server window.
+
+. Now, when you assemble and run the application that uses this component, it will be downloaded from the remote repository.
+--
+
+[[app_components_install_local]]
+Deployment into Bintray repository::
++
+--
+. Register at https://bintray.com/signup/oss2
+
+. Get the Bintray user name. It can be found in the URL you see after login to Bintray. For example, in `\https://bintray.com/vividphoenix` the `vividphoenix` is the user name.
+
+. Get the API key. It can be found in Bintray interface if you edit your profile.
+
+. Create a public repository of _Maven_ type. Setting a license type is mandatory for open source (OSS) repositories.
+
+. In your `build.gradle`, add the Bintray upload plugin dependency as follows:
++
+[source, groovy]
+----
+include::{sourcesdir}/cookbook/bintray_plugin.groovy[]
+----
+
+. At the end of `build.gradle`, add the Bintray plugin settings:
++
+[source, groovy]
+----
+include::{sourcesdir}/cookbook/bintray_plugin_settings.groovy[]
+----
+
+. Create environment variables with Bintray credentials:
++
+[source, plain]
+----
+BINTRAY_USER=your_bintray_user
+BINTRAY_API_KEY=9696c1cb90752357ded8fdf20eb3fa921bf9dbbb
+----
+
+. Now you can build and upload the project with the following command:
++
+[source, plain]
+----
+./gradlew clean assemble bintrayUpload -Pcuba.artifact.version=1.0.0
+----
++
+Alternatively, you can provide Binrtray credentials in the command line:
++
+[source, plain]
+----
+./gradlew clean assemble bintrayUpload -Pcuba.artifact.version=1.0.0 -PbintrayUser=your_bintray_user -PbintrayApiKey=9696c1cb90752357ded8fdf20eb3fa921bf9dbbb
+----
+--
+
+[[app_components_add]]
+==== Adding App Components to Your Application
+
+Below ar the instructions on how to add an application component to your project from different sources.
+
+From Studio with binaries::
++
+--
+. On the *App components* panel of *Project Properties* click the plus button next to *Custom components*.
+
+. In the *Custom application component* dialog, select the component in the *Registered project* drop-down list. The list contains all project registered in Studio that have an `app-component.xml` descriptor.
++
+If the component was not registered in Studio, you can enter its coordinates directly in the *Coordinates field*, for example:
++
+[source, plain]
+----
+com.company.customers:cust-global:0.1-SNAPSHOT
+----
+
+. Click *OK* in the dialog. The Maven coordinates of the component will appear in the list of custom components. Save the project properties by clicking *OK*.
+
+[TIP]
+====
+If the application component is installed into a <<app_components_install_local,local>> Maven repository, don't forget to check the *Use local Maven repository* checkbox on the *Advanced* tab of *Project Properties*.
+====
+--
+
+From build.gradle with binaries::
++
+--
+Add the component as a dependency in your project's `build.gradle`:
+
+[source, groovy]
+----
+dependencies {
+    appComponent("com.haulmont.cuba:cuba-global:$cubaVersion")
+    appComponent("com.company.customers:cust-global:2.0.+")
+}
+----
+
+[TIP]
+====
+If the component is installed in Bintray, set Bintray as the main repository for your project. It can be done in Studio's *Project properties* or directly in `build.gradle`:
+
+[source, groovy]
+----
+buildscript {
+   repositories {
+       maven {
+           url 'https://dl.bintray.com/cuba-platform/main'
+       }
+   }
+}
+----
+====
+--
+
+From sources on Github::
++
+--
+. Import the GitHub project in Studio by clicking *Import* > *Git*.
+
+. Generate the app component descriptor.
+
+. Invoke *Run > Install app component* command to install the component into the local Maven repository.
+
+. Open your project in Studio and check the *Use local Maven repository* checkbox on the *Advanced* tab of *Project Properties*.
+
+. Add the component's dependency to the project using *App components > Custom components (+)*, as described above.
+--
+
+[[app_components_sample]]
+==== App Component Example
+
+In this section, we'll consider a complete example of creating an application component and using it in a project. The component will provide a "Customer Management" functionality and include the `Customer` entity and corresponding UI screens. The application will use the `Customer` entity from the component as a reference in its `Order` entity.
+
+image::app_components_sample.png[align="center"]
+
+Creating the Customer Management component::
+
+. Create a new project in Studio and specify the following properties on the *New project* screen:
+
+* *Project name* - `customers`
+
+* *Project namespace* - `cust`
+
+* *Root package* - `com.company.customers`
+
+. Edit *Project properties* and on the *Advanced* tab, set the *Module prefix* to `cust`.
+
+. Create the `Customer` entity with at least the `name` attribute. Switch to the *Instance name* tab and add `name` to the name pattern attributes.
++
+[WARNING]
+====
+If your component contains `@MappedSuperclass` persistent classes, make sure they have descendants which are entities (i.e. annotated with `@Entity`) in the same project. Otherwise such base classes will not be properly enhanced and you will not be able to use them in applications.
+====
+
+. Generate DB scripts and create standard screens for the `Customer` entity: `cust$Customer.browse` and `cust$Customer.edit`. After that, go to main menu designer and rename the `application` menu item to `customerManagement`.
+
+. Click to the *App component descriptor* link on the *Project properties* panel. Save the generated descriptor by clicking *OK*.
+
+. Test the Customer Management functionality: *Run > Create database*, *Run > Start application server*, then open `++http://localhost:8080/cust++` in your web browser.
+
+. Install the application component into the local Maven repository by executing the *Run > Install app component* menu command.
+
+Creating the Sales application::
+
+. Create a new project in Studio and specify the following properties on the *New project* screen:
+
+* *Project name* - `sales`
+
+* *Project namespace* - `sales`
+
+* *Root package* - `com.company.sales`
+
+. Edit *Project properties* and on the *Advanced* tab check *Use local Maven repository* checkbox.
+
+. Switch back to the *Main* tab and on the *App components* panel click the plus button next to *Custom components*. In the *Custom application component* dialog, select the `customers` project in the *Registered project* drop-down list. The list contains all projects registered in Studio that have an `app-component.xml` descriptor. Click *OK* in the dialog. The Maven coordinates of the Customer Management component will appear in the list of custom components. Save the project properties by clicking *OK*.
+
+. Create the `Order` entity and add the `date` and `amount` attributes. Then add the `customer` attribute as a many-to-one association with the `Customer` entity - it should be available in the *Type* drop-down list.
+
+. Generate DB scripts and create standard screens for the `Order` entity. When creating standard screens, create an `order-with-customer` view that includes the `customer` attribute and use it for the screens.
+
+. Test the application functionality: *Run > Create database*, *Run > Start application server*, then open `++http://localhost:8080/app++` in your web browser. The application will contain two top level menu items: *Customer Management* and *Application* with the corresponding functionality.
+
+Modifying the Customer Management component::
+
+Suppose we have to change the component functionality (add an attribute to `Customer`) and then reassemble the application to incorporate the changes.
+
+. Open the `customers` project in Studio.
+
+. Edit the `Customer` entity and add the `address` attribute. When saving the entity, select both browser and editor screens to include the new attribute.
+
+. Generate DB scripts - a script for altering table will be created. Save the scripts.
+
+. Test the changes in the component: *Run > Update database*, *Run > Start application server*, then open `++http://localhost:8080/cust++` in your web browser.
+
+. Re-install the application component into the local Maven repository by executing the *Run > Install app component* menu command.
+
+. Close the `sales` project in Studio (if it is open) and open it again. This is necessary to download the new component source code in Studio.
+
+. Execute *Build > Clean*, then *Build > Assemble project* menu commands.
+
+. Execute *Run > Update database* - the update script from the Customer Management component will be executed.
+
+. Execute *Run > Start application server* and open `++http://localhost:8080/app++` in your web browser - the application will contain the `Customer` entity and screens with the new `address` attribute.
+
+[[servlet_registration_sample]]
+==== Registering DispatcherServlet from Application Component
+
+This section will learn you how to propagate the servlets and filters configuration from an application <<app_components,component>> to the owning application. To avoid the duplication of code in the <<web.xml,web.xml>> file, you need to register your servlets and filters in the component using the special `ServletRegistrationManager` bean.
+
+The most common case of servlets registration is described through the example of <<servlet_registration,HTTP servlet registration>>. Let's consider a more complex example: an application component with a custom implementation of `DispatcherServlet` for processing web requests.
+
+This servlet loads its config from the `demo-dispatcher-spring.xml` file, so to see it working you should create an empty file with such name in the root source directory (e.g. `web/src`).
+
+[source,java]
+----
+include::{sourcesdir}/cookbook/servlet_sample.java[]
+----
+
+To register `DispatcherServlet`, you have to load the class manually, instantiate it and initialize, otherwise different ClassLoaders may cause an issue in case of SingleWAR/SingleUberJAR <<deployment_variants,deployment>>. Moreover, the custom `DispatcherServlet` should be ready to double initialization - first time we initialize it manually, second time it is initialized by a servlet container.
+
+Here is an example of a component that initializes `WebDispatcherServlet`:
+
+[source,java]
+----
+include::{sourcesdir}/cookbook/servlet_sample_2.java[]
+----
+
+The `createServlet()` method of the injected `ServletRegistrationManager` bean takes the application <<appContext,context>> from `ServletContextInitializedEvent` and the fully-qualified name of the `WebDispatcherServlet` class. In order to initialize the servlet, we pass the instance of `ServletContext` obtained from `ServletContextInitializedEvent` and the servlet name. The `addMapping()` method is used to define an HTTP mapping for accessing the servlet via URL: `/webd/`.
+
 [[misc_recipes]]
 === Miscellaneous
 
@@ -1668,136 +1957,6 @@ include::{sourcesdir}/cookbook/sending_emails_3.properties[]
 Restart the application server. Go to *Administration > JMX Console*, find the `Emailer` JMX bean and try to send a test email to yourself using the `sendTestEmail()` operation.
 
 . Now your sending mechanism is set up correctly, but it will not send the messages in the `Not sent` state. So you have to create another `NewsItem` in the editor screen. Do it and then watch how the status of new messages in the *Email History* screen will change to `Sent`.
-
-[[app_components_sample]]
-==== Using Application Components
-
-Any CUBA application can be used as a <<app_components,component>> of another application. An application component is a full-stack library providing functionality on all layers - from database schema to business logic and UI.
-
-In this section, we'll consider an example of creating an application component and using it in a project. The component will provide a "Customer Management" functionality and include the `Customer` entity and corresponding UI screens. The application will use the `Customer` entity from the component as a reference in its `Order` entity.
-
-image::app_components_sample.png[align="center"]
-
-Creating the Customer Management component::
-
-. Create a new project in Studio and specify the following properties on the *New project* screen:
-
-* *Project name* - `customers`
-
-* *Project namespace* - `cust`
-
-* *Root package* - `com.company.customers`
-
-. Edit *Project properties* and on the *Advanced* tab, set the *Module prefix* to `cust`. This is necessary to assemble component artifacts with names different from the default `app`.
-
-. Create the `Customer` entity with at least the `name` attribute. Switch to the *Instance name* tab and specify add `name` to the name pattern attributes.
-+
-[WARNING]
-====
-If your component contains `@MappedSuperclass` persistent classes, make sure they have descendants which are entities (i.e. annotated with `@Entity`) in the same project. Otherwise such base classes will not be properly enhanced and you will not be able to use them in applications.
-====
-
-. Generate DB scripts and create standard screens for the `Customer` entity: `cust$Customer.browse` and `cust$Customer.edit`. After that, go to main menu designer and rename the `application` menu item to `customerManagement`.
-
-. Click to the *App component descriptor* link on the *Project properties* panel. Save the generated <<app-component.xml,descriptor>> by clicking *OK*.
-
-. Test the Customer Management functionality: *Run > Create database*, *Run > Start application server*, then open `++http://localhost:8080/cust++` in your web browser.
-
-. Install the application component into the local Maven repository by executing the *Run > Install app component* menu command. This command just runs the `install` Gradle task after stopping Gradle daemons.
-
-Creating the Sales application::
-
-. Create a new project in Studio and specify the following properties on the *New project* screen:
-
-* *Project name* - `sales`
-
-* *Project namespace* - `sales`
-
-* *Root package* - `com.company.sales`
-
-. Edit *Project properties* and on the *App components* panel click the plus button next to *Custom components*. In the *Custom application component* dialog, select the `customers` project in the *Registered project* drop-down list. The list contains all project registered in Studio that have an `app-component.xml` descriptor. Click *OK* in the dialog. The Maven coordinates of the Customer Management component will appear in the list of custom components. Save the project properties by clicking *OK*.
-
-. Create the `Order` entity and add the `date` and `amount` attributes. Then add the `customer` attribute as a many-to-one association with the `Customer` entity - it should be available in the *Type* drop-down list.
-
-. Generate DB scripts and create standard screens for the `Order` entity. When creating standard screens, create a `order-with-customer-view` view that includes the `customer` attribute and use it for the screens.
-
-. Test the application functionality: *Run > Create database*, *Run > Start application server*, then open `++http://localhost:8080/app++` in your web browser. The application will contain two top level menu items: *Customer Management* and *Application* with the corresponding functionality.
-
-Modifying the Customer Management component::
-
-Suppose we have to change the component functionality (add an attribute to `Customer`) and then reassemble the application to incorporate the changes.
-
-. Open the `customers` project in Studio.
-
-. Edit the `Customer` entity and add the `address` attribute. When saving the entity, select both browser and editor screens to include the new attribute.
-
-. Generate DB scripts - a script for altering table will be created. Save the scripts.
-
-. Test the changes in the component: *Run > Update database*, *Run > Start application server*, then open `++http://localhost:8080/cust++` in your web browser.
-
-. Re-install the application component into the local Maven repository by executing the *Run > Install app component* menu command.
-
-. Close the `sales` project in Studio (if it is open) and open it again. This is necessary to download the new component source code in Studio.
-
-. Execute *Build > Clean*, then *Build > Assemble project* menu commands.
-
-. Execute *Run > Update database* - the update script from the Customer Management component will be executed.
-
-. Execute *Run > Start application server* and open `++http://localhost:8080/app++` in your web browser - the application will contain the `Customer` entity and screens with the new `address` attribute.
-
-Sharing the Customer Management component::
-
-You can share the application component by uploading it to a remote Maven repository.
-
-. Stop the Studio server.
-
-. Set up a repository as explained in <<private_repo>>.
-
-. Open `build.gradle` of the `customers` project in a text editor. Replace the repository and its credentials in `buildscript/repositories` section and add the `uploadRepository` to the `cuba` section:
-+
-[source,groovy]
-----
-include::{sourcesdir}/cookbook/app_comp_upload_1.groovy[]
-----
-
-. Open the command line and run `gradle assemble` in the `customers` project root directory. This ensures your new repository caches CUBA artifacts required for working in Studio.
-
-. In the Studio server window, specify your repository and credentials instead of the standard CUBA repository. Start the Studio server.
-
-. Open the `customers` project in Studio.
-
-. In the Studio *Search* dialog (Alt-/), find the `uploadArchives` Gradle task and run it. You can also run this task from the command line. The Customer Management component artifacts will be uploaded to your repository.
-
-. Remove the component artifacts from your local Maven repository to ensure that they will be downloaded from the remote repository when the `sales` application is assembled the next time: just delete the `.m2/repository/com/company` folder located in your user home directory.
-
-. Open the `customers` project in Studio. The repository URL in its `build.gradle` will be automatically changed to the one specified in the Studio server window.
-
-. Now you can assemble and run the application - the Customer Management component will be downloaded from the remote repository.
-
-[[servlet_registration_sample]]
-==== Registering DispatcherServlet from Application Component
-
-This section will learn you how to propagate the servlets and filters configuration from an application <<app_components,component>> to the owning application. To avoid the duplication of code in the <<web.xml,web.xml>> file, you need to register your servlets and filters in the component using the special `ServletRegistrationManager` bean.
-
-The most common case of servlets registration is described through the example of <<servlet_registration,HTTP servlet registration>>. Let's consider a more complex example: an application component with a custom implementation of `DispatcherServlet` for processing web requests.
-
-This servlet loads its config from the `demo-dispatcher-spring.xml` file, so to see it working you should create an empty file with such name in the root source directory (e.g. `web/src`).
-
-[source,java]
-----
-include::{sourcesdir}/cookbook/servlet_sample.java[]
-----
-
-To register `DispatcherServlet`, you have to load the class manually, instantiate it and initialize, otherwise different ClassLoaders may cause an issue in case of SingleWAR/SingleUberJAR <<deployment_variants,deployment>>. Moreover, the custom `DispatcherServlet` should be ready to double initialization - first time we initialize it manually, second time it is initialized by a servlet container.
-
-Here is an example of a component that initializes `WebDispatcherServlet`:
-
-[source,java]
-----
-include::{sourcesdir}/cookbook/servlet_sample_2.java[]
-----
-
-The `createServlet()` method of the injected `ServletRegistrationManager` bean takes the application <<appContext,context>> from `ServletContextInitializedEvent` and the fully-qualified name of the `WebDispatcherServlet` class. In order to initialize the servlet, we pass the instance of `ServletContext` obtained from `ServletContextInitializedEvent` and the servlet name. The `addMapping()` method is used to define an HTTP mapping for accessing the servlet via URL: `/webd/`.
 
 [[own_component_samples]]
 ==== Creating Custom Visual Components
