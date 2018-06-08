@@ -1418,9 +1418,70 @@ Notice that the `view` parameter is also passed in the request body.
 
 Any CUBA application can be used as a <<app_components,component>> of another application. An application component is a full-stack library providing functionality on all layers - from database schema to business logic and UI.
 
-[[app_components_develop]]
-==== Creating App Components
+Application components published on https://www.cuba-platform.com/marketplace[CUBA Marketplace] are called add-ons, because they extend functionality of the framework and can be used in any CUBA-based application.
 
+[[app_components_usage]]
+==== Using Public Add-ons
+
+An add-on published on Marketplace can be added to your project in one of the ways described below. The first and the second approaches assume that you use one of the <<access_to_repo, standard CUBA repositories>>. The last approach is applicable for open-source add-ons and doesn't involve any remote repositories.
+
+[[app_components_usage_by_studio]]
+By Studio::
++
+--
+. Edit *Project properties* and on the *App components* panel click the plus button next to *Custom components*.
+
+. Copy add-on coordinates from the marketplace page or from the add-on's documentation and paste them in the coordinates field, for example:
++
+[source, plain]
+----
+com.haulmont.addon.cubajm:cuba-jm-global:0.3.1
+----
+
+. Click *OK* in the dialog. Studio will try to find the add-on binaries in the repository currently selected for the project. If it is found, the dialog will close and the add-on will appear in the list of custom components.
+
+. Save the project properties by clicking *OK*.
+--
+
+[[app_components_usage_build_gradle]]
+By editing build.gradle::
++
+--
+. Edit `build.gradle` and specify the add-on coordinates in the root `dependencies` section:
++
+[source, groovy]
+----
+dependencies {
+    appComponent("com.haulmont.cuba:cuba-global:$cubaVersion")
+    // your add-ons go here
+    appComponent("com.haulmont.addon.cubajm:cuba-jm-global:0.3.1")
+}
+----
+
+. Execute `gradlew idea` in the command line to include add-on in your project's development environment.
+--
+
+[[app_components_usage_from_sources]]
+By building from sources::
++
+--
+. Clone the add-on's repository to a local directory and import the project into Studio.
+
+. Execute *Run > Install app component* main menu command to install the add-on to the local Maven repository (by default it is `~/.m2` directory).
+
+. Open your project in Studio and select the *Use local Maven repository* checkbox on the *Advanced* tab of the *Project properties* page.
+
+. On the *App components* panel, click the plus button next to *Custom components* and select the add-on in the drop-down list at the bottom of the dialog. The add-on's coordinates will be shown in the field at the top.
+
+. Click *OK* in the dialog and save the project properties.
+--
+
+[[app_components_dev]]
+==== Creating Application Components
+
+This section contains some recommendations useful if you are developing a reusable application component.
+
+[[app_components_dev_naming]]
 Naming rules::
 +
 --
@@ -1428,7 +1489,7 @@ Naming rules::
 +
 Root package should not begin with a root package of any other component or application. For example, if you have an application with `com.jupiter.tickets` root package, you cannot use `com.jupiter.tickets.amazingsearch` package for a component. The reason is that Spring scans the classpath for the beans starting from the specified root package, and this scanning space must be unique for each component.
 
-. Namespace is used as a prefix for DB tables, so for a public component it should be composite, like `jptams`, not just `search`. It will minimize the risk of name collisions in the target application. You cannot use underscores and dashes in namespace, only letters and digits.
+. Namespace is used as a prefix for the database tables, so for a public component it should be composite, like `jptams`, not just `search`. It will minimize the risk of name collisions in the target application. You cannot use underscores and dashes in namespace, only letters and digits.
 
 . Module prefix should repeat namespace, but can contain dashes, like `jpt-amsearch`.
 
@@ -1441,48 +1502,39 @@ Root package should not begin with a root package of any other component or appl
 ----
 --
 
-[[app_components_deploy]]
-==== Installing App Components
-
-[[app_components_install_local]]
-Deployment into local Maven repository::
+[[app_components_dev_install_local]]
+Installing into the local Maven repository::
 +
 --
-. Click to the *App component descriptor* link on the *Project properties* panel. Save the generated <<app-component.xml,descriptor>> by clicking *OK*.
-
-. Install the application component into the local Maven repository by executing the *Run > Install app component* menu command. This command just runs the `install` Gradle task after stopping Gradle daemons.
+In order to make the component available to the projects located on your computer, install it into the local Maven repository by executing the *Run > Install app component* menu command. This command just runs the `install` Gradle task after stopping Gradle daemons.
 --
 
-[[app_components_install_remote]]
-Deployment into remote Maven repository::
+[[app_components_dev_upload]]
+Uploading to a remote Maven repository::
 +
 --
 . Set up a repository as explained in <<private_repo>>.
 
-. Open `build.gradle` of the component project in a text editor. Replace the repository and its credentials in `buildscript/repositories` section and add the `uploadRepository` to the `cuba` section:
+. Specify your repository and credentials for the project instead of the standard CUBA repository.
+
+. Open `build.gradle` of the component project in a text editor and add `uploadRepository` to the `cuba` section:
 +
 [source,groovy]
 ----
 include::{sourcesdir}/cookbook/app_comp_upload_1.groovy[]
 ----
 
-. Run the  `gradle assemble` task in command line of the application component project root directory. This ensures your new repository caches CUBA artifacts required for working in Studio.
+. Open the component project in Studio.
 
-. In the Studio server window, specify your repository and credentials instead of the standard CUBA repository. Start the Studio server.
+. In the *Search* dialog (Alt-/), find the `uploadArchives` Gradle task and run it. You can also run this task from the command line. The component's artifacts will be uploaded to your repository.
 
-. Open the application component project in Studio.
-
-. In the Studio *Search* dialog (Alt-/), find the `uploadArchives` Gradle task and run it. You can also run this task from the command line. The component's artifacts will be uploaded to your repository.
-
-. Remove the component artifacts from your local Maven repository to ensure that they will be downloaded from the remote repository during the next assembling: just delete the `.m2/repository/com/company` folder located in your user home directory.
-
-. Open the application component in Studio. The repository URL in its `build.gradle` will be automatically changed to the one specified in the Studio server window.
+. Remove the component artifacts from your local Maven repository to ensure that they will be downloaded from the remote repository during the next assembling of the application project: just delete the `.m2/repository/com/company` folder located in your user home directory.
 
 . Now, when you assemble and run the application that uses this component, it will be downloaded from the remote repository.
 --
 
-[[app_components_install_local]]
-Deployment into Bintray repository::
+[[app_components_dev_upload_bintray]]
+Uploading to Bintray::
 +
 --
 . Register at https://bintray.com/signup/oss2
@@ -1528,81 +1580,12 @@ Alternatively, you can provide Binrtray credentials in the command line:
 ----
 ./gradlew clean assemble bintrayUpload -Pcuba.artifact.version=1.0.0 -PbintrayUser=your_bintray_user -PbintrayApiKey=9696c1cb90752357ded8fdf20eb3fa921bf9dbbb
 ----
---
 
-[[app_components_add]]
-==== Adding App Components to Your Application
-
-Below ar the instructions on how to add an application component to your project from different sources.
-
-From Studio with binaries::
-+
---
-. On the *App components* panel of *Project Properties* click the plus button next to *Custom components*.
-
-. In the *Custom application component* dialog, select the component in the *Registered project* drop-down list. The list contains all project registered in Studio that have an `app-component.xml` descriptor.
-+
-If the component was not registered in Studio, you can enter its coordinates directly in the *Coordinates field*, for example:
-+
-[source, plain]
-----
-com.company.customers:cust-global:0.1-SNAPSHOT
-----
-
-. Click *OK* in the dialog. The Maven coordinates of the component will appear in the list of custom components. Save the project properties by clicking *OK*.
-
-[TIP]
-====
-If the application component is installed into a <<app_components_install_local,local>> Maven repository, don't forget to check the *Use local Maven repository* checkbox on the *Advanced* tab of *Project Properties*.
-====
---
-
-From build.gradle with binaries::
-+
---
-Add the component as a dependency in your project's `build.gradle`:
-
-[source, groovy]
-----
-dependencies {
-    appComponent("com.haulmont.cuba:cuba-global:$cubaVersion")
-    appComponent("com.company.customers:cust-global:2.0.+")
-}
-----
-
-[TIP]
-====
-If the component is installed in Bintray, set Bintray as the main repository for your project. It can be done in Studio's *Project properties* or directly in `build.gradle`:
-
-[source, groovy]
-----
-buildscript {
-   repositories {
-       maven {
-           url 'https://dl.bintray.com/cuba-platform/main'
-       }
-   }
-}
-----
-====
---
-
-From sources on Github::
-+
---
-. Import the GitHub project in Studio by clicking *Import* > *Git*.
-
-. Generate the app component descriptor.
-
-. Invoke *Run > Install app component* command to install the component into the local Maven repository.
-
-. Open your project in Studio and check the *Use local Maven repository* checkbox on the *Advanced* tab of *Project Properties*.
-
-. Add the component's dependency to the project using *App components > Custom components (+)*, as described above.
+. If you publish the add-on on the CUBA Marketplace, its repository will be linked to the standard CUBA repositories and users won’t have to specify your repository in their projects.
 --
 
 [[app_components_sample]]
-==== App Component Example
+==== Example of Application Component
 
 In this section, we'll consider a complete example of creating an application component and using it in a project. The component will provide a "Customer Management" functionality and include the `Customer` entity and corresponding UI screens. The application will use the `Customer` entity from the component as a reference in its `Order` entity.
 
