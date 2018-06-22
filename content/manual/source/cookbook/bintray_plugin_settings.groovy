@@ -1,3 +1,7 @@
+/**
+ * If you have a multi-project build, make sure to apply the plugin and the plugin configuration
+        to every project which artifacts you want to publish to Bintray.
+ */
 subprojects {
     apply plugin: 'com.jfrog.bintray'
 
@@ -16,6 +20,7 @@ subprojects {
         pkg {
             repo = 'main'           // your repository name
             name = 'amazingsearch'  // package name - it will be created upon upload
+            desc = 'AmasingSearch'  // optional package description
 
             // organization name, if your repository is created inside an organization.
             // remove this parameter if you don't have an organization
@@ -23,9 +28,13 @@ subprojects {
 
             websiteUrl = 'https://github.com/jupiter/amazing-search'
             issueTrackerUrl = 'https://github.com/jupiter/amazing-search/issues'
-            vcsUrl = 'https://github.com/jupiter/amazing-search.git' // Mandatory for Open Source projects
+            vcsUrl = 'https://github.com/jupiter/amazing-search.git' // mandatory for Open Source projects
+
             licenses = ["Apache-2.0"]
             labels = ['cuba-platform', 'opensource']
+
+            //githubRepo = 'amazingsearch/cuba-platform' // optional Github repository
+            //githubReleaseNotesFile = 'README.md' // optional Github readme file
         }
     }
 }
