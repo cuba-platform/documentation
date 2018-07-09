@@ -1,4 +1,4 @@
 @Override
-protected void postInit() {
-    detailsDs.setItem(getItem().getDetails());
+public boolean isModified() {
+    return customerDs.isModified();
 }
