@@ -587,8 +587,13 @@ The {proj_model}/blob/master/modules/web/src/com/company/sample/web/order/OrderE
 [[ui_recipes]]
 === Working with Generic UI
 
+In this section, you can find recipes for the <<gui_framework,Generic UI>> design and working with screens and visual components.
+
 [[screen_layout_rules]]
 ==== Screen Layout Rules
+
+[[screen_layout_rules_positioning]]
+===== Positioning of Components
 
 [[screen_layout_rules_size]]
 Size types::
@@ -685,10 +690,7 @@ For example:
 
 [source, xml]
 ----
-<layout>
-    <button caption="Button"/>
-    <button caption="Button"/>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_container.xml[]
 ----
 
 image::cookbook/screen_layout_rules_7.png[align="center"]
@@ -713,12 +715,7 @@ Example of a container with content-based size:
 
 [source, xml]
 ----
-<layout>
-    <vbox>
-        <button caption="Button"/>
-        <button caption="Button"/>
-    </vbox>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_container_2.xml[]
 ----
 
 image::cookbook/screen_layout_rules_8.png[align="center"]
@@ -727,11 +724,7 @@ Example of a container with relative size:
 
 [source, xml]
 ----
-<layout spacing="true">
-    <groupBox caption="GroupBox" height="100%">
-    </groupBox>
-    <button caption="Button"/>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_container_3.xml[]
 ----
 
 image::cookbook/screen_layout_rules_9.png[align="center"]
@@ -762,11 +755,7 @@ The component specified in `expand` will have 100% size in the direction of the 
 
 [source, xml]
 ----
-<vbox expand=”bigBox”>
-    <vbox id=”bigBox”>
-    </vbox>
-    <label value=”Label”/>
-</vbox>
+include::{sourcesdir}/cookbook/screen_layout_rules_expand.xml[]
 ----
 
 image::cookbook/screen_layout_rules_6.png[align="center"]
@@ -775,12 +764,7 @@ image::cookbook/screen_layout_rules_6.png[align="center"]
 
 [source, xml]
 ----
-<layout spacing="true" expand="groupBox">
-    <groupBox id="groupBox"
-            caption="GroupBox" width="200px">
-    </groupBox>
-    <button caption="Button"/>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_expand_2.xml[]
 ----
 
 image::cookbook/screen_layout_rules_10.png[align="center"]
@@ -789,19 +773,14 @@ In the following example, the auxiliary <<gui_Label,Label>> element (spacer) is 
 
 [source, xml]
 ----
-<layout expand="spacer">
-    <textField caption="Number"/>
-    <dateField caption="Date"/>
-    <label id="spacer"/>
-    <hbox spacing="true">
-        <button caption="OK"/>
-        <button caption="Cancel"/>
-    </hbox>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_expand_3.xml[]
 ----
 
 image::cookbook/screen_layout_rules_11.png[align="center"]
 --
+
+[[screen_layout_rules_margins]]
+===== Margins and Spacing
 
 [[screen_layout_rules_margin]]
 Margin for screen borders::
@@ -813,16 +792,7 @@ If `margin` is set to `true`, the margin is applied to all sides of the containe
 
 [source, xml]
 ----
-<layout>
-    <vbox margin="true" height="100%">
-        <groupBox caption="Group"
-                height="100%">
-        </groupBox>
-    </vbox>
-    <groupBox caption="Group"
-            height="100%">
-    </groupBox>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_margin.xml[]
 ----
 
 image::cookbook/screen_layout_rules_12.png[align="center"]
@@ -850,16 +820,14 @@ Spacing will work correctly in case some of the nested components become invisib
 
 [source, xml]
 ----
-<layout spacing="true">
-    <button caption="Button"/>
-    <button caption="Button"/>
-    <button caption="Button"/>
-    <button caption="Button"/>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_spacing.xml[]
 ----
 
 image::cookbook/screen_layout_rules_14.png[align="center"]
 --
+
+[[screen_layout_rules_alignment]]
+===== Alignment
 
 [[screen_layout_rules_align]]
 Aligning components inside a container::
@@ -871,10 +839,7 @@ For example, here the label is located in the centre of the container:
 
 [source, xml]
 ----
-<vbox height="100%">
-    <label align="MIDDLE_CENTER"
-            value="Label"/>
-</vbox>
+include::{sourcesdir}/cookbook/screen_layout_rules_align.xml[]
 ----
 
 image::cookbook/screen_layout_rules_15.png[align="center"]
@@ -885,13 +850,7 @@ The example of alignment within available space:
 
 [source, xml]
 ----
-<layout>
-    <groupBox height="100%"
-        caption="Group">
-    </groupBox>
-    <label align="MIDDLE_CENTER"
-        value="Label"/>
-</layout>
+include::{sourcesdir}/cookbook/screen_layout_rules_align.xml[]
 ----
 
 image::cookbook/screen_layout_rules_16.png[align="center"]
@@ -943,6 +902,233 @@ In this example, `HBox` has content-dependent size, therefore the label alignmen
 
 image::cookbook/screen_layout_rules_22.png[align="center"]
 --
+
+[[screen_params_recipe]]
+==== Passing Parameters to a Screen
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/ui/open?screen=sample$Order.edit" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Passing parameters from one screen to another is one of the most common tasks in UI development. Let's consider this task taking the enhanced https://demo3.cuba-platform.com[sample-sales] application as an example.
+
+Parameters can be passed from `<<abstractFrame_openWindow,openWindow()>>`, `openLookup()` or `openEditor()` method of one screen to the `<<abstractFrame_init,init()>>` method of another screen. Suppose we want to filter the products in the https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Product.java[Product] browser passing some parameters from the https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Order.java[Order] editor.
+
+* https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/order/OrderEdit.java[OrderEdit] screen contains the `addOrderLine()` method which is invoked by `addOrderLine` action. The method <<abstractFrame_openWindow,opens>> a products lookup screen passing two parameters to it:
++
+** the currently selected customer,
++
+** the list of already added products.
++
+After a user selects a product, the https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/order/QuantityDialog.java[QuantityDialog] screen is opened for entering product quantity. When the user closes it, a new instance of https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/OrderLine.java[OrderLine] entity is created and added to the table.
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params.java[]
+----
+
+* https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/product/ProductBrowse.java[ProductBrowse] screen modifies its <<datasource_query_params,datasource query>> depending on passed customer. If a customer is provided, the table shows only products for this customer and those without reference to a customer. The parameters are injected in the screen controller using the <<screen_controller_injection_params,@WindowParam>> annotation:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_2.java[]
+----
++
+When the product browser is opened for looking up items to be used as order lines, it also creates and applies programmatically a filter to show only products not yet added to the order.
++
+[TIP]
+====
+<<gui_Filter,Filters>> should be added in the `<<abstractWindow_ready,ready()>>` method, as at the moment of the `<<abstractFrame_init,init()>>` method invocation filters are not yet initialized.
+====
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_3.java[]
+----
++
+To create the XML descriptor of the filter, see `filterComponent` at {xsd_url}/window.xsd or consult the `XML` column of `SEC_FILTER` database table of your application.
+
+[[screen_params_recipe_picker]]
+===== Passing Parameters with a PickerField
+
+The <<gui_PickerField,PickerField>> component and its ancestors can also be used to pass parameters to the opened screen. The parameters should be defined for the <<picker_actions,PickerField actions>>: `LookupAction` or `OpenAction`.
+
+Suppose we want to customize the caption of the https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Customer.java[Customer] browser if it is opened from a `PickerField` in the https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Product.java[Product] editor.
+
+ * In the https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/product/ProductEdit.java[ProductEdit] screen we set the parameters for the `PickerField` <<lookupAction,LookupAction>> using its `setLookupScreenParams()` method:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_6.java[]
+----
+
+* Then, we inject the passed parameter in the <<abstractFrame_init,init()>> method of https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/CustomerBrowse.java[CustomerBrowse] screen:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_7.java[]
+----
+
+Now, if the customer browser is opened from the product editor, we will know exactly which product it was.
+
+[[screen_params_return]]
+==== Returning Values from an Invoked Screen
+
+The <<abstractFrame_openWindow,methods>> used for opening screens (`openWindow()`, `openLookup()`, `openEditor()`) can be also used for getting values back from these invoked screens.
+
+The idea is that you return a reference to the controller of the opened screen from these methods, and then add a `CloseListener` to this reference. In the listener, you handle the values after the screen is closed.
+
+https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/order/OrderEdit.java[OrderEdit] screen controller demonstrates two ways of looking up a https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Customer.java[Customer]: from a lookup screen and from an arbitrary screen, both returning a `Customer` instance.
+
+Selecting a Customer from lookup screen::
++
+--
+The `openLookup()` method allows you to set up a handler for the items selected in the opened lookup screen. This handler will set the selected customer for the edited `Order` instance.
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_4.java[]
+----
+--
+
+Selecting a Customer from simple screen::
++
+--
+The `openWindow()` method in the following example will open the customers list screen as a dialog window. The `CloseWithCommitListener` will be notified when the screen is <<abstractWindow_close,closed>> by action with `Window.COMMIT_ACTION_ID`. This listener will be used to set the selected customer for the edited `Order` instance.
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_5.java[]
+----
+--
+
+[[oto_single_editor]]
+==== One-to-One Composition with a Single Editor
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/ui/open?screen=sample$Customer.edit" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+It is often convenient to edit the <<composition_oto_recipe,One-to-One composition>> in one single editor. Let's see how it can be implemented taking the https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer] and the https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/com/company/sample/entity/CustomerDetails.java[CustomerDetails] relationship as an example.
+
+* https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/customer-edit.xml[customer-edit.xml] descriptor contains the main `customerDs` and the nested `detailsDs` datasources:
++
+--
+[source, xml]
+----
+include::{sourcesdir}/cookbook/oto_single_editor.xml[]
+----
+
+Fields for editing both entities are grouped into one `fieldGroup`, where some fields are bound to the nested datasource:
+
+[source, xml]
+----
+include::{sourcesdir}/cookbook/oto_single_editor_2.xml[]
+----
+--
+
+* In the https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/CustomerEdit.java[CustomerEdit] controller we override the `initNewItem()` method. It will create a `CustomerDetails` instance and link it to the new `Customer` instance when the latter is just created:
++
+--
+[source, java]
+----
+include::{sourcesdir}/cookbook/oto_single_editor_3.java[]
+----
+
+Finally, let's handle the situation when a user clicks *Create* and then wants to close the editor without changing anything. This user will be asked for saving changes, as the `detailsDs` datasource already contains an empty instance and `isModified()` method of the `AbstractEditor` will always return `true`. To prevent the appearance of confirmation dialog, we should make `isModified()` consider changes only in the master datasource:
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/oto_single_editor_4.java[]
+----
+--
+
+Now, both linked entities can be created and edited in one editor screen.
+
+[[inividual_fields_recipe]]
+==== Screen with Individual Fields instead of FieldGroup
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/ui/open?screen=sample$Order.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Using the <<gui_FieldGroup,FieldGroup>> component in an entity's <<screen_edit,editor>> is not mandatory. You can easily replace it with separate fields to create a custom screen layout.
+
+Below is an example of such editor for the https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order] entity.
+
+The https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/com/company/sample/web/order/order-edit-2.xml[order-edit.xml] descriptor contains the main `orderDs` and the nested `orderLinesDs` datasources, as well as the independent `customersDs` datasource for selecting a customer in a `lookupField`:
+
+[source, xml]
+----
+<dsContext>
+    <datasource id="orderDs"
+                class="com.company.sample.entity.Order"
+                view="order-edit">
+        <collectionDatasource id="orderLinesDs"
+                              property="orderLines"/>
+    </datasource>
+    <collectionDatasource id="customersDs"
+                          class="com.company.sample.entity.Customer"
+                          view="_minimal">
+        <query>
+            <![CDATA[select e from sample$Customer e]]>
+        </query>
+    </collectionDatasource>
+</dsContext>
+----
+
+Now, all we have to do is to create the fields for the `Order` attributes, bind them with the appropriate datasources and define the entity's attribute using the <<gui_attr_property,property>> attribute:
+
+* the order's number:
++
+[source, xml]
+----
+<textField id="numField"
+           caption="msg://order.num"
+           datasource="orderDs"
+           property="num"/>
+----
+
+* the order's customer:
++
+[source, xml]
+----
+<lookupField id="customerField"
+             caption="msg://order.customer"
+             datasource="orderDs"
+             property="customer"
+             optionsDatasource="customersDs"/>
+----
+
+* the order date:
++
+[source, xml]
+----
+<datePicker id="datePicker"
+            caption="msg://order.date"
+            datasource="orderDs"
+            property="date"/>
+----
+
+* the table containing the order lines:
++
+[source, xml]
+----
+<table id="orderLinesTable"
+       height="300px"
+       width="100%">
+    <rows datasource="orderLinesDs"/>
+    . . .
+</table>
+----
+
+This approach is more flexible in terms of screen layout design. You can select any visual components for the fields, group the fields and place them wherever you like on the screen.
 
 [[data_recipes]]
 === Loading and Saving Data

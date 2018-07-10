@@ -587,6 +587,9 @@ image::cookbook/inheritance.png[align="center"]
 [[screen_layout_rules]]
 ==== Правила компоновки экранов
 
+[[screen_layout_rules_positioning]]
+===== Позиционирование компонентов
+
 [[screen_layout_rules_size]]
 Виды размеров::
 +
@@ -800,6 +803,9 @@ image::cookbook/screen_layout_rules_10.png[align="center"]
 image::cookbook/screen_layout_rules_11.png[align="center"]
 --
 
+[[screen_layout_rules_margins]]
+===== Отступы
+
 [[screen_layout_rules_margin]]
 Отступ от границ контейнера (margin)::
 +
@@ -857,6 +863,9 @@ image::cookbook/screen_layout_rules_13.png[align="center"]
 
 image::cookbook/screen_layout_rules_14.png[align="center"]
 --
+
+[[screen_layout_rules_alignment]]
+===== Выравнивание
 
 [[screen_layout_rules_align]]
 Выравнивание компонентов в контейнере::
@@ -942,6 +951,233 @@ image::cookbook/screen_layout_rules_21.png[align="center"]
 
 image::cookbook/screen_layout_rules_22_ru.png[align="center"]
 --
+
+[[screen_params_recipe]]
+==== Передача параметров в экран
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/ui/open?screen=sample$Order.edit" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Передача параметров из одного экрана в другой является одной из самых частых задач в разработке UI. Рассмотрим типовые решения этой задачи на примере усовершенствованного демо-приложения https://demo3.cuba-platform.com[sample-sales].
+
+Параметры могут быть переданы из методов `<<abstractFrame_openWindow,openWindow()>>`, `openLookup()` и `openEditor()` одного экрана в метод `<<abstractFrame_init,init()>>` другого экрана. Предположим, что мы хотим отфильтровать список продуктов в экране просмотра сущности https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Product.java[Product], передав в него некоторые параметры из экрана редактирования сущности https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Order.java[Order].
+
+* Экран редактирования https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/order/OrderEdit.java[OrderEdit] содержит метод `addOrderLine()`, вызываемый действием `addOrderLine`. Этот метод <<abstractFrame_openWindow,открывает>> экран выбора продукта, передавая в него два параметра:
++
+** текущий выбранный покупатель,
++
+** список уже добавленных продуктов.
++
+Когда пользователь выбирает продукт, открывается экран https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/order/QuantityDialog.java[QuantityDialog], где пользователь вводит количество единиц выбранного продукта. После закрытия этого экрана создаётся новый экземпляр сущности https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/OrderLine.java[OrderLine] и затем добавляется в таблицу строк заказа.
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params.java[]
+----
+
+* Экран просмотра https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/product/ProductBrowse.java[ProductBrowse] изменяет свой <<datasource_query_params,источник данных>> в зависимости от переданного покупателя. Если покупатель передан, в таблице отображаются только продукты, имеющие ссылку на этого покупателя либо не связанные ни с одним покупателем. Параметры инжектируются в контроллер экрана с помощью аннотации <<screen_controller_injection_params,@WindowParam>>:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_2.java[]
+----
++
+Также, когда экран выбора продукта открывается для создания строк заказа, в нём программно создаётся и применяется фильтр, который отображает только те продукты, которые ещё не были использованы в этом заказе.
++
+[TIP]
+====
+<<gui_Filter,Фильтры>> нужно создавать в методе `<<abstractWindow_ready,ready()>>`, так как на момент вызова метода `<<abstractFrame_init,init()>>` фильтры ещё не инициализированы.
+====
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_3.java[]
+----
++
+При создании XML-дескриптора фильтра вы можете опираться на компонент `filterComponent` в {xsd_url}/window.xsd или найти похожий фильтр в столбце `XML` таблицы `SEC_FILTER` в базе данных приложения.
+
+[[screen_params_recipe_picker]]
+===== Передача параметров через PickerField
+
+Компонент <<gui_PickerField,PickerField>> и компоненты, его расширяющие, также могут использоваться для передачи параметров в открываемый экран. Параметры задаются для <<picker_actions,действий PickerField>>: `LookupAction` и `OpenAction`.
+
+Допустим, мы хотим изменять заголовок экрана выбора сущности https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Customer.java[Customer], если он был открыт из компонента `PickerField` в экране редактирования сущности https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Product.java[Product].
+
+ * В экране https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/product/ProductEdit.java[ProductEdit] мы указываем параметры для действия `PickerField` <<lookupAction,LookupAction>>, используя метод `setLookupScreenParams()`:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_6.java[]
+----
+
+* Затем мы инжектируем переданные параметры и используем их в методе <<abstractFrame_init,init()>> экрана https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/CustomerBrowse.java[CustomerBrowse]:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_7.java[]
+----
+
+Теперь, если экран выбора покупателя открывается из редактора продукта, мы сразу можем увидеть, что это за продукт.
+
+[[screen_params_return]]
+==== Возврат значений из экрана
+
+<<abstractFrame_openWindow,Методы>>, используемые для открытия экранов (`openWindow()`, `openLookup()`, `openEditor()`) можно использовать и для возврата значений из этих экранов.
+
+Идея состоит в том, чтобы из этих методов вернуть ссылку на контроллер открываемого экрана, а к этой ссылке добавить слушатель `CloseListener`, который будет обрабатывать значения после закрытия экрана.
+
+Экран https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/order/OrderEdit.java[OrderEdit] демонстрирует два способа выбора сущности https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/sample/entity/Customer.java[Customer]: из экрана выбора (lookup) и из независимого экрана, и оба способа позволяют вернуть экземпляр `Customer`.
+
+Возврат значения из экрана выбора::
++
+--
+Метод `openLookup()` позволяет задать обработчик сущностей, выбранных в открываемом экране. С помощью этого обработчика мы установим выбранного покупателя для редактируемого экземпляра сущности `Order`.
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_4.java[]
+----
+--
+
+Возврат значения из обычного экрана::
++
+--
+Метод `openWindow()` в следующем примере открывает список покупателей в простом диалоговом окне. Слушатель `CloseWithCommitListener` получает сообщение о <<abstractWindow_close,закрытии>> экрана действием с `Window.COMMIT_ACTION_ID` и устанавливает выбранного покупателя для редактируемого экземпляра сущности `Order`.
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_5.java[]
+----
+--
+
+[[oto_single_editor]]
+==== Композиция One-to-One в одном редакторе
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/ui/open?screen=sample$Customer.edit" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Сущности, связанные композицией с типом <<composition_oto_recipe,один-к-одному>>, часто бывает удобно создавать в одном общем экране редактирования. Рассмотрим, как можно реализовать такой экран, на примере отношений сущностей https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/Customer.java[Customer] и https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/CustomerDetails.java[CustomerDetails].
+
+* https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/customer-edit.xml[customer-edit.xml] содержит основной источник данных `customerDs` и вложенный в него `detailsDs`:
++
+--
+[source, xml]
+----
+include::{sourcesdir}/cookbook/oto_single_editor.xml[]
+----
+
+Поля для редактирования обеих сущностей сгруппированы в один компонент `fieldGroup`, где отдельные поля привязаны к вложенному источнику данных:
+
+[source, xml]
+----
+include::{sourcesdir}/cookbook/oto_single_editor_2.xml[]
+----
+--
+
+* В контроллере экрана https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/sample/web/customer/CustomerEdit.java[CustomerEdit] мы переопределяем метод `initNewItem()`. В нём создаём новый экземпляр `CustomerDetails` и связываем его с только что созданным экземпляром `Customer`:
++
+--
+[source, java]
+----
+include::{sourcesdir}/cookbook/oto_single_editor_3.java[]
+----
+
+Напоследок обработаем ситуацию, когда пользователь нажимает *Create*, а затем закрывает редактор экрана без каких-либо изменений в полях покупателя. По умолчанию, пользователю будет предложено сохранить или отменить изменения, так как `detailsDs` уже содержит пустой экземпляр `CustomerDetails`, а значит, метод `isModified()` вернёт `true`. Чтобы предотвратить появление такого диалога для пустых сущностей, заставим метод `isModified()` принимать во внимание только изменения в главном источнике данных экрана:
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/oto_single_editor_4.java[]
+----
+--
+
+Теперь обе сущности можно создавать и редактировать в одном экране.
+
+[[inividual_fields_recipe]]
+==== Использование независимых полей вместо FieldGroup
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/ui/open?screen=sample$Order.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Использование компонента <<gui_FieldGroup,FieldGroup>> в <<screen_edit,редакторе>> сущности не является обязательным. Мы можете легко заменить `FieldGroup` на отдельные поля, чтобы кастомизировать стандартную разметку экрана.
+
+Ниже приведён пример такого экрана для редактирования сущности https://github.com/cuba-platform/ui-recipes/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order].
+
+XML-дескриптор экрана https://github.com/cuba-platform/ui-recipes/blob/master/modules/web/src/com/company/sample/web/order/order-edit-2.xml[order-edit.xml] содержит основной источник данных `orderDs` и вложенный в него `orderLinesDs` для строк заказа, а также независимый источник данных `customersDs`, чтобы загружать список покупателей для выбора из выпадающего списка `lookupField`:
+
+[source, xml]
+----
+<dsContext>
+    <datasource id="orderDs"
+                class="com.company.sample.entity.Order"
+                view="order-edit">
+        <collectionDatasource id="orderLinesDs"
+                              property="orderLines"/>
+    </datasource>
+    <collectionDatasource id="customersDs"
+                          class="com.company.sample.entity.Customer"
+                          view="_minimal">
+        <query>
+            <![CDATA[select e from sample$Customer e]]>
+        </query>
+    </collectionDatasource>
+</dsContext>
+----
+
+Теперь достаточно создать поля для всех атрибутов сущности `Order`, указать для каждого поля соответствующий источник данных и нужный атрибут сущности, используя XML-атрибут <<gui_attr_property,property>>:
+
+* поле номера заказа:
++
+[source, xml]
+----
+<textField id="numField"
+           caption="msg://order.num"
+           datasource="orderDs"
+           property="num"/>
+----
+
+* поле выбора покупателя:
++
+[source, xml]
+----
+<lookupField id="customerField"
+             caption="msg://order.customer"
+             datasource="orderDs"
+             property="customer"
+             optionsDatasource="customersDs"/>
+----
+
+* выбор даты заказа:
++
+[source, xml]
+----
+<datePicker id="datePicker"
+            caption="msg://order.date"
+            datasource="orderDs"
+            property="date"/>
+----
+
+* таблица строк заказа:
++
+[source, xml]
+----
+<table id="orderLinesTable"
+       height="300px"
+       width="100%">
+    <rows datasource="orderLinesDs"/>
+    . . .
+</table>
+----
+
+Такой подход к созданию экранов предоставляет большую гибкость в использовании визуальных компонентов и их расположении на экране.
 
 [[data_recipes]]
 === Загрузка и сохранение данных
