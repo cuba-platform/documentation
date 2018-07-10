@@ -587,10 +587,12 @@ The {proj_model}/blob/master/modules/web/src/com/company/sample/web/order/OrderE
 [[ui_recipes]]
 === Working with Generic UI
 
-In this section, you can find recipes for the <<gui_framework,Generic UI>> design and working with screens and visual components.
+This section of the cookbook covers topics related to <<gui_framework,Generic UI>>, which is a primary frontend development technology in CUBA applications.
 
 [[screen_layout_rules]]
 ==== Screen Layout Rules
+
+Below we explain how to properly place visual components and containers on your screens.
 
 [[screen_layout_rules_positioning]]
 ===== Positioning of Components
@@ -885,7 +887,7 @@ Example of incorrect layout:
 
 image::cookbook/screen_layout_rules_19.png[align="center"]
 
-In result of such mistake, scroll bars in `ScrollBox` will not appear even if the size of nested components exceeds the scrolling area.
+As a result of such mistake, scroll bars in `ScrollBox` will not appear even if the size of nested components exceeds the scrolling area.
 
 image::cookbook/screen_layout_rules_20.png[align="center"]
 --
@@ -906,15 +908,22 @@ image::cookbook/screen_layout_rules_22.png[align="center"]
 [[screen_params_recipe]]
 ==== Passing Parameters to a Screen
 
+Passing parameters from one screen to another is one of the most common tasks in UI development. Let’s consider this task taking an "order management" application as an example.
+
+[[screen_params_recipe_open]]
+Opening screen with openWindow::
++
+--
+
 ++++
 <div class="manual-live-demo-container">
     <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
-Passing parameters from one screen to another is one of the most common tasks in UI development. Let's consider this task taking the enhanced https://demo3.cuba-platform.com/generic-ui/[sample-sales] application as an example.
+Parameters can be passed by providing them in a map to `openWindow()`, `openLookup()` or `openEditor()` methods. They will be available in the opened screen as a map in the <<abstractFrame_init,init()>> method and individually if you inject them with the <<screen_controller_injection_params,@WindowParam>> annotation.
 
-Parameters can be passed from <<abstractFrame_openWindow,openWindow()>>, `openLookup()` or `openEditor()` method of one screen to the <<abstractFrame_init,init()>> method of another screen. Suppose we want to filter the products in the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product] browser passing some parameters from the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order] editor.
+Suppose we want to filter the products in the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product] browser passing some parameters from the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order] editor.
 
 * https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] screen contains the `addOrderLine()` method which is invoked by `addOrderLine` action. The method <<abstractFrame_openWindow,opens>> a products lookup screen passing two parameters to it:
 +
@@ -948,18 +957,20 @@ When the product browser is opened for looking up items to be used as order line
 include::{sourcesdir}/cookbook/window_params_3.java[]
 ----
 +
-To create the XML descriptor of the filter, see `filterComponent` at {xsd_url}/window.xsd or consult the `XML` column of `SEC_FILTER` database table of your application.
+The contents of the `FilterEntity.xml` attribute can be taken from a filter created at runtime: go to *Entity Inspector*, find the created filter which is stored as an instance of the `sec$Filter` entity and copy its XML.
+--
 
 [[screen_params_recipe_picker]]
-===== Passing Parameters with a PickerField
-
+Opening screen from a PickerField::
++
+--
 ++++
 <div class="manual-live-demo-container">
     <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Product.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
-The <<gui_PickerField,PickerField>> component and its ancestors can also be used to pass parameters to the opened screen. The parameters should be defined for the <<picker_actions,PickerField actions>>: `LookupAction` or `OpenAction`.
+The <<gui_PickerField,PickerField>> component and its ancestors can also pass parameters to opened screens. The parameters should be defined for the `PickerField` <<picker_actions,actions>>: `LookupAction` or `OpenAction`.
 
 Suppose we want to customize the caption of the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer] browser if it is opened from a `PickerField` in the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product] editor.
 
@@ -970,7 +981,7 @@ Suppose we want to customize the caption of the https://github.com/cuba-platform
 include::{sourcesdir}/cookbook/window_params_6.java[]
 ----
 
-* Then, we inject the passed parameter in the <<abstractFrame_init,init()>> method of https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/customer/CustomerBrowse.java[CustomerBrowse] screen:
+* Then, we inject the passed parameter in the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/customer/CustomerBrowse.java[CustomerBrowse] screen:
 +
 [source, java]
 ----
@@ -978,26 +989,23 @@ include::{sourcesdir}/cookbook/window_params_7.java[]
 ----
 
 Now, if the customer browser is opened from the product editor, we will know exactly which product it was.
+--
 
 [[screen_params_return]]
 ==== Returning Values from an Invoked Screen
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Customer.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
-The <<abstractFrame_openWindow,methods>> used for opening screens (`openWindow()`, `openLookup()`, `openEditor()`) can be also used for getting values back from these invoked screens.
+The <<abstractFrame_openWindow,methods>> used for opening screens (`openWindow()`, `openLookup()`, `openEditor()`) also allow you to get values back from these screens.
 
-The idea is that you return a reference to the controller of the opened screen from these methods, and then add a `CloseListener` to this reference. In the listener, you handle the values after the screen is closed.
-
-https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] screen controller demonstrates two ways of looking up a https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer]: from a lookup screen and from an arbitrary screen, both returning a `Customer` instance.
-
-Selecting a Customer from lookup screen::
+Returning a value from lookup screen::
 +
 --
-The `openLookup()` method allows you to set up a handler for the items selected in the opened lookup screen. This handler will set the selected customer for the edited `Order` instance.
+The `openLookup()` method accepts a handler for the items selected in the opened lookup screen. In our example, the handler implemented by the lambda expression sets the selected customer for the edited `Order` instance.
 
 [source, java]
 ----
@@ -1005,10 +1013,14 @@ include::{sourcesdir}/cookbook/window_params_4.java[]
 ----
 --
 
-Selecting a Customer from simple screen::
+Returning a value from an arbitrary screen::
 +
 --
-The `openWindow()` method in the following example will open the customers list screen as a dialog window. The `CloseWithCommitListener` will be notified when the screen is <<abstractWindow_close,closed>> by action with `Window.COMMIT_ACTION_ID`. This listener will be used to set the selected customer for the edited `Order` instance.
+The idea is that you return a reference to the controller of the opened screen, and then add a `CloseListener` to this reference. In the listener, you handle the values after the screen is closed.
+
+https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] screen controller demonstrates two ways of looking up a https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer]: from a lookup screen and from an arbitrary screen, both returning a `Customer` instance.
+
+The `openWindow()` method in the following example will open the customers list screen as a dialog window. `CloseWithCommitListener` will be notified when the screen is <<abstractWindow_close,closed>> by action with `Window.COMMIT_ACTION_ID`. This listener will be used to set the selected customer for the edited `Order` instance.
 
 [source, java]
 ----
@@ -1062,7 +1074,7 @@ include::{sourcesdir}/cookbook/oto_single_editor_4.java[]
 Now, both linked entities can be created and edited in one editor screen.
 
 [[inividual_fields_recipe]]
-==== Screen with Individual Fields instead of FieldGroup
+==== Using Individual Fields instead of FieldGroup
 
 ++++
 <div class="manual-live-demo-container">
@@ -1095,7 +1107,7 @@ The https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/s
 </dsContext>
 ----
 
-Now, all we have to do is to create the fields for the `Order` attributes, bind them with the appropriate datasources and define the entity's attribute using the <<gui_attr_property,property>> attribute:
+Now, all we have to do is to create the fields for the `Order` attributes, bind them to the appropriate datasources and define the entity's attribute using the <<gui_attr_property,property>> attribute:
 
 * the order's number:
 +
