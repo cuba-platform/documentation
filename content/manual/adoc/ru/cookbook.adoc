@@ -582,10 +582,14 @@ image::cookbook/inheritance.png[align="center"]
 
 
 [[ui_recipes]]
-=== Создание универсального UI
+=== Работа с Generic UI
+
+Данный раздел затрагивает темы, связанные с подсистемой <<gui_framework,Generic UI>>, являющейся основной технологией создания frontend в CUBA-приложениях.
 
 [[screen_layout_rules]]
 ==== Правила компоновки экранов
+
+Ниже объясняется, как правильно располагать визуальные компоненты и контейнеры на экранах UI.
 
 [[screen_layout_rules_positioning]]
 ===== Позиционирование компонентов
@@ -955,15 +959,22 @@ image::cookbook/screen_layout_rules_22_ru.png[align="center"]
 [[screen_params_recipe]]
 ==== Передача параметров в экран
 
+Передача параметров из одного экрана в другой является одной из самых частых задач в разработке UI. Рассмотрим типовые решения этой задачи на примере демо-приложения "управление заказами".
+
+[[screen_params_recipe_open]]
+При открытии экрана методом openWindow::
++
+--
+
 ++++
 <div class="manual-live-demo-container">
     <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
-Передача параметров из одного экрана в другой является одной из самых частых задач в разработке UI. Рассмотрим типовые решения этой задачи на примере усовершенствованного демо-приложения https://demo3.cuba-platform.com/generic-ui/[sample-sales].
+Параметры могут быть переданы в мэп, являющейся опциональным параметром методов `openWindow()`, `openLookup()` и `openEditor()`. Они будут доступны в открываемом экране в виде мэп, передаваемой в метод <<abstractFrame_init,init()>>, а также индивидуально, если они инжектируются с помощью аннотации <<screen_controller_injection_params,@WindowParam>>.
 
-Параметры могут быть переданы из методов <<abstractFrame_openWindow,openWindow()>>, `openLookup()` и `openEditor()` одного экрана в метод <<abstractFrame_init,init()>> другого экрана. Предположим, что мы хотим отфильтровать список продуктов в экране просмотра сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product], передав в него некоторые параметры из экрана редактирования сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order].
+Предположим, что мы хотим отфильтровать список продуктов в экране просмотра сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product], передав в него некоторые параметры из экрана редактирования сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order].
 
 * Экран редактирования https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] содержит метод `addOrderLine()`, вызываемый действием `addOrderLine`. Этот метод <<abstractFrame_openWindow,открывает>> экран выбора продукта, передавая в него два параметра:
 +
@@ -997,18 +1008,20 @@ include::{sourcesdir}/cookbook/window_params_2.java[]
 include::{sourcesdir}/cookbook/window_params_3.java[]
 ----
 +
-При создании XML-дескриптора фильтра вы можете опираться на компонент `filterComponent` в {xsd_url}/window.xsd или найти похожий фильтр в столбце `XML` таблицы `SEC_FILTER` в базе данных приложения.
+Содержимое атрибута `FilterEntity.xml` может быть взято из фильтра, созданного при работе приложения: откройте *Entity Inspector*, найдите созданный фильтр, сохраненный как экземпляр сущности `sec$Filter`, и скопируйте его XML.
+--
 
 [[screen_params_recipe_picker]]
-===== Передача параметров через PickerField
-
+При открытие экранов из PickerField::
++
+--
 ++++
 <div class="manual-live-demo-container">
     <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Product.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
-Компонент <<gui_PickerField,PickerField>> и компоненты, его расширяющие, также могут использоваться для передачи параметров в открываемый экран. Параметры задаются для <<picker_actions,действий PickerField>>: `LookupAction` и `OpenAction`.
+Компонент <<gui_PickerField,PickerField>> и компоненты, его расширяющие, также могут передавать параметры в открываемые экраны. Параметры задаются для <<picker_actions,действий PickerField>>: `LookupAction` и `OpenAction`.
 
 Допустим, мы хотим изменять заголовок экрана выбора сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer], если он был открыт из компонента `PickerField` в экране редактирования сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product].
 
@@ -1019,7 +1032,7 @@ include::{sourcesdir}/cookbook/window_params_3.java[]
 include::{sourcesdir}/cookbook/window_params_6.java[]
 ----
 
-* Затем мы инжектируем переданные параметры и используем их в методе <<abstractFrame_init,init()>> экрана https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/customer/CustomerBrowse.java[CustomerBrowse]:
+* Затем мы инжектируем переданные параметры в экране https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/customer/CustomerBrowse.java[CustomerBrowse]:
 +
 [source, java]
 ----
@@ -1027,26 +1040,23 @@ include::{sourcesdir}/cookbook/window_params_7.java[]
 ----
 
 Теперь, если экран выбора покупателя открывается из редактора продукта, мы сразу можем увидеть, что это за продукт.
+--
 
 [[screen_params_return]]
 ==== Возврат значений из экрана
 
 ++++
 <div class="manual-live-demo-container">
-    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Customer.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
 </div>
 ++++
 
-<<abstractFrame_openWindow,Методы>>, используемые для открытия экранов (`openWindow()`, `openLookup()`, `openEditor()`) можно использовать и для возврата значений из этих экранов.
-
-Идея состоит в том, чтобы из этих методов вернуть ссылку на контроллер открываемого экрана, а к этой ссылке добавить слушатель `CloseListener`, который будет обрабатывать значения после закрытия экрана.
-
-Экран https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] демонстрирует два способа выбора сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer]: из экрана выбора (lookup) и из независимого экрана, и оба способа позволяют вернуть экземпляр `Customer`.
+<<abstractFrame_openWindow,Методы>>, используемые для открытия экранов (`openWindow()`, `openLookup()`, `openEditor()`), позволяют также и возвращать значения из этих экранов.
 
 Возврат значения из экрана выбора::
 +
 --
-Метод `openLookup()` позволяет задать обработчик сущностей, выбранных в открываемом экране. С помощью этого обработчика мы установим выбранного покупателя для редактируемого экземпляра сущности `Order`.
+Метод `openLookup()` позволяет задать обработчик для сущностей, выбранных в открываемом экране. В нашем примере, с помощью этого обработчика, реализованного лямбда-выражением, мы установим выбранного покупателя для редактируемого экземпляра сущности `Order`.
 
 [source, java]
 ----
@@ -1054,9 +1064,13 @@ include::{sourcesdir}/cookbook/window_params_4.java[]
 ----
 --
 
-Возврат значения из обычного экрана::
+Возврат значения из произвольного экрана::
 +
 --
+Идея состоит в том, чтобы вернуть ссылку на контроллер открываемого экрана, и к этой ссылке добавить слушатель `CloseListener`, который будет обрабатывать значения после закрытия экрана.
+
+Экран https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] демонстрирует два способа выбора сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer]: из экрана выбора (lookup) и из независимого экрана, и оба способа позволяют вернуть экземпляр `Customer`.
+
 Метод `openWindow()` в следующем примере открывает список покупателей в простом диалоговом окне. Слушатель `CloseWithCommitListener` получает сообщение о <<abstractWindow_close,закрытии>> экрана действием с `Window.COMMIT_ACTION_ID` и устанавливает выбранного покупателя для редактируемого экземпляра сущности `Order`.
 
 [source, java]
