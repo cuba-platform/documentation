@@ -19,7 +19,7 @@ public class ContractEdit extends AbstractEditor<Contract> {
     private Table<ProcAttachment> attachmentsTable;
 
     @Override
-    protected void postInit() {
+    public void ready() {
         FileDownloadHelper.initGeneratedColumn(attachmentsTable, "file");
         initProcActionsFrame();
     }
