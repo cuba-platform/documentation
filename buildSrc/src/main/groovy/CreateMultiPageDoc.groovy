@@ -19,6 +19,16 @@ class CreateMultiPageDoc extends DefaultTask {
         return new File("${project.buildDir}/$docName/$docLang/html-single")
     }
 
+    @InputDirectory
+    File getChopperDir() {
+        return new File("tools/chopper")
+    }
+
+    @InputDirectory
+    File getCssDir() {
+        return new File("styles")
+    }
+
     @OutputDirectory
     File getDstDir() {
         return new File("${project.buildDir}/$docName/$docLang/html")
