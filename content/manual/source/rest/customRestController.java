@@ -54,7 +54,7 @@ public class AuthCodeController {
     }
 
     // POJO for JSON error messages
-    public static class ErrorInfo {
+    public static class ErrorInfo implements Serializable {
         private String error;
         private String error_description;
 
