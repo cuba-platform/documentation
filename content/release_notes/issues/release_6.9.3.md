@@ -8,8 +8,6 @@
     `severity: minor` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 6.9.3` `ver: 7.0.0` 
 * [#1038 More details in "EntityOp not permitted" error message #902](https://github.com/cuba-platform/cuba/pull/1038) \
     `ver: 6.10.0` `ver: 6.8.10` `ver: 6.9.3` `ver: 7.0.0` 
-* [#1029 Deprecate ScreenAgent](https://github.com/cuba-platform/cuba/issues/1029) \
-    `client: web` `state: fixed` `ver: 6.10.0` `ver: 6.9.3` `ver: 7.0.0` 
 * [#1025 REST service method invocation fails if the method returns a collection of collections](https://github.com/cuba-platform/cuba/issues/1025) \
     `state: fixed` `ver: 6.10.0` `ver: 6.9.3` `ver: 7.0.0` 
 * [#1023 REST API: accessing non-existent path after rest/v2 results in internal server error](https://github.com/cuba-platform/cuba/issues/1023) \
