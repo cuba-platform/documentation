@@ -1,9 +1,11 @@
 @Inject
+private EntityStates entityStates;
+@Inject
 protected EntityDiffViewer diffFrame;
 
 @Override
 protected void postInit() {
-    if (!PersistenceHelper.isNew(getItem())) {
+    if (!entityStates.isNew(getItem())) {
         diffFrame.loadVersions(getItem());
     }
 }
