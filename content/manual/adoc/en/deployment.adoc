@@ -404,7 +404,7 @@ java -jar c:\work\jetty-home\start.jar
 [[wildfly_war_deployment]]
 ==== WAR deployment to WildFly
 
-The WAR files with CUBA application can be deployed to the *WildFly* application server. An example below demonstrates how to deploy a CUBA application using PostgreSQL 9.6 to the WildFly 8.2 server on Windows.
+The WAR files with CUBA application can be deployed to the *WildFly* application server. An example below demonstrates how to deploy a CUBA application using PostgreSQL 9.6 to the WildFly 13.0.0 server on Windows.
 
 . Assemble and deploy the project to the default Tomcat server in order to get all necessary dependencies locally.
 
@@ -435,28 +435,22 @@ set "JAVA_OPTS=%JAVA_OPTS% -Dapp.home=%USERPROFILE%/app_home -Dlogback.configura
 
 Here we define the `app.home` system property with the application home directory and configure the logging by setting the path to the `logback.xml` file. You can also use an absolute path instead of `%USERPROFILE%` variable.
 
-* Compare the Hibernate Validator versions in WildFly and CUBA application (normally, the platform uses a newer version). Replace the `C:/wildfly/modules/system/layers/base/org/hibernate/validator/main/hibernate-validator-x.y.z-sometext.jar` with the newer file from `tomcat/shared/lib`, for example, `hibernate-validator-5.4.1.Final.jar`.
+* Compare the Hibernate Validator versions in WildFly and CUBA application (normally, the platform uses a newer version). Replace the `C:\wildfly\modules\system\layers\base\org\hibernate\validator\main\hibernate-validator-x.y.z-sometext.jar` with the newer file from `tomcat\shared\lib`, for example, `hibernate-validator-5.4.2.Final.jar`.
 
-* Update the JAR file version number in the `/wildfly/modules/system/layers/base/org/hibernate/validator/main/module.xml` file.
+* Update the JAR file version number in the `\wildfly\modules\system\layers\base\org\hibernate\validator\main\module.xml` file.
 
-* To register PostgreSQL driver in WildFly, copy the `postgresql-9.4-1201-jdbc41.jar` from `tomcat/lib` to `C:\wildfly\standalone\deployments`.
+* To register PostgreSQL driver in WildFly, copy the `postgresql-9.4.1212.jar` from `tomcat\lib` to `C:\wildfly\standalone\deployments`.
+
+* Setup WildFly logger: open the `\wildfly\standalone\configuration\standalone.xml` file and add two lines to the `<subsystem xmlns="urn:jboss:domain:logging:{version}"` block:
 +
-[TIP]
-====
-If you use WildFly 11, in order to install PostgreSQL driver, you should also modify your `module.xml` file in the following way:
-
 [source, xml]
 ----
-include::{sourcesdir}/deployment/wildfly-postgres.xml[]
+<subsystem xmlns="urn:jboss:domain:logging:5.0">
+    <add-logging-api-dependencies value="false"/>
+    <use-deployment-logging-config value="false"/>
+    . . .
+</subsystem>
 ----
-
-Then you should run `jboss-cli` from the `bin` folder and run the following command:
-
-[source, plain]
-----
-/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql, driver-module-name=org.postgresql, driver-class-name=org.postgresql.Driver)
-----
-====
 --
 
 . Create JDBC Datasource
@@ -466,13 +460,15 @@ Then you should run `jboss-cli` from the `bin` folder and run the following comm
 
 * Open the administration console on `++http://localhost:9990++`. The first time you log in, you will be asked to create a user and a password.
 
-* Open the *Configuration - Subsystems - Datasources* tab and create a new datasource for your application:
+* Open the *Configuration - Subsystems - Datasources and Drivers - Datasources* tab and create a new datasource for your application:
 
 [source, plain]
 ----
 Name: Cuba
 JNDI Name: java:/jdbc/CubaDS
-JDBC Driver: postgresql
+JDBC Driver: postgresql-9.4.1212.jar
+Driver Module Name: org.postgresql
+Driver Class Name: org.postgresql.Driver
 Connection URL: your database URL
 Username: your database username
 Password: your database password
@@ -493,8 +489,6 @@ Check the connection by clicking the *Test connection* button.
 * Check *Build WAR* checkbox.
 
 * Set `${app.home}` in the *Application home directory* field.
-
-* Check *Include JDBC driver* checkbox.
 
 * Save the settings.
 
@@ -532,7 +526,7 @@ include::{sourcesdir}/deployment/wildfly.xml[]
 * Run the `buildWar` task to create WAR files.
 --
 
-. Copy the files `app-core.war` and `app.war` from `build\distributions\war` to WildFly directory `C:\wildfly\standalone\deployments`.
+. Copy the files `app-core.war` and `app.war` from `build\distributions\war` to WildFly directory `\wildfly\standalone\deployments`.
 
 . Restart the WildFLy server.
 
