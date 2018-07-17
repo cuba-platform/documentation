@@ -403,7 +403,7 @@ java -jar c:\work\jetty-home\start.jar
 [[wildfly_war_deployment]]
 ==== Развертывание WAR в WildFly
 
-WAR-файлы с приложением CUBA можно разворачивать на сервере *WildFly*. Рассмотрим пример сборки WAR-файлов для приложения, использующего PostgreSQL 9.6, и их развертывания на сервере WildFly версии 8.2 под Windows.
+WAR-файлы с приложением CUBA можно разворачивать на сервере *WildFly*. Рассмотрим пример сборки WAR-файлов для приложения, использующего PostgreSQL 9.6, и их развертывания на сервере WildFly версии 13.0.0 под Windows.
 
 . Соберите приложение и выполните *Run* - *Deploy*, чтобы получить локальную инсталляцию Tomcat, в которой будут все необходимые зависимости для приложения.
 
@@ -425,7 +425,7 @@ WAR-файлы с приложением CUBA можно разворачива�
 --
 * Установите WildFly, например, в каталог `C:\wildfly`.
 
-* Отредактируйте файл `C:\wildfly\bin\standalone.conf.bat`, добавив в конец следующую строку:
+* Отредактируйте файл `\wildfly\bin\standalone.conf.bat`, добавив в конец следующую строку:
 
 [source, plain]
 ----
@@ -434,28 +434,22 @@ set "JAVA_OPTS=%JAVA_OPTS% -Dapp.home=%USERPROFILE%/app_home -Dlogback.configura
 
 Здесь мы задаём системное свойство `app.home`, содержащее домашний каталог приложения, и указываем, где находится конфигурационный файл `logback.xml`. Вместо переменной `%USERPROFILE%` можно использовать абсолютный путь.
 
-* Сравните версии Hibernate Validator в WildFly и приложении CUBA (платформа обычно использует более свежую версию). Замените файл `C:/wildfly/modules/system/layers/base/org/hibernate/validator/main/hibernate-validator-x.y.z-sometext.jar` более новым файлом из каталога `tomcat/shared/lib`, например, `hibernate-validator-5.4.1.Final.jar`.
+* Сравните версии Hibernate Validator в WildFly и приложении CUBA (платформа обычно использует более свежую версию). Замените файл `\wildfly\modules\system\layers\base\org\hibernate\validator\main\hibernate-validator-x.y.z-sometext.jar` более новым файлом из каталога `tomcat\shared\lib`, например, `hibernate-validator-5.4.2.Final.jar`.
 
-* Обновите номер версии указанного JAR-файла в файле `/wildfly/modules/system/layers/base/org/hibernate/validator/main/module.xml`.
+* Обновите номер версии указанного JAR-файла в файле `\wildfly\modules\system\layers\base\org\hibernate\validator\main\module.xml`.
 
-* Зарегистрируйте драйвер PostgreSQL в WildFly, скопировав файл `postgresql-9.4-1201-jdbc41.jar` из каталога `tomcat/lib` в `C:\wildfly\standalone\deployments`.
+* Зарегистрируйте драйвер PostgreSQL в WildFly, скопировав файл `postgresql-9.4.1212.jar` из каталога `tomcat\lib` в `\wildfly\standalone\deployments`.
+
+* Настройте логирование WildFly: отредактируйте файл `\wildfly\standalone\configuration\standalone.xml`, добавив две строки в блок `<subsystem xmlns="urn:jboss:domain:logging:{version}"`:
 +
-[TIP]
-====
-Для WildFly 11 процедура установки драйвера PostgreSQL будет отличаться. Сначала вам необходимо отредактировать файл `module.xml` следующим образом:
-
 [source, xml]
 ----
-include::{sourcesdir}/deployment/wildfly-postgres.xml[]
+<subsystem xmlns="urn:jboss:domain:logging:5.0">
+    <add-logging-api-dependencies value="false"/>
+    <use-deployment-logging-config value="false"/>
+    . . .
+</subsystem>
 ----
-
-Затем из папки `bin` запустите `jboss-cli` и выполните следующую команду:
-
-[source, plain]
-----
-/subsystem=datasources/jdbc-driver=postgresql:add(driver-name=postgresql, driver-module-name=org.postgresql, driver-class-name=org.postgresql.Driver)
-----
-====
 --
 
 . Создайте JDBC Datasource:
@@ -465,13 +459,15 @@ include::{sourcesdir}/deployment/wildfly-postgres.xml[]
 
 * Откройте консоль администратора по адресу `++http://localhost:9990++`. При первом входе потребуется создать пользователя и задать пароль.
 
-* Перейдите в раздел *Configuration - Subsystems - Datasources* и добавьте источник данных для вашего приложения:
+* Перейдите в раздел *Configuration - Subsystems - Datasources and Drivers - Datasources* и добавьте источник данных для вашего приложения:
 
 [source, plain]
 ----
 Name: Cuba
 JNDI Name: java:/jdbc/CubaDS
-JDBC Driver: postgresql
+JDBC Driver: postgresql-9.4.1212.jar
+Driver Module Name: org.postgresql
+Driver Class Name: org.postgresql.Driver
 Connection URL: URL вашей БД
 Username: имя пользователя БД
 Password: пароль БД
@@ -491,8 +487,6 @@ Password: пароль БД
 * Включите флаг *Build WAR*.
 
 * Задайте значение `${app.home}` в поле *Application home directory*.
-
-* Включите флаг *Include JDBC driver*.
 
 * Сохраните настройки.
 
@@ -530,7 +524,7 @@ include::{sourcesdir}/deployment/wildfly.xml[]
 * Запустите сборку WAR-файлов с помощью задачи `buildWar`.
 --
 
-. Скопируйте файлы `app-core.war` и `app.war` из каталога `build\distributions\war` в каталог WildFly `C:\wildfly\standalone\deployments`.
+. Скопируйте файлы `app-core.war` и `app.war` из каталога `build\distributions\war` в каталог WildFly `\wildfly\standalone\deployments`.
 
 . Перезапустите WildFLy.
 
