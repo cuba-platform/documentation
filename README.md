@@ -39,7 +39,7 @@ __{purpose}__ can be one of the following:
 
 * `build` - build single-HTML document.
 * `chop` - build multi-page document.
-* `war` - build a WAR file. The resulting WAR file will have a name corresponding to the document name and a version which is set by the `ext.docVersion` property defined in `build.gradle`, for example `manual-6.9.war`.
+* `war` - build a WAR file. The resulting WAR file will have a name corresponding to the document name and a version which is set by the `ext.docVersion` property defined in `build.gradle`, for example `manual-6.10.war`.
 * `deploy` - deploy WAR to Tomcat (installed by the `setupTomcat` task, see below).
 
 __{doc}__ is the document name (`Manual`, `Bpm`, etc.)
@@ -82,5 +82,5 @@ After installing Tomcat and deploying a document as described above, start the s
 
     ./deploy/tomcat/bin/startup.sh 
 
-If you build, for example, manual for version 6.9, it will be available at `http://localhost:6080/manual-6.9`.  
+If you build, for example, manual for version 6.10, it will be available at `http://localhost:6080/manual-6.10`.  
     
