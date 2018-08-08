@@ -2,8 +2,13 @@
 private Button helloBtn;
 
 @Override
-public void init(Map<String, Object>params) {
+public void init(Map<String, Object> params) {
     helloBtn.setAction(new BaseAction("hello") {
+        @Override
+        public boolean isPrimary() {
+            return true;
+        }
+
         @Override
         public void actionPerform(Component component) {
             showNotification("Hello!", NotificationType.TRAY);
@@ -11,5 +16,6 @@ public void init(Map<String, Object>params) {
     });
     // OR
     helloBtn.setAction(new BaseAction("hello")
+            .withPrimary(true)
             .withHandler(e -> showNotification("Hello", NotificationType.TRAY)));
 }
