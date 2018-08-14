@@ -2120,6 +2120,10 @@ A platform theme can be modified in the project. In the modified theme, you can:
 
 * Modify common parameters, such as background color, margins, spacing, etc.
 
+[[web_theme_extension_structure]]
+File structure and build scripts::
++
+--
 Themes are defined in link:http://sass-lang.com[SCSS] files. To modify (extend) a theme in the project, you should create a specific file structure in the *web* module. A convenient way to do this is to use *CUBA Studio*: open the *Project properties* section and click *Create theme extension*. Select the theme you want to extend in the popup window. As a result, the following directory structure will be created in the `modules/web` directory (for Halo theme extension):
 
 [source, plain]
@@ -2133,6 +2137,7 @@ Apart from that, the <<build.gradle,build.gradle>> script will be complemented w
 ====
 If your project contains an <<app_components,application component>> with extended theme, and you want this extension to be used for the whole project, then you should create theme extension for the project too. For more details on how to inherit the component's theme, see the <<web_theme_inheritance>> section.
 ====
+--
 
 [[web_theme_extension_branding]]
 Changing branding::
@@ -2198,6 +2203,7 @@ After rebuilding the project, the fields will look as follows:
 image::gui_themes_fieldgroup_1.png[align="center"]
 --
 
+[[web_theme_extension_modify_styles]]
 Modifying existing styles of the visual components::
 +
 --
@@ -2232,18 +2238,7 @@ include::{sourcesdir}/gui/themes/themes_5.scss[]
 ----
 --
 
-[[web_theme_migration]]
-Migration from Havana to feature-rich Halo theme::
-+
---
-Halo theme is more extensible and supports some new visual components, such as <<gui_DataGrid,DataGrid>> or <<gui_SideMenu,SideMenu>>. If you want to use these components and keep your components library up-to-date, it is recommended to use the Halo theme. At the same time, if you want to keep the old Havana enterprise look, you can use the following variables in `halo-ext-defaults.scss`:
-
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_23.scss[]
-----
---
-
+[[web_theme_extension_header]]
 Changing the application header::
 +
 --
@@ -2255,7 +2250,6 @@ Halo theme supports the <<cuba.web.useInverseHeader,cuba.web.useInverseHeader>> 
 
 You can create one or several application themes in the project and give the users an opportunity to select the most appropriate one. Creating new themes also allows you to override the variables in the `++*-theme.properties files++`, which define a few server-side parameters:
 
---
 * Default dialog window size.
 
 * Default input field width.
@@ -2263,64 +2257,99 @@ You can create one or several application themes in the project and give the use
 * Dimensions of some components (<<gui_Filter,Filter>>, <<gui_FileMultiUploadField,FileMultiUploadField>>).
 
 * Correspondence between icon names and constants of the `com.vaadin.server.FontAwesome` enumeration for using *Font Awesome* in standard actions and screens of the platform, if <<cuba.web.useFontIcons,cuba.web.useFontIcons>> is enabled.
---
 
-See an example of a custom Hover-based theme creation in the <<custom_theme_recipe,>> section.
+New themes can be easily created in CUBA Studio, in CUBA CLI or manually. Let's consider all the three ways taking <<custom_theme_hover_dark,Hover Dark>> custom theme as an example.
 
-Creating a new theme::
+In CUBA Studio: ::
 +
 --
-Below is the example of creating a Halo-based Facebook theme, which resembles the interface of a popular social network.
+* Open the *Project properties* section and click *Manage themes > Create custom theme*. Enter the name of the new theme: *hover-dark*. Select the *hover* theme in the *Base theme* dropdown.
++
+The required file structure will be created in the *web* module. The `webThemesModule` module and its configuration will be automatically added to the `settings.gradle` and <<build.gradle,build.gradle>> files. Also, the generated `deployThemes` gradle task allows you to see the changes without server restart.
+--
 
-. In CUBA Studio, open *Project Properties* section and click *Create custom theme*. Set the theme name - `facebook`, select `halo` as the base theme and click *Create*. The new theme directory will be created in the project:
+Manually: ::
++
+--
+* Create the following file structure in the *web* module of your project:
 +
 [source, plain]
 ----
-include::{sourcesdir}/gui/themes/themes_25.scss[]
+include::{sourcesdir}/gui/themes/themes_44.scss[]
 ----
-+
-The `styles.scss` file contains the list of your themes:
+
+* The `app-component.scss` file:
 +
 [source, css]
 ----
-include::{sourcesdir}/gui/themes/themes_7.scss[]
+include::{sourcesdir}/gui/themes/themes_46.scss[]
 ----
-+
-The `facebook.scss` file:
+
+* The `hover-dark.scss` file:
 +
 [source, css]
 ----
-include::{sourcesdir}/gui/themes/themes_8.scss[]
+include::{sourcesdir}/gui/themes/themes_47.scss[]
 ----
-+
-The `app-component.scss` file inside `com.haulmont.cuba`:
+
+* The `styles.scss` file:
 +
 [source, css]
 ----
-include::{sourcesdir}/gui/themes/themes_24.scss[]
+include::{sourcesdir}/gui/themes/themes_48.scss[]
 ----
 
-. Modify the theme variables in `facebook-defaults.scss`. You can do it in Studio by clicking *Manage theme > Edit Facebook theme variables* or in IDE:
+* Create the `hover-dark-theme.properties` file in the *web* subdirectory of your *web* module:
 +
-[source, css]
+[source, plain]
 ----
-include::{sourcesdir}/gui/themes/themes_9.scss[]
+@include=hover-theme.properties
 ----
 
-. The `facebook-theme.properties` file in the `src` directory of the *web* module can be used to override the server-side theme variables from the `halo-theme.properties` file of the platform.
-
-. The new theme has been automatically added to the `web-app.properties` file:
+* Add the `webThemesModule` module to the `settings.gradle` file:
 +
-[source, properties]
+[source, groovy]
 ----
-cuba.web.theme = facebook
-cuba.themeConfig = havana-theme.properties halo-theme.properties /com/company/application/web/facebook-theme.properties
----- 
-+
-The <<cuba.themeConfig,cuba.themeConfig>> property defines which themes will be available for the user in the *Settings* menu of an application.
+include::{sourcesdir}/gui/themes/themes_50.groovy[]
+----
 
-. Rebuild the application and start the server. Now the user will see the application in Facebook theme on first login, and will be able to choose between Facebook, Halo and Havana in the *Help* > *Settings* menu.
+* Add the `webThemesModule` module configuration to the <<build.gradle,build.gradle>> file:
++
+[source, groovy]
+----
+include::{sourcesdir}/gui/themes/themes_49.groovy[]
+----
+
+* Finally, create the `deployThemes` gradle task in `build.gradle` to see the changes without server restart:
++
+[source, groovy]
+----
+include::{sourcesdir}/gui/themes/themes_51.groovy[]
+----
 --
+
+In https://github.com/cuba-platform/cuba-cli[CUBA CLI]: ::
++
+--
+* Run the `theme` command, then select the *hover* theme.
++
+The specific file structure will be created in the *web* module of the project.
+
+* Modify the generated file structure and the files' contents so that they correspond to the files from above.
+
+* Create the `hover-dark-theme.properties` file in the source directory of your *web* module:
++
+[source, plain]
+----
+@include=hover-theme.properties
+----
+
+The `build.gradle` and `settings.gradle` files will be updated automatically by CLI.
+--
+
+See also the example in <<custom_theme_facebook,>> section.
+
+To create a reusable theme distribution, follow the instructions in the <<web_theme_reusable,>> section.
 
 Modifying server-side theme parameters::
 +
@@ -2338,158 +2367,6 @@ The fragment of the standard users browser screen in the Facebook theme with the
 
 image::gui_theme_facebook_1.png[align="center"]
 --
-
-[[web_theme_inheritance]]
-====== Using Themes from Application Components
-
-If your project contains an <<app_components,application component>> with a custom theme, you can use this theme for the whole project.
-
-To inherit the theme as is, simply add it to the <<cuba.themeConfig,cuba.themeConfig>> application property:
-
-[source, plain]
-----
-cuba.web.theme = {theme-name}
-cuba.themeConfig = havana-theme.properties halo-theme.properties /com/company/{app-component-name}/{theme-name}-theme.properties
-----
-
-In case you want to override some variables from the parent theme, you need to create a theme extension in your project first.
-
-In the following example we will use the `facebook` theme from the <<web_theme_creation>> section.
-
-. Follow the steps to create the `facebook` theme for your app component.
-
-. Install the app component using Studio menu as described in the <<app_components_sample>> section.
-
-. Extend the `halo` theme in the project that uses your application component.
-
-. By means of your IDE, rename all `halo` occurrences in `themes` directory, including file names, to `facebook` in order to get the following structure:
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_28.scss[]
-----
-
-. The `app-component.scss` file aggregates theme modifications of the application component. During the SCSS build process, the Gradle plugin automatically finds the app components and imports them in the generated `modules/web/build/themes-tmp/VAADIN/themes/{theme-name}/app-components.scss` file.
-+
-By default `app-component.scss` does not include variables modifications from `{theme-name}-ext-defaults`. To include variables modifications to app component bundle, you should import it manually in `app-component.scss`:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_29.scss[]
-----
-+
-At this stage the `facebook` theme is already imported from the app component to the project.
-
-. Now you can use `facebook-ext.scss` and `facebook-ext-defaults.scss` files inside the `com.company.application` package to override variables from app component's theme and customize it for the concrete project.
-
-. Add the following properties to the `web-app.properties` file to make the `facebook` theme available in the *Settings* menu of the application. Use the relative path to reference `facebook-theme.properties` from the app component.
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_30.scss[]
-----
-
-[TIP]
-====
-In case of any trouble with themes building check `modules/web/build/themes-tmp` directory. It contains all the files and generated `app-component.scss` includes, thus enabling you to investigate SCSS compilation problems.
-====
-
-[[web_theme_reusable]]
-====== Creating a Reusable Theme
-
-Any theme can be packed and reused without an <<web_theme_inheritance,application component>>. To create a theme package, you need to create a Java project from scratch and bundle it in a single JAR file. Follow the steps below to create a distribution of `facebook` theme from the previous examples.
-
-. Create a new project with the following structure in IDE. It will be a simple Java project that consists of SCSS files and theme properties:
-+
---
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_31.scss[]
-----
-
-This sample theme project can be downloaded from https://github.com/cuba-labs/halo-facebook[GitHub].
-
-* `build.gradle` script:
-+
-[source, groovy]
-----
-include::{sourcesdir}/gui/themes/themes_32.groovy[]
-----
-
-* `settings.gradle` file:
-+
-[source, groovy]
-----
-include::{sourcesdir}/gui/themes/themes_33.groovy[]
-----
-
-* `app-component.scss` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_34.scss[]
-----
-
-* `halo-facebook.scss` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_35.scss[]
-----
-
-* `halo-facebook-defaults.scss` file:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_36.css[]
-----
-
-* `halo-facebook-theme.properties` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_37.scss[]
-----
---
-
-. Build and install the project with the Gradle task:
-+
-[source, plain]
-----
-gradle assemble install
-----
-
-. Add the theme to your CUBA-based project as a Maven dependency in two configurations: themes and compile, by modifying you `build.gradle` file:
-+
-[source, groovy]
-----
-include::{sourcesdir}/gui/themes/themes_38.groovy[]
-----
-+
-If you install the theme locally, don't forget to add `mavenLocal()` to the list of repositories: open the *Advanced* tab of *Project Properties* section in Studio and check the *Use local Maven repository* checkbox.
-
-. To inherit this theme and modify it in your project, you have to extend this theme. Extend the `halo` theme and rename `themes/halo` folder to `themes/halo-facebook`:
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_39.scss[]
-----
-
-. Modify `styles.scss` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_40.scss[]
-----
-
-. The last step is to define `halo-facebook-theme.properties` file in `web-app.properties` file:
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_41.scss[]
-----
-
-Now, you can choose `halo-facebook` theme from *Help* > *Settings* menu or set the default theme using `cuba.web.theme` application property.
 
 [[desktop_theme]]
 ===== Themes in Desktop Applications
