@@ -905,256 +905,6 @@ In this example, `HBox` has content-dependent size, therefore the label alignmen
 image::cookbook/screen_layout_rules_22.png[align="center"]
 --
 
-[[theme_recipes]]
-==== Using Themes
-
-This section covers working with <<web_theme,themes>> in Web applications.
-
-[[custom_theme_hover_dark]]
-===== Creating Hover Dark Theme
-
-Here you can find the steps to create a Hover Dark theme, which will be a dark variation of the default Hover theme. The sample application with this theme is available on https://github.com/cuba-platform/sample-hover-dark[GitHub].
-
-. Create the new *hover-dark* theme in your project following the instructions in <<web_theme_creation,>> section.
-+
-The required file structure will be created in the *web* module. The `webThemesModule` module and its configuration will be automatically added to the `settings.gradle` and <<build.gradle,build.gradle>> files.
-
-. Override the default <<web_theme_extension_common,style variables>> in the `hover-dark-defaults.scss` file, i.e. replace the variables in it by the following ones:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_45.scss[]
-----
-
-. Using the <<cuba.themeConfig,cuba.themeConfig>> application property define the themes you want to make available in the application:
-+
-[source, plain]
-----
-cuba.themeConfig = hover-theme.properties /com/company/demo/web/hover-dark-theme.properties
-----
-
-As the result, both themes will be available in the application: the default Hover theme and its dark variation.
-
-image::cookbook/hover-dark.png[align="center"]
-
-[[custom_theme_facebook]]
-===== Creating Facebook Theme
-
-Below is the example of creating a Halo-based Facebook theme, which resembles the interface of a popular social network.
-
-. In CUBA Studio, open *Project Properties* section and click *Create custom theme*. Set the theme name - `facebook`, select `halo` as the base theme and click *Create*. The new theme directory will be created in the project:
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_25.scss[]
-----
-+
-The `styles.scss` file contains the list of your themes:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_7.scss[]
-----
-+
-The `facebook.scss` file:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_8.scss[]
-----
-+
-The `app-component.scss` file inside `com.haulmont.cuba`:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_24.scss[]
-----
-
-. Modify the theme variables in `facebook-defaults.scss`. You can do it in Studio by clicking *Manage theme > Edit Facebook theme variables* or in IDE:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_9.scss[]
-----
-
-. The `facebook-theme.properties` file in the `src` directory of the *web* module can be used to override the server-side theme variables from the `halo-theme.properties` file of the platform.
-
-. The new theme has been automatically added to the `web-app.properties` file:
-+
-[source, properties]
-----
-cuba.web.theme = facebook
-cuba.themeConfig = havana-theme.properties halo-theme.properties /com/company/application/web/facebook-theme.properties
-----
-+
-The <<cuba.themeConfig,cuba.themeConfig>> property defines which themes will be available for the user in the *Settings* menu of an application.
-
-. Rebuild the application and start the server. Now the user will see the application in Facebook theme on first login, and will be able to choose between Facebook, Halo and Havana in the *Help* > *Settings* menu.
-
-image::cookbook/facebook-theme.png[align="center"]
-
-[[web_theme_migration]]
-===== Migration from Havana to Feature-rich Halo Theme
-
-Halo theme is more extensible and supports some new visual components, such as <<gui_DataGrid,DataGrid>> or <<gui_SideMenu,SideMenu>>. If you want to use these components and keep your components library up-to-date, it is recommended to use the Halo theme. At the same time, if you want to keep the old Havana enterprise look, you can use the following variables in `halo-ext-defaults.scss`:
-
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_23.scss[]
-----
-
-[[web_theme_inheritance]]
-===== Using Themes from Application Components
-
-If your project contains an <<app_components,application component>> with a custom theme, you can use this theme for the whole project.
-
-To inherit the theme as is, simply add it to the <<cuba.themeConfig,cuba.themeConfig>> application property:
-
-[source, plain]
-----
-cuba.web.theme = {theme-name}
-cuba.themeConfig = havana-theme.properties halo-theme.properties /com/company/{app-component-name}/{theme-name}-theme.properties
-----
-
-In case you want to override some variables from the parent theme, you need to create a theme extension in your project first.
-
-In the following example we will use the `facebook` theme from the <<web_theme_creation>> section.
-
-. Follow the steps to create the `facebook` theme for your app component.
-
-. Install the app component using Studio menu as described in the <<app_components_sample>> section.
-
-. Extend the `halo` theme in the project that uses your application component.
-
-. By means of your IDE, rename all `halo` occurrences in `themes` directory, including file names, to `facebook` in order to get the following structure:
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_28.scss[]
-----
-
-. The `app-component.scss` file aggregates theme modifications of the application component. During the SCSS build process, the Gradle plugin automatically finds the app components and imports them in the generated `modules/web/build/themes-tmp/VAADIN/themes/{theme-name}/app-components.scss` file.
-+
-By default `app-component.scss` does not include variables modifications from `{theme-name}-ext-defaults`. To include variables modifications to app component bundle, you should import it manually in `app-component.scss`:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_29.scss[]
-----
-+
-At this stage the `facebook` theme is already imported from the app component to the project.
-
-. Now you can use `facebook-ext.scss` and `facebook-ext-defaults.scss` files inside the `com.company.application` package to override variables from app component's theme and customize it for the concrete project.
-
-. Add the following properties to the `web-app.properties` file to make the `facebook` theme available in the *Settings* menu of the application. Use the relative path to reference `facebook-theme.properties` from the app component.
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_30.scss[]
-----
-
-[TIP]
-====
-In case of any trouble with themes building check `modules/web/build/themes-tmp` directory. It contains all the files and generated `app-component.scss` includes, thus enabling you to investigate SCSS compilation problems.
-====
-
-[[web_theme_reusable]]
-===== Creating a Reusable Theme
-
-Any theme can be packed and reused without an <<web_theme_inheritance,application component>>. To create a theme package, you need to create a Java project from scratch and bundle it in a single JAR file. Follow the steps below to create a distribution of `facebook` theme from the previous examples.
-
-. Create a new project with the following structure in IDE. It will be a simple Java project that consists of SCSS files and theme properties:
-+
---
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_31.scss[]
-----
-
-This sample theme project can be downloaded from https://github.com/cuba-labs/halo-facebook[GitHub].
-
-* `build.gradle` script:
-+
-[source, groovy]
-----
-include::{sourcesdir}/gui/themes/themes_32.groovy[]
-----
-
-* `settings.gradle` file:
-+
-[source, groovy]
-----
-include::{sourcesdir}/gui/themes/themes_33.groovy[]
-----
-
-* `app-component.scss` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_34.scss[]
-----
-
-* `halo-facebook.scss` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_35.scss[]
-----
-
-* `halo-facebook-defaults.scss` file:
-+
-[source, css]
-----
-include::{sourcesdir}/gui/themes/themes_36.css[]
-----
-
-* `halo-facebook-theme.properties` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_37.scss[]
-----
---
-
-. Build and install the project with the Gradle task:
-+
-[source, plain]
-----
-gradle assemble install
-----
-
-. Add the theme to your CUBA-based project as a Maven dependency in two configurations: themes and compile, by modifying you `build.gradle` file:
-+
-[source, groovy]
-----
-include::{sourcesdir}/gui/themes/themes_38.groovy[]
-----
-+
-If you install the theme locally, don't forget to add `mavenLocal()` to the list of repositories: open the *Advanced* tab of *Project Properties* section in Studio and check the *Use local Maven repository* checkbox.
-
-. To inherit this theme and modify it in your project, you have to extend this theme. Extend the `halo` theme and rename `themes/halo` folder to `themes/halo-facebook`:
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_39.scss[]
-----
-
-. Modify `styles.scss` file:
-+
-[source, scss]
-----
-include::{sourcesdir}/gui/themes/themes_40.scss[]
-----
-
-. The last step is to define `halo-facebook-theme.properties` file in `web-app.properties` file:
-+
-[source, plain]
-----
-include::{sourcesdir}/gui/themes/themes_41.scss[]
-----
-
-Now, you can choose `halo-facebook` theme from *Help* > *Settings* menu or set the default theme using `cuba.web.theme` application property.
-
 [[screen_params_recipe]]
 ==== Passing Parameters to a Screen
 
@@ -1403,6 +1153,104 @@ Now, all we have to do is to create the fields for the `Order` attributes, bind 
 ----
 
 This approach is more flexible in terms of screen layout design. You can select any visual components for the fields, group the fields and place them wherever you like on the screen.
+
+[[theme_recipes]]
+==== Using Themes
+
+This section contains some examples of working with <<web_theme,themes>> in Web applications.
+
+[[custom_theme_hover_dark]]
+===== Creating Hover Dark Theme
+
+Here you can find the steps to create a Hover Dark theme, which will be a dark variation of the default Hover theme. The sample application with this theme is available on https://github.com/cuba-platform/sample-hover-dark[GitHub].
+
+. Create the new *hover-dark* theme in your project following the instructions in <<web_theme_creation,>> section.
++
+The required file structure will be created in the *web* module. The `webThemesModule` module and its configuration will be automatically added to the `settings.gradle` and <<build.gradle,build.gradle>> files.
+
+. Override the default <<web_theme_extension_common,style variables>> in the `hover-dark-defaults.scss` file, i.e. replace the variables in it by the following ones:
++
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_45.scss[]
+----
+
+. Using the <<cuba.themeConfig,cuba.themeConfig>> application property define the themes you want to make available in the application:
++
+[source, plain]
+----
+cuba.themeConfig = hover-theme.properties /com/company/demo/web/hover-dark-theme.properties
+----
+
+As the result, both themes will be available in the application: the default Hover theme and its dark variation.
+
+image::cookbook/hover-dark.png[align="center"]
+
+[[custom_theme_facebook]]
+===== Creating Facebook Theme
+
+Below is the example of creating a Halo-based Facebook theme, which resembles the interface of a popular social network.
+
+. In CUBA Studio, open *Project Properties* section and click *Create custom theme*. Set the theme name - `facebook`, select `halo` as the base theme and click *Create*. The new theme directory will be created in the project:
++
+[source, plain]
+----
+include::{sourcesdir}/gui/themes/themes_25.scss[]
+----
++
+The `styles.scss` file contains the list of your themes:
++
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_7.scss[]
+----
++
+The `facebook.scss` file:
++
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_8.scss[]
+----
++
+The `app-component.scss` file inside `com.haulmont.cuba`:
++
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_24.scss[]
+----
+
+. Modify the theme variables in `facebook-defaults.scss`. You can do it in Studio by clicking *Manage theme > Edit Facebook theme variables* or in IDE:
++
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_9.scss[]
+----
+
+. The `facebook-theme.properties` file in the `src` directory of the *web* module can be used to override the server-side theme variables from the `halo-theme.properties` file of the platform.
+
+. The new theme has been automatically added to the `web-app.properties` file:
++
+[source, properties]
+----
+cuba.web.theme = facebook
+cuba.themeConfig = havana-theme.properties halo-theme.properties /com/company/application/web/facebook-theme.properties
+----
++
+The <<cuba.themeConfig,cuba.themeConfig>> property defines which themes will be available for the user in the *Settings* menu of an application.
+
+. Rebuild the application and start the server. Now the user will see the application in Facebook theme on first login, and will be able to choose between Facebook, Halo and Havana in the *Help* > *Settings* menu.
+
+image::cookbook/facebook-theme.png[align="center"]
+
+[[web_theme_migration]]
+===== Migration from Havana to Feature-rich Halo Theme
+
+Halo theme is more extensible and supports some new visual components, such as <<gui_DataGrid,DataGrid>> or <<gui_SideMenu,SideMenu>>. If you want to use these components and keep your components library up-to-date, it is recommended to use the Halo theme. At the same time, if you want to keep the old Havana "enterprise" look, you can use the following variables in `halo-ext-defaults.scss`:
+
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_23.scss[]
+----
 
 [[data_recipes]]
 === Loading and Saving Data
