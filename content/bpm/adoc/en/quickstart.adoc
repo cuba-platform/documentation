@@ -18,12 +18,14 @@ Commonly an approval process involve the following steps:
 * Project namespace: `demo`
 * Root package: `com.company.bpmdemo`
 
+.New Project
 image::StudioNewProject.png[align="center"]
 
 [start=2]
 . Open the project properties window (*Project properties* section, *Edit* button).
 . Activate the BPM subsystem in the *App components* list.
 
+.Select BPM Module
 image::StudioSelectBpmModule.png[align="center"]
 
 [start=4]
@@ -34,6 +36,7 @@ image::StudioSelectBpmModule.png[align="center"]
 
 Go to the *Data model* tab and press *New > Entity*. The class name is `Contract`.
 
+.Create Contract Entity
 image::CreateContractEntity.png[align="center"]
 
 Create the following entity attributes:
@@ -42,10 +45,12 @@ Create the following entity attributes:
 * `date` (`Date` type)
 * `state` (`String` type)
 
+.Contract Entity Attributes
 image::ContractEntityAttributes.png[align="center"]
 
 Go to the *Instance name* tab and add the `number` attribute to *Name pattern attributes*.
 
+.Name Pattern
 image::ContractEntityNamePattern.png[align="center"]
 
 Press the *OK* button to save the entity.
@@ -55,6 +60,7 @@ Press the *OK* button to save the entity.
 
 Select the `Contract` entity in the *Data model* section and click *New > Generic UI screen*. In the list of screen templates, select *Entity browser and editor screens* and click *Create*. Close the list of templates.
 
+.Contract Screens
 image::CreateContractScreens.png[align="center"]
 
 [[qs_approvalHelper]]
@@ -69,6 +75,7 @@ Method parameters:
 
 Open the project in an IDE. Create `ApprovalHelper` class in the `com.company.bpmdemo.core` package.
 
+.ApprovalHelper Project Tree
 image::ApprovalHelperProjectTree.png[align="center"]
 
 [source,java]
@@ -81,6 +88,7 @@ include::{sourcesdir}/quickstart/ApprovalHelper.java[]
 
 Click the *Generate DB scripts* button on the *Data model* section. Then click the *Create database* button on the *Database scripts* page.
 
+.Create Database
 image::StudioCreateDatabase.png[align="center"]
 
 Start the application server using *Run -> Start application server* menu command.
@@ -97,6 +105,7 @@ In this section, we will create and deploy the process.
 
 The final version of the process model will look like this:
 
+.Process Full
 image::ProcessFull.png[align="center"]
 
 Let's take a look at the steps needed to create the model.
@@ -110,10 +119,12 @@ A notification with clickable link is shown in case of creating or copying the p
 
 Select the *Process roles* property in the model properties panel. The process roles edit window will be opened.
 
+.Process Roles Property
 image::ProcessRolesProperty.png[align="center"]
 
 Two types of actors participate in the process: a manager and a controller. Create two roles: `Controller` and `Manager`.
 
+.Process Roles Editor
 image::ProcessRolesEditor.png[align="center"]
 
 Drag and drop the *Start event* node from the *Start Events* group to the workspace.
@@ -123,26 +134,32 @@ We need to display a form to select process actors when the process starts. Sele
 * `procActorsVisible` with `true` value indicates that a table for process actors selection will be displayed on the form.
 * `attachmentsVisible` with `true` value indicates that a table for uploading attachments will be displayed on the form.
 
+.Start Form
 image::StartForm.png[align="center"]
 
 Add the *User task* node from the *Activities* group to the model. Name it `Validation`.
 
+.Model Validation Node
 image::ModelValidationNode.png[align="center"]
 
 Select this node and assign the `controller` value to the *Process role* property at the properties panel. This way we define that the task will be assigned to a process actor with the `controller` role.
 
+.Select ProcRole For Validation
 image::SelectProcRoleForValidation.png[align="center"]
 
 Next select the *Task outcomes* property. The window for task outcomes edit will be opened. Outcomes define possible user actions when users receive tasks. Create two outcomes: `Valid` and `Not valid`. Define the `Standard form` for both outcomes. Add form parameter `commentRequired=true` for the `Not valid` outcome, because we want to make a user add a comment in case of invalid contract.
 
+.Outcomes For Validation
 image::OutcomesForValidation.png[align="center"]
 
 Depending on the controller's decision we have to send the contract to managers approval or to finish the process with the `Not valid` state. The *Exclusive gateway* node from the *Gateways* group is used to control the process flow. Add it to the workspace and then add two more elements: *Script task* with `Set 'Not valid' state` name and *User task* with `Approval` name. Name the flow to the *Script task* as `Not valid` and the flow to the *User task* as `Valid`.
 
+.Model Validation Exclusive Gateway
 image::ModelValidationExclGateway.png[align="center"]
 
 Select the `Not valid` flow. Expand the *Flow outcome* dropdown list from the properties panel. It shows outcomes from the tasks before the gateway. Select the `Not valid` value.
 
+.Not Valid Flow Outcome
 image::NotValidFlowOutcome.png[align="center"]
 
 Now, if the `Not valid` outcome is selected, a transition to this flow will be performed.
@@ -156,6 +173,7 @@ There must be no value selected in the *Flow outcome* dropdown list for the flow
 
 Next select the *Exclusive gateway* and open its *Flow order* property editor. Make sure that the `Not valid` flow is on the first place in the list. Change the flows sequence if necessary.
 
+.Validation Flow Order
 image::ValidationFlowOrder.png[align="center"]
 
 Let's move on to the `Set 'Not valid' state` node. We need to set the `state` property of the Contract entity to the `Not valid` value. Select the node. Set the *Script format* property value to `groovy`. Click on the *Script* property field - the script editor will be opened. Copy and paste the following code there:
@@ -173,18 +191,21 @@ After the contract state is changed, the process should be finished. Let's add t
 
 Let's go back to the `Approval` task. Define the `manager` process role for it like we did for the first task. In order for the task to be assigned to many managers simultaneously, set its *Multi-instance type* property to `Parallel`.
 
+.Multi-instance Approval Type
 image::ApprovalMutlInstanceType.png[align="center"]
 
 Create two task outcomes: `Approve` and `Reject` (*Task outcomes* property). For both outcomes, set the `Standard form` form and set `commentRequired` parameter to `true` for the `Reject` outcome.
 
 After the approval is completed, either `Approved` or `Not approved` status should be assigned to the contract depending on the approval result. Add an *Exclusive gateway* node after the `Approval task`. Add two *Service task* after the exclusive gateway: `Set 'Approved' state` and `Set 'Not approved' state`. They will do the same thing as the *Script task* we have added earlier, but in a different way: by invoking a Spring bean method. Name the flow to the `Set 'Approved' state` as `Approved`, and the flow to the `Set 'Not approved' state` as `Not approved`.
 
+.Model With Approval
 image::ModelWithApproval.png[align="center"]
 
 Select the `Not approved` flow node and select the `Reject` value in the *Flow outcome* list. Now if at least one of the managers performs the `Reject` action then this outcome will be initiated. Select the `Approved` flow node and check the *Default flow* checkbox. This means that if no other flow is initiated then this flow will be used.
 
 Set the flow order for *Exclusive gateway* like we did for the previous one. Select *Exclusive gateway* and open the *Flow order* property editor. `Not approved` should be processed first.
 
+.Approval Flow Order
 image::ApprovalFlowOrder.png[align="center"]
 
 Let's go back to the Service task. Select the `Set 'Approved' state` node and set its *Expression* property to the following value:
@@ -205,6 +226,7 @@ The Activiti engine is integrated with the Spring framework, so we can access Sp
 
 Connect both service tasks with the *End event* and click the save button. The model is ready and we can move on to the model deployment.
 
+.Process Model
 image::ProcessFull.png[align="center"]
 
 [[qs_process_model_deployment]]
@@ -219,10 +241,12 @@ The model deployment process consists of the following steps:
 
 Select the model in the list on the *Process Models* screen. Press the *Deploy* button. The model deployment window will be displayed. The model is deployed for the first time, so the *Create new process* option is selected. You will be able to deploy the model to existing processes for further model changes. Click *OK*. The process definition is created.
 
+.Deploy Model Screen
 image::DeployModelScreen.png[align="center"]
 
 Open the screen *BPM -> Process Definitions*. Open the `Contract approval` item for editing. The *Code* field value is `contractApproval`. Remember this value - we will use it to identify the process definition later in this chapter.
 
+.ProcDefinition Edit
 image::ProcDefinitionEdit.png[align="center"]
 
 [[qs_screens_adaptation]]
@@ -242,6 +266,7 @@ include::{sourcesdir}/quickstart/contract-edit.xml[]
 
 Go to the *Layout* tab. The resulting screen layout is shown below:
 
+.Contract Edit Studio Layout
 image::ContractEditStudioLayout.png[align="center"]
 
 The screen contains a FieldGroup for contract editing, a frame for displaying process actions, and a table with process attachments.
@@ -305,6 +330,7 @@ In order to demonstrate the process, create three users in the *Administration -
 * Enter a comment and add actors: the controller is `norman` and the two managers are `pierce` and `roberts`.
 * Add an attachment by using an *Upload* button from the attachments table.
 
+.Start Process Form
 image::StartProcessForm.png[align="center"]
 
 [start=5]
@@ -317,16 +343,19 @@ Log in as `norman`.
 
 When the process reaches the *User task* node, a `ProcTask` object is created. This object is linked to the particular process actor. The BPM subsystem has a screen for displaying uncompleted tasks for the current user: *BPM -> Process Tasks*.
 
+.ProcTask Browse
 image::ProcTaskBrowse.png[align="center"]
 
 We see that the user `norman` has one uncompleted task `Validation` of the `Contract approval` process. Select it and click the *Open entity editor* button. The contract edit screen will appear:
 
+.Contract Edit Validation
 image::ContractEditValidation.png[align="center"]
 
 The current user (`norman`) has an uncompleted task (ProcTask), so the `procActionsFrame` displays available process actions. When we were defining the `Validation` UserTask node, we set two possible outcomes: `Valid` and `Not valid`. That's why two buttons are added to the `procActionsFrame`.
 
 Click the *Valid* button and enter a comment in the opened window:
 
+.Validation Complete Form
 image::ValidationCompleteForm.png[align="center"]
 
 Click *OK*.
@@ -340,10 +369,12 @@ Log in as the `pierce` user.
 
 Open the list of tasks for the current user: *BPM -> Process tasks*. You can see the `Approval` task.
 
+.Task List Approval
 image::TaskListApproval.png[align="center"]
 
 Select the task and this time click the *Open process instance* button. The system screen for working with the process instance will be opened.
 
+.ProcInstance Edit Approval
 image::ProcInstanceEditApproval.png[align="center"]
 
 It displays the information about the process start time, initiator, attachments list, actors and process instance tasks list. The screen also allows you to open a linked entity editor and execute a process action.
@@ -356,12 +387,14 @@ Then log in as `roberts`. Open the contract from the list in *Application -> Con
 
 User `roberts` has an uncompleted task, so the `procActionsFrame` displays *Approve* and *Reject* actions. Click the *Reject* button.
 
+.Approval Form
 image::CompleteApprovalForm.png[align="center"]
 
 When we were defining the `Reject` outcome in the model designer, we set the `commentRequired` form parameter to `true`, therefore you see that the comment is required in the task complete form. Enter the comment and press *OK*.
 
 One of the managers has rejected the contract, so the `Not approved` state should be assigned to the contract. Let's check it. Open the contract.
 
+.Not Approved
 image::ContractEditNotApproved.png[align="center"]
 
 The approval process is completed with the `Not approved` state.
