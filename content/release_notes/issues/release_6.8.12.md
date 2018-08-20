@@ -16,7 +16,7 @@
     `client: web` `severity: major` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 6.8.12` `ver: 6.9.5` 
 * [#684 GroupTable columns are misaligned in case of aggregatable table](https://github.com/cuba-platform/cuba/issues/684) \
     `client: web` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 6.8.12` `ver: 6.9.5` `ver: 7.0.0` 
-* [#507 Switch to KRYO](https://github.com/cuba-platform/cuba/issues/507) \
+* [#507 Fix blockers related to Kryo serialization](https://github.com/cuba-platform/cuba/issues/507) \
     `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 6.8.12` `ver: 6.9.5` `ver: 7.0.0` 
 
 
