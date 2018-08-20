@@ -1,0 +1,162 @@
+[[rest_reports]]
+== REST API
+
+Универсальный REST API предоставляет следующую функциональность для генератора отчетов:
+
+* Получение списка отчетов;
+
+* Получение информации об отдельном отчете;
+
+* Запуск отчета и скачивание результата;
+
+* Получение документации OpenAPI (Swagger).
+
+REST API использует протокол OAuth2 для аутентификации и поддерживает анонимный доступ.
+
+Чтобы отчет был доступен в REST API, необходимо установить флаг *Visible for REST API* на вкладке *Roles and Screens* редактора отчета:
+
+.Флаг Visible for REST API
+image::visible_for_rest.png[align="center"]
+
+Ниже приведено формальное описание некоторых особенностей REST API для генератора отчетов. Больше инфомации о REST API и получении OAuth-токена вы можете найти в Руководстве по разработке приложений.
+
+[[rest_reports_get_all]]
+Получение списка отчетов::
++
+--
+Чтобы получить список всех существующих отчетов, необходимо выполнить *GET* запрос по адресу:
+
+[source, plain]
+----
+/rest/reports/v1/report
+----
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом `Bearer`:
+
+[source, plain]
+----
+GET http://localhost:8080/app/rest/reports/v1/report HTTP/1.1
+
+Authorization: Bearer f5a2b4b1-a121-4563-9519-dd3c0b116689
+Content-Type: application/json
+----
+
+Ответ будет содержать краткую информацию обо всех отчетах с установленным флагом *Visible for REST API*:
+
+[source, json]
+----
+{
+    "id": "2dd27fbf-8830-416a-899f-339543f8f27a",
+    "name": "Books by author"
+},
+{
+    "id": "2f07c9fe-5d6d-48cf-876f-8c02ac1f6c3c",
+    "name": "Book availability in department"
+}
+----
+--
+
+[[rest_reports_get_one]]
+Получение информации об отчете::
++
+--
+Для получения детальной информации об отчете нужно выполнить *GET* запрос по адресу:
+
+[source, plain]
+----
+/rest/reports/v1/report/{id}
+----
+
+Последняя часть запроса здесь - это идентификатор нужного отчета:
+
+[source, plain]
+----
+GET http://localhost:8080/app/rest/reports/v1/report/2dd27fbf-8830-416a-899f-339543f8f27a HTTP/1.1
+----
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом `Bearer`.
+
+Возвращаемый объект JSON будет содержать следующую информацию об отчете:
+
+* ID,
+* имя отчета,
+* <<structure,код отчета>> (если задан),
+* имеющиеся <<template,шаблоны>>,
+* <<parameters,параметры>> и их типы.
+
+[source, json]
+----
+{
+    "id": "2dd27fbf-8830-416a-899f-339543f8f27a",
+    "name": "Books by author",
+    "templates": [
+        {
+            "code": "DEFAULT",
+            "outputType": "XLS"
+        }
+    ],
+    "inputParameters": [
+        {
+            "name": "Author",
+            "alias": "author",
+            "type": "ENTITY",
+            "required": true,
+            "hidden": false,
+            "entityMetaClass": "library$Author"
+        }
+    ]
+}
+----
+--
+
+[[rest_reports_run]]
+Запуск отчета::
++
+--
+Чтобы выполнить отчет, выполните *POST* отчет по адресу:
+
+[source, plain]
+----
+/rest/reports/v1/run/{id}
+----
+
+Последняя часть запроса здесь - это идентификатор нужного отчета:
+
+[source, plain]
+----
+POST http://localhost:8080/app/rest/reports/v1/run/2dd27fbf-8830-416a-899f-339543f8f27a HTTP/1.1
+----
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом `Bearer`.
+
+Параметры отчета можно передать в теле запроса:
+
+[source, plain]
+----
+{parameters: [{name: 'author',value: '4b3a21b0-d6b7-4161-b0b6-55f118fbaac5'}]}
+----
+
+Если необходимо запустить отчет с шаблоном, отличным от шаблона по умолчанию, код шаблона можно также передать в теле запроса:
+
+[source, plain]
+----
+{template: 'Template_1', parameters: [{name: 'author',value: '4b3a21b0-d6b7-4161-b0b6-55f118fbaac5'}]}
+----
+--
+
+[[rest_reports_swagger]]
+Получение документации Swagger::
++
+--
+Полная документация Swagger для дополнения *Генератор отчетов* доступна с помощью *GET* запроса по адресу:
+
+[source, plain]
+----
+http://localhost:8080/app/rest/reports/v1/docs/swagger.json
+----
+
+[TIP]
+====
+Подробная документация по REST API написана согласно спецификации http://swagger.io/specification[Swagger] и доступна по следующему адресу: {rest_swagger_url}.
+====
+--
