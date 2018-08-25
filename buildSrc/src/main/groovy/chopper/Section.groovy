@@ -82,6 +82,20 @@ class Section {
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
 
+        def srcDoc = id + '.adoc'
+        if (level > 1) {
+            def p = this
+            while (p.level > 1) {
+                p = p.parent
+                srcDoc = p.id + '/' + srcDoc
+            }
+        }
+        def gitBranch = context.vars['gitBranch']
+        def docName = context.vars['docName']
+        def docLang = context.locale == '' ? 'en' : context.locale
+        vars.setProperty("github-link",
+                "https://github.com/cuba-platform/documentation/blob/$gitBranch/content/$docName/adoc/$docLang/$srcDoc")
+
         for (name in vars.stringPropertyNames()) {
             if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts'))) {
                 html = html.replace('{{scripts}}', '')
