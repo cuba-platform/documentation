@@ -42,7 +42,7 @@ class CreateMultiPageDoc extends DefaultTask {
                 dstDir.absolutePath,
                 "${project.rootDir}/tools/chopper",
                 docLang == 'en' ? '' : docLang,
-                ['docName': docName]
+                ['docName': docName, 'gitBranch': getGitBranch()]
         )
         chopper.process()
 
@@ -57,5 +57,14 @@ class CreateMultiPageDoc extends DefaultTask {
                 into "${dstDir}/WEB-INF/lib"
             }
         }
+    }
+
+    private getGitBranch() {
+        def branch = ""
+        def proc = "git rev-parse --abbrev-ref HEAD".execute()
+        proc.in.eachLine { line -> branch = line }
+        proc.err.eachLine { line -> println line }
+        proc.waitFor()
+        branch
     }
 }

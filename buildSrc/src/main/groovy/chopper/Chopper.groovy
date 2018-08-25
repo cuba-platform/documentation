@@ -55,7 +55,7 @@ class Chopper {
 
         def indexContent = new StringBuilder()
 
-        rootSect.write(new Context(outputDir, etcDir, links, vars, indexContent))
+        rootSect.write(new Context(outputDir, etcDir, links, locale, vars, indexContent))
 
         def webInfDir = new File(outputDir, "WEB-INF")
         webInfDir.mkdir()
