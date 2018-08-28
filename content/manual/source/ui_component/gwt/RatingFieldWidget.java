@@ -83,7 +83,7 @@ public class RatingFieldWidget extends FocusWidget {
         updateStarsStyle(value);
     }
 
-    // refresh  visual representation
+    // refresh visual representation
     private void updateStarsStyle(int value) {
         for (SpanElement star : stars) {
             star.removeClassName(getStylePrimaryName() + "-star-selected");
