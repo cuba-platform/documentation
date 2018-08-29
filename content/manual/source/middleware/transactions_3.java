@@ -15,7 +15,7 @@ void methodA() {
 void methodB() {
     Transaction tx = persistence.getTransaction();
     try {
-        // (2) let us assume  the exception occurs here
+        // (2) let us assume the exception occurs here
         tx.commit();
     } catch (Exception e) {
         // (3) handle it and exit
