@@ -1,0 +1,89 @@
+[[ch1_general_info]]
+== Overview of the Workflow Subsystem
+
+Workflow represents a series of changes to the state of a certain _card_ entity in accordance with a specified _process_, which involves both users and automatic operations. A typical example is the process where a certain document is approved by employees in an organization.
+
+Below is the structure of the Workflow subsystem of the CUBA platform.
+
+.Structure of the Workflow Subsystem
+image::Workflow.png[]
+
+The main structural elements are:
+
+* _Process Design_ - a process schema, as well as a collection of related scripts, variables, notification and message localization settings. The design defines the process, which is created and updated as a result of design _deployment_ in the application.
+
+* _Process_ - an executable description of the business process. The execution mechanism is based on the *jBPM 4* framework, so the main element of the process is the descriptor of the state graph in jPDL. Furthermore, the process includes descriptors of user interface forms, lists of users assigned to execute process roles, localized messages, etc.
+
+* _Card_ - a data model entity that is directly linked to the process instance. In most cases, the process card is a domain object with a state that may vary in accordance with the process. An example is a document awaiting approval or a ticket in the bug tracking system. If such a domain object does not exist, the card can be an artificial entity that simply reflects the current state of the process instance.
+
+In a manner of speaking, the process defines the type of business process, while the card represents a single instance of this business process.
+
+The process defines a set of _states_ (nodes) and transitions between them, as well as the following associated objects:
+
+* _Activities_ -the software code that is executed when transitioning to a particular state.
+* _Forms_ -interactive screens that allow users to choose transitions.
+* _Timers_ -the software code that is automatically triggered when a certain amount of time has passed after entering a certain state.
+
+_Assignment_ objects appear in course of process execution. They indicate that the user should take some action concerning the process.
+
+The Workflow subsystem of the platform has an integrated visual process editor, _Visual Designer_, which allows designing processes and deploying them at application runtime. The set of possible states, actions, forms, and timers that make up processes is configured in the application at the development stage.
+
+=== Data Model
+
+Below is the classes diagram of the main Workflow subsystem elements.
+
+.Chart of Workflow Classes 
+image::WorkflowEntities.png[]
+
+* `Design` - the object that stores the process design.
+
+* `Proc` - the executable process. Process attributes:
+
+** `design` - link to the design that was used to create the process.
+** `name` - the meaningful process name. The name is specified at the design stage. However, it can be set in the process editor screen as well.
+** `jbpmProcessKey` - the process key in the jBPM execution engine. It is generated automatically when deploying the process design.
+** `code` - the process code that can be referenced by software tools. Defaults to `jbpmProcessKey`, but can be changed in the process editor screen.
+** `messagesPack` - the name of the messages pack that contains localized names of states and transitions, various descriptions and process messages. This package is generated automatically at the process design deployment stage and is stored along with other process files in the appropriate subdirectory of the application configuration directory.
+** `roles` - list of `ProcRole` type objects that define the roles of process participants.
+
+* `ProcRole` - a process role. Objects of this type are created automatically when the process design is deployed, if it contains _Assignment_ states, which assign tasks to users and halt the execution of the process until the user takes required actions. Initially, `ProcRole` objects are not connected to any system users. However, you can assign a default holder for each role in the process editor screen.
+
+* `DefaultProcActor` - list of holders of a certain role; this list is defined at the process level.
+
+* `Card` - the process card. Generally, a particular domain entity is inherited from the `Card` class to acquire the ability to move through the process. `Card` attributes:
+
+** `description` - an optional text description of a given card instance that allows the user to distinguish between cards without loading attributes of a particular type that extends the `Card`. For example, if the card represents a document, then it may be useful to enter the type, number, and date of this document in the `description` field.
+** `proc` - the link to a process.
+** `roles` - the list of CardRole type objects that define the process role holders for a given card.
+** `jbpmProcessId` - the identifier of the process instance in the jBPM execution engine.
+** `state` - the name of the current process state.
+** `assignments` - the list of `Assignment` objects created in this process instance.
+** `attachments` - the list of `CardAttachment` type objects that enable associating the files downloaded during process execution with the card.
+
+* `CardRole` - the entity that defines the process role holders for a given card. `CardRole` attributes:
+
+** `card` - the card, for which the role holder is defined.
+** `procRole` - the process role.
+** `user` - the role holder of the `User` type (a system user).
+
+* `CardAttachment` - an attachment that enables associating downloaded files with the card. Attributes (together with the `Attachment` superclass):
+
+** `card` - the card.
+** `assignment` - if the file is uploaded during the assignment stage, this attribute contains a link to the corresponding `Assignment` object.
+** `file` - the uploaded file of the `FileDescriptor` type.
+** `name` - the attachment name.
+** `comment` - the comment on the attachment.
+
+* `Assignment` - the assignment. Object of this type are created in the system when the process transitions to the _Assignment_ state. In this state, the process pauses and waits for a command from the user or the system. When a finish command is received, the `finished`, `finishedByUser` and `outcome` attributes are set for the assignment, and the process transitions to its next state. For one card and user, only one pending assignment can exist. `Assignment` attributes include:
+
+** `card` - the card.
+** `user` - the system user the assignment has been issued for.
+** `proc` - the same process as the one set for the card at the moment of assignment creation.
+** `name` - the assignment name.
+** `description` - the assignment description.
+** `jbpmProcessId` - the identifier of a jBPM process instance corresponding to the card executed at the time of assignment creation.
+** `dueDate` - the assignment completion deadline.
+** `finished` - the actual time when the assignment has been completed. Is `null` until the assignment is completed.
+** `finishedByUser` - the user who has actually completed the assignment. Is `null` until the assignment is completed.
+** `outcome` - the name of the assignment state outcome that the user has selected. For example, the business process schema may contain an assignment node that asks the user to check whether a particular bug has been addressed, and to select one of the two options to continue the process: "OK" or "Not OK". If the user chooses "OK", then this string is written to the `outcome` field of the assignment, and vice versa.
+** `attachments` - the list of `CardAttchment` objects that were created for this assignment.
