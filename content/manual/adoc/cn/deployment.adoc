@@ -1,0 +1,2500 @@
+[[deployment]]
+== Application Deployment
+
+This chapter describes different aspects of CUBA applications deployment and operation.
+
+Below is a diagram showing a possible deployment structure. It eliminates a single point of failure, provides load balancing and connection of different clients.
+
+image::DeploymentStructure.png[align="center"]
+
+In the simplest case, however, an application can be installed on a single computer that contains also the database. Various deployment options depending on load and fault tolerance requirements are described in detail in <<scaling,>>.
+
+[[app_home]]
+=== Application Home
+
+Application home is a file system directory where <<app_dirs>> described below can be placed together. It is used in all <<deployment_variants,deployment scenarios>> except <<fast_deployment>>. In the latter case, the application directories are located in specific Tomcat folders.
+
+The application home is formed simply by specifying a common root for the application directories. It is normally done in the `/WEB-INF/local.app.properties` file inside of a WAR or UberJAR file.
+
+* If you build a WAR file, you have to define the path to the application home in the <<build.gradle_buildWar,buildWar>> Gradle task. You can specify an absolute path or a path relative to the server working directory if you know in advance where the WAR will be deployed. If not, you can specify a placeholder for a Java system property and provide the real path at runtime.
++
+--
+Example of an application home set at runtime:
+
+** Task configuration:
++
+[source,groovy]
+----
+task buildWar(type: CubaWarBuilding) {
+    appHome = '${app.home}'
+    // ...
+}
+----
+
+** Content of `/WEB-INF/local.app.properties` after building the WAR:
++
+[source,plain]
+----
+cuba.logDir = ${app.home}/logs
+cuba.confDir = ${app.home}/${cuba.webContextName}/conf
+cuba.tempDir = ${app.home}/${cuba.webContextName}/temp
+cuba.dataDir = ${app.home}/${cuba.webContextName}/work
+...
+----
+
+** Command line providing `app.home` system property:
++
+[source,plain]
+----
+java -Dapp.home=/opt/app_home ...
+----
++
+The way to set the Java system property depends on your application server. For Tomcat, it is recommended to set it in the `bin/setenv.sh` (or `bin/setenv.bat`) file.
+
+** Resulting directory structure:
++
+[source,plain]
+----
+/opt/app_home/
+  app/
+    conf/
+    temp/
+    work/
+  app-core/
+    conf/
+    temp/
+    work/
+  logs/
+----
+--
+
+* In case of UberJAR, the home is set to the working directory by default, but can be redefined by the `app.home` Java system property. So in order to have the home in the same directory as described above for WAR example, it is enough to specify it in the command line as follows:
++
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
+
+[[app_dirs]]
+=== Application Directories
+
+This section describes file system directories used by various <<app_tiers,application blocks>> at runtime.
+
+[[conf_dir]]
+==== Configuration Directory
+
+The configuration directory can contain resources that complement and override configuration, user interface, and business logic after the application is deployed. Overriding is provided by the loading mechanism of the <<resources,Resources>> infrastructure interface. Firstly it performs the search in the configuration directory and then in the classpath, so that resources from the configuration directory take precedence over identically named resources located in JAR files and class directories.
+
+The configuration directory may contain resources of the following types:
+
+*  <<metadata.xml,metadata.xml>>, <<persistence.xml,persistence.xml>>, <<views.xml,views.xml>>, <<remoting-spring.xml,remoting-spring.xml>> configuration files.
+
+* <<screen_xml,XML-descriptors>> of UI screens.
+
+* <<screen_controller,Controllers>> of UI screens in the form of Java or Groovy source code.
+
+* Groovy scripts or classes, and Java source code that is used by the application via the <<scripting,Scripting>> interface.
+
+The location of the configuration directory is determined by the <<cuba.confDir,cuba.confDir>> application property. In case of <<fast_deployment,fast deployment>> in Tomcat, it is a subdirectory with the web application name in the `tomcat/conf` directory, for example, `tomcat/conf/app-core` for the Middleware. For other deployment scenarios, the configuration directory is located inside the <<app_home,application home>>.
+
+[[work_dir]]
+==== Work Directory
+
+The application uses the work directory to store some persistent data and configuration.
+
+For example, the <<file_storage,file storage>> mechanism by default uses the `filestorage` subdirectory of the work directory. Besides, the Middleware block writes generated <<persistence.xml,persistence.xml>> and `orm.xml` files into the work directory on startup.
+
+Work directory location is determined by the <<cuba.dataDir,cuba.dataDir>> application property. In case of <<fast_deployment,fast deployment>> in Tomcat, it is a subdirectory with the name of the web application in the `tomcat/work` directory. For other deployment scenarios, the work directory is located inside the <<app_home,application home>>.
+
+[[log_dir]]
+==== Log Directory
+
+The content of log files is determined by the configuration of the *Logback* framework. The platform provides a default configuration file `logback.xml` in the classpath root. According to its settings, the log messages will be printed to the standard output.
+
+In order to specify your own logging configuration, provide the <<logback.configurationFile,logback.configurationFile>> Java system property with the path to your configuration file. See <<logging_setup_tomcat>> for how to do it in case of <<fast_deployment,fast deployment>>.
+
+The logging configuration determines where the log file is located. It can be a directory inside a specific Tomcat folder (`tomcat/logs` in case of fast deployment), or a directory inside the <<app_home,application home>>. You can control it if you take the `logback.xml` from the `deploy/tomcat/conf` folder of your project and modify the `logDir` property, for example:
+
+[source,xml]
+----
+include::{sourcesdir}/deployment/log_dir_1.xml[]
+----
+
+The application should know where you store log files in order to allow administrators to view and load them in the *Administration > Server Log* screen. Use the <<cuba.logDir,cuba.logDir>> application property to set the location to the same directory as defined by `logback.xml`.
+
+See also <<logging,>>.
+
+[[temp_dir]]
+==== Temporary Directory
+
+This directory can be used by the application for creating arbitrary temporary files at runtime. The path to the temporary directory is determined by the <<cuba.tempDir,cuba.tempDir>> application property. In case of <<fast_deployment,fast deployment>> in Tomcat, it is a subdirectory with the name of the web application in the `tomcat/temp` directory. For other deployment scenarios, the temporary directory is located inside the <<app_home,application home>>.
+
+[[db_dir]]
+==== Database Scripts Directory
+
+This directory contains the set of SQL scripts to create and update the database. It is specific to the Middleware block.
+
+The script directory structure reproduces the one described in <<db_scripts,>>, but it also has an additional top level that separates <<app_components,application components>> and the application scripts. The numbering of top-level directories is performed by project build <<build.gradle,tasks>>.
+
+The DB scripts directory location is determined by <<cuba.dbDir,cuba.dbDir>> application property. For <<fast_deployment,fast deployment>> in Tomcat, it is the `WEB-INF/db` subdirectory of the middleware web application directory: `tomcat/webapps/app-core/WEB-INF/db`. For other deployment scenarios, the database scripts are located in the `/WEB-INF/db` directory inside WAR or UberJAR files.
+
+[[deployment_variants]]
+=== Deployment Options
+
+This section describes different ways to deploy CUBA applications:
+
+* <<fast_deployment,Fast deployment in Tomcat>>
+
+* <<war_deployment,WAR deployment to Jetty>>
+
+* <<wildfly_war_deployment,WAR deployment to WildFly>>
+
+* <<tomcat_war_deployment,WAR deployment to Tomcat Windows Service>>
+
+* <<tomcat_war_deployment_linux,WAR deployment to Tomcat Linux Service>>
+
+* <<uberjar_deployment,UberJAR>>
+
+* <<jelastic_deployment,Jelastic Cloud>>
+
+* <<bluemix_deployment,Bluemix Cloud>>
+
+* <<heroku_deployment,Heroku Cloud>>
+
+* <<docker_deployment,Uber JAR Deployment to Docker>>
+
+[[fast_deployment]]
+==== Fast Deployment in Tomcat
+
+Fast deployment is used by default when developing an application, as it provides minimum time for building, installation and starting the application. This option can also be used in production.
+
+Fast deployment is performed using the <<build.gradle_deploy,deploy>> task that is declared for *core* and *web* modules in the `build.gradle` file. Before the first execution of `deploy`, a local Tomcat server should be set up and initialized using the <<build.gradle_setupTomcat,setupTomcat>> task.
+
+[WARNING]
+====
+Please make sure your environment does not contain `CATALINA_HOME`, `CATALINA_BASE` and `CLASSPATH` variables. They may cause problems starting Tomcat without any reflection in logs. Reboot your computer after removing the variables.
+====
+
+As result of fast deployment, the following structure is created in the directory that is specified by the `cuba.tomcat.dir` property of the `build.gradle` script (only important directories and files are listed below):
+
+[source, plain]
+----
+bin/
+    setenv.bat, setenv.sh
+    startup.bat, startup.sh
+    debug.bat, debug.sh
+    shutdown.bat, shutdown.sh
+
+conf/
+    catalina.properties
+    server.xml
+    logback.xml
+    logging.properties
+    Catalina/
+        localhost/
+    app/
+    app-core/
+
+lib/
+    hsqldb-2.2.9.jar
+
+logs/
+    app.log
+
+shared/
+    lib/
+
+temp/
+    app/
+    app-core/
+
+webapps/
+    app/
+    app-core/
+
+work/
+    app/
+    app-core/
+----
+
+* `bin` – the directory that contains tools to start and stop the Tomcat server:
+
+** `setenv.bat`, `setenv.sh` – the scripts that set environment variables. These scripts should be used for setting JVM memory parameters, specifying a configuration file for <<logging_setup_tomcat,logging>>, configuring <<jmx_remote_access,access to JMX>>, parameters to <<debug_setup,connect the debugger>>.
++
+[TIP]
+====
+If you experience slow startup of Tomcat on Linux installed in a virtual machine (VPS), try to configure a non-blocking entropy source for JVM in `setenv.sh`:
+
+[source, plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Djava.security.egd=file:/dev/./urandom"
+----
+====
+
+** `startup.bat`, `startup.sh` – the scripts that start Tomcat. The server starts in a separate console window on *Windows* and in the background on **nix*.
++
+To start the server in the current console window, use the following commands instead of `++startup.*++`:
++
+`> catalina.bat run`
++
+`$ ./catalina.sh run`
+
+** `debug.bat`, `debug.sh` – the scripts that are similar to `++startup.*++`, but start Tomcat with an ability to connect the debugger. These scripts are launched when running the <<build.gradle_start,start>> the task of the build script.
+
+** `shutdown.bat`, `shutdown.sh` – the scripts that stop Tomcat.
+
+* `conf` – the directory that contains configuration files of Tomcat and its deployed applications.
+
+** `catalina.properties` – the Tomcat properties. To load shared libraries from the `shared/lib` directory (see below), this file should contain the following line:
++
+[source,plain]
+----
+shared.loader=${catalina.home}/shared/lib/*.jar
+----
+
+** `server.xml` – Tomcat configuration descriptor.
+
+** `logback.xml` – application <<logging_setup_tomcat,logging>> configuration descriptor.
+
+** `logging.properties` – Tomcat server logging configuration descriptor.
+
+** `Catalina/localhost` – in this directory, <<context.xml,context.xml>> application deployment descriptors can be placed. Descriptors located in this directory take precedence over the descriptors in the `META-INF` directories of the application. This approach is often convenient for the production environment. For example, with this descriptor, it is possible to specify the database connection parameters that are different from those specified in the application itself.
++
+Server-specific deployment descriptor should have the application name and the `.xml` extension. So, to create this descriptor, for example, for the `app-core` application, copy the contents of the `webapps/app-core/META-INF/context.xml` file to the `conf/Catalina/localhost/app-core.xml` file.
+
+** `app` – web client application <<conf_dir,configuration directory>>.
+
+** `app-core` – middleware application <<conf_dir,configuration directory>>.
+
+* `lib` – directory of the libraries that are loaded by the server's _common classloader_. These libraries are available for both the server and all web applications deployed in it. In particular, this directory should have JDBC drivers of the utilized databases (`hsqldb-XYZ.jar`, `postgresql-XYZ.jar`, etc.)
+
+* `logs` – application and server <<logging,logs>> directory. The main log file of the application is `app.log` (see <<logging_setup_tomcat>>).
+
+* `shared/lib` – directory of libraries that are available to all deployed applications. These libraries classes are loaded by the server's special _shared classloader_. Its usage is configured in the `conf/catalina.properties` file as described above.
++
+The <<build.gradle_deploy,deploy>> task of the build script copies all libraries not listed in the `jarNames` parameter, i.e. not specific for the given application, into this directory.
+
+* `temp/app`, `temp/app-core` – web client and the middleware applications <<temp_dir,temporary directories>>.
+
+* `webapps` – web application directories. Each application is located in its own subdirectory in the _exploded WAR_ format.
++
+The <<build.gradle_deploy,deploy>> task of the build script create application subdirectories with the names specified in the `appName` parameters and, among other things, copy the libraries listed in the `jarNames` parameter to the `WEB-INF/lib` subdirectory for each application.
+
+* `work/app`, `work/app-core` – web client and the middleware applications <<work_dir,work directories>>.
+
+[[tomcat_in_prod]]
+===== Using Tomcat in Production
+
+By default, the <<fast_deployment,fast deployment>> procedure creates the `app` and `app-core` web applications running on port 8080 of the local Tomcat instance. It means that the web client is available at `++http://localhost:8080/app++`.
+
+You can use this Tomcat instance in production just by copying the `tomcat` directory to the server. All you have to do is to set up the server host name in both `conf/app/local.app.properties` and `conf/app-core/local.app.properties` files (create the files if they do not exist):
+
+[source,plain]
+----
+cuba.webHostName = myserver
+cuba.webAppUrl = http://myserver:8080/app
+----
+
+Besides, set up the connection to you production database. You can do it in the <<context.xml>> file of your web application (`webapps/app-core/META-INF/context.xml`), or copy this file to `conf/Catalina/localhost/app-core.xml` as described in the previous section to separate development and production settings.
+
+You can create the production database from a development database backup, or set up the automatic creation and further updating of the database. See <<db_update_in_prod>>.
+
+Optional Configuration::
++
+--
+. If you want to change the Tomcat port or web context (the last part of the URL after `/`), use *Studio*:
+
+** Open the project in Studio.
+
+** Go to *Project Properties* > *Edit* > *Advanced*.
+
+** To change the web context, edit the *Modules prefix* field.
+
+** To change the Tomcat port, edit the *Tomcat ports* > *HTTP port* field.
+
+. If you want to use the root context (`++http://myserver:8080/++`), rename `app` (or whatever you set on the previous step) directories to `ROOT`
++
+[source, plain]
+----
+tomcat/
+    conf/
+        ROOT/
+            local.app.properties
+        app-core/
+            local.app.properties
+    webapps/
+        ROOT/
+        app-core/
+----
++
+and use `/` as the web context name in `conf/ROOT/local.app.properties`:
++
+[source,plain]
+----
+cuba.webContextName = /
+----
+--
+
+[[war_deployment]]
+==== WAR deployment to Jetty
+
+Below is an example of deployment of the WAR files to the *Jetty* web server. It is assumed that the application uses a PostgreSQL database.
+
+. Use *Deployment settings > WAR* page in Studio or just manually add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_1.groovy[]
+----
++
+Please note that we are building two separate WAR files for Middleware and Web Client blocks here.
+
+. Start build process by running `buildWar` from the *Search* dialog in Studio or from the command line (provided that you have created the Gradle wrapper beforehand):
++
+[source, plain]
+----
+gradlew buildWar
+----
++
+As a result, the `app-core.war` and `app.war` files will be created in the `build\distributions\war` project subdirectory.
+
+. Create an <<app_home,application home>> directory, for example, `c:\work\app_home`.
+
+. Download and install Jetty to a local directory, for example, `c:\work\jetty-home`. This example has been tested on `jetty-distribution-9.3.6.v20151106.zip`.
+
+. Create the `c:\work\jetty-base` directory, open the command prompt in it and execute:
++
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar --add-to-start=http,jndi,deploy,plus,ext,resources
+----
+
+. Create the `c:\work\jetty-base\app-jetty.xml` file with the following contents (for a PostgreSQL database named `test`):
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/warDeployment_2.xml[]
+----
++
+The `app-jetty.xml` file for MS SQL databases should correspond to the following template:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/warDeployment_5.xml[]
+----
+
+. Optionally (for example, for MS SQL database) you may be required to download the following JARs and add them to the `c:\work\jetty-base\lib\ext` folder:
++
+[source, plain]
+----
+commons-pool2-2.4.2.jar
+commons-dbcp2-2.1.1.jar
+commons-logging-1.2.jar
+----
+
+. Add the following text to the beginning of `c:\work\jetty-base\start.ini` file:
++
+[source, plain]
+----
+include::{sourcesdir}/deployment/warDeployment_3.ini[]
+----
+
+. Copy the JDBC driver for your database to the `c:\work\jetty-base\lib\ext` directory. You can take the driver file from the CUBA Studio `lib` directory or from the `build\tomcat\lib` project directory. In case of PostgreSQL database, it is `postgresql-9.1-901.jdbc4.jar`.
+
+. Copy WAR files to the `c:\work\jetty-base\webapps` directory.
+
+. Open the command prompt in the `c:\work\jetty-base` directory and run:
++
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar
+----
+
+. Open `++http://localhost:8080/app++` in your web browser.
+
+[[wildfly_war_deployment]]
+==== WAR deployment to WildFly
+
+The WAR files with CUBA application can be deployed to the *WildFly* application server. An example below demonstrates how to deploy a CUBA application using PostgreSQL 9.6 to the WildFly 13.0.0 server on Windows.
+
+. Assemble and deploy the project to the default Tomcat server in order to get all necessary dependencies locally.
+
+. Configure the <<app_home,application home>> directory for the application:
++
+--
+* Create a folder that will be fully available for WildFly server's process. For example: `C:\Users\UserName\app_home`.
+
+* Copy the `logback.xml` file from `tomcat/conf` to this folder and edit the `logDir` property:
+
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
+--
+
+. Configure the WildFly server
++
+--
+* Install WildFly to a local folder, for example, to `C:\wildfly`.
+
+* Edit the `C:\wildfly\bin\standalone.conf.bat` file and add the following line to the end of the file:
+
+[source, plain]
+----
+set "JAVA_OPTS=%JAVA_OPTS% -Dapp.home=%USERPROFILE%/app_home -Dlogback.configurationFile=%USERPROFILE%/app_home/logback.xml"
+----
+
+Here we define the `app.home` system property with the application home directory and configure the logging by setting the path to the `logback.xml` file. You can also use an absolute path instead of `%USERPROFILE%` variable.
+
+* Compare the Hibernate Validator versions in WildFly and CUBA application (normally, the platform uses a newer version). Replace the `C:\wildfly\modules\system\layers\base\org\hibernate\validator\main\hibernate-validator-x.y.z-sometext.jar` with the newer file from `tomcat\shared\lib`, for example, `hibernate-validator-5.4.2.Final.jar`.
+
+* Update the JAR file version number in the `\wildfly\modules\system\layers\base\org\hibernate\validator\main\module.xml` file.
+
+* To register PostgreSQL driver in WildFly, copy the `postgresql-9.4.1212.jar` from `tomcat\lib` to `C:\wildfly\standalone\deployments`.
+
+* Setup WildFly logger: open the `\wildfly\standalone\configuration\standalone.xml` file and add two lines to the `<subsystem xmlns="urn:jboss:domain:logging:{version}"` block:
++
+[source, xml]
+----
+<subsystem xmlns="urn:jboss:domain:logging:5.0">
+    <add-logging-api-dependencies value="false"/>
+    <use-deployment-logging-config value="false"/>
+    . . .
+</subsystem>
+----
+--
+
+. Create JDBC Datasource
++
+--
+* Start WildFly by running `standalone.bat`
+
+* Open the administration console on `++http://localhost:9990++`. The first time you log in, you will be asked to create a user and a password.
+
+* Open the *Configuration - Subsystems - Datasources and Drivers - Datasources* tab and create a new datasource for your application:
+
+[source, plain]
+----
+Name: Cuba
+JNDI Name: java:/jdbc/CubaDS
+JDBC Driver: postgresql-9.4.1212.jar
+Driver Module Name: org.postgresql
+Driver Class Name: org.postgresql.Driver
+Connection URL: your database URL
+Username: your database username
+Password: your database password
+----
+
+The JDBC driver will be available on the list of detected drivers if you have copied `postgresql-x.y.z.jar` as described above.
+
+Check the connection by clicking the *Test connection* button.
+
+* Activate the datasource.
+--
+
+. Build the application
++
+--
+* Open *Deployment settings* > *WAR* in Studio.
+
+* Check *Build WAR* checkbox.
+
+* Set `${app.home}` in the *Application home directory* field.
+
+* Save the settings.
+
+* Open <<build.gradle,build.gradle>> in IDE and add the `doAfter` property to the <<build.gradle_buildWar,buildWar>> task. This property will copy the WildFly deployment descriptor:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/wildfly.groovy[]
+----
++
+[TIP]
+====
+For a singleWAR configuration the task will be different:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/wildfly-singlewar.groovy[]
+----
+
+If your project also contains a <<polymer_ui,Polymer>> module, add the following configuration to your `single-war-web.xml` file:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/wildfly-polymer.xml[]
+----
+====
+
+* In the project root folder, create the `jboss-deployment-structure.xml` file and add the WildFly deployment descriptor to it:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/wildfly.xml[]
+----
+
+* Run the `buildWar` task to create WAR files.
+--
+
+. Copy the files `app-core.war` and `app.war` from `build\distributions\war` to WildFly directory `\wildfly\standalone\deployments`.
+
+. Restart the WildFLy server.
+
+. Your application will become available on `++http://localhost:8080/app++`. The log files will be saved in the application home: `C:\Users\UserName\app_home\logs`.
+
+[[tomcat_war_deployment]]
+==== WAR deployment to Tomcat Windows Service
+
+. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>:
++
+--
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_2.groovy[]
+----
+
+If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999, the task definition should be as follows:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_3.groovy[]
+----
+
+You can also specify a different `context.xml` file to setup the connection to the production database, for example:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_4.groovy[]
+----
+--
+
+. Run the `buildWar` Gradle task. As a result, `app.war` and `app-core.war` files will be generated in the `build/distributions` directory of your project.
++
+[source, plain]
+----
+gradlew buildWar
+----
+
+. Download and run Tomcat 8 Windows Service Installer.
+
+. Go to the `bin` directory of the installed server and run `tomcat8w.exe` with the administrative rights.
+Set *Maximum memory pool* to 1024MB on the *Java* tab. Then go to the *General* tab and restart the service.
++
+image::tomcatPropeties.jpg[align="center"]
+
+. Add `-Dfile.encoding=UTF-8` to the _Java Options_ field.
+
+. Copy the generated `app.war` and `app-core.war` files to the `webapps` directory of the server.
+
+. Start the Tomcat service.
+
+. Open `++http://localhost:8080/app++` in your web browser.
+
+[[tomcat_war_deployment_linux]]
+==== WAR deployment to Tomcat Linux Service
+
+The example below has been tested on Ubuntu 16.04
+
+. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>. You can also specify a different `context.xml` file to setup the connection to the production database:
++
+--
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_2_linux.groovy[]
+----
+
+If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999, the task definition should be as follows:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_3.groovy[]
+----
+--
+
+. Run the `buildWar` gradle task. As a result, `app.war` file will be generated in the `build/distibutions` directory of your project.
++
+[source, plain]
+----
+gradlew buildWar
+----
+
+. Install Tomcat 8 Linux Service:
++
+[source, plain]
+----
+sudo apt-get install tomcat8
+----
+
+. Copy the generated `app.war` file to the empty `/var/lib/tomcat8/webapps` directory of the server.
++
+[TIP]
+====
+Tomcat service runs from `tomcat8` user by default. The owner of `webapps` folder is `tomcat8` as well.
+====
+
+. Create configuration file `/usr/share/tomcat8/bin/setenv.sh` with the following text:
++
+[source,plain]
+----
+export CATALINA_OPTS="$CATALINA_OPTS -Xmx1024m"
+----
+
+. Restart the Tomcat service:
++
+[source, plain]
+----
+sudo service tomcat8 restart
+----
+
+. Open `++http://localhost:8080/app++` in your web browser.
+
+[[uberjar_deployment]]
+==== UberJAR Deployment
+
+This is the simplest way to run your CUBA application in a production environment. You need to build an all-in-one JAR file using the <<build.gradle_buildUberJar>> Gradle task (see also the *Deployment settings > Uber JAR* page in Studio) and then you can run the application from the command line using the `java` executable:
+
+[source,plain]
+----
+java -jar app.jar
+----
+
+All parameters of the application are defined at the build time, but can be overridden when running (see below). The default port of the web application is `8080` and it is available at `++http://host:8080/app++`. If your project has Polymer UI, by default it will be available at `++http://host:8080/app-front++`.
+
+If you build separate JAR files for Middleware and Web Client, you can run them in the same way:
+
+[source,plain]
+----
+java -jar app-core.jar
+
+java -jar app.jar
+----
+
+The default port of the web client is `8080` and it will try to connect to the middleware running on `localhost:8079`. So after running the above commands in two separate terminal windows, you will be able to connect to the web client at `++http://localhost:8080/app++`.
+
+You can change the parameters defined at the build time by providing application properties via Java system properties. Besides, ports, context names and paths to Jetty configuration files can be provided as command line arguments.
+
+Command line arguments::
++
+--
+* `port` - defines the port on which the embedded HTTP server will run. For example:
++
+[source,plain]
+----
+java -jar app.jar -port 9090
+----
++
+Please note that if you build separate JARs and specify a port for the core block, you need to provide the <<cuba.connectionUrlList,cuba.connectionUrlList>> application property with the corresponding address to the client blocks, for example:
++
+[source,plain]
+----
+java -jar app-core.jar -port 7070
+
+java -Dcuba.connectionUrlList=http://localhost:7070/app-core -jar app.jar
+----
+
+* `contextName` - a web context name for this application block. For example, in order to access your web client at `++http://localhost:8080/sales++`, run the following command:
++
+[source,plain]
+----
+java -jar app.jar -contextName sales
+----
+
+* `frontContextName` - a web context name for the Polymer UI (makes sense for single, web or portal JARs).
+
+* `portalContextName` - a web context name for the portal module running in the single JAR.
+
+* `jettyEnvPath` - a path to the Jetty environment file which will override build time settings specified in the `coreJettyEnvPath` parameter. It can be an absolute path or a path relative to the working directory.
+
+* `jettyConfPath` - a path to the Jetty server configuration file which will override build time settings specified in the `webJettyConfPath/coreJettyConfPath/portalJettyConfPath` parameter. It can be an absolute path or a path relative to the working directory.
+--
+
+Application Home::
++
+--
+By default, the <<app_home,application home>> is the working directory. It means that <<app_dirs,application directories>> will be created in the folder where you have run the application. It can be redefined by the `app.home` Java system property. So for example, in order to have the home in `/opt/app_home`, specify the following on the command line:
+
+[source,plain]
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
+--
+
+Logging::
++
+--
+If you want to modify built-in logging settings, provide the `logback.configurationFile` Java system property with an URL to load your configuration file, for example:
+
+[source,plain]
+----
+java -Dlogback.configurationFile=file:./logback.xml -jar app.jar
+----
+
+Here it is assumed that the `logback.xml` file is located in the folder where you start the application from.
+
+In order to set the <<log_dir,log output directory>> correctly, make sure the `logDir` property in the `logback.xml` points to the `logs` subdirectory of the application home:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/log_dir_1.xml[]
+----
+--
+
+Stopping an application::
++
+--
+You can gracefully stop the application in the following ways:
+
+* Pressing *Ctrl+C* in the terminal window where the application is running.
+
+* Executing `kill <PID>` on Unix-like systems.
+
+* Sending a stop key (i.e. a character sequence) on a port specified in the command line of the running application. There are the following command line arguments:
+
+** `stopPort` - a port to listen for a stop key or to send the key to.
+** `stopKey` - a stop key. If not specified, `SHUTDOWN` is used.
+** `stop` - to stop another process by sending the key.
+
+For example:
+
+[source,plain]
+----
+# Start application 1 and listen to SHUTDOWN key on port 9090
+java -jar app.jar -stopPort 9090
+
+# Start application 2 and listen to MYKEY key on port 9090
+java -jar app.jar -stopPort 9090 -stopKey MYKEY
+
+# Shutdown application 1
+java -jar app.jar -stop -stopPort 9090
+
+# Shutdown application 2
+java -jar app.jar -stop -stopPort 9090 -stopKey MYKEY
+----
+--
+
+[[uberjar_https]]
+===== Configuring HTTPS for UberJAR
+
+Below is an example of configuring HTTPS with a self-signed certificate for UberJAR deployment.
+
+. Generate keys and certificates with in-built JDK tool `Java Keytool`:
++
+[source, plain]
+----
+keytool -keystore keystore.jks -alias jetty -genkey -keyalg RSA
+----
+
+. Create the `jetty.xml` file with SSL configuration in the project root folder:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/uberjar-https.xml[]
+----
++
+The `keyStorePassword`, `keyManagerPassword`, and `trustStorePassword` should correspond to those set by `Keytool`.
+
+. Add `jetty.xml` to the build task configuration:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/uberjar-https.groovy[]
+----
+
+. Build Uber JAR as described in the <<uberjar_deployment>> section.
+
+. Put the `keystore.jks` in the same folder with JAR distribution of your project and start Uber JAR.
++
+The application will be available at `\https://localhost:8443/app`.
+
+[[jelastic_deployment]]
+==== Deployment to Jelastic Cloud
+
+CUBA Studio allows you to deploy your application to the link:$$https://jelastic.com/$$[Jelastic] cloud in a few easy steps.
+
+[TIP]
+====
+Please note that only projects using PostgreSQL or HSQL databases are currently supported.
+====
+
+. Click the *Deployment settings* link on the *Project properties* section and switch to the *CLOUD* tab.
+
+. If the project is not yet set up for cloud deployment, you can use the field on top to create a free trial Jelastic account.
+
+. After completing your registration, enter the email, password and selected provider.
++
+image::jelastic_1.png[align="center"]
+
+. *Environment* field defines the environment in which the application WAR will be deployed. Click on the ellipsis button and select an existing environment or create a new one. You can check the selected environment for compatibility with your project. A compatible environment should have Java 8, Tomcat 8 and PostgreSQL 9.1+ (if the project uses PostgreSQL database). If your project uses PostgreSQL, you will receive an email with the database connection details. Please use them when generating custom `context.xml` file, see *Custom context.xml path* field below. Besides, you should create an empty PostgreSQL database using the provider's web interface link containing in the email. The database name should be specified later in custom context.xml (see below).
++
+image::jelastic_6.png[align="center"]
+
+. Press *Generate* button next to the *Custom web.xml path* field. Studio will generate a special `web.xml` of the <<build.gradle_buildWar,single WAR>> comprising the Middleware and Web Client application blocks.
++
+image::jelastic_2.png[align="center"]
+
+. If your project uses HSQLDB, that is all - you can press *OK* and start deployment by clicking *Run > Deploy to cloud* main menu item. The deployment parameters can be later adjusted in <<build.gradle_deployWar,build.gradle>>.
+
+. If your project uses PostgreSQL, go to the database administration web interface by the link in the email received after creation of the environment and create a database.
+
+. Press *Generate* button next to the *Custom context.xml path* field and specify the database user, password, host, and name.
++
+image::jelastic_3.png[align="center"]
+
+. Leave the *Include JDBC driver* and *Include context.xml* checkboxes selected.
++
+image::jelastic_4.png[align="center"]
+
+. Now you can press *OK* and start deployment by clicking *Run > Deploy to cloud* main menu item.
+
+. After completing the deployment, use the link at the bottom left corner to open the application web interface.
++
+image::jelastic_5.png[align="center"]
+
+[[bluemix_deployment]]
+==== Deployment to Bluemix Cloud
+
+CUBA Studio provides support of IBM® Bluemix® cloud deployment in a few easy steps.
+
+[TIP]
+====
+Bluemix cloud deployment is currently applicable only to projects using PostgreSQL database. HSQLDB is available with _in-process_ option only, that means the database will be recreated on every application restart, and the user data will be lost.
+====
+
+. Create an account on the Bluemix. Download and install:
+.. Bluemix CLI: http://clis.ng.bluemix.net/ui/home.html
+.. Cloud Foundry CLI: https://github.com/cloudfoundry/cli/releases
+.. Make sure the commands `bluemix` and `cf` work in the command line. If not, add your `\IBM\Bluemix\bin` path to the `PATH` environment variable.
+
+. Create a Space in the Bluemix with any space name. You can group several applications within one space if needed.
+
+. In the Space create an application server: *Create App* -> *CloudFoundry Apps* -> *Tomcat*.
+
+. Specify the name of the application. The name should be unique as it will be used as part of the URL of your application.
+
+. To create a Database service, click *Create service* in the Space dashboard and choose *ElephantSQL*.
+
+. Open the application manager and connect the created DB Service to the application. Click *Connect Existing*. For the changes to take effect, the system requires restaging (updating) the application. In our case, it is not necessary, as the application will be redeployed.
+
+. After the DB Service is connected, DB credentials become available with the *View Credentials* button. The DB properties are also stored in the `VCAP_SERVICES` environment variable of the application runtime and could be viewed by calling the `cf&#160;env` command. The created database is also accessible from outside of the Space, so you can work with it from your development environment.
+
+. Setup your CUBA project to run with the PostgreSQL (the DBMS similar to the one you have in the Bluemix).
+
+. Generate DB scripts and start the local Tomcat server. Make sure the application works.
+
+. Generate WAR-file to deploy the application to Tomcat.
+.. Click *Deployment Settings* in the *Project Properties* section of Studio navigation panel.
+.. Switch to the *WAR* tab.
+.. Enable all the options using checkboxes, as for correct deployment it should be the *Single WAR* with JDBC driver and `context.xml` inside.
++
+image::bluemix_war_settings.png[align="center"]
+
+.. Click *Generate* button near the *Custom context.XML field*. In the opened dialog fill the credentials of the Database you have created in Bluemix.
++
+Use the credentials from `uri` of your DB service following the example below:
++
+[source, json]
+----
+include::{sourcesdir}/deployment/bluemix_credentials.json[]
+----
++
+*Database user*: `ixbtsvsq`
++
+*Database password*: `F_KyeQjpEdpQfd4n0KpEFCYyzKAbN1W9`
++
+*Database URL*: `qdjjtnkv.db.elephantsql.com:5432`
++
+*Database name*: `ixbtsvsq`
+
+.. Click *Generate* button to generate the custom `web.xml` file required for the single WAR.
+
+.. Save the settings. Generate the WAR-file using the `buildWar` Gradle task in Studio or command line.
++
+image::bluemix_buildWar.png[align="center"]
++
+As a result, the  `app.war` appears in the `build/distributions/war/` sub-directory of the project.
+
+. In the root directory of the project create manually the `manifest.yml` file. The contents of the file should be as follows:
++
+[source, yml]
+----
+include::{sourcesdir}/deployment/bluemix_manifest.yml[]
+----
++
+where
++
+* `path` is the relative path to WAR-file.
+* `memory`: the default memory limit is 1G. You may want to allocate less or more memory to your application, this can also be done via Bluemix WEB interface. Note that the allocated memory affects the Runtime Cost.
+* `name` is the name of the Tomcat application you have created in the Cloud above (depends on your application location, see your `App URL`, for example, `\https://myluckycuba.eu-gb.mybluemix.net/`).
+* `host`: the same as name.
+* `env`: the environment variables used to set the Tomcat and Java versions.
+
+. In the command line switch to the root directory of your CUBA project.
++
+[source, yml]
+----
+cd your_project_directory
+----
+
+. Connect to Bluemix (double check the domain name).
++
+[source, yml]
+----
+cf api https://api.eu-gb.bluemix.net
+----
+
+. Log in to your Bluemix account.
++
+[source, yml]
+----
+cf login -u your_bluemix_id -o your_bluemix_ORG
+----
+
+. Deploy your WAR to your Tomcat.
++
+[source, yml]
+----
+cf push
+----
++
+The `push` command gets all the required parameters from the `manifest.yml` file.
+
+. You can find Tomcat server logs via Bluemix WEB-interface in the *Logs* tab on the application dashboard, as well as in command line using the command
++
+[source, yml]
+----
+cf logs cuba-app --recent
+----
+
+. After the deployment process is completed, your application will become accessible in browser using the URL `host.domain`. This URL will be displayed in the *ROUTE* field in the table of your *Cloud Foundry Apps*.
+
+[[heroku_deployment]]
+==== Deployment to Heroku Cloud
+
+The section describes how to deploy CUBA applications to the https://www.heroku.com/[Heroku®] cloud platform.
+
+[TIP]
+=====
+This tutorial covers deployment of a project using PostgreSQL database.
+=====
+
+[[heroku_war_deployment]]
+===== WAR Deployment to Heroku
+
+Heroku account::
++
+--
+First, create an account on Heroku using the web browser, free account `hobby-dev` is enough. Then login to the account and create new application using *New* button at the top of the page.
+
+Select unique name (or left the field blank to assign automatically) and choose a server location. Now you have an application, for example, `morning-beach-4895`, this is the Heroku application name.
+
+At the first time, you will be redirected to the *Deploy* tab. Use Heroku Git deployment method.
+--
+
+Heroku CLI::
++
+--
+* Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI] on your computer.
+
+* Navigate to the folder containing your CUBA project. Further on we will use `$PROJECT_FOLDER` for it.
+
+* Open command prompt in `$PROJECT_FOLDER` and type:
++
+[source,plain]
+----
+heroku login
+----
+
+* Enter your credentials when prompted. From now on you don't need to enter credentials for this project anymore.
+
+* Install Heroku CLI deployment plugin:
++
+[source,plain]
+----
+heroku plugins:install heroku-cli-deploy
+----
+--
+
+PostgreSQL database::
++
+--
+Using the web browser go to Heroku data https://data.heroku.com/[page]
+
+You can choose existent Postgres database or create one. Next steps describe how to create a new database.
+
+* Find *Heroku Postgres* block and click *Create one*
+* On the next screen click *Install Heroku Postgr...*
+* Connect the database to Heroku application selected from a dropdown list
+* Select your Plan (for example: `hobby-dev`)
+
+Alternatively, you can install PostgreSQL using Heroku CLI:
+
+[source,plain]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app morning-beach-4895
+----
+
+Here `morning-beach-4895` is your Heroku application name.
+
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application. To obtain database credentials go to the *Datasource* page of your Heroku database, scroll down to *Administration* section and click *View credentials* button.
+
+[source,plain]
+----
+Host compute.amazonaws.com
+Database d2tk
+User nmmd
+Port 5432
+Password 9c05
+URI postgres://nmmd:9c05@compute.amazonaws.com:5432/d2tk
+----
+--
+
+Project deployment settings::
++
+--
+* We assume that you use PostgreSQL with your CUBA project.
+
+* Open your CUBA project in Studio, navigate to *Deployment settings*, go to *WAR* tab and then configure options as described below.
++
+** Select *Build WAR*
+** Set application home directory to '.' (dot)
+** Select *Include JDBC driver*
+** Select *Include Tomcat's context.xml*
+** Click *Generate* button next to the *Custom context.xml path* field. Fill your database connection details in modal window.
+** Open the file generated `modules/core/web/META-INF/war-context.xml` and check connection params and credentials:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/war-context.xml[]
+----
+** Select *Single WAR for Middleware and Web Client*
+** Click *Generate* button next to the *Custom web.xml path* field
+** Copy the code shown below and paste it into the *App properties* field:
++
+[source, groovy]
+----
+[
+  'cuba.automaticDatabaseUpdate' : true
+]
+----
++
+** Save deployment settings.
+--
+
+Build WAR file::
++
+--
+Build WAR file by executing the `buildWar` Gradle task. You can do it right from the Studio *Search* dialog or from the command line:
+
+[source,plain]
+----
+gradlew buildWar
+----
+
+In order to use `gradlew` command in the command line, create Gradle wrapper using Studio *Build* menu command beforehand.
+--
+
+Application setup::
++
+--
+
+* Download Tomcat Webapp Runner from https://mvnrepository.com/artifact/com.github.jsimone/webapp-runner. The version of Webapp Runner must conform to the Tomcat version in use. For example, version 8.5.11.3 of Webapp Runner is suitable for Tomcat version 8.5.11. Rename JAR to `webapp-runner.jar` and place it into `$PROJECT_FOLDER`.
+
+* Download Tomcat DBCP from https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-dbcp.
+  Use the version corresponding to your Tomcat version, for example, 8.5.11. Create `$PROJECT_FOLDER/libs`, rename JAR to `tomcat-dbcp.jar` and place it into the `$PROJECT_FOLDER/libs` folder.
+
+* Create a file named `Procfile` in `$PROJECT_FOLDER`. The file should contain the following text:
++
+[source,plain]
+----
+web: java $JAVA_OPTS -cp webapp-runner.jar:libs/* webapp.runner.launch.Main --enable-naming --port $PORT build/distributions/war/app.war
+----
+--
+
+Git setup::
++
+--
+Open the command prompt in `$PROJECT_FOLDER` and run the commands listed below:
+
+[source,plain]
+----
+git init
+heroku git:remote -a morning-beach-4895
+git add .
+git commit -am "Initial commit"
+----
+--
+
+Application deployment::
++
+--
+Open the command prompt and run the following command:
+
+On *nix:
+
+[source,plain]
+----
+heroku jar:deploy webapp-runner.jar --includes libs/tomcat-dbcp.jar:build/distributions/war/app.war --app morning-beach-4895
+----
+
+On Windows:
+
+[source,plain]
+----
+heroku jar:deploy webapp-runner.jar --includes libs\tomcat-dbcp.jar;build\distributions\war\app.war --app morning-beach-4895
+----
+
+Open the *Resources* tab in Heroku dashboard. A new Dyno should appear with a command from your `Procfile`:
+
+image::heroku_dyno.png[align="center"]
+
+The application is deploying now. You can monitor logs to track the process.
+--
+
+Logs monitoring::
++
+--
+Wait for a message `++https://morning-beach-4895.herokuapp.com/  deployed to Heroku++` in command window.
+
+In order to track application logs, run the following command on the command line:
+
+[source,plain]
+----
+heroku logs --tail --app morning-beach-4895
+----
+--
+
+After the deployment process is completed your application will be accessible in web browser by an URL like `++https://morning-beach-4895.herokuapp.com++`.
+
+You can also open the application from the Heroku dashboard using the *Open app* button.
+
+[[heroku_github_deployment]]
+===== Deployment from GitHub to Heroku
+
+This guide is intended for developers who have a CUBA project located on GitHub.
+
+Heroku account::
++
+--
+Create an account on Heroku using the web browser, free account `hobby-dev` is enough. Then login to the account and create new application using *New* button at the top of the page.
+
+Select unique name (or left the field blank to assign automatically) and choose a server location. Now you have an application, for example, `space-sheep-02453`, this is a Heroku application name.
+
+At the first time, you will be redirected to *Deploy* tab. Use *GitHub* deployment method. Follow the screen instructions how to authorize your GitHub account.
+Click *Search* button to list all available Git repositories then connect to desired repo. When your Heroku application is connected to GitHub you are able to activate *Automatic Deploys*. This allows you to redeploy Heroku application automatically on each Git push event. In this tutorial, the option is enabled.
+--
+
+Heroku CLI::
++
+--
+* Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI]
+* Open command prompt in any folder of your computer and type:
++
+[source,plain]
+----
+heroku login
+----
++
+* Enter your credentials when prompted. From now on you don't need to enter credentials for this project.
+--
+
+PostgreSQL database::
++
+--
+* Return to web browser with Heroku https://dashboard.heroku.com[dashboard]
+* Go to *Resources* tab
+* Click *Find more add-ons* button to find the database add-on
+* Find *Heroku Postgres* block and click it. Follow the instruction on the screen, click *Login to install* / *Install Heroku Postgres*.
+
+Alternatively, you can install PostgreSQL using Heroku CLI:
+
+[source,plain]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app space-sheep-02453
+----
+where `space-sheep-02453` is your Heroku application name.
+
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application. To obtain database credentials go to the *Datasource* page of your Heroku database, scroll down to *Administration* section and click *View credentials* button.
+
+[source,plain]
+----
+Host compute.amazonaws.com
+Database zodt
+User artd
+Port 5432
+Password 367f
+URI postgres://artd:367f@compute.amazonaws.com:5432/zodt
+----
+--
+
+Project deployment settings::
++
+--
+* Navigate to your local CUBA project folder (`$PROJECT_FOLDER`)
+* Copy the content of `modules/core/web/META-INF/context.xml` to `modules/core/web/META-INF/heroku-context.xml`
+* Fill `heroku-context.xml` with your actual database connection details (see example below):
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/heroku-context.xml[]
+----
+--
+
+Build configuration::
++
+--
+Add the following Gradle task to your `$PROJECT_FOLDER/build.gradle`
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/heroku_buildGradle.groovy[]
+----
+--
+
+Procfile::
++
+--
+A command that launches the application on Heroku side is passed by special file `Procfile`. Create a file named `Procfile` in `$PROJECT_FOLDER` with following text:
+
+[source,plain]
+----
+web: cd ./deploy/tomcat/bin && export 'JAVA_OPTS=-Dport.http=$PORT' && ./catalina.sh run
+----
+
+This provides JAVA_OPTS environment setting to Tomcat which starts with the Catalina script.
+--
+
+Premium addons::
++
+--
+If your project uses CUBA Premium Add-ons, set additional variables for the Heroku application.
+
+* Open the Heroku dashboard.
+* Go to the *Settings* tab.
+* Expand the *Config Variables* section clicking the *Reveal Config Vars* button.
+* Add new *Config Vars* using your license key parts (separated by dash) as *username* and *password*:
+
+[source,plain]
+----
+CUBA_PREMIUIM_USER    | username
+CUBA_PREMIUM_PASSWORD | password
+----
+--
+
+Gradle wrapper::
++
+--
+Your project requires Gradle wrapper. You can use CUBA Studio to add it: see the *Build > Create or update Gradle wrapper* main menu command.
+
+* Create the `system.properties` file in `$PROJECT_FOLDER` with the following content (example corresponds to local JDK 1.8.0_121 installed):
++
+[source,plain]
+----
+java.runtime.version=1.8.0_121
+----
++
+* Check that files `Procfile`, `system.properties`, `gradlew`, `gradlew.bat` and `gradle` are not in `.gitignore`
+* Add these files to repository and commit it
+
+[source,plain]
+----
+git add gradlew gradlew.bat gradle/* system.properties Procfile
+git commit -am "Added Gradle wrapper and Procfile"
+----
+--
+
+Application deployment::
++
+--
+Once you commit and push all changes to GitHub, Heroku starts redeploying the application.
+
+[source,plain]
+----
+git push
+----
+
+The building process is available on the dashboard on the *Activity* tab. Click *View build log* link to track the build log.
+
+After building process is completed, your application will become accessible in browser using the `++https://space-sheep-02453.herokuapp.com/++`. You can open the application from Heroku dashboard using the *Open app* button.
+--
+
+Logs monitoring::
++
+--
+Heroku application log is shown by console command:
+
+[source,plain]
+----
+heroku logs --tail --app space-sheep-02453
+----
+
+Tomcat logs are also available in web application: *Menu > Administration > Server Log*
+--
+
+[[docker_deployment]]
+==== Deployment to Docker
+
+The section describes how to deploy CUBA applications with https://www.docker.com/[Docker®].
+
+[TIP]
+=====
+This tutorial covers deployment of a project using PostgreSQL database.
+=====
+
+The simplest way to run your CUBA application in a production environment is to use the Uber JAR approach. You can build an all-in-one JAR file using the Gradle task, and then you will be able to run the application from the command line using the `java` executable, so there is no need to use special web servers or servlet containers. Simply start your application as an executable. All parameters of the application are defined at the build time but can be overridden when running.
+
+We will show you how to set up monolithic and distributed application configurations with Docker containers.
+
+[[single_jar_deployment]]
+===== Single Uber JAR Deployment
+
+Open your project in CUBA Studio, navigate to *Deployment settings*, go to *Uber JAR* tab and then configure options as described below.
+
+. Select *Build Uber JAR*
+. Select *Single Uber JAR* if it is not selected.
+. Click *Generate* button next to the *Logback configuration file* field.
+. Click *Generate* button next to the *Custom Jetty environment file* field. Fill your database connection details in modal window.
+To use standard PostgreSQL container in application, change the `localhost` to `postgres` in the Database URL field.
+
+Studio adds the <<build.gradle_buildUberJar>> task to the `build.gradle` file. Run this task to create the JAR file:
+
+[source, plain]
+----
+gradle buildUberJar
+----
+
+A Docker image with the CUBA app should be based on OpenJDK. We recommend to use a `Dockerfile` to specify the information that Docker needs to know to run the app — a base Docker image to run from, the location of your project code, any dependencies it has, and what commands to run at startup.
+
+. Create the `docker-image` folder in the project.
+. Copy the JAR file into this folder.
+. Create a `Dockerfile` with the simple instructions:
+
+[source, plain]
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar
+----
+
+* The `FROM` instruction initializes a new build stage and sets the *Base Image* for subsequent instructions.
+* The `COPY` instruction copies new files or directories from `<src>` and adds them to the filesystem of the container at the path `<dest>`.
+  Multiple `<src>` resources may be specified but they must be relative to the source directory that is being built (the context of the build).
+* The main purpose of a `CMD` is to provide defaults for an executing container. These defaults can include an executable, or they can omit the executable, in which case you must specify an `ENTRYPOINT` instruction as well.
+
+To get more information about Dockerfile instructions see the https://docs.docker.com/engine/reference/builder/[Dockerfile reference].
+
+Now build the image:
+
+. Open the Terminal from the `docker-image` folder.
+. Run the build command. The docker `build` command is quite simple - it takes an optional tag name with the `-t` flag
+and the location of the directory containing the Dockerfile, the `.` indicates the current directory.
+
+[source, plain]
+----
+docker build -t cuba-sample-sales .
+----
+
+If you don't have the `openjdk:8` image the client will first pull the base image and then create the image.
+
+To define and run multi-container Docker application use the https://docs.docker.com/compose/overview/[Docker Compose tool]. With Compose, you use a YAML file to configure your application’s services, so they can be run together in an isolated environment.
+
+A `docker-compose.yml` file looks like this:
+
+[source, plain]
+----
+version: '2'
+
+services:
+  postgres:
+    image: postgres:9.6.6
+    environment:
+      - POSTGRES_PASSWORD=cuba
+      - POSTGRES_USER=cuba
+      - POSTGRES_DB=sales
+    ports:
+     - "5433:5432"
+    networks:
+     - sales-network
+  web:
+    image: cuba-sample-sales
+    ports:
+     - "8080:8080"
+    networks:
+     - sales-network
+
+networks:
+  sales-network:
+----
+
+This compose file defines two services, `web` and `postgres`. The web service:
+
+* uses an image that’s built from the Dockerfile in the current directory.
+* forwards the exposed port 8080 on the container to port 8080 on the host machine.
+
+The `postgres` service uses a public Postgres image pulled from the Docker Hub registry.
+
+To start the application, go to the directory of the `docker-compose.yml` file and run:
+
+[source, plain]
+----
+docker-compose up
+----
+
+After the task is completed you will be able to open the application at `++http://localhost:8080/app++`
+
+[[distributed_jar_deployment]]
+===== Distributed Uber JAR Deployment
+
+To set up the distributed application configuration, open your CUBA project in Studio, navigate to *Deployment settings*, go to *Uber JAR* tab and then configure options as described below:
+
+. Open the *Uber JAR* tab.
+. Untick *Single Uber JAR* property.
+
+Add the following changes to the appProperties:
+
+[source, plain]
+----
+appProperties = ['cuba.automaticDatabaseUpdate': true,
+                 'cuba.webHostName':'sales-core',
+                 'cuba.connectionUrlList': 'http://sales-core:8079/app-core',
+                 'cuba.webAppUrl': 'http://sales-web:8080/app',
+                 'cuba.useLocalServiceInvocation': false,
+                 'cuba.trustedClientPermittedIpList': '*.*.*.*']
+----
+
+* <<cuba.webHostName,cuba.webHostName>> property defines the host name of the machine, on which this application block is running. The name has to correspond to the core service name described in `Dockerfile`.
+* <<cuba.connectionUrlList,cuba.connectionUrlList>> property sets Middleware server connection URL for client blocks. The host has to be named the same as the core service described in  `Dockerfile` and the contextName has to correspond to the core *.jar file name.
+* <<cuba.webAppUrl,cuba.webAppUrl>> property defines URL of the Web Client application. The host has to be named the same as the web service described in  `Dockerfile`.
+* <<cuba.useLocalServiceInvocation,cuba.useLocalServiceInvocation>> property should be set to `false` in our case, because we deploy core and web servers in the different containers.
+* <<cuba.trustedClientPermittedIpList,cuba.trustedClientPermittedIpList>> property defines the list of IP addresses, from which the login to the application is allowed.
+
+[TIP]
+====
+If you have more than one Middleware server you have to list all of them in the <<cuba.connectionUrlList,cuba.connectionUrlList>> property and configure a cluster of Web Client servers, as you can see in the <<scaling>> section.
+====
+
+Run the <<build.gradle_buildUberJar>> task to regenerate the JARs:
+
+[source, plain]
+----
+gradle buildUberJar
+----
+
+Create two subfolders in the `docker-image` folder for the web and core JARs. You should create separate containers for each JAR, so you need to configure two `Dockerfiles`.
+
+`Dockerfile` for the *core*:
+
+[source, plain]
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app-core.jar
+----
+
+`Dockerfile` for the *web*:
+
+[source, plain]
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar
+----
+
+A `docker-compose.yml` file contains separated *core* and *web* containers and looks like this:
+
+[source, plain]
+----
+version: '2'
+
+services:
+  postgres:
+    image: postgres:9.6.6
+    environment:
+      - POSTGRES_PASSWORD=cuba
+      - POSTGRES_USER=cuba
+      - POSTGRES_DB=sales
+    ports:
+     - "5433:5432"
+    networks:
+     - sales-network
+  sales-core:
+    image: cuba-sample-sales-core
+    networks:
+     - sales-network
+  sales-web:
+    image: cuba-sample-sales-web
+    ports:
+     - "8080:8080"
+    networks:
+     - sales-network
+
+networks:
+  sales-network:
+----
+
+Build the images with the following commands:
+
+[source, plain]
+----
+docker build -t cuba-sample-sales-web ./web
+----
+
+[source, plain]
+----
+docker build -t cuba-sample-sales-core ./core
+----
+
+To start the application, go to the directory of the `docker-compose.yml` file and run:
+
+[source, plain]
+----
+docker-compose up
+----
+
+After the task is completed you will be able to open the application at `++http://localhost:8080/app++`.
+
+[TIP]
+=====
+For deploying containers on several physical machines, you may be required to install and configure https://docs.docker.com/engine/swarm/key-concepts/[Docker Swarm] or https://kubernetes.io/[Kubernetes].
+=====
+
+[[docker_plugin]]
+===== Gradle Plugin for Docker
+
+In this section, we cover the building and pushing the Docker images into the single Uber JAR using Gradle.
+
+There are many Gradle plugins for Docker. We are going to use the https://github.com/bmuschko/gradle-docker-plugin[bmuschko/gradle-docker-plugin].
+
+In the `build.gradle` file import the necessary classes for managing images and add the buildscript dependency on the plugin:
+
+[source, plain]
+----
+buildscript {
+
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:X.Y.Z'
+    }
+}
+
+import com.bmuschko.gradle.docker.tasks.image.Dockerfile
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.DockerPushImage
+import com.bmuschko.gradle.docker.DockerRegistryCredentials
+----
+
+The plugin `com.bmuschko.docker-remote-api` allows interacting with Docker via its remote API. You can model any workflow imaginable by creating enhanced task of the custom task provided by the plugin.
+To use the plugin, include the following code snippet in your build script:
+
+[source, plain]
+----
+apply plugin: 'com.bmuschko.docker-remote-api'
+----
+
+A Dockerfile can be created by the `Dockerfile` custom tasks. The Dockerfile instructions need to be declared in the correct order.
+
+[source, groovy]
+----
+task createDockerfile(type: Dockerfile, dependsOn: buildUberJar)  {
+    destFile = project.file('build/distributions/uberJar/Dockerfile')
+    from 'openjdk:8'
+    addFile("app.jar", "/usr/src/cuba-sales/app.jar")
+    defaultCommand("java", "-Dapp.home=/usr/src/cuba-sales/home", "-jar", "/usr/src/cuba-sales/app.jar")
+}
+----
+
+* `from` property adds the base Docker image used during building images.
+* `addFile` property defines the path to the source JAR that will be copied to the image. Note, that the source JAR should be in the same folder as the `Dockerfile`.
+* `defaultCommand` property defines the command for running the application.
+
+Image pull or push operations against the public Docker Hub registry or a private registry may require authentication. You can provide your credentials with the registryCredentials closure. Set your credentials in the https://docs.gradle.org/current/userguide/build_environment.html[gradle.properties] file:
+
+[source, groovy]
+----
+dockerHubEmail = 'example@email.com'
+dockerHubPassword = 'docker-hub-password'
+dockerHubUsername = 'docker-hub-username'
+----
+
+You can access a project property in your build script simply by using its name as you would use a variable:
+
+[source, groovy]
+----
+def dockerRegistryCredentials = new DockerRegistryCredentials()
+dockerRegistryCredentials.email = dockerHubEmail
+dockerRegistryCredentials.password = dockerHubPassword
+dockerRegistryCredentials.username = dockerHubUsername
+----
+
+Define the following tasks to build a Docker image from a Dockerfile and to push this image to the public Docker Hub registry:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/dockerFile.groovy[]
+----
+Set up the single Uber JAR as it is described in the <<single_jar_deployment>> section. Then run the `pushImage` task from the terminal or from the *Search* field in Studio.
+
+[source, plain]
+----
+gradle pushImage
+----
+
+This task successively builds Uber JAR, generates the `Dockerfile`, builds the image and pushes this image to your Docker Hub registry.
+
+[[heroku_container]]
+===== Container Deployment to Heroku
+
+Set up the single Uber JAR as it is described in the <<single_jar_deployment>> section. Create a Heroku account and install Heroku CLI. For this purpose, please refer to the <<heroku_war_deployment>> section.
+
+Create the app and connect it to the database with the following command
+
+[source, plain]
+----
+heroku create cuba-sales-docker --addons heroku-postgresql:hobby-dev
+----
+
+After the task is completed you have to configure the database credentials in the `jetty-env.xml` file for the connection to the database created by Heroku.
+
+. Go to the https://dashboard.heroku.com.
+. Select your project, open the *Resources* tab and select the database.
+. In the newly opened window open the *Settings* tab and click the *View Credentials* button.
+
+image::heroku-db.png[Db,1200,1000]
+
+[[jetty-env]]
+Switch to the IDE and open the `jetty-env.xml` file. You have to change the URL (host and database name), user name and password.
+Copy credentials from the site and paste them into the file.
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/jetty-env.xml[]
+----
+
+Build the single Uber JAR file using the Gradle task:
+
+[source, plain]
+----
+gradle buldUberJar
+----
+
+Also, you have to add some changes to the `Dockerfile`. First of all, if you use the free account, you have to restrict the amount of memory consumed by the application. Then you need to obtain the port of the app from the Heroku and add it to the image.
+
+The `Dockerfile` should look like the following:
+
+[source, plain]
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Xmx512m -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar -port $PORT
+----
+
+Set up Git with the following commands:
+
+[source, plain]
+----
+git init
+heroku git:remote -a cuba-sales-docker
+git add .
+git commit -am "Initial commit"
+----
+
+Then log in to the container registry. It's the Heroku location for storing images.
+
+[source, plain]
+----
+heroku container:login
+----
+
+Next, build the image and push it to Container Registry
+
+[source, plain]
+----
+heroku container:push web
+----
+
+Here `web` is the process type of the application. When you run this command, by default Heroku is going to build the image using the `Dockerfile` in the current directory, and then push it to Heroku.
+
+After the deployment process is completed, your application will be accessible in web browser by an URL like https://cuba-sales-docker.herokuapp.com/app
+
+You can also open the application from the Heroku dashboard using the *Open app* button.
+
+The third way to open a running application is to use the following command (remember to add the `app` context to the link, e.g. https://cuba-sales-docker.herokuapp.com/app):
+
+[source, plain]
+----
+heroku open
+----
+
+[[proxy_configuration_tomcat]]
+=== Proxy Configuration for Tomcat
+
+For integration tasks, you may need a proxy server. This part describes the configuration of Nginx HTTP-server as a proxy for CUBA application.
+
+[TIP]
+====
+If you set up a proxy, do not forget to set <<cuba.webAppUrl,cuba.webAppUrl>> value.
+====
+
+NGINX::
+
+For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 16.04.
+
+. <<direct_proxy,Direct Proxy>>
+. <<redirect_to_path,Redirect to Path>>
+
+For example, your web application works on `++http://localhost:8080/app++`.
+
+[TIP]
+====
+<<tomcat_for_proxy,Tomcat>> should be configured as well.
+====
+
+[[tomcat_for_proxy]]
+Tomcat Setup::
++
+--
+First, add `Valve` to Tomcat configuration `conf/server.xml`, copy and paste the following code:
+
+[source,xml]
+----
+<Valve className="org.apache.catalina.valves.RemoteIpValve"
+        remoteIpHeader="X-Forwarded-For"
+        requestAttributesEnabled="true"
+        internalProxies="127\.0\.0\.1"  />
+----
+
+and restart Tomcat:
+
+[source,plain]
+----
+sudo service tomcat8 restart
+----
+
+This is required to dispatch Nginx headers by Tomcat without modifying the web application.
+
+[[install_nginx]]
+Then install Nginx:
+
+[source,plain]
+----
+sudo apt-get install nginx
+----
+
+Navigate to `++http://localhost++` and ensure that Nginx works, you will see Nginx welcome page.
+
+Now you may delete the symlink to default Nginx site:
+
+[source,plain]
+----
+rm /etc/nginx/sites-enabled/default
+----
+--
+
+Next, configure your proxy one of the options selected below.
+
+[[direct_proxy]]
+Direct Proxy::
++
+--
+In this case the requests are handled by proxy, transparently passing to the application.
+
+Create Nginx site configuration file `/etc/nginx/sites-enabled/direct_proxy`:
+
+[source,plain]
+----
+include::{sourcesdir}/deployment/direct_proxy.yml[]
+----
+
+and restart Nginx
+
+[source,plain]
+----
+sudo service nginx restart
+----
+
+Now you can access your site via `++http://localhost/app++`.
+--
+
+[[redirect_to_path]]
+Redirect to Path::
++
+--
+This example describes how to change the application's URL path from /app to /, as if the application were deployed in the root context (similar to /ROOT). This will allow you to access the application at `++http://localhost++`.
+
+Create Nginx site configuration file `/etc/nginx/sites-enabled/root_proxy`:
+
+[source,plain]
+----
+include::{sourcesdir}/deployment/root_proxy[]
+----
+
+and restart Nginx
+
+[source,plain]
+----
+sudo service nginx restart
+----
+
+Now you can access your site via `++http://localhost++`.
+--
+
+[TIP]
+====
+Please note, that similar deployment instructions are valid for <<proxy_configuration_uberjar,Jetty>>, `WildFly` etc. In such cases, you may need an additional configuration of those servers.
+====
+
+[[proxy_configuration_uberjar]]
+=== Proxy Configuration for Uber JAR
+
+This part describes the configuration of Nginx HTTP-server as a proxy for CUBA Uber JAR application.
+
+NGINX::
+--
+For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 16.04.
+
+. Direct Proxy
+. Redirect to Path
+
+For example, your web application works on `++http://localhost:8080/app++`.
+
+[TIP]
+====
+Uber JAR application uses Jetty 9.2 server. It is required to preconfigure Jetty in <<proxy_for_jetty,JAR>> to dispatch Nginx headers by Jetty.
+====
+--
+
+[[proxy_for_jetty]]
+Jetty Setup::
++
+--
+* *Using Internal jetty.xml*
++
+First, create Jetty configuration file `jetty.xml` in the root of your project, copy and paste the following code:
++
+[source,xml]
+----
+include::{sourcesdir}/deployment/jetty.xml[]
+----
++
+Add `webJettyConfPath` property to the task `buildUberJar` in your `build.gradle`:
++
+[source,groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    singleJar = true
+    coreJettyEnvPath = 'modules/core/web/META-INF/jetty-env.xml'
+    appProperties = ['cuba.automaticDatabaseUpdate' : true]
+    webJettyConfPath = 'jetty.xml'
+}
+----
++
+You may use Studio to generate `jetty-env.xml` by following *Project Properties > Deployment Settings > Uber Jar* tab, or use an example below:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/jetty-env.xml[]
+----
++
+Build Uber JAR using the following command:
++
+[source,plain]
+----
+gradlew buildUberJar
+----
++
+Your application will be located in `build/distributions/uberJar`, the default name is `app.jar`.
++
+Run your application:
++
+[source,plain]
+----
+java -jar app.jar
+----
++
+Then install and configure Nginx as described in <<install_nginx,Tomcat section>>.
++
+Depending on your schema, you can access your site via `++http://localhost/app++` or `++http://localhost++` URL.
+
+* *Using External jetty.xml*
++
+Use the same configuration file `jetty.xml` from the project root, as described above. Place it in your home folder and do not modify `buildUberJar` task in `build.gradle`.
++
+Build Uber JAR using the following command:
++
+[source,plain]
+----
+gradlew buildUberJar
+----
++
+Your application will be located in `build/distributions/uberJar` folder, default name is `app.jar`.
++
+First, run the application with a parameter `-jettyConfPath`:
++
+[source,plain]
+----
+java -jar app.jar -jettyConfPath jetty.xml
+----
++
+Then install and configure Nginx as described in <<install_nginx,Tomcat section>>.
++
+Depending on your schema and setings in `jetty.xml` file, you can access your site via `++http://localhost/app++` or `++http://localhost++` URL.
+--
+
+[[scaling]]
+=== Application Scaling
+
+This section describes ways to scale a CUBA application that consists of the *Middleware* and the *Web Client* for increased load and stronger fault tolerance requirements.
+
+[cols="3,2", frame="all", width="100%"]
+|===
+
+a| *Stage 1. Both blocks are deployed on the same application server.*
+
+This is the simplest option implemented by the standard <<fast_deployment,fast deployment>> procedure.
+
+In this case, maximum data transfer performance between the *Web Client* and the *Middleware* is provided, because when the <<cuba.useLocalServiceInvocation,cuba.useLocalServiceInvocation>> application property is enabled, the Middleware services are invoked bypassing the network stack.
+^| image:scaling_1.png[align="center"]
+
+a| *Stage 2. The Middleware and the Web Client blocks are deployed on separate application servers.*
+
+This option allows you to distribute load between two application servers and use server resources better. Furthermore, in this case, the load coming from web users has smaller effect on the other processes execution. Here, the other processes mean handling other client types (for example, Desktop), running <<scheduled_tasks,scheduled tasks>> and, potentially, integration tasks which are performed by the middle layer.
+
+Requirements for server resources:
+
+* Tomcat 1 (Web Client):
+** Memory size – proportional to the number of simultaneous users
+** CPU power – depends on the usage intensity
+* Tomcat 2 (Middleware):
+** Memory size – fixed and relatively small
+** CPU power – depends on the intensity of web client usage and of other processes
+
+In this case and when more complex deployment options are used, the Web Client's <<cuba.useLocalServiceInvocation,cuba.useLocalServiceInvocation>> application property should be set to `false`, and <<cuba.connectionUrlList,cuba.connectionUrlList>> property should contain the URL of the Middleware block.
+^| image:scaling_2.png[align="center"]
+
+| *Stage 3. A cluster of Web Client servers works with one Middleware server.*
+
+This option is used when memory requirements for the Web Client exceed the capabilities of a single JVM due to a large number of concurrent users. In this case, a cluster of Web Client servers (two or more) is started and user connection is performed through a Load Balancer. All Web Client servers work with one Middleware server.
+
+Duplication of Web Client servers automatically provides fault tolerance at this level. However, the replication of HTTP sessions is not supported, in case of unscheduled outage of one of the Web Client servers, all users connected to it will have to login into the application again.
+
+Configuration of this option is described in <<cluster_webclient,>>.
+^| image:scaling_3.png[align="center"]
+
+| *Stage 4. A cluster of Web Client servers working with a cluster of Middleware servers.*
+
+This is the most powerful deployment option providing fault tolerance and load balancing for the Middleware and the Web Client.
+
+Connection of users to the Web Client servers is performed through a load balancer. The Web Client servers work with a cluster of Middleware servers. They do not need an additional load balancer – it is sufficient to determine the list of URLs for the Middleware servers in the <<cuba.connectionUrlList,cuba.connectionUrlList>> application property. Another option is to use <<cluster_mw_zk,Apache ZooKeeper Integration Add-on>> for dynamic discovery of middleware servers.
+
+Middleware servers exchange the information about user sessions, locks, etc. In this case, full fault tolerance of the Middleware is provided – in case of an outage of one of the servers, execution of requests from client blocks will continue on an available server without affecting users.
+
+Configuration of this option is described in <<cluster_mw,>>.
+^| image:scaling_4.png[align="center"]
+
+|===
+
+[[cluster_webclient]]
+==== Setting up a Web Client Cluster
+
+This section describes the following deployment configuration:
+
+image::cluster_webclient.png[align="center"]
+
+Servers `host1` and `host2` host Tomcat instances with the `app` web-app implementing the Web Client block. Users access the load balancer at `++http://host0/app++`, which redirects their requests to the servers. Server `host3` hosts a Tomcat instance with the `app-core` web-app that implements the Middleware block.
+
+[[cluster_webclient_lb]]
+===== Installing and Setting up a Load Balancer
+
+Let us consider the installation of a load balancer based on *Apache HTTP Server* for *Ubuntu 14.04*.
+
+. Install *Apache HTTP Server* and its *mod_jk* module:
++
+`$ sudo apt-get install apache2 libapache2-mod-jk`
+
+. Replace the contents of the `/etc/libapache2-mod-jk/workers.properties` file with the following:
++
+[source,plain]
+----
+workers.tomcat_home=
+workers.java_home=
+ps=/
+
+worker.list=tomcat1,tomcat2,loadbalancer,jkstatus
+
+worker.tomcat1.port=8009
+worker.tomcat1.host=host1
+worker.tomcat1.type=ajp13
+worker.tomcat1.connection_pool_timeout=600
+worker.tomcat1.lbfactor=1
+
+worker.tomcat2.port=8009
+worker.tomcat2.host=host2
+worker.tomcat2.type=ajp13
+worker.tomcat2.connection_pool_timeout=600
+worker.tomcat2.lbfactor=1
+
+worker.loadbalancer.type=lb
+worker.loadbalancer.balance_workers=tomcat1,tomcat2
+
+worker.jkstatus.type=status
+----
+
+. Add the lines listed below to `/etc/apache2/sites-available/000-default.conf`:
++
+[source, xml]
+----
+<VirtualHost *:80>
+...
+    <Location /jkmanager>
+        JkMount jkstatus
+        Order deny,allow
+        Allow from all
+    </Location>
+
+    JkMount /jkmanager/* jkstatus
+    JkMount /app loadbalancer
+    JkMount /app/* loadbalancer
+
+</VirtualHost>
+----
+
+. Restart the Apache HTTP service:
++
+`$ sudo service apache2 restart`
+
+[[cluster_webclient_tomcat]]
+===== Setting up Web Client Servers
+
+[TIP]
+====
+In the examples below, we provide paths to configuration files as if <<fast_deployment>> is used.
+====
+
+On the Tomcat 1 and Tomcat 2 servers, the following settings should be applied:
+
+. In `tomcat/conf/server.xml`, add the `jvmRoute` parameter equivalent to the name of the worker specified in the load balancer settings for `tomcat1` and `tomcat2`:
++
+[source, xml]
+----
+<Server port="8005" shutdown="SHUTDOWN">
+  ...
+  <Service name="Catalina">
+    ...
+    <Engine name="Catalina" defaultHost="localhost" jvmRoute="tomcat1">
+      ...
+    </Engine>
+  </Service>
+</Server>
+----
+
+. Set the following application properties in `tomcat/conf/app/local.app.properties`:
++
+[source, properties]
+----
+cuba.useLocalServiceInvocation = false
+cuba.connectionUrlList = http://host3:8080/app-core
+
+cuba.webHostName = host1
+cuba.webPort = 8080
+cuba.webContextName = app
+----
++
+<<cuba.webHostName,cuba.webHostName>>, <<cuba.webPort,cuba.webPort>> and <<cuba.webContextName,cuba.webContextName>> parameters are not mandatory for WebClient cluster, but they allow easier identification of a server in other platform mechanisms, such as the <<jmx_console, JMX console>>. Additionally, *Client Info* attribute of the *User Sessions* screen shows an identifier of the Web Client that the current user is working with.
+
+[[cluster_mw]]
+==== Setting up a Middleware Cluster
+
+This section describes the following deployment configuration:
+
+image::cluster_mw.png[align="center"]
+
+Servers `host1` and `host2` host Tomcat instances with the `app` web application implementing the Web Client block. Cluster configuration for these servers is described in the <<cluster_webclient,previous section>>. Servers `host3` and `host4` host Tomcat instances with the `app-core` web application implementing the Middleware block. They are configured to interact and share information about user sessions, locks, cash flushes, etc.
+
+[TIP]
+====
+In the examples below, we provide paths to configuration files as if <<fast_deployment>> is used.
+====
+
+[[cluster_mw_client]]
+===== Setting up Connection to the Middleware Cluster
+
+In order for the client blocks to be able to work with multiple Middleware servers, the list of server URLs should be specified in the <<cuba.connectionUrlList,cuba.connectionUrl>> application property. For the Web Client, this can be done in `tomcat/conf/app/local.app.properties`:
+
+[source,plain]
+----
+cuba.useLocalServiceInvocation = false
+cuba.connectionUrlList = http://host3:8080/app-core,http://host4:8080/app-core
+
+cuba.webHostName = host1
+cuba.webPort = 8080
+cuba.webContextName = app
+----
+
+A middleware server is randomly determined on the first remote connection for a <<userSession,user session>>, and it is fixed for the whole session lifetime ("sticky session"). Requests from anonymous session and without session do not stick to a server and go to random servers.
+
+The algorithm of selecting a middleware server is provided by the `cuba_ServerSorter` bean which is by default implemented by the `RandomServerSorter` class. You can provide your own implementation in your project.
+
+[[cluster_mw_server]]
+===== Configuring Interaction between Middleware Servers
+
+Middleware servers can maintain shared lists of <<userSession,user sessions>> and other objects and coordinate invalidation of caches. <<cuba.cluster.enabled,cuba.cluster.enabled>> property should be enabled on each server to achieve this. Example of the `tomcat/conf/app-core/local.app.properties` file is shown below:
+
+[source,plain]
+----
+cuba.cluster.enabled = true
+
+cuba.webHostName = host3
+cuba.webPort = 8080
+cuba.webContextName = app-core
+----
+
+For the Middleware servers, correct values of the <<cuba.webHostName,cuba.webHostName>>, <<cuba.webPort,cuba.webPort>> and <<cuba.webContextName,cuba.webContextName>> properties should be specified to form a unique <<serverId,Server ID>>.
+
+Interaction mechanism is based on link:http://www.jgroups.org[JGroups]. The platform provides two configuration files for JGroups:
+
+* `jgroups.xml` -  a UDP-based stack of protocols which is suitable for local network with enabled broadcast communication. This configuration is used by default when the cluster is turned on.
+
+* `jgroups_tcp.xml` - TCP-based stack of protocols which is suitable for any network. It requires explicit setting of cluster members addresses in `TCP.bind_addr` and `TCPPING.initial_hosts` parameters. In order to use this configuration, set <<cuba.cluster.jgroupsConfig,cuba.cluster.jgroupsConfig>> application property.
+
+In order to set up JGroups parameters for your environment, copy the appropriate `jgroups.xml` file from the root of `cuba-core-<version>.jar` to your project *core* module or to `tomcat/conf/app-core` and modify it.
+
+`ClusterManagerAPI` bean provides the program interface for interaction between servers in the Middleware cluster. It can be used in the application – see JavaDocs and usages in the platform code.
+
+[[cluster_mw_zk]]
+===== Using ZooKeeper for Cluster Coordination
+
+There is an <<app_components,application component>> that enables dynamic discovery of middleware servers for communication between middleware blocks and for requesting middleware from client blocks. It is based on integration with https://zookeeper.apache.org[Apache ZooKeeper] - a centralized service for maintaining configuration information. When this component is included in your project, you need to specify only one static address when running your application blocks - the address of ZooKeeper. Middleware servers will advertise themselves by publishing their addresses on the ZooKeeper directory and discovery mechanisms will request ZooKeeper for addresses of available servers. If a middleware server goes down, it will be automatically removed from the directory immediately or after a timeout.
+
+The source code of application component is available on https://github.com/cuba-platform/cuba-zk[GitHub], the binary artifacts are published in the standard CUBA repositories. See https://github.com/cuba-platform/cuba-zk[README] for information about including and configuring the component.
+
+[[serverId]]
+==== Server ID
+
+_Server ID_ is used for reliable identification of servers in a *Middleware* cluster. The identifier is formatted as `host:port/context`:
+
+[source, plain]
+----
+tezis.haulmont.com:80/app-core
+----
+
+[source, plain]
+----
+192.168.44.55:8080/app-core
+----
+
+The identifier is formed based on the configuration parameters <<cuba.webHostName,cuba.webHostName>>, <<cuba.webPort,cuba.webPort>>, <<cuba.webContextName,cuba.webContextName>>, therefore it is very important to specify these parameters for the Middleware blocks working within the cluster.
+
+Server ID can be obtained using the `ServerInfoAPI` bean or via the <<serverInfoMBean,ServerInfoMBean>> JMX interface.
+
+[[jmx_tools]]
+=== Using JMX Tools
+
+This section describes various aspects of using *Java Management Extensions* in CUBA-based applications.
+
+[[jmx_console]]
+==== Built-In JMX Console
+
+The Web Client module of the *cuba* <<app_components,application component>> contains JMX objects viewing and editing tool. The entry point for this tool is `com/haulmont/cuba/web/app/ui/jmxcontrol/browse/display-mbeans.xml` screen registered under the `jmxConsole` identifier and accessible via *Administration* > *JMX Console* in the standard application menu.
+
+Without extra configuration, the console shows all JMX objects registered in the JVM where the Web Client block of the current user is running. Therefore, in the simplest case, when all application blocks are deployed to one web container instance, the console has access to the JMX beans of all tiers as well as the JMX objects of the JVM itself and the web container.
+
+Names of the application beans have a prefix corresponding to the name of the web-app that contains them. For example, the `app-core.cuba:type=CachingFacade` bean has been loaded by the *app-core* web-app implementing the Middleware block, while the `app.cuba:type=CachingFacade` bean has been loaded by the *app* web-app implementing the Web Client block.
+
+.JMX Console
+image::jmx-console.png[align="center"]
+
+JMX console can also work with the JMX objects of a remote JVM. This is useful when application blocks are deployed over several instances of a web container, for example, separate Web Client and Middleware.
+
+To connect to a remote JVM, a previously created connection should be selected in the *JMX Connection* field of the console, or a new connection can be created:
+
+.Editing a JMX Connection
+image::jmx-connection-edit.png[align="center"]
+
+To get a connection, JMX host, port, login, and password should be specified. There is also the *Host name* field, which is populated automatically if any CUBA-application block is detected at the specified address. In this case, the value of this field is defined as the combination of <<cuba.webHostName,cuba.webHostName>> and <<cuba.webPort,cuba.webPort>> properties of this block, which enables identifying the server that contains it. If the connection is done to a 3rd party JMX interface, then the *Host name* field will have the "Unknown JMX interface" value. However, it can be changed arbitrarily.
+
+In order to allow a remote JVM connection, the JVM should be configured properly (see below).
+
+[[jmx_remote_access]]
+==== Setting up a Remote JMX Connection
+
+This section describes *Tomcat* startup configuration required for a remote connection of JMX tools.
+
+[[jmx_remote_access_tomcat_windows]]
+===== Tomcat JMX for Windows
+
+* Edit `bin/setenv.bat` in the following way:
++
+[source,plain]
+----
+set CATALINA_OPTS=%CATALINA_OPTS% ^
+-Dcom.sun.management.jmxremote ^
+-Djava.rmi.server.hostname=192.168.10.10 ^
+-Dcom.sun.management.jmxremote.ssl=false ^
+-Dcom.sun.management.jmxremote.port=7777 ^
+-Dcom.sun.management.jmxremote.authenticate=true ^
+-Dcom.sun.management.jmxremote.password.file=../conf/jmxremote.password ^
+-Dcom.sun.management.jmxremote.access.file=../conf/jmxremote.access
+----
++
+Here, the `java.rmi.server.hostname` parameter should contain the actual IP address or the DNS name of the computer where the server is running; `com.sun.management.jmxremote.port` sets the port for JMX tools connection.
+
+* Edit the `conf/jmxremote.access` file. It should contain user names that will be connecting to the JMX and their access level. For example:
++
+[source, plain]
+----
+admin readwrite
+----
+
+* Edit the `conf/jmxremote.password` file. It should contain passwords for the JMX users, for example:
++
+[source, plain]
+----
+admin admin
+----
+
+* The password file should have reading permissions only for the user running the *Tomcat*. server. You can configure permissions the following way:
+
+** Open the command line and go to the conf folder
+
+** Run the command:
++
+[source, plain]
+----
+cacls jmxremote.password /P "domain_name\user_name":R
+----
++
+where `++domain_name\user_name++` is the user's domain and name
+
+** After this command is executed, the file will be displayed as locked (with a lock icon) in *Explorer*.
+
+* If *Tomcat* is installed as a Windows service, then the service should be started on behalf of the user who has access permissions for jmxremote.password. It should be kept in mind that in this case the `bin/setenv.bat` file is ignored and the corresponding JVM startup properties should be specified in the application that configures the service.
+
+[[jmx_remote_access_tomcat_linux]]
+===== Tomcat JMX for Linux
+
+* Edit `bin/setenv.sh` the following way:
++
+[source,plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Dcom.sun.management.jmxremote \
+-Djava.rmi.server.hostname=192.168.10.10 \
+-Dcom.sun.management.jmxremote.port=7777 \
+-Dcom.sun.management.jmxremote.ssl=false \
+-Dcom.sun.management.jmxremote.authenticate=true"
+
+CATALINA_OPTS="$CATALINA_OPTS -Dcom.sun.management.jmxremote.password.file=../conf/jmxremote.password -Dcom.sun.management.jmxremote.access.file=../conf/jmxremote.access"
+----
++
+Here, the `java.rmi.server.hostname` parameter should contain the real IP address or the DNS name of the computer where the server is running; `com.sun.management.jmxremote.port` sets the port for JMX tools connection
+
+* Edit `conf/jmxremote.access` file. It should contain user names that will be connecting to the JMX and their access level. For example:
++
+[source, plain]
+----
+admin readwrite
+----
+
+* Edit the `conf/jmxremote.password` file. It should contain passwords for the JMX users, for example:
++
+[source, plain]
+----
+admin admin
+----
+
+* The password file should have reading permissions only for the user running the *Tomcat* server. Permissions for the current user can be configured the following way:
+
+** Open the command line and go to the conf folder.
+
+** Run the command:
++
+`chmod go-rwx jmxremote.password`
+
+[[server_push_settings]]
+=== Server Push Settings
+
+CUBA applications use server push technology in the <<background_tasks,Background Tasks>> mechanism. It may require an additional setup of the application and proxy server (if any).
+
+By default, server push uses the WebSocket protocol. The following application properties affect the platform server push functionality:
+
+<<cuba.web.pushLongPolling,cuba.web.pushLongPolling>>
+
+<<cuba.web.pushLongPollingSuspendTimeoutMs,cuba.web.pushLongPollingSuspendTimeoutMs>>
+
+<<cuba.web.pushEnabled,cuba.web.pushEnabled>>
+
+The information below is obtained from the Vaadin website - https://vaadin.com/docs/v8/framework/articles/ConfiguringPushForYourEnvironment.html[Configuring push for your environment].
+
+[[server_push_settings_err_incomplete_chunked_encoding]]
+Chrome says ERR_INCOMPLETE_CHUNKED_ENCODING::
++
+--
+This is completely normal and means that the (long-polling) push connection was aborted by a third party. This typically happens when there is a proxy between the browser and the server and the proxy has a configured timeout and cuts the connection when the timeout is reached. The browser should reconnect to the server normally after this happens.
+--
+
+[[server_push_settings_]]
+Tomcat 8 + Websockets::
++
+--
+[source, plain]
+----
+java.lang.ClassNotFoundException: org.eclipse.jetty.websocket.WebSocketFactory$Acceptor
+----
+
+This implies you have Jetty deployed on the classpath somewhere. Atmosphere gets confused and tries to use its Websocket implementation instead of Tomcat's. One common reason for this is that you have accidentally deployed `vaadin-client-compiler`, which has Jetty as a dependency (needed by SuperDevMode for instance).
+--
+
+[[server_push_settings_glassfish_streaming]]
+Glassfish 4 + Streaming::
++
+--
+Glassfish 4 requires the *comet* option to be enabled for streaming to work.
+
+Set
+
+[source, plain]
+----
+(Configurations → server-config → Network Config → Protocols → http-listener-1 → HTTP → Comet Support)
+----
+
+or use
+
+[source, plain]
+----
+asadmin set server-config.network-config.protocols.protocol.http-listener-1.http.comet-support-enabled="true"
+----
+--
+
+[[server_push_settings_glassfish_websockets]]
+Glassfish 4 + Websockets::
++
+--
+If you are using Glassfish 4.0, upgrade to Glassfish 4.1 to avoid problems.
+--
+
+[[server_push_settings_weblogic_websockets]]
+Weblogic 12 + Websockets::
++
+--
+Use WebLogic 12.1.3 or newer. WebLogic 12 specifies a timeout of 30 sec by default for websocket connections. To avoid constant reconnects, you can set the `weblogic.websocket.tyrus.session-max-idle-timeout` init parameter to either `-1` (no timeout in use) or a higher value than `30000` (value is in ms).
+--
+
+[[server_push_settings_jboss_websockets]]
+JBoss EAP 6.4 + Websockets::
++
+--
+JBoss EAP 6.4 includes support for websockets but they are disabled by default. To make websockets work you need to change JBoss to use the NIO connector by running:
+
+[source, plain]
+----
+$ bin/jboss-cli.sh --connect
+----
+
+and the following commands:
+
+[source, plain]
+----
+batch
+/subsystem=web/connector=http/:write-attribute(name=protocol,value=org.apache.coyote.http11.Http11NioProtocol)
+run-batch
+:reload
+----
+
+Then add a *WEB-INF/jboss-web.xml* to you war file with the following contents to enable websockets:
+
+[source, xml]
+----
+<jboss-web version="7.2" xmlns="http://www.jboss.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.jboss.com/xml/ns/javaee schema/jboss-web_7_2.xsd">
+    <enable-websockets>true</enable-websockets>
+</jboss-web>
+----
+--
+
+[[server_push_settings_duplicate_resource]]
+Duplicate resource::
++
+--
+If server logs contain
+
+[source, plain]
+----
+Duplicate resource xyz-abc-def-ghi-jkl. Could be caused by a dead connection not detected by your server. Replacing the old one with the fresh one
+----
+
+This indicates that first, the browser connected to the server and used the given identifier for the push connection. Everything went as expected. Later on, a browser (probably the same one) connected again using the same identifier but according to the server, the old browser connection should still be active. The server closes the old connection and logs the warning.
+
+This happens because typically there was a proxy between the browser and the server, and the proxy was configured to kill open connections after a certain inactivity timeout on the connection (no data is sent before the server issues a push command). Because of how TCP/IP works, the server has no idea that the connection has been killed and continues to think that the old client is connected and all is well.
+
+You have a couple of options to avoid this problem:
+
+. If you are in control of the proxy, configure it not to timeout/kill push connections (connections to the `/PUSH` url).
+. If you know what the proxy timeout is, configure a slightly shorter timeout for push in the application so that the server terminates the idle connection and is aware of the termination before the proxy can kill the connection.
+.. Set the `cuba.web.pushLongPolling` parameter to `true` to enable long polling transport instead of websocket.
+.. Use the `cuba.web.pushLongPollingSuspendTimeoutMs` parameter to set push timeout in milliseconds.
+
+If you do not configure the proxy so that the server knows when the connection is killed, you also have a small chance of losing pushed data. If it so happens that the server does a push right after the connection was killed, it will not realize that it pushed data into a closed connection (because of how sockets work and especially how they work in Java). Disabling the timeout or setting the timeout on the server also resolves this potential issue.
+--
+
+[[server_push_settings_using_proxy]]
+Using Proxy::
++
+--
+If users connect to the application server via a proxy that does not support WebSocket, set `cuba.web.pushLongPolling` to `true` and increase proxy request timeout to 10 minutes or more.
+
+Below is an example of the *Nginx* web server settings for using WebSocket:
+
+[source, plain]
+----
+location / {
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Server $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout     3600;
+    proxy_connect_timeout  240;
+    proxy_set_header Host $host;
+    proxy_set_header X-RealIP $remote_addr;
+
+    proxy_pass http://127.0.0.1:8080/;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+----
+--
+
+[[health_check_url]]
+=== Health Check URL
+
+Every application block deployed as a web application provides a health check URL. An HTTP GET request for this URL returns `ok` if the block is ready to work.
+
+The URL paths for different blocks are listed below:
+
+* Middleware: `/remoting/health`
+* Web Client: `/rest/health`
+* Web Portal: `/rest/health`
+
+So for an application named `app` and deployed at `++localhost:8080++` the URLs will be:
+
+* `\http://localhost:8080/app-core/remoting/health`
+* `\http://localhost:8080/app/rest/health`
+* `\http://localhost:8080/app-portal/rest/health`
+
+You can replace `ok` in response with any text using the <<cuba.healthCheckResponse,cuba.healthCheckResponse>> application property.
+
+The health check controllers also send an application <<events,event>> of type `HealthCheckEvent`. Therefore you can add your own logic of checking the application health. In the https://github.com/cuba-platform/sample-base/blob/master/modules/web/src/com/haulmont/addon/samplebase/web/HealthCheckListener.java[example on GitHub], a bean of the web tier listens to the health check events and invokes a middleware service, which in turn executes an operation on the database.

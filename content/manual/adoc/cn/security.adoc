@@ -1,0 +1,1023 @@
+[[security_subsystem]]
+== Security Subsystem
+
+The CUBA platform uses the following methods to control access rights: 
+
+* The <<roles,role-based>> system for assigning user <<permissions,permissions>>. A set of roles and permissions can be configured by the system administrator during the system deployment or later in production.
+
+* A hierarchical structure of <<groups,access groups>> with <<constraints,constraint>> inheritance.
+
+* Access control at the following levels: 
+
+** Operations on entities (read, create, update, delete): for example, user `*Smith*` can view documents, but cannot create, update or delete them.
+
+** Entity attributes (modify, read, access denied): user `*Smith*` can view all document attributes except for `amount`.
+
+** Access to particular entity instances (access control at the row level): user `*Smith*` can view the documents that have been created in their department only.
+
+* Integration with <<ldap,LDAP>> with an ability to implement SSO (Single Sign-On) for *Windows* users. 
+
+[[security_web]]
+=== Web Security
+
+*Are CUBA applications secure?*
+
+CUBA Platform as a framework follows good security practices and provides you with automatic protection against some of the most common vulnerabilities in web applications. Its architecture promotes a secure programming model, allowing you to concentrate on your business and application logic.
+
+1. *UI State and Validation*
++
+<<gui_web,Web Client>> is a server-side application, where all of your application state, business and UI logic resides on the server. Unlike client driven frameworks, Web Client never exposes its internals to the browser, where vulnerabilities can be leveraged by an attacker. The data validation is always done on the server and therefore cannot be by-passed with client-side attacks, the same applies to <<rest_api_v2,REST API>> validation.
+
+2. *Cross-Site Scripting (XSS)*
++
+Web Client has built-in protection against cross-site scripting (XSS) attacks. It converts all data to use HTML entities before the data is rendered in the user's browser.
+
+3. *Cross-Site Request Forgery (CSRF)*
++
+All requests between the client and the server are included with a user session specific CSRF token. All communication between the server and the client is handled by https://vaadin.com/framework/[Vaadin Framework], so you do not need to remember to include the CSRF tokens manually.
+
+4. *Web Services*
++
+All communication in Web Client goes through one web service used for RPC requests. You never open up your business logic as web services and thus there are less attack entry points to your application.
++
+Generic REST API automatically applies roles, permissions and all security constraints for both logged in and anonymous users.
+
+5. *SQL Injection*
++
+The platform uses <<orm,ORM>> layer based on EclipseLink that is protected against SQL injections. Parameters of SQL queries are always passed to JDBC as parameters array and not interpolated into SQL queries as raw strings.
+
+[[security_components]]
+=== Security Subsystem Components
+
+The main CUBA security subsystem components are shown in the diagram below. 
+
+.Security Subsystem Components Diagram
+image::Security.png[align="center"]
+
+Below is an overview of these components. 
+
+_Security management screens_ – screens available to system administrator for configuring <<users,user>> access rights.
+
+_Login screen_ − system <<login_screen,login>> window. This window provides user authentication by username and password. The database stores password hashes for security.
+
+The <<userSession,UserSession>> object is created upon login. This is the central security element associated with the currently authenticated user and containing information on data access rights.
+
+The user login process is described in <<login,>>.
+
+_Roles_ − user roles. A <<roles,role>> is a system object, which, on the one hand, matches the <<permissions,permission>> set required to perform specific functions, and on the other hand, the subset of users who must have these permissions.
+
+The permissions can have the following types:
+
+* _Screen Permissions_ − an ability to open a screen.
+
+* _Entity Operation Permissions_ − an ability to perform operations with an entity: read, create, update, delete.
+
+* _Entity Attribute Permissions_ − access to an arbitrary entity attribute: modify, read only, access denied. See also <<entity_attribute_access,>>.
+
+* _Specific Permissions_ − permissions for some named functionality.
+
+* _UI Permissions_ − control access to screen elements. 
+
+_Access Groups_ − user access groups. The <<groups,groups>> have a hierarchical structure, with each element defining a set of <<constraints,constraints>>, allowing controlling access to individual entity instances (at table row level). For example, users can view the documents that have been created in their department only.
+
+[[login_screen]]
+==== Login Screen
+
+The login screen provides the ability to register within the system with a login name and password. The login name is case-insensitive.
+
+The Web Client's *Remember Me* checkbox can be configured by using the <<cuba.web.rememberMeEnabled,cuba.web.rememberMeEnabled>> application property. The drop-down list of supported languages on the standard login screen can be configured with the <<cuba.localeSelectVisible,cuba.localeSelectVisible>> and <<cuba.availableLocales,cuba.availableLocales>> application properties.
+
+See also the <<cuba.web.loginDialogDefaultUser,cuba.web.loginDialogDefaultUser>>, <<cuba.web.loginDialogDefaultPassword,cuba.web.loginDialogDefaultPassword>> and <<cuba.web.loginDialogPoweredByLinkVisible,cuba.web.loginDialogPoweredByLinkVisible>> application properties.
+
+In Web Client, the standard login window can be customized or completely replaced in the project using the *Generic UI > New > Login Window* link in Studio. See also <<gui_web,>>.
+
+The platform has a mechanism for the protection against password brute force cracking: see the <<cuba.bruteForceProtection.enabled,cuba.bruteForceProtection.enabled>> application property.
+
+For deeper customization of the authentication procedure, see <<login>> and <<web_login>> sections.
+
+[[users]]
+==== Users
+
+Each system user has a corresponding instance of `sec$User` entity, containing unique login, password hash, reference to access group and list of roles, and other attributes. User management is carried out using the *Administration* > *Users screen*: 
+
+image::security_user_browser.png[align="center"]
+
+In addition to the standard actions to create, update and delete records, the following actions are available:
+
+* *Copy* – quickly creates a new user based on the selected one. The new user will have the same access group and role set. Both can be changed in the new user edit screen.
+
+* *Copy settings* – enables copying user interface settings from one user to several others. The settings include the <<gui_Table_presentations,table presentations>>, the <<gui_SplitPanel,SplitPanel>> separator position, <<gui_Filter,filters>> and <<folders_pane,search folders>>.
+
+* *Change password* – allowing changing password for a selected user.
+
+* *Reset passwords* – enables performing the following actions on selected users:
+
+** If *Generate new passwords* flag is not selected in the *Reset passwords for selected users* dialog, the *Change password at next logon* flag will be assigned to selected users. These users will be asked to change the password on the next successful login.
++
+[TIP]
+====
+In order to be able to change their passwords, the users must have permission to the `sec$User.changePassword` screen. Keep it in mind when configuring <<roles,roles>>, especially if you assign a *Denying* role to all users. The screen can be found under the *Other screens* entry in the role editor.
+====
+
+** If *Generate new passwords flag* is selected, new random passwords will be generated for selected users and displayed to the system administrator. The list of passwords can be exported to XLS and sent to related users. Additionally, the *Change password at next logon* flag will be set for each user, ensuring that users change the password on next login.
+
+** If *Send emails with generated passwords* flag is selected in addition to *Generate new passwords*, the automatically generated one-time passwords will be sent to corresponding users directly, and not shown to system administrator. The sending is done asynchronously so it requires a special scheduled task mentioned in section <<email_sending_methods>>.
++
+--
+The template of password reset emails can be modified. Create custom templates in the *core* module, taking https://github.com/cuba-platform/cuba/blob/master/modules/core/src/com/haulmont/cuba/security/app/email/reset-password-subject.gsp[reset-password-subject.gsp] and https://github.com/cuba-platform/cuba/blob/master/modules/core/src/com/haulmont/cuba/security/app/email/reset-password-body.gsp[reset-password-body.gsp] as an example. In order to localize templates, if needed, create files with locale suffixes, as it is done in the https://github.com/cuba-platform/cuba/tree/master/modules/core/src/com/haulmont/cuba/security/app/email[platform].
+
+
+The templates are based on Groovy `SimpleTemplateEngine` syntax, thus you can use Groovy blocks inside of the template content. For instance:
+
+[source, plain]
+----
+include::{sourcesdir}/security/reset-password-body.gsp[]
+----
+
+Data binding for these templates contains `user`, `password`, and `persistence` variables. You can also use any Spring beans of the middleware if you import `AppBeans` class and get them using `AppBeans.get()` method.
+
+Having overridden the templates, in the `app.properties` of the *core* module specify the following properties:
+
+[source, xml]
+----
+cuba.security.resetPasswordTemplateBody = <relative path to your file>
+cuba.security.resetPasswordTemplateSubject = <relative path to your file>
+----
+
+For easier configuration in production, the templates can also be located or overridden in the <<conf_dir,configuration directory>>, with the properties added to the `local.app.properties` file.
+--
+
+The user edit screen is described below:
+
+image::security_user_editor.png[align="center"]
+
+* *Login* – unique login name (required).
+
+* *Group* – <<groups,access group>>.
+
+* *Last name*, *First name*, *Middle name* – parts of user's full name.
+
+* *Name* – automatically generated user's full name. Based on full name parts above and a rule defined in the <<cuba.user.fullNamePattern,cuba.user.fullNamePattern>> application property. The name can also be changed manually.
+
+* *Position* – job position.
+
+* *Language* – the user interface language that will be set for the user, if the ability to choose a language on login is turned off using the <<cuba.localeSelectVisible,cuba.localeSelectVisible>> application property.
+
+* *Time Zone* – the <<timeZone,time zone>> that will be used for displaying and entering timestamp values.
+
+* *Email* – email address.
+
+* *Active* – if not set, the user is unable to login to the system.
+
+* *Permitted IP Mask* – IP address mask, defining addresses from which the user is allowed to login.
++
+The mask is a list of IP addresses, separated by commas. Both the IPv4 and IPv6 address formats are supported. IPv4 address should consist of four numbers separated with periods. IPv6 address represents eight groups of four hexadecimal characters separated with colons. The "*" symbol can be used in place of an address part, to match any value. Only one type of address format (IPv4 or IPv6) can be used in the mask at the same time.
++
+Example: `++192.168.*.*++`
+
+* *Roles* – user <<roles,roles>> list.
+
+* *Substituted Users* – <<user_substitution,substituted>> users list.
+
+[[user_substitution]]
+===== User Substitution
+
+The system administrator can give a user an ability to _substitute_ another user. The substituting user will have the same <<userSession,session>>, but a different set of <<roles,roles>>, <<constraints,constraints>> and <<session_attr,attributes>>, assigned from the substituted user.
+
+[TIP]
+====
+It is recommended to use the `UserSession.getCurrentOrSubstitutedUser()` method for retrieving the current user in the application code, which returns the substituted user, if there is an active substitution. The platform audit mechanisms (the `createdBy` and `updatedBy` attributes, <<entity_log,change log>> and <<entity_snapshots,entity snapshots>>) always register the real logged-in user. 
+====
+
+If the user has substituted users, a drop-down list will be shown in the application upper right corner instead of the plain text with the current user name:
+
+image::user_subst_select.png[align="center"]
+
+If another user is selected in this list, all opened screens will be closed and the substitution will be made active. The `UserSession.getUser()` method will still return the user that has logged in, however, the `UserSession.getSubstitutedUser()` method will return the substituted user. If there is no substitution, the `UserSession.getSubstitutedUser()` method will return `null`. 
+
+Substituted users can be managed through the *Substituted Users* table in the user edit screen. The user substitution screen is described below:
+
+image::user_subst_edit.png[align="center"]
+
+* *User* – the edited user. This user will substitute another user.
+
+* *Substituted user* – the substituted user.
+
+* *Start date*, *End date* – optional substitution period. User substitution will be unavailable outside of this period. If no period is specified, substitution will be available until this table entry is removed.
+
+[[timeZone]]
+===== Time Zone
+
+By default, all temporal values are displayed in the server's time zone. The server's time zone is the one returned by `TimeZone.getDefault()` method of an application <<app_tiers,block>>. This default time zone is typically obtained from the operating system but can be set explicitly by `user.timezone` Java system property. For example, to set the time zone to GMT for web client and middleware running on Tomcat under Unix, add the following line to `tomcat/bin/setenv.sh` file: 
+
+[source, properties]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Duser.timezone=GMT"
+---- 
+
+A user can view and edit timestamp values in a time zone different from the server's time zone. There are two ways to manage user's time zone:
+
+* An administrator can do it in the User editor screen.
+
+* The user can change their time zone in the *Help > Settings* window.
+
+In both cases, the time zone settings consist of two fields: 
+
+* Time zone name dropdown allows a user to select the time zone explicitly.
+
+* *Auto* checkbox indicates that the time zone will be obtained from the current environment (web browser for the web client or OS for the desktop client). 
+
+If both fields are empty, no time zone conversions are performed for the user. Otherwise, the platform saves time zone in the <<userSession,UserSession>> object when the user logs in and uses it for displaying and entering timestamp values. The application code can also use the value returned by `UserSession.getTimeZone()` for custom functionality.
+
+If a time zone is in use for the current session, its short name and offset from GMT are displayed in the application main window next to the current user's name.
+
+[TIP]
+====
+Time zone conversions are performed only for <<datatype,DateTimeDatatype>> entity attributes, i.e., timestamps. Attributes storing date (`DateDatatype`) and time (`TimeDatatype`) separately are not affected. You can also deny conversions for a timestamp attribute by annotating it with <<ignoreUserTimeZone,@IgnoreUserTimeZone>>.
+====
+
+[[permissions]]
+==== Permissions
+
+The _permission_ determines the user's right to any system object or functionality, such as screen, entity operation, etc. The permission can either grant the user the right to the object, or revoke it (in essence, it is actually a _prohibition_).
+
+[TIP]
+====
+By default, the user has the right to an object, unless explicitly denied by a permission.
+====
+
+The permissions are granted by the `sec$Permission` entity instances and contain the following attributes:
+
+* `type` – permission type: determines the object type the permission is imposed on.
+
+* `target` – permission object: determines the specific object the permission is imposed on. The format of the attribute depends on the permission type.
+
+* `value` – permission value. The value range depends on the permission type.
+
+The permission types are described below:
+
+* `PermissionType.SCREEN` – screen permission.
++
+The screen identifier should be specified in the `target` attribute; the `value` attribute can be 0 or 1 (the screen is denied or allowed, respectively).
++
+The screen permissions are checked when building the system main menu and with each invocation of the `openWindow()`, `openEditor()`, `openLookup()` methods of the <<abstractFrame,Frame>> interfaces.
++
+To check the screen permission in the application code, use the `isScreenPermitted()` method of the <<security,Security>> interface.
+
+* `++PermissionType.ENTITY_OP++` – entity operation permission.
++
+The entity name should be specified in the `target` attribute, followed by a colon, and then an operation type: `create`, `read`, `update`, `delete`. For example: `*library$Book:delete*`. The `value` attribute can be 0 or 1 (the operation is denied or allowed, respectively).
++
+The entity operation permissions are checked when working with data through the <<dataManager,DataManager>>, in data-aware <<gui_components,visual components>>, and in <<standard_actions,standard actions>>, which work with entity lists. As a result, the operation permissions affect the behavior of the client blocks and the <<rest_api_v2,REST API>>. The permissions are not checked when working with data on the Middleware directly via the <<entityManager,EntityManager>>.
++
+To check the entity operation permission in the application code, use the `isEntityOpPermitted()` method of the <<security,Security>> interface.
+
+* `++PermissionType.ENTITY_ATTR++` – entity attribute permission.
++
+The entity name should be specified in the `target` attribute, followed by a colon, and then an attribute name. For example: `*library$Book:name*`. The `value` attribute can be 0, 1 or 2 (the attribute is hidden, read-only or read-write, respectively).
++
+The entity attribute permissions are only checked in the data-aware <<gui_components,visual components>> and the <<rest_api_v2,REST API>>.
++
+To check the entity attribute permission in the application code, use the `isEntityAttrPermitted()` method of the <<security,Security>> interface.
+
+* `PermissionType.SPECIFIC` – permission on an arbitrary named functionality. Specific permissions can be used instead of roles for binary permitting/denying some project-specific functionality, as roles are designed for aggregating permissions.
++
+The functionality identifier should be specified in the `target` attribute; the `value` attribute can be 0 or 1 (denied or allowed, respectively).
++
+Specific permissions for this project are set in the configuration file <<permissions.xml,permissions.xml>>.
++
+For example:
++
+[source, java]
+----
+@Inject
+private Security security;
+
+private void calculateBalance() {
+    if (!security.isSpecificPermitted("myapp.calculateBalance"))
+        return;
+    ...
+}
+----
+
+* `PermissionType.UI` – arbitrary screen component permission.
++
+The screen identifier should be specified in the `target` attribute, followed by a colon, and then a component path. The format of the component path is described in the next section.
+
+[TIP]
+====
+To check permissions, instead of directly using methods of the `UserSession` class, it is recommended to use the same methods of <<security,Security>> interface that works with possible entity <<entity_extension,extension>>.
+====
+
+[[roles]]
+==== Roles
+
+The role combines a set of <<permissions,permissions>> that can be granted to the user.
+
+The user may have several roles, in which case a logical sum (OR) is devised from all of the assigned roles. For example, if a user has roles A, B and C, role A denies X, role B allows X, role C does not set explicit permissions on X, then X will be allowed.
+
+If no user roles explicitly define permission on the object, the user will have the permission for this object. Therefore, the users have rights to all the objects if they have no roles that explicitly define the permission, or have at least one role that grants the permission.
+
+[WARNING]
+====
+If a user has a single role without explicitly set permissions, or does not have any roles at all, he will have all rights to all objects. 
+====
+
+The role list is displayed in the *Administration* > *Roles screen*. In addition to the standard actions to create, update, and delete records, the screen has the *Assign to users* button, allowing assigning the selected role to multiple users.
+
+The role edit screen is described below. The role attributes are displayed in the upper part: 
+
+image::role_attributes.png[align="center"]
+
+* *Name* – unique role name or id (required). The name cannot be changed after the role has been created.
+
+* *Localized name* – user-friendly role name.
+
+* *Description* – arbitrary role description.
+
+* *Type* – role type, can be:
+
+** *Standard* – the role of this type grants only explicitly set permissions.
+
+** *Super* – the role of this type automatically grants all permissions. It should be assigned to system administrators, since it removes all prohibitions set by other roles.
+
+** *Read-only* – the role of this type automatically denies the permissions for the following entity operations: CREATE, UPDATE, DELETE. Therefore, the user with this role can only read the data and is unable to update it (unless there are other user roles explicitly allowing these operations).
+
+**  *Denying* – the role of this type automatically denies the permissions for all objects, except entity attributes. In order to view or update something in the system, the user should be assigned an additional role that explicitly gives the necessary rights. 
++
+Permissions can be explicitly set for all the role types; for example, you can add the permissions to modify entities for the *Read-only* role. However, it does not make sense to prohibit anything for the *Super* role, because this special role type removes all prohibitions.
+
+* *Default role* – default role flag. All roles with this flag are automatically assigned to the newly created users.
+
+The permission management tabs are described below.
+
+* The *Screens* tab configures screen permissions:
++
+image::role_screen_permissions.png[align="center"]
++
+The tree in the left part of the tab reflects the structure of the application's main menu. The last tree element is *Other screens*, which contains screens without a main menu item (for example, entity edit screens).
+
+* The *Entities* tab – configures entity operation permissions:
++
+image::role_entity_permissions.png[align="center"]
++
+The *Assigned only* is selected by default, so that the table contains only the entities that have explicit permissions in this role. Therefore, the table for a new role will be empty. In order to add permissions, uncheck *Assigned only* and click *Apply*. The entity list can be filtered by entering a part of an entity name in the *Entity* field and clicking *Apply*.
++
+*System level* checkbox enables viewing and selecting system entities marked with the `@SystemLevel` annotation, which are not shown by default.
++
+When a constraint of this kind is violated, the error notification will be shown to the user. To <<localization,localize>> the error messages, you should override the localization keys for the <<dialogs_showExceptionDialog,RowLevelSecurityExceptionHandler>> in the <<main_message_pack,main message pack>>.
+
+* The *Attributes* tab – configures entity attribute permissions:
++
+image::role_attr_permissions.png[align="center"]
++
+The *Permissions* column in the entity table shows the list of the attributes that have explicit permissions. The *modify* (full access) permissions are marked with green, *read-only* (read-only) – with blue, *hide* (the attribute is hidden) – with red.
++
+Entity list can be managed similarly to the list in the *Entities* tab.
++
+[TIP]
+====
+To change the access to attributes dynamically depending also on the current state of the entity or its linked entities, use the <<entity_attribute_access,Entity Attribute Access Control>> mechanism with the `SetupAttributeAccessHandler` interface.
+====
+
+* The *Specific* tab configures named functionality permissions:
++
+image::role_specific_permissions.png[align="center"]
++
+The <<permissions.xml,permissions.xml>> project configuration file defines the object names to which specific permissions can be assigned.
+
+* The *UI* tab configures UI screen component permissions:
++
+image::role_ui_permissions.png[align="center"]
++
+The permissions on this screen allow restricting access to any screen component, including the ones not associated with any data (for example, a container). The component identifiers must be known to create such permissions, therefore access to the screen source code is required.
++
+In order to create a constraint, select the desired screen in the *Screen* drop-down list, specify the component path in the *Component* field, and click *Add*. Then set the access mode for the selected component in the *Permissions* panel.
++
+The rules to forming the component path are listed below:
+
+** If the component belongs to the screen, simply specify the component identifier, `id`.
+
+** If the component belongs to the frame that is embedded within the screen, specify the frame identifier, and then the component identifier separated by period.
+
+** If configuring permission for the <<gui_TabSheet,TabSheet>> tab or the <<gui_FieldGroup,FieldGroup>> field, specify the component identifier, and then the tab or field identifier in square brackets.
+
+** To configure permission for an <<gui_Action,action>>, specify the component, holding the action, and then the action identifier in angle brackets. For example: `customersTable<changeGrade>`.
+
+[[groups]]
+==== Access Groups
+
+With access groups, users can be organized into a hierarchical structure and assigned <<constraints,constraints>> and arbitrary <<session_attr,session attributes>>.
+
+The user can be added to one group only, however the list of constraints and session attributes from all the groups up the hierarchy will be inherited.
+
+User access groups can be managed from the *Administration* > *Access Groups* screen:
+
+image::group_users.png[align="center"]
+
+[[constraints]]
+===== Constraints
+
+Constraints restrict user access to entity instances. Unlike the permissions which are applied to _classes_ of entities, constraints are applied to _particular entity instances_ that do not match the constraint conditions. Constraints can be set for creation, reading, updating and deletion. Besides, one can add custom constraints not related to CRUD actions.
+
+[TIP]
+====
+A user gets the constraints list from all groups starting with their own one, and up the hierarchy. Thus, the following principle is implemented: the lower the users are in the groups hierarchy, the more constraints they have.
+====
+
+Note that constraints are checked for all operations performed from the client tier through the standard <<dataManager,DataManager>>. If an entity does not match the constraints conditions during creation, modification or deletion, the `RowLevelSecurityException` is thrown.
+
+There are three types of constraint check: check in database, check in memory, check in database and in memory.
+
+. For the constraints with check in database, conditions are specified using <<jpql,JPQL>> expression fragments. These fragments are appended to all entity instance selection queries. So the entities not matching the conditions are filtered on the database level. Constraints with database check can be used only for the read operation.
+
+. For the constraints with check in memory, the conditions are specified using Groovy expressions. The expressions are executed for every entity in the checked graph of objects, and if the entity does not match the conditions, it is filtered from the graph.
+
+. The constraints with check in database and in memory are combination of previous two types.
+
+In order to create a constraint, open the *Access Groups* screen, select a group to create the constraint for, go to the *Constraints* tab and click *Create*:
+
+image::constraint_edit.png[align="center"]
+
+Select an entity from the *Entity Name* drop-down list, operation type from the *Operation Type* drop-down list, check type from the *Check type* drop-down list. Depending on selected check type, you have to set JPQL conditions in the *Join Clause* and *Where Clause* fields and/or Groovy condition in the *Groovy Script* field. You can use the *Constraint Wizard*, which enables visual creation of the JPQL and Groovy conditions.
+When you select custom operation type, the required *Code* field appears, and you should set a specific code, which will be used to identify the constraint.
+
+[TIP]
+====
+The JPQL editor in the *Join Clause* and *Where Clause* fields supports autocompletion for entity names and their attributes. In order to invoke autocompletion, press *Ctrl+Space*. If the invocation is made after the period symbol, an entity attributes list matching the context will be shown, otherwise – a list of all data model entities.
+====
+
+The following JPQL constraint rules apply:
+
+* The `{E}` string should be used as an alias of the entity being extracted. On execution of the query, it will be replaced with a real alias, specified in the query.
+
+* The following predefined constants can be used in JPQL parameters:
+
+** `session$userLogin` – login name of the current user (in case of <<user_substitution,substitution>> – the login name of the substituted user).
+
+** `session$userId` – ID of the current user (in case of substitution – ID of the substituted user).
+
+** `session$userGroupId` – group ID of the current user (in case of substitution − group ID of the substituted user).
+
+** `session$XYZ` – arbitrary attribute of the current <<userSession,user session>>, where XYZ is the attribute name.
+
+* The *Where Clause* field content is added to the `where` query clause using `and` condition. Adding `where` word is not needed, as it will be added automatically.
+
+* The *Join Clause* field content is added to the `from` query clause. It should begin with a comma, `join` or `left join`.
+
+The simplest constraint example is shown on the figure above: users with this constraint will see only `ref$Car` entity instances that have VIN starting with '00'.
+
+Another common example: if an entity refers to the `User` entity with many-to-many association, and you want the users to see only the instances they are referred to, you can use the `member of` JPQL operator in the *Where Clause*:
+
+[source, java]
+----
+(select u from sec$User u where u.id = :session$userId) member of {E}.users
+----
+
+For an in-memory constraint, the `userSession` variable of the `UserSession` type is passed to the Groovy script. So you can use it to get attributes of the current user session, for example:
+
+[source, java]
+----
+include::{sourcesdir}/security/constraints_2.groovy[]
+----
+
+A developer can check the constraints conditions for the particular entity using the following methods of the `Security` interface:
+
+* `isPermitted(Entity, ConstraintOperationType)` - to check constraints by the operation type.
+
+* `isPermitted(Entity, String)` - to check constraints by the string code.
+
+Also, it is possible to link any any action based on the `ItemTrackingAction` class with a certain constraint. The `constraintOperationType` attribute should be set for the `action` XML element or using the `setConstraintOperationType()` method.
+
+Example:
+[source, xml]
+----
+include::{sourcesdir}/security/constraints_1.xml[]
+----
+
+[TIP]
+====
+When a constraint is violated, a <<notifications,notification>> is shown to the user. Notification caption and message for each constraint can be overridden at runtime by a user. Select a constraint on the *Constraints* tab of the *Access Groups* screen and click *Localization*, then set the notification caption and message text.
+====
+
+[[session_attr]]
+===== Session Attributes
+
+The access group can determine the <<userSession,session>> attribute list for the users in this group. These attributes can be used when setting the <<constraints,constraints>>. The availability of the session attributes can be checked in the application code at the development stage, so the final system behavior for particular user groups can be controlled at the operation stage. 
+
+When logging in, all the attributes set for the user group and for all the groups up the hierarchy will be placed into the user session. If an attribute is found in several levels of the hierarchy, the uppermost group value will be used. Hence, overriding the attribute values at the lower levels of the hierarchy is not possible. In case of the override attempt, the `WARN` level message will be written to the server <<logging_setup_tomcat,log>>. 
+
+In order to create an attribute in the *Access Groups* screen, select the group to create the attribute for, go to the *Session Attributes* tab, and click *Create*:
+
+image::session_attr_edit.png[align="center"]
+
+A unique attribute name, data type, and value must be specified. 
+
+A <<userSession,session>> attribute can be accessed in the application code in the following way:
+
+[source, java]
+----
+@Inject
+private UserSessionSource userSessionSource;
+...
+Integer accessLevel = userSessionSource.getUserSession().getAttribute("accessLevel");
+----
+
+A session attribute can be used in the <<constraints,constraints>> as a JPQL parameter by adding the `session$` prefix:
+
+[source, properties]
+----
+{E}.accessLevel = :session$accessLevel
+----
+
+
+[[security_examples]]
+=== Access Control Examples
+
+This section provides some practical recommendations on how to configure data access for users.
+
+[[roles_example]]
+==== Configuring Roles
+
+The recommended way to configure <<roles,roles>> and <<permissions,permissions>> is as follows:
+
+. Create a `*Default*` role, which revokes all system rights. The simplest way to do it is to create a role of the *Denying* type. Select the *Default role* checkbox to automatically assign this role to all new users.
+
+. Create a set of roles for granting specific rights to different user categories. There are two strategies for creating such roles:
++
+--
+* Coarse-grained roles – each role has a permission set for the full range of user responsibilities in the system. For example, `*Sales Manager*`, `*Accountant*`. Only one role is assigned to each user when using this strategy, excluding the `*Default*` role.
+
+* Fine-grained roles – each role has a small permission set to execute specific functions within the system. For example, `*Task Creator*`, `*References Editor*`. Each user will then be assigned numerous roles according to their range of responsibilities.
+
+The strategies can also be combined. Create a set of roles for granting specific rights to different user categories. There are two strategies for creating such roles:
+--
+
+. It is possible to leave the system administrator without any assigned roles, in which case, they will have all the rights to all the system objects. Alternatively, a *Super* type role, overriding any restriction imposed by other roles, can be assigned.
+
+[[local_admins_example]]
+==== Creating Local Administrators
+
+The hierarchical structure of <<groups,access groups>> combined with the <<constraints,constraints>> inheritance enables creating _local administrators_, by delegating creation and configuration of users and their rights under organization departments.
+
+The local administrators have access to the security subsystem screens; however, they only see the users and groups in their access group and below. Local administrators can create subgroups and users and <<roles,assign>> roles available in the system, however, they will have at least the same constraints as the administrator who created them.
+
+The global administrator in the root access group should create the roles that will be available to the local administrators for assigning to the users. The local administrators should not be able to create and update the roles.
+
+An example access group structure is presented below:
+
+image::local_admins_groups.png[align="center"]
+
+Problem:
+
+* The users under the `*Departments*` group should only see the users of their own group and the groups below.
+
+* Each subgroup – `*Dept 1*`, `*Dept 2*`, etc. should have its own administrator, who can create users and assign them the available roles.
+
+Solution:
+
+* Add the following constraints for the `*Departments*` group:
++
+image::local_admins_constraints.png[align="center"]
+
+** For the `sec$Group` entity:
++
+[source, plain]
+----
+{E}.id in (
+  select h.group.id from sec$GroupHierarchy h
+  where h.group.id = :session$userGroupId or h.parent.id = :session$userGroupId
+)
+----
++
+With this constraint, the users will not be able to see the groups higher than their own.
+
+** For the `sec$User` entity:
++
+[source, plain]
+----
+{E}.group.id in (
+  select h.group.id from sec$GroupHierarchy h
+  where h.group.id = :session$userGroupId or h.parent.id = :session$userGroupId
+)
+----
++
+With this constraint, the users will not be able to see the users in groups higher than their own.
+
+** For the `sec$Role` entity:
++
+[source, plain]
+----
+({E}.description is null or {E}.description not like '[hide]')
+----
++
+With this constraint, the users will not be able to view the roles that have the `*[hide]*` string in the `description` attribute.
+
+* Create a role that denies editing roles and permissions:
++
+--
+image::local_admins_role.png[align="center"]
+
+** Select the *Default* role checkbox:
+
+** Add the `*[hide]*` string to the *Description* field.
+
+** In the *Entities* tab, deny *create*, *update* and *delete* operations for the `sec$Role` and `sec$Permission` entities (to add permissions for the `sec$Permission` object, select the *System level* checkbox).
+
+All created users, including the local administrators, will get the `*local_user*` role. This role is invisible to the users in the `*Departments*` group, so even the local administrators are unable to unassign this role from themselves. Local administrators can only operate on the existing roles that have been created for them by the global administrator. Obviously, the roles available to department users should not remove restrictions imposed by the `*local_user*` role.
+--
+
+[[ldap]]
+=== Integration with LDAP
+
+CUBA applications can be integrated with LDAP to provide the following benefits:
+
+. Storing user passwords centrally in the LDAP database.
+
+. For Windows domain users, ability to log in using Single Sign-On without having to specify the username and password.
+
+If the LDAP integration is enabled, a user still needs an account in the application. All the user permissions and properties (except password) are stored in the application database, LDAP is used only for authentication. It is recommended to leave the application password empty for most users except the ones that require the standard authentication (see below). The password field in the user editor screen is not required if the <<cuba.web.requirePasswordForNewUsers,cuba.web.requirePasswordForNewUsers>> property is set to `false`.
+
+If the user login is listed in the <<cuba.web.standardAuthenticationUsers,cuba.web.standardAuthenticationUsers>> application property, the application tries to authenticate the user only by the password hash stored in the database. As a result, a user from this list can log in to the system with this password if he is not registered in LDAP.
+
+A CUBA-based application interacts with LDAP via the `LdapLoginProvider` bean.
+
+You can use the *Jespa* library with the corresponding `CubaAuthProvider` described in the <<jespa,>> section in order to enable advanced integration with Active Directory, including Single Sign-On for Windows domain users.
+
+You can implement your own login mechanism using custom `LoginProvider`, `HttpRequestFilter` or events described in <<web_login, Web Login Specifics>>.
+
+Also, you can enable LDAP authentication for REST API clients: <<rest_api_v2_ldap,REST API Authentication with LDAP>>.
+
+[[ldap_basic]]
+==== Basic LDAP Integration
+
+If the <<cuba.web.ldap.enabled,cuba.web.ldap.enabled>> property is set to `true`, the `LdapLoginProvider` is enabled.
+In this case, the Spring LDAP library is used for user authentication.
+
+The following Web Client application properties are used to set up LDAP integration:
+
+* <<cuba.web.ldap.enabled,cuba.web.ldap.enabled>>.
+
+* <<cuba.web.ldap.urls,cuba.web.ldap.urls>>.
+
+* <<cuba.web.ldap.base,cuba.web.ldap.base>>.
+
+* <<cuba.web.ldap.user,cuba.web.ldap.user>>.
+
+* <<cuba.web.ldap.password,cuba.web.ldap.password>>.
+
+* <<cuba.web.ldap.userLoginField,cuba.web.ldap.userLoginField>>.
+
+Example of <<app_properties_files,local.app.properties>> file for the Web Client block:
+
+[source, properties]
+----
+cuba.web.ldap.enabled = true
+cuba.web.ldap.urls = ldap://192.168.1.1:389
+cuba.web.ldap.base = ou=Employees,dc=mycompany,dc=com
+cuba.web.ldap.user = cn=System User,ou=Employees,dc=mycompany,dc=com
+cuba.web.ldap.password = system_user_password
+----
+
+See also <<cuba.web.requirePasswordForNewUsers, cuba.web.requirePasswordForNewUsers>>.
+
+In case of the integration with Active Directory, when creating users in the application, specify their `sAMAccountName` without domain as a login.
+
+[[jespa]]
+==== Active Directory Integration Using Jespa
+
+Jespa is a Java library that enables integration of Active Directory service and Java applications using link:$$https://en.wikipedia.org/wiki/NTLMv2#NTLMv2$$[NTLMv2]. For details, see link:$$http://www.ioplex.com$$[http://www.ioplex.com].
+
+[[jespa_lib]]
+===== Including the Library
+
+Download the library at link:$$http://www.ioplex.com$$[http://www.ioplex.com] and place the JAR in a <<artifact_repository,repository>> registered in your <<build.gradle,build.gradle>> script. This can be `mavenLocal()` or an in-house repository.
+
+Add the following dependencies to the *web* module configuration section in `build.gradle`:
+
+[source, groovy]
+----
+include::{sourcesdir}/security/ldap_jespa_2.groovy[]
+----
+
+Create a `CubaAuthProvider` implementation class in the *web* module:
+
+[source, java]
+----
+include::{sourcesdir}/security/ldap_jespa_1.java[]
+----
+
+[[jespa_conf]]
+===== Setting Up Configuration
+
+* Follow the steps described in *Installation* -> *Step 1: Create the Computer Account for NETLOGON Communication* of the *Jespa Operator's Manual*, which is available at link:$$http://www.ioplex.com/support.html$$[http://www.ioplex.com/support.html].
+
+* Set domain parameters in the `cuba.web.activeDirectoryDomains` property in the <<app_properties_files,local.app.properties>> file. Each domain descriptor should have the following format: `++domain_name|full_domain_name|service_account_name|service_account_password++`. Domain descriptors are separated by semicolons.
++
+Example:
++
+[source, properties]
+----
+cuba.web.activeDirectoryDomains = MYCOMPANY|mycompany.com|JESPA$@MYCOMPANY.COM|password1;TEST|test.com|JESPA$@TEST.COM|password2
+----
+
+* Enable the Active Directory integration by setting the `cuba.web.externalAuthentication` property in the `local.app.properties` file:
++
+[source, properties]
+----
+cuba.web.externalAuthentication = true
+----
+
+* Configure Jespa authentication provider by setting its FQN for the the `cuba.web.externalAuthenticationProviderClass` property in the `local.app.properties` file:
++
+[source, properties]
+----
+cuba.web.externalAuthenticationProviderClass = com.company.sample.web.JespaAuthProvider
+----
+
+* Configure additional Jespa properties in the `local.app.properties` file (see *Jespa Operator's Manual*). For example:
++
+[source, properties]
+----
+jespa.log.level=3
+----
++
+If the application is deployed to Tomcat, Jespa log file can be found in `tomcat/logs`.
+
+* Add the server address to the local intranet in the browser settings:
+
+** For *Internet Explorer* and *Chrome*: *Settings* > *Security* > *Local intranet* > *Sites* > *Advanced*
+
+** For *Firefox*: `about:config` > `network.automatic-ntlm-auth.trusted-uris=http://myapp.mycompany.com`
+
+[[sso]]
+=== Single-Sign-On for CUBA Applications
+
+Single-sign-on (SSO) for CUBA applications allows a user to log in to the multiple running applications by entering a single login name and password once in a browser session.
+
+When using SSO, there are two types of applications:
+
+* Identity Provider (IDP) is an application that provides user authentication. It contains a login form for entering user credentials and checks the credentials against the list of registered users. Only one Identity Provider is allowed in an SSO environment.
+
+* Service Provider (SP) is a regular application that redirects to IDP for user authentication. SP should contain the same list of users as IDP (passwords do not matter though). SP provides authorization using CUBA security roles and access groups. There may be any number of Service Providers in an SSO environment.
+
+An application can be an Identity Provider and a Service Provider at the same time, so you don't have to setup a dedicated IDP. The SSO functionality is provided by the *cuba-idp* module which is a part of the Web Client <<app_tiers,block>>. You can develop your applications as usual and setup SSO just on deployment stage if needed.
+
+[WARNING]
+====
+CUBA SSO uses custom HTTP-based protocol and currently does not provide integration with systems using standard authentication protocols like SAML or OIDC.
+====
+
+In SSO environment, when a user enters a Service Provider URL, the SP redirects to the IDP page for entering login name and password. After successful authentication, IDP redirects back to the SP application and the user transparently logs in to SP.
+
+In order to set up SSO, do the following:
+
+* On Identity Provider:
+
+** Add the following settings to the `web.xml` file of the *web* module (if you do it on the deployment stage, this file is located by the following path: `tomcat/webapps/app/WEB-INF/web.xml`):
++
+[source, xml]
+----
+include::{sourcesdir}/security/sso_1.xml[]
+----
+
+** Set the application properties:
+
+*** <<cuba.idp.serviceProviderUrls,cuba.idp.serviceProviderUrls>> - a comma-separated list of service provider URLs (trailing `/` are required). For example:
++
+[source]
+----
+cuba.idp.serviceProviderUrls = http://fish:8081/app/,http://chips:8082/app/
+----
+
+*** <<cuba.idp.serviceProviderUrlMasks,cuba.idp.serviceProviderUrlMasks>> - a comma-separated list of Java Regex masks for permitted service URLs (trailing `/` are required). For example:
++
+[source]
+----
+cuba.idp.serviceProviderUrlMasks = http://your-fish.com/.*,http://your-chips.com/.*
+----
+
+*** <<cuba.idp.serviceProviderLogoutUrls,cuba.idp.serviceProviderLogoutUrls>> - a comma-separated list of URLs that are used to notify service providers about user logout or session expiration. Standard CUBA applications accept logout requests on the `/dispatch/idpc/logout` path. For example:
++
+[source]
+----
+cuba.idp.serviceProviderLogoutUrls = http://fish:8081/app/dispatch/idpc/logout,http://chips:8082/app/dispatch/idpc/logout
+----
+
+*** <<cuba.idp.trustedServicePassword,cuba.idp.trustedServicePassword>> - a password which is used in server-to-server communication between SP and IDP.
+
+*** There is also a number of optional properties: <<cuba.idp.sessionExpirationTimeoutSec,cuba.idp.sessionExpirationTimeoutSec>>, <<cuba.idp.ticketExpirationTimeoutSec,cuba.idp.ticketExpirationTimeoutSec>>, <<cuba.idp.sessionExpirationCheckIntervalMs,cuba.idp.sessionExpirationCheckIntervalMs>>, <<cuba.idp.cookieMaxAgeSec,cuba.idp.cookieMaxAgeSec>>, <<cuba.idp.cookieHttpOnly,cuba.idp.cookieHttpOnly>>.
+
+* On Service Providers:
+
+** Set the application properties:
+
+*** <<cuba.webAppUrl,cuba.webAppUrl>> - an URL of the application (with the required trailing `/`). This URL should also be among the URLs defined in the <<cuba.idp.serviceProviderUrls,cuba.idp.serviceProviderUrls>> property of IDP. For example:
++
+[source]
+----
+cuba.webAppUrl = http://fish:8081/app/
+----
+
+*** <<cuba.web.idp.enabled,cuba.web.idp.enabled>> should be set to `true` to indicate that the application uses IDP authentication.
+
+*** <<cuba.web.idp.baseUrl,cuba.web.idp.baseUrl>> - on this URL the IDP accepts authentication requests. Standard CUBA IDP uses the `idp/` path (the trailing `/` is required). For example:
++
+[source]
+----
+cuba.web.idp.baseUrl = http://main:8080/app/idp/
+----
+
+*** <<cuba.web.idp.trustedServicePassword,cuba.web.idp.trustedServicePassword>> - the same as defined for IDP in its <<cuba.idp.trustedServicePassword,cuba.idp.trustedServicePassword>> property.
+
+[[sso_customization]]
+==== Customization of IDP
+
+IDP Login Form::
++
+--
+The login form files are located in the `idp` folder of your web application. In case of deployment to Tomcat it is the `tomcat/webapps/app/idp` folder. You can replace the standard files by creating files with the same name in the `web/idp` folder of your project's *web* module.
+
+By default, the IDP login form uses a localization mechanism based on the https://github.com/fabi1cazenave/webL10n[webL10n] JavaScript library and contains messages for English and Russian locales. In order to create messages for other languages, create file `modules/web/web/idp/l10n/locales.ini` and define the list of message files in it:
+
+[source]
+----
+[*]
+@import url(messages.properties)
+
+[ru]
+@import url(messages_ru.properties)
+
+[es]
+@import url(messages_es.properties)
+----
+
+Additional message files must be located in the same folder (`modules/web/web/idp/l10n`). As a template for your message files, use the corresponding files from the *cuba-idp* module which is available as a dependency JAR in your project.
+
+You can also completely replace the login form by creating your own `login.html` and `js/login.js` files, or modify the styles in the `css/login.css` file.
+--
+
+IDP Implementation::
++
+--
+IDP entry points are implemented in the `cuba_IdpController` and `cuba_IdpServiceController` Spring MVC controllers. You can create your own controllers and define them in the `idp-dispatcher-spring.xml` file of your *web* module with the same names to provide a customized behaviour.
+
+In the standard implementation, the IDP sessions are stored on Middleware and replicated in cluster. This functionality is provided by the `cuba_IdpSessionStore` bean. You can customize the sessions storage by creating a bean with the same name in the *core* module of your project and registering it in the corresponding `spring.xml` file. See details in the <<bean_extension,>> section.
+--
+
+[[sso_example]]
+==== Single-Sign-On Example
+
+In this section, we consider an example of setting up <<sso,SSO>> for two applications: Fish and Chips. Fish will be an Identity Provider and Service Provider at the same time, Chips will be a Service Provider.
+
+. Both applications will be running on localhost, so start with creating aliases in your `hosts` file:
++
+[source]
+----
+127.0.0.1    fish
+127.0.0.1    chips
+----
+
+. Create two projects in Studio and assign different sets of Tomcat ports.
++
+|===
+| Project | HTTP port | AJP port | Shutdown port
+
+| Fish
+| 8081
+| 8011
+| 8051
+
+| Chips
+| 8082
+| 8012
+| 8052
+|===
+
+. In the Fish project, edit the `modules/web/web/WEB-INF/web.xml` file and add the following IDP configuration:
++
+[source,xml]
+----
+include::{sourcesdir}/security/sso_1.xml[]
+----
+
+. In the Fish project, edit the `web-app.properties` file of the *web* module and add the following properties:
++
+[source,properties]
+----
+include::{sourcesdir}/security/sso_2.properties[]
+----
+
+. In the Chips project, edit the `web-app.properties` file of the *web* module and add the following properties:
++
+[source,properties]
+----
+include::{sourcesdir}/security/sso_3.properties[]
+----
+
+. Start the Fish server by launching its `tomcat/bin/startup.*` script.
+
+. Go to `++http://fish:8081/app/++` in your web browser. You will be redirected to the IDP login page. Log in with the `admin` / `admin` credentials. Create a new user, for example `u1`.
+
+. Start the Chips server by launching its `tomcat/bin/startup.*` script.
+
+. Go to `++http://chips:8082/app/++` in the same web browser. If you are still logged in to the Fish application, you will be automatically logged in as `admin` to Chips. Create the same `u1` user (password does not matter) in the Chips application.
+
+. Now you can log in as `admin` or `u1` to both applications via the single login form, and if you are logged in in one application, the login process for the second application will be automatic, bypassing the login form.
+
+[[social_login]]
+=== Social Login
+
+Social login is a form of <<sso,single sign-on>> that allows you to use credentials from a social networking site such as Facebook, Twitter or Google+, to sign in to a CUBA application instead of creating a new login account explicitly for the application.
+
+In the following example, we will consider the social login using Facebook. Facebook uses OAuth2 authorization mechanism, for more details consult the documentation on Facebook API and Facebook Login Flow: https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow.
+
+The source code of this sample project is available on https://github.com/cuba-platform/sample-social-login[GitHub], below are the key points of the social login implementation.
+
+. In order to connect your application to Facebook, you will need to create the *App ID* (unique application identifier) and *App Secret* (a kind of password that authenticates requests from your application to Facebook servers). Follow the https://developers.facebook.com/docs/apps/register[instruction] and register the generated values in `app.properties` file of the *core* module as the `facebook.appId` and `facebook.appSecret` application properties respectively, for example:
++
+--
+[source, properties]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
+----
+facebook.appId = 123456789101112
+facebook.appSecret = 123456789101112abcde131415fghi16
+----
+
+Also register the URL that you used for the Facebook app registration in the <<cuba.webAppUrl,cuba.webAppUrl>> property in the *core* and *web* application properties files, for example:
+
+[source, properties]
+----
+cuba.webAppUrl = http://cuba-fb.test:8080/app
+----
+--
+
+. Extend the https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ext-loginWindow.xml[login screen] and add the button for social login. This button will invoke the `loginFacebook()` method - the entry point to the social login flow.
+
+. To use Facebook user accounts, we need to add one extra field to the standard CUBA user account. Extend the `User` entity and add the `facebookId` attribute of String type to it:
++
+[source, java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/entity/SocialUser.java[SocialUser.java]
+----
+@Column(name = "FACEBOOK_ID")
+protected String facebookId;
+----
+
+. Create a service that will look for a user with a given `facebookId` in the application database and either return the existent user or create a new one:
++
+[source, java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/SocialRegistrationService.java[SocialRegistrationService.java]
+----
+include::{sourcesdir}/security/security_SocialRegistrationService.java[]
+----
++
+[source, java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/SocialRegistrationServiceBean.java[SocialRegistrationServiceBean.java]
+----
+include::{sourcesdir}/security/security_SocialRegistrationServiceBean.java[]
+----
+
+. Create a service to manage the login process. In this example it is https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/FacebookService.java[FacebookService] that contains two methods: `getLoginUrl()` and `getUserData()`.
++
+--
+* `getLoginUrl()` will generate the login URL based on the application URL and OAuth2 response type (code, access token or both; see more on response types in https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow[Facebook API documentation]). The complete implementation of this method you can find in the https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/FacebookServiceBean.java[FacebookServiceBean.java] file.
+
+* `getUserData()` will look for the Facebook user by the given application URL and code, and either return the personal data of the existent user or create a new one. In this example we want to get the user's id, name and email, the id will correspond the `facebookId` attribute created above.
+--
+
+. Define the `facebook.fields` and `facebook.scope` application properties in the `app.properties` file of the *core* module:
++
+[source, properties]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
+----
+facebook.fields = id,name,email
+facebook.scope = email
+----
+
+. Go back to the `loginFacebook()` method in the controller of the extended login window. The full code of the controller you can find in the https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java] file.
++
+--
+In this method we add the request handler to the current session, save the current URL and invoke the redirect to the Facebook authentication form in the browser:
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+----
+include::{sourcesdir}/security/security_loginFacebook.java[]
+----
+
+The `handleFacebookCallBackRequest()` method will handle the callback after the Facebook authentication form. Firstly, we use the `UIAccessor` instance to lock the UI until the login request is proceeded.
+
+Then, `FacebookService` will get the Facebook user account email and id. After that, the corresponding CUBA user will be found by `facebookId` or registered on the fly in the system.
+
+Next, the authentication is triggered, the user session on behalf of this user is loaded, and the UI is updated. After that, we remove the Facebook callback handler, as far as we no longer expect authentication.
+
+[source,java]
+.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+----
+include::{sourcesdir}/security/security_handleFacebookCallBackRequest.java[]
+----
+--
+
+Now, when a user clicks the *Facebook* button on the login screen, the application will ask them for permission to use their Facebook profile and email, and if this permission is granted, the logged in user will be redirected to the main application page.
+
+You can implement your own login mechanism using custom `LoginProvider`, `HttpRequestFilter` or events described in the <<web_login>> section.

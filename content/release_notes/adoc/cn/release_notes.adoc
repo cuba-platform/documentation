@@ -1,0 +1,340 @@
+= CUBA Platform and Studio Release Notes
+:toc: left
+:toc-title: Table of contents
+:toclevels: 6
+:sectnumlevels: 6
+:stylesheet: cuba.css
+:linkcss:
+:source-highlighter: coderay
+:imagesdir: ./img
+:stylesdir: ./styles
+:sourcesdir: ../../source
+:doctype: book
+:sectlinks:
+:sectanchors:
+:lang: en
+:revnumber: 6.9
+:version-label: Version
+:revremark: Copyright (c) 2018 Haulmont
+:youtrack: https://youtrack.cuba-platform.com
+:manual: https://doc.cuba-platform.com/manual-{revnumber}
+:manual_app_props: https://doc.cuba-platform.com/manual-{revnumber}/app_properties_reference.html#
+:reporting: https://doc.cuba-platform.com/reporting-{revnumber}
+:charts: https://doc.cuba-platform.com/charts-{revnumber}
+:bpm: https://doc.cuba-platform.com/bpm-{revnumber}
+:githubissueslog: https://github.com/cuba-platform/documentation/blob/release_6_9/content/release_notes/issues
+
+:!sectnums:
+
+[[overview]]
+== Overview
+
+This document highlights major changes in CUBA Platform and Studio version {revnumber}.
+
+[[platform]]
+== Platform
+
+=== All Resolved Issues
+
+* {githubissueslog}/release_6.9.5.md[Platform 6.9.5 Resolved Issues - GitHub]
+
+* {githubissueslog}/release_6.9.4.md[Platform 6.9.4 Resolved Issues - GitHub]
+
+* {githubissueslog}/release_6.9.3.md[Platform 6.9.3 Resolved Issues - GitHub]
+
+* {githubissueslog}/release_6.9.2.md[Platform 6.9.2 Resolved Issues - GitHub]
+
+* {githubissueslog}/release_6.9.1.md[Platform 6.9.1 Resolved Issues - GitHub]
+
+* {githubissueslog}/release_6.9.0.md[Platform 6.9.0 Resolved Issues - GitHub]
+
+* https://youtrack.cuba-platform.com/issues/PL?q=Milestone:%20%7BRelease%206.9%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.9.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Platform 6.9.0 Resolved Issues - YouTrack]
+
+
+[[platform_breaking_changes]]
+=== Breaking Changes
+
+. Columns called `VALUE` in CUBA tables `SEC_USER_SETTING`, `SYS_CONFIG` and `SEC_PERMISSION` have been renamed to `VALUE_`. `VALUE` is a SQL reserved word and is not allowed as a column name in some databases. See {youtrack}/issue/PL-10334[PL-10334].
+
+. In newly created databases, a denying role is assigned to the `anonymous` user by default. It means that this user cannot see or update any data through clients including REST API, and you have to explicitly grant permissions to the anonymous user. This change does not affect existing databases.
+
+. Cleanup of the `SYS_QUERY_RESULT` table used by the {manual}/query_from_selected.html[sequential queries] mechanism is now performed by default once in 10 minutes. Database update scripts truncate the table during migration, so your database size may decrease.
+
+. Access to not loaded attributes in {manual}/entity_listeners.html[BeforeDetachEntityListener] has been restricted: if the entity is loaded with a view, and you are trying to access a _local_ attribute not included in the view, `IllegalStateException` is thrown. It protects from possible data loss because otherwise ORM will completely reload the instance.
++
+Accessing reference attributes is possible regardless of the specified view. If the entity is loaded without a view (e.g. if you load it in a custom service), all local and reference attributes are available. See {youtrack}/issue/PL-10340[PL-10340].
+
+. The JPQL `delete from` statement now throws exception if launched for soft-deleted entity and the soft delete mode is on. Such statement is actually transformed to SQL which deletes all instances not marked for deletion. This is counter-intuitive and disabled by default, but can be enabled by the {manual}/app_properties_reference.html#cuba.enableDeleteStatementInSoftDeleteMode[cuba.enableDeleteStatementInSoftDeleteMode] application property. See {youtrack}/issue/PL-10354[PL-10354].
+
+. The `PersistenceTools.getOldValue()` method now returns old value for not changed attributes too (previously it returned `null` if the attribute wasn't changed). See {youtrack}/issue/PL-10361[PL-10361].
+
+. The old (pre-6.8.1) mechanism of defining entity attribute access has been removed completely. If you still have setup rules based on Spring application events, you have to rewrite them as beans implementing the `SetupAttributeAccessHandler` interface. See {manual}/entity_attribute_access.html[documentation] for details.
+
+. All SLF4J loggers in platform classes have been made `private static final`. If you have overridden a platform class and used its logger, you need to define a separate logger in your own class. See {youtrack}/issue/PL-10404[PL-10404].
+
+. The `EntityManager.createNativeQuery(query, class)` method's target class is now parameterized as `<T extends Entity>`. It clearly states that the query result can be mapped only to an entity and not to an arbitrary POJO. See {youtrack}/issue/PL-10467[PL-10467].
+
+. The `authenticate()` and `login()` methods of `AuthenticationManager` now always work in own transactions. Previously, they could join to an existing transaction if there was an active one. See {youtrack}/issue/PL-10548[PL-10548].
+
+. The {manual}/app_properties_reference.html#cuba.performanceTestMode[cuba.performanceTestMode] application property has been introduced to indicate that the application is running performance tests. The old {manual}/app_properties_reference.html#cuba.testMode[cuba.testMode] property is now used only for automatic UI tests. See {youtrack}/issue/PL-10562[PL-10562].
+
+. `MetadataTools.deepCopy()` methods now copy embedded and non-persistent references. If you have any issues with this, set the `cuba.deepCopyNonPersistentReferences` application property to `false`.
+
+. In REST API, the {manual}/rest_api_v2_security_constraints.html[security token] is not sent by default even if there are security constraints defined for the entity. Use {manual}/app_properties_reference.html#cuba.rest.requiresSecurityToken[cuba.rest.requiresSecurityToken] application property to control this behavior.
+
+. The full-text search addon internal components have been refactored. See the <<fts>> section for details.
+
+[[gui]]
+=== Generic UI
+
+* Methods for programmatic grouping have been added to the {manual}/gui_GroupTable.html[GroupTable] component: `groupByColumns()`, `ungroupByColumns()` and `ungroup()`.
+
+* The {manual}/gui_SplitPanel.html[SplitPanel] component now has a public API for dock button. See `setDockable/isDockable`, `setDockMode/getDockMode` methods and `dockable`, `dockMode` XML attributes.
+
+* The `inputPrompt` XML attribute can be used in {manual}/gui_FieldGroup.html[FieldGroup] fields.
+
+* The _Clear values_ action has been added to the {manual}/gui_Filter.html[Filter] component. By default, it is available in the filter settings drop-down menu. If you want to display it as a separate button, use the {manual}/app_properties_reference.html#cuba.gui.genericFilterControlsLayout[cuba.gui.genericFilterControlsLayout] application property.
+
+* Now all beans implementing Vaadin's `BootstrapListener` interface will be subscribed to HTML bootstrapping. So there is no need to extend `CubaBootstrapListener` to add static content, and application components may add their BootstrapListener's  independently.
+
+* The {manual}/link_to_screen.html[screen links] mechanism has been reworked to provide better extensibility. The `LinkHandler` bean now just delegates to the chain of processors, and you can provide your own processors without redefining platform code. If you have overridden `LinkHandler` in your project, your code will continue to work, but we recommend refactoring it to conform to the new structure described in the documentation.
+
+* {manual}/using_webjars.html[WebJar] resources can now be specified without the version number, so the latest version will be used.
+
+[[rest]]
+=== REST API
+
+* Any running CUBA application now exports the project-specific {manual}/rest_swagger.html[Swagger documentation] that can be used to visualize, test or generate a client code for the REST API.
+
+* REST API {manual}/rest_api_v2_queries_config.html[queries] can contain parameters that take values of the current user id and login: `session$userId` and `session$userLogin`.
+
+* The `query` element can have the `cacheable` attribute that enables caching of the query.
+
+[[polymer_ui_typescript]]
+=== Polymer UI TypeScript Support
+
+Now when Polymer client is being created there is an ability to select preset with TypeScript support. Read more info about it in {manual}/polymer2_typescript.html[manual].
+
+[[charts]]
+=== Charts Addon
+
+* PivotTable has been updated and got new renderers, properties and {charts}/pivotTable.html#chart_PivotTable_CellClickListener[CellClickListener]. See details in {youtrack}/issue/PL-9689[PL-9689] and in the {charts}/pivotTable.html[documentation].
+
+* `bezierX` and `bezierY` properties have been removed from the `com.haulmont.charts.gui.amcharts.model.Settings` class and added to `SerialChart` model and component classes. These properties can also be used in XML descriptors.
+
+* `accessibleDescription` property has been added for all charts and can be used both in XML and Java.
+
+[[reporting]]
+=== Reporting Addon
+
+* The {reporting}/crosstab_xls.html[Crosstab] band orientation has been added to the report structure. Crosstab data is filled to the right and downwards as a matrix.
+
+* The {charts}/pivotTable.html[PivotTable] is now available as the report output type, enabling to present the report data as a summary table and manipulate it using drag-and-drop.
+
+[[fts]]
+=== Full-Text Search Addon
+
+Internal components used by the FTS addon has been refactored. Public method of FTS services used by the client tier remained unchanged. The following changes will affect you only if you've overridden FTS core beans.
+
+The following new components have been added:
+
+* `IndexWriterProvider` - a class that is used for getting an instance of Lucene `IndexWriter`. Previously a new `IndexWriter` was created for each write operation. Now a single `IndexWriter` is opened and used for all index modifications. See the class Javadoc for details.
+
+* `IndexSearcherProvider` - a class that is used for obtaining instances of Lucene `IndexSearcher` using the `SearcherManager`.
+
+* `DirectoryProvider` - a class that is used for getting an instance of the Lucene index Directory.
+
+* `EntityDescrsManager` - a class that is used for getting an information about what entities and their attributes must be indexed by the FTS
+
+* `LuceneIndexMaintenance` - a class that contains methods for Lucene index maintenance.
+
+[[bpm]]
+
+=== BPM Addon
+
+* User tasks may have an assignee specified in the _assignee_ property of the User Task node. The property value may be a CUBA user identifier, a process variable holding a user identifier or a service invocation that returns a user identifier. The `ProcActor` object for such cases may be not created beforehand, it will be created automatically. See the {bpm}/user_task.html[BPM manual] for details.
+
+* `ProcessRuntimeService.startProcess()` method now accepts not persistent process instances. Previously, before starting a process, an instance of the `ProcInstance` entity had to be persisted. Starting with the current release, the `startProcess()` can persist the process instance and its process actors itself.
+
+* A new service `BpmEntitiesService` contains few methods for searching BPM entities: process instance by code, active process tasks for the user, etc.
++
+Also, the service contains a method `createProcInstance` that allows you not to write boilerplate code for instantiating a new ProcInstance with ProcActors:
++
+[source, java]
+----
+BpmEntitiesService.ProcInstanceDetails procInstanceDetails = new BpmEntitiesService.ProcInstanceDetails(PROC_DEFINITION_CODE)
+    .addProcActor("manager", userSession.getCurrentOrSubstitutedUser())
+    .addProcActor("storekeeper", someOtherUser)
+    .setEntity(getItem());
+ProcInstance procInstance = bpmEntitiesService.createProcInstance(procInstanceDetails);
+----
+
+* `ProcActionsFrame` API enhancements:
+
+** Methods for setting process variables suppliers were added to the `ProcActionsFrame.Initializer`: `setStartProcessActionProcessVariablesSupplier()` and `setCompleteTaskActionProcessVariablesSupplier()`. Process variable suppliers return a map of process variables that must be added to Activiti process instance on process start or task completion.
+
+** Methods for setting process form screen parameters suppliers were added to the `ProcActionsFrame.Initializer`: `setStartProcessActionScreenParametersSupplier` and `setCompleteTaskActionScreenParametersSupplier`. These screen parameters suppliers return a map of screen parameters that will be passed to the process form displayed by `StartProcessAction` or `CompleteTaskAction`.
+
+** `addActionButton()` was added to the `ProcActionsFrame`. It allows adding a custom button to the frame alongside with buttons that were automatically generated.
+
+** Methods for getting automatically generated actions were added to the `ProcActionsFrame`: `getStartProcessAction()`, `getCompleteProcTaskActions()`, `getClaimProcTaskAction()`, `getCancelProcessAction()`. This allows you to disable specific actions, change their captions, etc.
+
+** Standard initialization added to the `ProcActionsFrame.Initializer`.
++
+--
+[source, java]
+----
+procActionsFrame.initializer()
+    .standard()
+    .init(PROCESS_CODE, getItem());
+----
+
+The standard initialization does the following:
+
+* commits the active editor before any process action is performed (start process, complete task, claim task, cancel process)
+* shows a corresponding notification ("Process started", "Task completed", etc.) after the process action is performed and re-initializes the ProcActionsFrame
+--
+
+[[misc]]
+=== Miscellaneous
+
+* {manual}/entity_log.html[Entity Log] now supports embedded attributes. On the _Entity Log > Setup_ tab, attributes of embedded entities are displayed after the dot. For example, if `Employee` entity contains `Address` embeddable entity, you will be able to set up logging of `Address` attributes like `address.zip`, `address.line1`, etc.
+
+* The `@Secret` annotation can be used on a property of a {manual}/config_interface_usage.html[configuration interface] in order to mask its value on the _Administration > Application Properties_ screen.
+
+* The `NEW` operator is now supported in JPQL select queries, for example:
++
+----
+select new com.company.example.CustomerDetails(c.id, c.status) from app$Customer c
+----
+
+* In the {manual}/background_tasks.html[background tasks] mechanism, `isCancelled()` method has been added to the `TaskLifeCycle` interface. It returns true if the task was interrupted by calling its `cancel()` method.
+
+* Default methods can be used in {manual}/config_interfaces.html[configuration interfaces]. See an example in the {youtrack}/issue/PL-10565[issue].
+
+* The new {manual}/dataManager.html[DataManager] fluent API allows you to write code for loading data in a much more concise way, for example:
++
+[source, java]
+----
+Customer customer = dataManager.load(Customer.class).id(someId).one();
+
+List<Customer> customers = dataManager.load(Customer.class)
+            .query("select c from sample$Customer c where c.name = :name")
+            .parameter("name", "Smith")
+            .view("customer-view")
+            .list();
+
+KeyValueEntity customerData = dataManager.loadValues(
+                "select c.name, count(c) from sample$Customer c group by c.name")
+            .properties("custName", "custCount")
+            .one();
+
+Long customerCount = dataManager.loadValue(
+                "select count(c) from sample$Customer c", Long.class).one();
+----
+
+[[upd_dep]]
+=== Updated Dependencies
+
+Java:
+
+----
+com.fasterxml.jackson = 2.9.4
+com.google.code.gson/gson = 2.8.2
+com.google.gwt = 2.8.2
+com.vaadin = 7.7.13.cuba.8
+javax.servlet/javax.servlet-api = 3.1.0
+org.apache.commons/commons-pool2 = 2.4.3
+org.apache.httpcomponents/fluent-hc = 4.5.5
+org.apache.httpcomponents/httpclient = 4.5.5
+org.apache.httpcomponents/httpcore = 4.4.9
+org.apache.httpcomponents/httpmime = 4.5.4
+org.apache.poi/poi = 3.17
+org.apache.lucene = 7.2.1
+org.apache.tika/tika-parsers = 1.17
+org.codehaus.groovy/groovy-all = 2.4.13
+org.springframework = 4.3.14.RELEASE
+org.springframework.ldap/spring-ldap-core = 2.3.2.RELEASE
+org.springframework.security = 4.2.4.RELEASE
+org.thymeleaf = 3.0.9.RELEASE
+----
+
+JavaScript:
+
+----
+org.webjars.bower/pivottable = 2.20.0.cuba.0
+org.webjars/amcharts = 3.21.12.cuba.1
+----
+
+[[studio]]
+== Studio
+
+=== All Resolved Issues
+
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.9.5%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.5 Resolved Issues]
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.9.4%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.4 Resolved Issues]
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.9.3%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.3 Resolved Issues]
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.9.2%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.2 Resolved Issues]
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=State:%20Fixed,%20Verified%20Fix%20versions:%206.9.1%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.1 Resolved Issues]
+* https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.9%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.9.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.9.0 Resolved Issues]
+
+[[studio_known_issues]]
+=== Known Issues
+
+If you use the in-place update in Studio SE on macOS, it will completely replace your application folder. If you previously added some JDBC drivers to `/Applications/Cuba Studio SE.app/Contents/Resources/app/studio/lib`, they will be lost and you will have to add them again.
+
+[[studio_modules]]
+=== Project Modules
+
+Studio now creates new projects with `global`, `core` and `web` modules (no `gui`). If you need to share some UI code between web and desktop clients, create `gui` and `desktop` modules using the _Manage modules_ link on the _Project properties_ panel.
+
+You can also remove the standard `core` or `web` modules from the project. It makes sense if you work on an {manual}/app_components.html[application component] that provides functionality on a single tier only: web client or middleware.
+
+[[studio_custom_db_url]]
+=== Custom URL for Database Connection
+
+If you need to provide the database connection URL in a non-standard format like Oracle's SID format, use the _Custom database URL_ checkbox when editing the project properties:
+
+image::studio_db_url.png[align="center", width=659]
+
+In this case, in addition to the URL, you have to provide also the database host and name, as they are used by Studio separately.
+
+[[studio_db_schema]]
+=== Database Schema
+
+. Tables can have names without the project namespace prefix. As long as you have selected the _Generate DDL_ checkbox on the entity page, Studio will generate init and update scripts for this table. However, if you delete the entity, Studio won't create the corresponding `drop table` script, and you will have to do it yourself.
+
+. Tables can have names in mixed case. In this case, enclose the table name in double quotes escaped with back slashes, for example:
++
+image::studio_table_name.png[align="center", width=487]
++
+Tables with mixed case names are also supported when generating model from an existing database.
+
+. In the previous version (6.8), we introduced the http://files.cuba-platform.com/cuba/release-notes/6.8/#safe_db_updates[Safe Database Updates] feature. Now you can turn it off using the _Generate DROP statements in separate update scripts_ on the _Help > Settings_ page and have simple update scripts without intermediate renaming of dropped columns.
+
+. When creating names for foreign key constraints and indexes, Studio adds `++_ON_++` between table names. For example, `FK_FOO_ON_BAR` or `IDX_FOO_ON_BAR`. This reduces the risk of name collisions.
++
+When you first time open an existing project, Studio will ask you whether you want to enable this feature for the project. If you turn it on, your existing database init scripts may be changed according to the new rules.
+
+[[studio_custom_theme]]
+=== Creating a Custom Theme
+
+Studio can now scaffold a new theme for you as described in the {manual}/web_theme_creation.html[platform documentation]. Click the _Manage theme > Create custom theme_ link on the _Project properties_ panel, and Studio will ask you the new theme name and what existing theme should be a base for the new one. After that, the new theme files will be created and you will be able to edit SCSS files in IDE and theme variables right in Studio.
+
+[[studio_se_multi_windows]]
+=== Multiple Windows in Standalone Edition
+
+Now you can open multiple windows with different projects in a single Studio SE application. Just press Ctrl+N on Windows and Linux or Cmd+N on macOS.
+
+image::studio_windows.png[align="center", width=716]
+
+[[studio_search_projects]]
+=== Search in the Projects List
+
+As Standalone Edition became the primary distribution of Studio, we could no longer rely on browser search and added the search button to the list of projects:
+
+image::studio_search.png[align="center", width=833]
+
+[[studio_polymer_ui_generation]]
+=== Polymer UI Generation
+In release 6.9 of Studio, logic of generation and templates of Polymer UI were moved to the https://github.com/cuba-labs/cuba-front-generator[npm package]. So that users can track changes in app stub and templates more easily (on github). Also it will bring new possibilities for creation different types of front-end clients using Yeoman generators.
