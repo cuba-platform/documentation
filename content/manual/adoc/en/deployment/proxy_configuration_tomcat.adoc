@@ -1,0 +1,120 @@
+:sourcesdir: ../../../source
+
+[[proxy_configuration_tomcat]]
+=== Proxy Configuration for Tomcat
+
+For integration tasks, you may need a proxy server. This part describes the configuration of Nginx HTTP-server as a proxy for CUBA application.
+
+[TIP]
+====
+If you set up a proxy, do not forget to set <<cuba.webAppUrl,cuba.webAppUrl>> value.
+====
+
+NGINX::
+
+For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 16.04.
+
+. <<direct_proxy,Direct Proxy>>
+. <<redirect_to_path,Redirect to Path>>
+
+For example, your web application works on `++http://localhost:8080/app++`.
+
+[TIP]
+====
+<<tomcat_for_proxy,Tomcat>> should be configured as well.
+====
+
+[[tomcat_for_proxy]]
+Tomcat Setup::
++
+--
+First, add `Valve` to Tomcat configuration `conf/server.xml`, copy and paste the following code:
+
+[source,xml]
+----
+<Valve className="org.apache.catalina.valves.RemoteIpValve"
+        remoteIpHeader="X-Forwarded-For"
+        requestAttributesEnabled="true"
+        internalProxies="127\.0\.0\.1"  />
+----
+
+and restart Tomcat:
+
+[source,plain]
+----
+sudo service tomcat8 restart
+----
+
+This is required to dispatch Nginx headers by Tomcat without modifying the web application.
+
+[[install_nginx]]
+Then install Nginx:
+
+[source,plain]
+----
+sudo apt-get install nginx
+----
+
+Navigate to `++http://localhost++` and ensure that Nginx works, you will see Nginx welcome page.
+
+Now you may delete the symlink to default Nginx site:
+
+[source,plain]
+----
+rm /etc/nginx/sites-enabled/default
+----
+--
+
+Next, configure your proxy one of the options selected below.
+
+[[direct_proxy]]
+Direct Proxy::
++
+--
+In this case the requests are handled by proxy, transparently passing to the application.
+
+Create Nginx site configuration file `/etc/nginx/sites-enabled/direct_proxy`:
+
+[source,plain]
+----
+include::{sourcesdir}/deployment/direct_proxy.yml[]
+----
+
+and restart Nginx
+
+[source,plain]
+----
+sudo service nginx restart
+----
+
+Now you can access your site via `++http://localhost/app++`.
+--
+
+[[redirect_to_path]]
+Redirect to Path::
++
+--
+This example describes how to change the application's URL path from /app to /, as if the application were deployed in the root context (similar to /ROOT). This will allow you to access the application at `++http://localhost++`.
+
+Create Nginx site configuration file `/etc/nginx/sites-enabled/root_proxy`:
+
+[source,plain]
+----
+include::{sourcesdir}/deployment/root_proxy[]
+----
+
+and restart Nginx
+
+[source,plain]
+----
+sudo service nginx restart
+----
+
+Now you can access your site via `++http://localhost++`.
+--
+
+[TIP]
+====
+Please note, that similar deployment instructions are valid for <<proxy_configuration_uberjar,Jetty>>, `WildFly` etc. In such cases, you may need an additional configuration of those servers.
+====
+

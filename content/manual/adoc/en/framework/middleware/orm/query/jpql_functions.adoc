@@ -1,0 +1,257 @@
+:sourcesdir: ../../../../../../source
+
+[[jpql_functions]]
+====== JPQL Functions
+
+The main difference in JPQL between CUBA and standard JPA is that CUBA functions always require an alias, both in `SELECT` and `UPDATE/DELETE` statements.
+
+[%header,cols="1,1",width="100%"]
+|===
+|CUBA |JPA
+m|UPDATE app$DeliveryAddress **e** SET **e**.customer = :target WHERE **e**.customer = :source
+m|UPDATE app$DeliveryAddress SET customer = :target WHERE customer = :source
+|===
+
+The JPQL `DELETE FROM` statement throws an exception if launched for the soft-deleted entity and the <<soft_deletion,Soft Delete>> mode is on. Such statement is actually transformed to SQL which deletes all instances not marked for deletion. The soft deletion is disabled by default and can be enabled using the <<cuba.enableDeleteStatementInSoftDeleteMode,cuba.enableDeleteStatementInSoftDeleteMode>> application property.
+
+The table below describes the JPQL functions supported and not supported by CUBA Platform.
+
+[cols="1,1,5",width="100%"]
+|===
+|Function |Support |Query
+
+//Aggregate functions with scalar expression
+
+.2+|Aggregate Functions
+
+|Supported
+
+m|SELECT AVG(o.quantity) FROM app$Order o
+
+|_Not supported: aggregate functions with scalar expression (EclipseLink feature)_
+
+m|_SELECT AVG(o.quantity)/2.0 FROM app$Order o_
+
+_SELECT AVG(o.quantity * o.price) FROM app$Order o_
+
+//ALL, ANY, SOME
+
+|ALL, ANY, SOME
+
+|Supported
+
+m|SELECT emp FROM app$Employee emp WHERE emp.salary > ALL (SELECT m.salary FROM app$Manager m WHERE m.department = emp.department)
+
+//Arithmetic Functions (INDEX, SIZE, ABS, SQRT, MOD)
+
+|Arithmetic Functions (INDEX, SIZE, ABS, SQRT, MOD)
+
+|Supported
+
+m|SELECT w.name FROM app$Course c JOIN c.studentWaitlist w WHERE c.name = 'Calculus' AND INDEX(w) = 0
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND SIZE(c.studentWaitlist) = 1
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND ABS(c.time) = 10
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND SQRT(c.time) = 10.5
+
+  SELECT w.name FROM app$Course c WHERE c.name = 'Calculus' AND MOD(c.time, c.time1) = 2
+
+//CASE Expression
+
+.2+|CASE Expressions in UPDATE query
+
+|Supported
+
+m|SELECT e.name, f.name, CONCAT(CASE WHEN f.annualMiles > 50000 THEN 'Platinum ' WHEN f.annualMiles > 25000 THEN 'Gold ' ELSE '' END, 'Frequent Flyer')
+  FROM app$Employee e JOIN e.frequentFlierPlan f
+
+|_Not supported: CASE in UPDATE query_
+
+m|_UPDATE app$Employee e SET e.salary = CASE e.rating WHEN 1 THEN e.salary * 1.1 WHEN 2 THEN e.salary * 1.05 ELSE e.salary * 1.01 END_
+
+//Date Functions (CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP)
+
+|Date Functions (CURRENT_DATE, CURRENT_TIME, CURRENT_TIMESTAMP)
+
+|Supported
+
+m|SELECT e FROM app$Order e WHERE e.date = CURRENT_DATE
+
+//EclipseLink Functions (CAST, REGEXP, EXTRACT)
+
+.2+|EclipseLink Functions (CAST, REGEXP, EXTRACT)
+
+|Supported
+
+m|SELECT EXTRACT(YEAR FROM e.createTs) FROM app$MyEntity e WHERE EXTRACT(YEAR FROM e.createTs) > 2012
+
+  SELECT e FROM app$MyEntity e WHERE e.name REGEXP '.*'
+
+  SELECT CAST(e.number text) FROM app$MyEntity e WHERE e.path LIKE CAST(:ds$myEntityDs.id text)
+
+|_Not supported: CAST in GROUP BY clause_
+
+m|_SELECT e FROM app$Order e WHERE e.amount > 100 GROUP BY CAST(e.orderDate date)_
+
+//Entity Type Expression
+
+.2+|Entity Type Expression
+
+|Supported: entity type passed as a parameter
+
+m|SELECT e FROM app$Employee e WHERE TYPE(e) IN (:empType1, :empType2)
+
+|_Not supported: direct link to an entity type_
+
+m|_SELECT e FROM app$Employee e WHERE TYPE(e) IN (app$Exempt, app$Contractor)_
+
+//Function Invocation
+
+.2+|Function Invocation
+
+|Supported: function result in comparison clauses
+
+m|SELECT u FROM sec$User u WHERE function('DAYOFMONTH', u.createTs) = 1
+
+|_Not supported: function result as is_
+
+m|_SELECT u FROM sec$User u WHERE function('hasRoles', u.createdBy, u.login)_
+
+//IN
+
+|IN
+
+|Supported
+
+m|SELECT e FROM Employee e, IN(e.projects) p WHERE p.budget > 1000000
+
+//IS EMPTY collection
+
+|IS EMPTY collection
+
+|Supported
+
+m|SELECT e FROM Employee e WHERE e.projects IS EMPTY
+
+//KEY/VALUE
+
+|KEY/VALUE
+
+|_Not supported_
+
+m|_SELECT v.location.street, KEY(i).title, VALUE(i) FROM app$VideoStore v JOIN v.videoInventory i WHERE v.location.zipcode = '94301' AND VALUE(i) > 0_
+
+//Literals
+.2+|Literals
+
+|Supported
+
+m|SELECT e FROM app$Employee e WHERE e.name = 'Bob'
+
+  SELECT e FROM app$Employee e WHERE e.id = 1234
+
+  SELECT e FROM app$Employee e WHERE e.id = 1234L
+
+  SELECT s FROM app$Stat s WHERE s.ratio > 3.14F
+
+  SELECT s FROM app$Stat s WHERE s.ratio > 3.14e32D
+
+  SELECT e FROM app$Employee e WHERE e.active = TRUE
+
+|_Not supported: date and time literals_
+
+m|_SELECT e FROM app$Employee e WHERE e.startDate = {d'2012-01-03'}_
+
+  _SELECT e FROM app$Employee e WHERE e.startTime = {t'09:00:00'}_
+
+  _SELECT e FROM app$Employee e WHERE e.version = {ts'2012-01-03 09:00:00.000000001'}_
+
+//MEMBER OF
+
+.2+|MEMBER OF
+
+|Supported: fields or query results
+
+m|SELECT d FROM app$Department d WHERE (select e from app$Employee e where e.id = :eParam) MEMBER OF e.employees
+
+|_Not supported: literals_
+
+m|_SELECT e FROM app$Employee e WHERE 'write code' MEMBER OF e.codes_
+
+//NEW in SELECT
+
+|NEW in SELECT
+
+|Supported
+
+m|_SELECT NEW com.acme.example.CustomerDetails(c.id, c.status, o.count) FROM app$Customer c JOIN c.orders o WHERE o.count > 100_
+
+//NULLIF/COALESCE
+
+|NULLIF/COALESCE
+
+|Supported
+
+m|SELECT NULLIF(emp.salary, 10) FROM app$Employee emp
+
+  SELECT COALESCE(emp.salary, emp.salaryOld, 10) FROM app$Employee emp
+
+//NULLS FIRST, NULLS LAST in order by
+
+|NULLS FIRST, NULLS LAST in order by
+
+|Supported
+
+m|SELECT h FROM sec$GroupHierarchy h ORDER BY h.level DESC NULLS FIRST
+
+//String Functions (CONCAT, SUBSTRING, TRIM, LOWER, UPPER, LENGTH, LOCATE)
+
+.2+|String Functions (CONCAT, SUBSTRING, TRIM, LOWER, UPPER, LENGTH, LOCATE)
+
+|Supported
+
+m|SELECT x FROM app$Magazine x WHERE CONCAT(x.title, 's') = 'JDJs'
+
+  SELECT x FROM app$Magazine x WHERE SUBSTRING(x.title, 1, 1) = 'J'
+
+  SELECT x FROM app$Magazine x WHERE LOWER(x.title) = 'd'
+
+  SELECT x FROM app$Magazine x WHERE UPPER(x.title) = 'D'
+
+  SELECT x FROM app$Magazine x WHERE LENGTH(x.title) = 10
+
+  SELECT x FROM app$Magazine x WHERE LOCATE('A', x.title, 4) = 6
+
+  SELECT x FROM app$Magazine x WHERE TRIM(TRAILING FROM x.title) = 'D'
+
+|_Not supported: TRIM with trim char_
+
+m|_SELECT x FROM app$Magazine x WHERE TRIM(TRAILING 'J' FROM x.title) = 'D'_
+
+//Subquery
+.2+|Subquery
+
+|Supported
+
+m|SELECT goodCustomer FROM app$Customer goodCustomer WHERE goodCustomer.balanceOwed < (SELECT AVG(c.balanceOwed) FROM app$Customer c)
+
+|_Not supported: path expression instead of entity name in subquery's FROM_
+
+m|_SELECT c FROM app$Customer c WHERE (SELECT AVG(o.price) FROM c.orders o) > 100_
+
+//TREAT
+.2+|TREAT
+
+|Supported
+
+m|SELECT e FROM app$Employee e JOIN TREAT(e.projects AS app$LargeProject) p WHERE p.budget > 1000000
+
+|_Not supported: TREAT in WHERE clauses_
+
+m|_SELECT e FROM Employee e JOIN e.projects p WHERE TREAT(p as LargeProject).budget > 1000000_
+
+|===
+
+

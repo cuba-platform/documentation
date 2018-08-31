@@ -1,0 +1,193 @@
+:sourcesdir: ../../../../../source
+
+[[declarative_actions]]
+===== Декларативное создание действий
+
+В XML-дескрипторе экрана для любого компонента, реализующего интерфейс `Component.ActionsHolder`, в том числе для всего экрана или фрейма, может быть задан набор <<gui_Action,действий>>. Делается это в элементе `actions`, который содержит вложенные элементы `action`.
+
+Элемент `action` может иметь следующие атрибуты:
+
+* `id` − идентификатор, должен быть уникален в рамках данного компонента `ActionsHolder`.
+
+* `caption` - название действия.
+
+* `description` - описание действия.
+
+* `enable` - признак доступности действия (`true` / `false`).
+
+* `icon` - значок действия.
+
+* `invoke` - имя вызываемого метода контроллера. Метод должен быть `public`, не возвращать результата и либо не иметь аргументов, либо иметь один аргумент типа `Component`. Если метод имеет аргумент `Component`, то при вызове в него будет передан экземпляр визуального компонента, запустившего данное действие.
+
+[[actions_primary]]
+* `primary` - атрибут, определяющий подсветку кнопок, обеспечивающих выполнение этого действия (`true` / `false`). Если выбрано `true`, для подсветки будет использован особый стиль.
++
+--
+В теме `hover` подсветка доступна по умолчанию; для её активации в теме `halo` установите значение `true` для <<web_theme_extension_common,переменной стиля>> `$cuba-highlight-primary-action`.
+
+Следующие действия являются `primary` по умолчанию, если не установлено иное: <<createAction,CreateAction>> and <<screen_lookup,SelectAction>>.
+
+image::actions_primary.png[align="center"]
+--
+
+* `shortcut` - комбинация клавиш для вызова.
++
+--
+Комбинации можно жёстко задавать в XML-дескрипторе. Возможные модификаторы - `ALT`, `CTRL`, `SHIFT` - отделяются символом  "-". Например:
+
+[source, xml]
+----
+<action id="create" shortcut="ALT-N"/>
+----
+
+Для большей гибкости можно использовать готовые псевдонимы комбинаций из списка ниже, к примеру:
+
+[source, xml]
+----
+<action id="edit" shortcut="${TABLE_EDIT_SHORTCUT}"/>
+----
+** `TABLE_EDIT_SHORTCUT`
+
+** `COMMIT_SHORTCUT`
+
+** `CLOSE_SHORTCUT`
+
+** `FILTER_APPLY_SHORTCUT`
+
+** `FILTER_SELECT_SHORTCUT`
+
+** `NEXT_TAB_SHORTCUT`
+
+** `PREVIOUS_TAB_SHORTCUT`
+
+** `PICKER_LOOKUP_SHORTCUT`
+
+** `PICKER_OPEN_SHORTCUT`
+
+** `PICKER_CLEAR_SHORTCUT`
+
+Кроме того, есть возможность задавать комбинацию с помощью полного имени интерфейса `Config` и имени метода, возвращающего нужную комбинацию:
+
+[source, xml]
+----
+<action id="remove" shortcut="${com.haulmont.cuba.client.ClientConfig#getTableRemoveShortcut}"/>
+----
+--
+
+* `visible` - признак видимости действия (`true` / `false`).
+
+Рассмотрим примеры декларативного объявления действий.
+
+* Объявление действий на уровне экрана:
++
+[source, xml]
+----
+<window ...>
+  <dsContext/>
+
+  <actions>
+      <action id="sayHelloAction" caption="msg://sayHello" shortcut="ALT-T" invoke="sayHello"/>
+  </actions>
+
+  <layout>
+      <button action="sayHelloAction"/>
+  </layout>
+</window>
+----
++
+[source, java]
+----
+// controller
+
+public void sayHello(Component component) {
+  showNotification("Hello!", NotificationType.TRAY);
+}
+----
+
+Здесь объявляется действие с идентификатором `sayHelloAction` и названием из <<message_packs,пакета сообщений>>. С этим действием связывается кнопка, заголовок которой будет установлен в название действия. Действие вызовет метод `sayHello()` контроллера при нажатии на кнопку, а также при нажатии комбинации клавиш *ALT-T*, если в данный момент экран принимает фокус ввода.
+
+* Объявление действий для <<gui_PopupButton,PopupButton>>:
++
+[source, xml]
+----
+<popupButton caption="Say something">
+ <actions>
+    <action id="helloAction" caption="Say hello" invoke="sayHello"/>
+    <action id="goodbyeAction" caption="Say goodbye" invoke="sayGoodbye"/>
+ </actions>
+</popupButton>
+----
+
+* Объявление действий для <<gui_Table,Table>>:
++
+[source, xml]
+----
+<table id="usersTable" width="100%">
+  <actions>
+      <action id="create"/>
+      <action id="edit"/>
+      <action id="copy" caption="msg://copy" icon="COPY"
+              invoke="copy" trackSelection="true"/>
+      <action id="changePassw" caption="msg://changePassw" icon="EDIT"
+              invoke="changePassword" trackSelection="true"/>
+  </actions>
+  <buttonsPanel>
+      <button action="usersTable.create"/>
+      <button action="usersTable.edit"/>
+      <button action="usersTable.copy"/>
+      <button action="usersTable.changePassw"/>
+  </buttonsPanel>
+  <rowsCount/>
+  <columns>
+      <column id="login"/>
+      ...
+  </columns>
+  <rows datasource="usersDs"/>
+</table>
+----
+
+Здесь помимо <<standard_actions,стандартных действий>> таблицы `create` и `edit` объявлены действия `copy` и `changePassw`, вызывающие соответствующие методы контроллера. Для этих действий указан также атрибут `trackSelection="true"`, в результате чего действие и связанная с ним кнопка становятся недоступными, если в таблице не выбрана ни одна строка. Это удобно, если действие предназначено для выполнения над текущей выбранной строкой таблицы. 
+
+Для действий `create` и `edit` можно указать дополнительный атрибут `openType` для указания режима открытия экрана редактирования, как описано для метода `setOpenType()` класса <<createAction,CreateAction>>.
+
+* Объявление действий для <<gui_PickerField,PickerField>>:
++
+[source, xml]
+----
+<pickerField id="colourField" datasource="carDs" property="colour"/>
+  <actions>
+      <action id="lookup"/>
+      <action id="show" icon="PICKERFIELD_LOOKUP"
+              invoke="showColour" caption="" description="Show colour"/>
+  </actions>
+</pickerField>
+----
+
+В данном примере для компонента `PickerField` объявлено <<standard_actions,стандартное действие>> `lookup` и действие `show`, вызывающее метод `showColour()` контроллера. Так как в кнопках `PickerField`, отображающих действия, используются значки, а не надписи, атрибут `caption` явно установлен в пустую строку, иначе названием действия и заголовком кнопки стал бы идентификатор действия. Атрибут `description` позволяет отображать всплывающую подсказку при наведении мыши на кнопку действия.
+
+Ссылки на любые декларативно объявленные действия можно получить в контроллере экрана либо непосредственно путем <<screen_controller_injection,инжекции>>, либо из компонентов, реализующих интерфейс `Component.ActionsHolder`. Это может понадобиться для программной установки свойств действия. Например:
+
+[source, java]
+----
+@Named("carsTable.create")
+private CreateAction createAction;
+
+@Named("carsTable.copy")
+private Action copyAction;
+
+@Inject
+private PickerField colourField;
+
+@Override
+public void init(Map<String, Object> params) {
+  Map<String, Object> values = new HashMap<>();
+  values.put("type", CarType.PASSENGER);
+  createAction.setInitialValues(values);
+
+  copyAction.setEnabled(false);
+
+  Action showAction = colourField.getAction("show");
+  showAction.setEnabled(false);
+}
+----
+

@@ -1,0 +1,163 @@
+:sourcesdir: ../../../../../source
+
+[[heroku_github_deployment]]
+===== Развертывание из GitHub в Heroku
+
+Данное руководство описывает процесс настройки сборки и развертывания проекта, размещенного на GitHub.
+
+Учетная запись Heroku::
++
+--
+Создайте учетную запись в Heroku с помощью веб-браузера, будет достаточно бесплатного аккаунта `hobby-dev`. Затем войдите в аккаунт и создайте новое приложение с помощью кнопки *New* в верхней части страницы.
+
+Задайте уникальное имя приложения (либо оставьте поле пустым, чтобы имя назначилось автоматически) и выберите подходящее геоположение сервера. Вы зарегистрировали приложение, например `space-sheep-02453`, это будет название приложения Heroku.
+
+Сначала вас переадресует на вкладку *Deploy*. Выберите там метод развертывания *GitHub*. Следуйте инструкциям на экране, чтобы авторизоваться в учетную запись GitHub.
+Нажмите кнопку *Search*, чтобы вывести список доступных репозиториев GitHub вашей учетной записи, затем подключите желаемый репозиторий к проекту CUBA. Когда приложение Heroku подсоединено к GitHub, то вам доступна функция автоматического развертывания приложения *Automatic Deploys*. Это позволяет развертывать приложение в Heroku автоматически при каждом событии `git push`. В этом руководстве данная опция включена.
+--
+
+Командная строка Heroku (CLI)::
++
+--
+* Установите на компьютер программное обеспечение https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI]
+* Откройте командную строку в любой папке вашего компьютера и наберите команду:
++
+[source,plain]
+----
+heroku login
+----
++
+* По запросу введите логин и пароль для Heroku. Начиная с текущего момента от вас больше не потребуется вводить логин и пароль для команд heroku.
+--
+
+База данных PostgreSQL::
++
+--
+* Откройте https://dashboard.heroku.com[панель] Heroku в веб-браузере
+* Перейдите на вкладку *Resources*
+* Нажмите кнопку *Find more add-ons*, чтобы найти дополнения для подключения СУБД
+* Найдите блок *Heroku Postgres* и нажмите его. Проследуйте инструкциям на экране, нажмите кнопки *Login to install* / *Install Heroku Postgres* для установки дополнения.
+
+Как вариант, вы можете установить PostgreSQL с помощью Heroku CLI, где `space-sheep-02453` - это имя вашего Heroku приложения:
+
+[source,plain]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app space-sheep-02453
+----
+
+Теперь вы можете увидеть новую БД на вкладке *Resources*. База соединена с приложением Heroku. Чтобы получить детали для подключения к сервису БД, перейдите на страницу *Datasource* вашей БД в Heroku, опуститесь вниз до секции *Administration* и нажмите кнопку *View credentials*.
+
+[source,plain]
+----
+Host compute.amazonaws.com
+Database zodt
+User artd
+Port 5432
+Password 367f
+URI postgres://artd:367f@compute.amazonaws.com:5432/zodt
+----
+--
+
+Настройки проекта перед развертыванием::
++
+--
+* Перейдите в папку проекта CUBA (`$PROJECT_FOLDER`) на вашем компьютере
+* Скопируйте содержимое файла `modules/core/web/META-INF/context.xml` в `modules/core/web/META-INF/heroku-context.xml`
+* Впишите в файл `heroku-context.xml` актуальные данные для подключения в БД (см. пример ниже):
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/heroku-context.xml[]
+----
+--
+
+Настройка сборки::
++
+--
+Добавьте следующую задачу Gradle в ваш файл `$PROJECT_FOLDER/build.gradle`
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/heroku_buildGradle.groovy[]
+----
+--
+
+Procfile::
++
+--
+Команда, которая запускает приложение в Heroku, передается через специальный файл `Procfile`. Создайте файл с названием `Procfile` в папке `$PROJECT_FOLDER`, содержащий следующий текст:
+
+[source,plain]
+----
+web: cd ./deploy/tomcat/bin && export 'JAVA_OPTS=-Dport.http=$PORT' && ./catalina.sh run
+----
+
+Это передает значение переменной среды JAVA_OPTS в Tomcat, который в свою очередь запускает скрипт Catalina.
+--
+
+Премиум дополнения::
++
+--
+Если ваш проект использует премиальные дополнения CUBA, то укажите дополнительные переменные в приложении Heroku.
+
+* Откройте панель Heroku в браузере
+* Перейдите на вкладку *Settings*
+* Разверните секцию *Config Variables*, нажав кнопку *Reveal Config Vars*
+* Добавьте новые переменные *Config Vars*, используя части вашего лицензионного ключа (разделенные дефисом) как *username* и *password*:
+
+[source]
+----
+CUBA_PREMIUIM_USER    | username
+CUBA_PREMIUM_PASSWORD | password
+----
+--
+
+Gradle wrapper::
++
+--
+Проект CUBA использует Gradle wrapper (gradlew). Чтобы иметь возможность работать с командой `gradlew`, заранее создайте Gradle wrapper, использовав команду меню *Build > Create or update Gradle wrapper*.
+
+* Создайте файл `system.properties` в папке `$PROJECT_FOLDER` следующего содержания (пример соответствует локально установленной версии JDK 1.8.0_121):
++
+[source,plain]
+----
+java.runtime.version=1.8.0_121
+----
++
+* Убедитесь, что файлы `Procfile`, `system.properties`, `gradlew`, `gradlew.bat` и `gradle` не включены в `.gitignore`
+* Добавьте эти файлы в репозиторий и выполните коммит:
+
+[source,plain]
+----
+git add gradlew gradlew.bat gradle/* system.properties Procfile
+git commit -am "Added Gradle wrapper and Procfile"
+----
+--
+
+Развертывание приложения::
++
+--
+Как только вы выполните Push изменений в GitHub, то Heroku начнет разворачивать приложение.
+
+[source,plain]
+----
+git push
+----
+
+Контроль процесса развертывания осуществляется в панели Heroku на вкладке *Activity*. Перейдите по ссылке *View build log*, чтобы отслеживать лог.
+
+После завершения процесса развертывания ваше приложение будет доступно в браузере по ссылке `++https://space-sheep-02453.herokuapp.com/++`
+
+Вы также можете открыть приложение с помощью кнопки *Open app*, расположенной на панели Heroku.
+--
+
+Мониторинг логов::
++
+--
+Чтобы отслеживать данные в логах, запустите в командной строке следующую команду:
+
+[source,plain]
+----
+heroku logs --tail --app space-sheep-02453
+----
+

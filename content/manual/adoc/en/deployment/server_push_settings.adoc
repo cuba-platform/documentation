@@ -1,0 +1,157 @@
+:sourcesdir: ../../../source
+
+[[server_push_settings]]
+=== Server Push Settings
+
+CUBA applications use server push technology in the <<background_tasks,Background Tasks>> mechanism. It may require an additional setup of the application and proxy server (if any).
+
+By default, server push uses the WebSocket protocol. The following application properties affect the platform server push functionality:
+
+<<cuba.web.pushLongPolling,cuba.web.pushLongPolling>>
+
+<<cuba.web.pushLongPollingSuspendTimeoutMs,cuba.web.pushLongPollingSuspendTimeoutMs>>
+
+<<cuba.web.pushEnabled,cuba.web.pushEnabled>>
+
+The information below is obtained from the Vaadin website - https://vaadin.com/docs/v8/framework/articles/ConfiguringPushForYourEnvironment.html[Configuring push for your environment].
+
+[[server_push_settings_err_incomplete_chunked_encoding]]
+Chrome says ERR_INCOMPLETE_CHUNKED_ENCODING::
++
+--
+This is completely normal and means that the (long-polling) push connection was aborted by a third party. This typically happens when there is a proxy between the browser and the server and the proxy has a configured timeout and cuts the connection when the timeout is reached. The browser should reconnect to the server normally after this happens.
+--
+
+[[server_push_settings_]]
+Tomcat 8 + Websockets::
++
+--
+[source, plain]
+----
+java.lang.ClassNotFoundException: org.eclipse.jetty.websocket.WebSocketFactory$Acceptor
+----
+
+This implies you have Jetty deployed on the classpath somewhere. Atmosphere gets confused and tries to use its Websocket implementation instead of Tomcat's. One common reason for this is that you have accidentally deployed `vaadin-client-compiler`, which has Jetty as a dependency (needed by SuperDevMode for instance).
+--
+
+[[server_push_settings_glassfish_streaming]]
+Glassfish 4 + Streaming::
++
+--
+Glassfish 4 requires the *comet* option to be enabled for streaming to work.
+
+Set
+
+[source, plain]
+----
+(Configurations → server-config → Network Config → Protocols → http-listener-1 → HTTP → Comet Support)
+----
+
+or use
+
+[source, plain]
+----
+asadmin set server-config.network-config.protocols.protocol.http-listener-1.http.comet-support-enabled="true"
+----
+--
+
+[[server_push_settings_glassfish_websockets]]
+Glassfish 4 + Websockets::
++
+--
+If you are using Glassfish 4.0, upgrade to Glassfish 4.1 to avoid problems.
+--
+
+[[server_push_settings_weblogic_websockets]]
+Weblogic 12 + Websockets::
++
+--
+Use WebLogic 12.1.3 or newer. WebLogic 12 specifies a timeout of 30 sec by default for websocket connections. To avoid constant reconnects, you can set the `weblogic.websocket.tyrus.session-max-idle-timeout` init parameter to either `-1` (no timeout in use) or a higher value than `30000` (value is in ms).
+--
+
+[[server_push_settings_jboss_websockets]]
+JBoss EAP 6.4 + Websockets::
++
+--
+JBoss EAP 6.4 includes support for websockets but they are disabled by default. To make websockets work you need to change JBoss to use the NIO connector by running:
+
+[source, plain]
+----
+$ bin/jboss-cli.sh --connect
+----
+
+and the following commands:
+
+[source, plain]
+----
+batch
+/subsystem=web/connector=http/:write-attribute(name=protocol,value=org.apache.coyote.http11.Http11NioProtocol)
+run-batch
+:reload
+----
+
+Then add a *WEB-INF/jboss-web.xml* to you war file with the following contents to enable websockets:
+
+[source, xml]
+----
+<jboss-web version="7.2" xmlns="http://www.jboss.com/xml/ns/javaee"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.jboss.com/xml/ns/javaee schema/jboss-web_7_2.xsd">
+    <enable-websockets>true</enable-websockets>
+</jboss-web>
+----
+--
+
+[[server_push_settings_duplicate_resource]]
+Duplicate resource::
++
+--
+If server logs contain
+
+[source, plain]
+----
+Duplicate resource xyz-abc-def-ghi-jkl. Could be caused by a dead connection not detected by your server. Replacing the old one with the fresh one
+----
+
+This indicates that first, the browser connected to the server and used the given identifier for the push connection. Everything went as expected. Later on, a browser (probably the same one) connected again using the same identifier but according to the server, the old browser connection should still be active. The server closes the old connection and logs the warning.
+
+This happens because typically there was a proxy between the browser and the server, and the proxy was configured to kill open connections after a certain inactivity timeout on the connection (no data is sent before the server issues a push command). Because of how TCP/IP works, the server has no idea that the connection has been killed and continues to think that the old client is connected and all is well.
+
+You have a couple of options to avoid this problem:
+
+. If you are in control of the proxy, configure it not to timeout/kill push connections (connections to the `/PUSH` url).
+. If you know what the proxy timeout is, configure a slightly shorter timeout for push in the application so that the server terminates the idle connection and is aware of the termination before the proxy can kill the connection.
+.. Set the `cuba.web.pushLongPolling` parameter to `true` to enable long polling transport instead of websocket.
+.. Use the `cuba.web.pushLongPollingSuspendTimeoutMs` parameter to set push timeout in milliseconds.
+
+If you do not configure the proxy so that the server knows when the connection is killed, you also have a small chance of losing pushed data. If it so happens that the server does a push right after the connection was killed, it will not realize that it pushed data into a closed connection (because of how sockets work and especially how they work in Java). Disabling the timeout or setting the timeout on the server also resolves this potential issue.
+--
+
+[[server_push_settings_using_proxy]]
+Using Proxy::
++
+--
+If users connect to the application server via a proxy that does not support WebSocket, set `cuba.web.pushLongPolling` to `true` and increase proxy request timeout to 10 minutes or more.
+
+Below is an example of the *Nginx* web server settings for using WebSocket:
+
+[source, plain]
+----
+location / {
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Server $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_read_timeout     3600;
+    proxy_connect_timeout  240;
+    proxy_set_header Host $host;
+    proxy_set_header X-RealIP $remote_addr;
+
+    proxy_pass http://127.0.0.1:8080/;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+----
+--
+

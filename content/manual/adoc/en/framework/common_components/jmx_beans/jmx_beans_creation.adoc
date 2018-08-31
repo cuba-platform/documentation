@@ -1,0 +1,61 @@
+:sourcesdir: ../../../../../source
+
+[[jmx_beans_creation]]
+===== Creating a JMX Bean
+
+The following example shows how to create a JMX bean.
+
+* JMX bean interface:
++
+[source, java]
+----
+include::{sourcesdir}/common/jmxbean_1.java[]
+----
+
+** The interface and its methods may contain annotations to specify the description of the JMX bean and its operations. This description will be displayed in all tools that work with this JMX interface, thereby helping the system administrator.
+
+** Optional `@JmxRunAsync` annotation is designed to denote long operations. When such operation is launched using the built-in <<jmx_console,JMX console>>, the platform displays a dialog with an indefinite progress bar and the *Cancel* button. A user can abort the operation and continue to work with the application. The annotation can also contain the `timeout` parameter that sets a maximum execution time for the operation in milliseconds, for example:
++
+[source, java]
+----
+@JmxRunAsync(timeout = 30000)
+String calculateTotals();
+----
++
+If the timeout is exceeded, the dialog closes with an error message.
++
+[WARNING]
+====
+Please note, that if an operation is cancelled or timed out on UI, it still continue to work in background, i.e. these actions do not abort the actual execution, they just return control back to the user.
+====
+
+** Since the JMX tools support a limited set of data types, it is desirable to use `String` as the type for the parameters and result of the method and perform the conversion inside the method, if necessary. Alongside with `String`, the following parameter types are supported: `boolean`, `double`, `float`, `int`, `long`, `Boolean`, `Integer`.
+
+* The JMX bean class:
++
+[source, java]
+----
+include::{sourcesdir}/common/jmxbean_2.java[]
+----
++
+The `@Component` annotation defines the class as a managed bean with the `++sales_OrdersMBean++` name. The name is specified directly in the annotation and not in the constant, since access to the JMX bean from Java code is not required.
++
+Lets overview the implementation of the `calculateTotals()` method.
+
+** The method has the `@Authenticated` annotation, i.e., <<system_authentication,system authentication>> is performed on method entry in the absence of the <<userSession,user session>>.
+
+** The method's body is wrapped in the try/catch block, so that, if successful, the method returns "Done", and in case of error – the stack trace of the exception as string.
++
+In this case, all exceptions are handled and therefore do not get logged automatically, because they never fall through to `MBeanInterceptor`. If logging of exceptions is required, the call of the logger should be added in the `catch` section.
+
+** The method starts the transaction, loads the `Order` entity instance by identifier, and passes control to the `OrderWorker` bean for processing.
+
+* The registration of the JMX bean in `spring.xml`:
++
+[source, xml]
+----
+include::{sourcesdir}/common/jmxbean_3.xml[]
+----
++
+All JMX beans of a project are declared in one `MBeanExporter` instance in the `map/entry` elements of the `beans` property. The key is JMX ObjectName, the value – the bean's name specified in the `@Component` annotation. ObjectName begins with the name of the web application, because several web applications, which export the same JMX interfaces, can be deployed into one application server instance (i.e., into one JVM).
+

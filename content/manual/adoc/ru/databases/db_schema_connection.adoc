@@ -1,0 +1,56 @@
+:sourcesdir: ../../../source
+
+[[db_schema_connection]]
+=== Использование произвольной схемы БД
+
+PostgreSQL и Microsoft SQL Server поддерживают подключение к произвольной схеме внутри базы данных. По умолчанию на PostgreSQL используется схема `public`, на SQL Server - схема `dbo`.
+
+*PostgreSQL*
+
+Для использования произвольной схемы на PostgreSQL укажите параметр `currentSchema` в свойстве `connectionParams` задач сборки <<build.gradle_createDb,createDb>> и <<build.gradle_updateDb,updateDb>>, например:
+
+[source, groovy]
+----
+include::{sourcesdir}/database/db_schema_connection_1.groovy[]
+----
+
+При использовании Studio, добавьте этот параметр в поле *Connection params* страницы *Project properties*. При этом Studio автоматически обновит `build.gradle`. После этого можно запускать обновление или пересоздание БД, все таблицы будут созданы в указанной схеме.
+
+*Microsoft SQL Server*
+
+На Microsoft SQL Server указания параметра подключения недостаточно, необходимо также создать связь между пользователем БД и схемой. Ниже приведен пример создания базы данных и использования схемы.
+
+* Создайте login:
++
+[source, sql]
+----
+create login JohnDoe with password='saPass1'
+----
+
+* Создайте новую БД:
++
+[source, sql]
+----
+create database my_db
+----
+
+* Подключитесь к новой БД как `sa`, создайте схему, затем создайте пользователя и дайте ему права владельца:
++
+[source, sql]
+----
+create schema my_schema
+
+create user JohnDoe for login JohnDoe with default_schema = my_schema
+
+exec sp_addrolemember 'db_owner', 'JohnDoe'
+----
+
+После этого необходимо указать параметр подключения `currentSchema` в свойстве `connectionParams` задачи сборки <<build.gradle_updateDb,updateDb>> (или в свойствах проекта в Studio). На самом деле, данный параметр никак не обрабатывается драйвером JDBC для SQL Server, но он указывает Studio и плагину Gradle какую схему использовать.
+
+[source, groovy]
+----
+include::{sourcesdir}/database/db_schema_connection_2.groovy[]
+----
+
+Имейте в виду, что пересоздавать БД SQL Server из Studio или выполнением `createDb` в командной строке нельзя, так как использование не-дефолтной схемы требует ассоциации с пользователем. Однако можно выполнять *Update database* в Studio или `updateDb` в командной строке, и все необходимые таблицы будут созданы в существующей базе данных и в указанной схеме.
+

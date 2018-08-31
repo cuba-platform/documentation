@@ -1,0 +1,48 @@
+:sourcesdir: ../../../../source
+
+[[gui_web]]
+==== Web Client Specifics
+
+Implementation of the generic user interface of the *Web Client* <<app_tiers,block>> is based on the *Vaadin* framework. The main classes available in the web client infrastructure are described below.
+
+.Web Client Infrastructure Classes
+image::WebClientInfrastructure.png[align="center"]
+
+* `App` - the central class of the application infrastructure. Contains links to `Connection` and other infrastructure objects. Only one instance of `App` exists for a given HTTP session. You can get a reference to the `App` instance by using the `App.getInstance()` static method. If you want to customize functionality of `App` in your project, create a class extending `DefaultApp` in the root package of your *web* module and register it in <<spring.xml, web-spring.xml>> as the `cuba_App` bean, for example:
++
+[source, xml]
+----
+<bean name="cuba_App" class="com.company.sample.web.MyApp" scope="vaadin"/>
+----
+
+* `Connection` is an interface providing functionality of connecting to middleware and holding a <<userSession,user
+session>>. `ConnectionImpl` is a standard implementation of this interface.
+
+* `ExceptionHandlers` class contains a collection of <<exceptionHandlers,client-level exception handlers>>.
+
+* `AppUI` is a platform class inherited from `com.vaadin.ui.UI` class. There is one instance of this class for each open tab of a web browser. Contains a link to a `TopLevelWindow` implementation – either a login window or main window, depending on the connection state. You can get a reference to the `AppUI` for the current browser tab by using the `AppUI.getCurrent()` static method.
+
+* `AppLoginWindow` – the window displayed before a user logs in. You can customize the login window by extending `AppLoginWindow` or create completely new one by extending <<abstractWindow,AbstractWindow>> and implementing the `TopLevelWindow` marker interface. In Studio, go to the *Screens* section and click *Create login window*. If you override the `init()` method, make sure you invoke `super.init(params)`.
+
+* `AppMainWindow` – main application window displayed after a user logs in. You can customize the main window by extending `AppMainWindow` or create completely new one by extending `AbstractMainWindow` and defining desired layout in XML descriptor. In Studio, go to the *Screens* section and click *Create main window*. If you override the `init()` method, make sure you invoke `super.init(params)`.
++
+You can control certain main window parameters without redefining the default implementation using the following application properties:
++
+--
+** <<cuba.web.foldersPaneEnabled,cuba.web.foldersPaneEnabled>> - enables creation of <<folders_pane,folders pane>>.
+
+** <<cuba.web.appWindowMode,cuba.web.appWindowMode>> – sets default mode for the main window: tabbed or single screen (`TABBED` or `SINGLE`). Users can change the mode later using *Help* > *Settings* screen.
+
+** <<cuba.web.maxTabCount,cuba.web.maxTabCount>> – when the main window is in the tabbed mode, this property sets the maximum number of tabs that a user can open. The default value is 7.
+--
+
+* `WindowManager` - the central class implementing application screens management logic. `openWindow()`, `openEditor()`, `showMessageDialog()` and other methods of the `Frame` interface implemented by screen <<screen_controller,controllers>> delegate to the window manager. `WindowManager` class is located in the platform's common *gui* module and is abstract. The *web* module has a dedicated `WebWindowManager` class that implements web client specifics. You can get a reference to `WindowManager` from any `Window` implementation (e.g. a screen controller), or via the `WindowManagerProvider` bean.
+
+If you want to handle the browser *Back* button, implement the `CubaHistoryControl.HistoryBackHandler` interface in your `TopLevelWindow` (login and/or main windows). Its `onHistoryBackPerformed()` method is invoked instead of standard browser behavior if the <<cuba.web.allowHandleBrowserHistoryBack,cuba.web.allowHandleBrowserHistoryBack>> application property is set to true.
+
+include::gui_web/webComponentsHelper.adoc[]
+
+include::gui_web/main_window_layout.adoc[]
+
+include::gui_web/web_login.adoc[]
+

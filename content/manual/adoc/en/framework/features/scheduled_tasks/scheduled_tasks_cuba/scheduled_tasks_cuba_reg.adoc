@@ -1,0 +1,93 @@
+:sourcesdir: ../../../../../../source
+
+[[scheduled_tasks_cuba_reg]]
+====== Task Registration
+
+Tasks are registered in the `++SYS_SCHEDULED_TASK++` database table, which corresponds to the `ScheduledTask` entity. There are browser and editor screens for working with tasks, which are available through the *Administration* -> *Scheduled Tasks* menu.
+
+Task attributes are described below:
+
+* *Defined by* – describes which software object implements the task. Possible values are:
+
+** *Bean* – the task is implemented by a method of a Spring <<managed_beans,managed bean>>. Additional attributes:
+
+*** *Bean name* – the name of the managed bean.
++
+[WARNING]
+====
+The bean is listed and available for selection only if it is defined in the *core* module and has an interface, which contains methods appropriate for invocation from the task. Beans without an interface are not supported.
+====
+
+*** *Method name* – the bean interface method that is executed. The method must either have no parameters, or all parameters must be of `String` type. The return type of the method can either be `void` or `String`. In the latter case the returning value will be stored in the executions table (see *Log finish* below).
+
+*** *Method parameters* – the parameters of the chosen method. Only `String` type parameters are supported.
+
+** *Class* – the task is a class that implements the `java.util.concurrent.Callable` interface. The class must have a public constructor without parameters. Additional attributes:
+
+*** *Class name* – the name of the class.
+
+** *Script* – the task is a Groovy script. The script is executed by <<scripting.runGroovyScript,Scripting.runGroovyScript()>>. Additional attributes:
+
+*** *Script name* – the name of the script.
+
+* *User name* – the name of a user on whose behalf the task will be executed. If not specified, the task will be executed on behalf of the user specified in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property.
+
+* *Singleton* – indicates that the task is a singleton, i.e. should be run only on one application server.
+
+* *Scheduling type* – the means of task scheduling:
+
+** *Cron* – Cron expression is a sequence of six fields, separated by spaces: second, minute, hour, day, month, day of a week. The month and the day of a week can be represented by the first three letters of their English names. Examples:
+
+*** 0 0 * * * * – the beginning of every hour of every day
+
+*** */10 * * * * * – every 10 seconds
+
+*** 0 0 8-10 * * * – every day at 8, 9 and 10 o'clock
+
+*** 0 0/30 8-10 * * * – every day at 8:00, 8:30, 9:00, 9:30 and 10 o'clock
+
+*** 0 0 9-17 * * MON-FRI – every hour from 9 to 17 on working days
+
+*** 0 0 0 25 DEC ? – every Christmas at midnight.
+
+** *Period* – task execution interval in seconds.
+
+** *Fixed Delay* – task will be executed with the specified in *Period* delay after completion of the preceding execution.
+
+* *Period* – task execution interval or delay in seconds if *Scheduling type* is *Period* or *Fixed Delay*.
+
+* *Timeout* – time in seconds, upon the expiration of which it is considered that the execution of the task is completed, regardless of whether there is information about task completion or not. If the timeout is not set explicitly, it is assumed to be 3 hours. 
+
+* *Start date* – the date/time of the first launch. If not specified, the task is launched immediately on server startup. If specified, the task is launched at `++startDate + period * N++`, where N is an integer.
++
+It is reasonable to specify `Start date` only for "infrequent" tasks, i.e. running once an hour, once a day, etc.
+
+* *Timeout* – time in seconds, upon the expiration of which it is considered that the execution of the task is completed, regardless of whether there is information about task completion or not. If the timeout is not set explicitly, it is assumed to be 3 hours.
+
+* *Time frame* – if `Start date` is specified, `Time frame` defines the time window in seconds, during which the task will be launched after `++startDate + period * N++` time expires. If `Time frame` is not specified explicitly, it is equal to `period / 2`.
++
+If `Start date` is not specified, `Time frame` is ignored, i.e. the task will be launched at any time after `Period` since the previous execution of the task expires.
+
+* *Start delay* - delay of execution in seconds after the server is started and scheduling is activated. Set this parameter for a heavy task if you think that it slows down the server startup process.
+
+* *Permitted servers* – the list of comma-separated <<serverId,identifiers of servers>> that have the permission to run this task. If the list is not specified, the task may be executed on any server.
++
+For singleton tasks, the order of the servers in the list defines the execution priority: the first server has a higher priority than the last. The server with a higher priority will intercept the execution of the singleton as follows: if the server with a higher priority detects that the task has been previously executed by a server with lower priority, it launches the task regardless of whether the `Period` has elapsed or not.
++
+[WARNING]
+====
+Server priority works only if *Scheduling type* is `Period` and the *Start date* attribute is not specified. Otherwise, start occurs at the same time and the interception is impossible.
+====
+
+* *Log start* – flags if the task launch should be registered in the `++SYS_SCHEDULED_EXECUTION++` table, which corresponds to the `ScheduledExecution` entity. 
++
+In the current implementation, if the task is a singleton, the launch is registered regardless of this flag. 
+
+* *Log finish* – flags if the task completion should be registered in the `++SYS_SCHEDULED_EXECUTION++` table, which corresponds to the `ScheduledExecution` entity. 
++
+In the current implementation, if the task is a singleton, completion is registered regardless of this flag. 
+
+* *Description* – an arbitrary text description of the task.
+
+The task also has activity flag, which can be set in the tasks list screen. Inactive tasks are ignored.
+

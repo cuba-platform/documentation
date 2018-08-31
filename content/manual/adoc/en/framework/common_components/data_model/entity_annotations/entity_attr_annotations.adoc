@@ -1,0 +1,666 @@
+:sourcesdir: ../../../../../../source
+
+[[entity_attr_annotations]]
+====== Attribute Annotations
+
+Attribute annotations should be set for the corresponding fields, with the following exception: if there is a need to declare read-only, non-persistent attribute `foo`, it is sufficient to create `getFoo()` method and annotate it with `@MetaProperty`.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/CaseConversion.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[caseconversion_annotation]]
+@CaseConversion::
++
+--
+Indicates that automatic case conversion should be used for text input fields bound with annotated entity attribute.
+
+Parameters:
+
+* `type` - the conversion type: `UPPER` (default), `LOWER`.
+
+Example:
+
+[source, java]
+----
+@CaseConversion(type = ConversionType.UPPER)
+@Column(name = "COUNTRY_CODE")
+protected String countryCode;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Column.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[column_annotation]]
+@Column::
++
+--
+Defines DB column for storing attribute values.
+
+Parameters:
+
+* `name` – the column name.
+
+* `length` – (optional parameter, `255` by default) – the length of the column. It is also used for <<metadata_framework,metadata>> generation and ultimately, can limit the maximum length of the input text in visual components bound to this attribute. Add the `@Lob` annotation to remove restriction on the attribute length.
+
+* `nullable` – (optional parameter, `true` by default) – determines if an attribute can contain `null` value. When `nullable = false` JPA ensures that the field has a value when saved. In addition, visual components working with the attribute can request the user to enter a value.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/annotations/Composition.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[composition_annotation]]
+@Composition::
++
+--
+Indicates that the relationship is a composition, which is a stronger variant of the association. Essentially this means that the related entity should only exist as a part of the owning entity, i.e. be created and deleted together with it.
+
+For example, a list of items in an order (`Order` class contains a collection of `Item` instances):
+
+[source, java]
+----
+@OneToMany(mappedBy = "order")
+@Composition
+protected List<Item> items;
+----
+
+Another example is a one-to-one relationship:
+
+[source, java]
+----
+@Composition
+@OneToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "DETAILS_ID")
+protected CustomerDetails details;
+----
+
+Choosing `@Composition` annotation as the relationship type enables making use of a special commit mode for datasources in <<screen_edit,edit screens>>. In this mode, the changes to related instances are only stored when the master entity is committed. See <<composition_recipe>> for details.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Embedded.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[embedded_annotation]]
+@Embedded::
++
+--
+Defines a reference attribute of embeddable type. The referenced entity should have `@Embeddable` annotation.
+
+Example:
+
+[source, java]
+----
+@Embedded
+protected Address address;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/EmbeddedParameters.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[embeddedParameters_annotation]]
+@EmbeddedParameters::
++
+--
+By default, <<orm,ORM>> does not create an instance of embedded entity if all its attributes are null in the database. You can use the `@EmbeddedParameters` annotation to specify a different behavior when an instance is always non-null, for example:
+
+[source, java]
+----
+@Embedded
+@EmbeddedParameters(nullAllowed = false)
+protected Address address;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Id.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[id_annotation]]
+@Id::
++
+--
+Indicates that the attribute is the entity primary key. Typically, this annotation is set on the field of a base class, such as <<base_entity_classes,BaseUuidEntity>>. Using this annotation for a specific entity class is required only in case of inheritance from the `BaseStringIdEntity` base class (i.e. creating an entity with a string primary key).
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/IgnoreUserTimeZone.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[ignoreUserTimeZone]]
+@IgnoreUserTimeZone::
++
+--
+Makes the platform to ignore the user's <<timeZone,time zone>> (if it is set for the current session) for an attribute of the timestamp type (annotated with `@javax.persistence.Temporal.TIMESTAMP`).
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/JoinColumn.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[joinColumn_annotation]]
+@JoinColumn::
++
+--
+Defines DB column that determines the relationship between entities. Presence of this annotation indicates the owning side of the association.
+
+Parameters:
+
+* `name` – the column name
+
+Example:
+
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/JoinTable.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[joinTable_annotation]]
+@JoinTable::
++
+--
+Defines a join table on the owning side of `@ManyToMany` relationship.
+
+Parameters:
+
+* `name` – the join table name
+
+* `joinColumns` – `@JoinColumn` element in the join table corresponding to primary key of the owning side of the relationship (the one containing `@JoinTable` annotation)
+
+* `inverseJoinColumns` – `@JoinColumn` element in the join table corresponding to primary key of the non-owning side of the relationship.
+
+Example of the `customers` attribute of the `Group` class on the owning side of the relationship:
+
+[source, java]
+----
+@ManyToMany
+@JoinTable(name = "SALES_CUSTOMER_GROUP_LINK",
+ joinColumns = @JoinColumn(name = "GROUP_ID"),
+ inverseJoinColumns = @JoinColumn(name = "CUSTOMER_ID"))
+protected Set<Customer> customers;
+----
+
+Example of the `groups` attribute of the `Customer` class on non-owning side of the same relationship:
+
+[source, java]
+----
+@ManyToMany(mappedBy = "customers")
+protected Set<Group> groups;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Lob.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[lob_annotation]]
+@Lob::
++
+--
+Indicates that the attribute does not have any length restrictions. This annotation is used together with the `@Column` annotation. If `@Lob` is set, the default or explicitly defined length in `@Column` is ignored.
+
+Example:
+
+[source, java]
+----
+@Column(name = "DESCRIPTION")
+@Lob
+private String description;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/LocalizedValue.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[localizedValue_annotation]]
+@LocalizedValue::
++
+--
+Determines a method for retrieving a localized value for an attribute, using <<messageTools,MessageTools>>.`getLocValue()` method.
+
+Parameters:
+
+* `messagePack` – explicit indication of the package, from which a localized message will be taken, for example, `com.haulmont.cuba.core.entity`.
+
+* `messagePackExpr` – expression defining the path to the attribute, containing a package name from which the localized message should be taken (for example, `proc.messagesPack`). The path starts from the attribute of the current entity.
+
+The annotation in the example below indicates that localized message for the `state` attribute value should be taken from the package name defined in the `messagesPack` attribute of the `proc` entity.
+
+[source, java]
+----
+@Column(name = "STATE")
+@LocalizedValue(messagePackExpr = "proc.messagesPack")
+protected String state;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "PROC_ID")
+protected Proc proc;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/Lookup.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[lookup_annotation]]
+@Lookup::
++
+--
+Defines the lookup type settings for the reference attributes.
+
+Parameters:
+
+* `type` - the default value is `SCREEN`, so a reference is selected from a <<screen_lookup,lookup screen>>. The `DROPDOWN` value enables to select the reference from a drop-down list. If the lookup type is set to `DROPDOWN`, Studio will generate <<datasources,options datasource>> when scaffolding editor screen. Thus, the Lookup type parameter should be set before generation of an entity editor screen. Besides, the <<gui_Filter,Filter>> component will allow a user to select parameter of this type from a drop-down list instead of lookup screen.
+
+* `actions` - defines the actions to be used in a PickerField component inside the FieldGroup by default.  Possible values: `lookup`, `clear`, `open`.
+
+[source, java]
+----
+@Lookup(type = LookupType.DROPDOWN, actions = {"open"})
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToMany.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[manyToMany_annotation]]
+@ManyToMany::
++
+--
+Defines a collection attribute with many-to-many relationship type.
+
+Many-to-many relationship can have an owning side and an inverse, non-owning side. The owning side should be marked with additional `@JoinTable` annotation, and the non-owning side – with `mappedBy` parameter.
+
+Parameters:
+
+* `mappedBy` – the field of the referenced entity, which owns the relationship. It must only be set on the non-owning side of the relationship.
+
+* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using Java generics.
+
+* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will <<eager_fetching, eagerly>> fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+[WARNING]
+====
+The usage of `cascade` annotation attribute is not recommended. The entities persisted and merged implicitly using such declaration will bypass some system mechanisms. In particular, the <<entityStates,EntityStates>> bean does not detect the managed state correctly and <<entity_listeners, entity listeners>> are not invoked at all.
+====
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToOne.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[manyToOne_annotation]]
+@ManyToOne::
++
+--
+Defines a reference attribute with many-to-one relationship type.
+
+Parameters:
+
+* `fetch` – (`EAGER` by default) parameter that determines whether JPA will <<eager_fetching, eagerly>> fetch the referenced entity. This parameter should always be set to `LAZY`, since retrieval of referenced entity in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
+
+For example, several `Order` instances refer to the same `Customer` instance. In this case the `Order.customer` attribute should have the following annotations:
+
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+
+[WARNING]
+====
+The usage of JPA `cascade` annotation attribute is not recommended. The entities persisted and merged implicitly using such declaration will bypass some system mechanisms. In particular, the <<entityStates,EntityStates>> bean does not detect the managed state correctly and <<entity_listeners, entity listeners>> are not invoked at all.
+====
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/annotations/MetaProperty.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[metaProperty_annotation]]
+@MetaProperty::
++
+--
+Indicates that <<metadata_framework,metadata>> should include the annotated attribute. This annotation can be set for a field or for a getter method, if there is no corresponding field.
+
+This annotation is not required for the fields already containing the following annotations from `javax.persistence` package: `@Column`, `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany`, `@Embedded`. Such fields are included in metadata automatically. Thus, `@MetaProperty` is mainly used for defining non-persistent attributes of the entities.
+
+Parameters (optional):
+
+* `mandatory` - determines whether the attribute can contain `null` value. If `mandatory = true`, visual components working with this attribute can request the user to enter a value.
+
+* `datatype` - explicitly defines a <<datatype,datatype>> that overrides a datatype inferred from the attribute Java type.
+
+* `related` - defines the array of related persistent attributes to be fetched from the database when this property is included in a <<views,view>>.
+
+Field example:
+
+[source, java]
+----
+@Transient
+@MetaProperty
+protected String token;
+----
+
+Method example:
+
+[source, java]
+----
+@MetaProperty
+public String getLocValue() {
+    if (!StringUtils.isEmpty(messagesPack)) {
+        return AppBeans.get(Messsages.class).getMessage(messagesPack, value);
+    } else {
+        return value;
+    }
+}
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/annotations/NumberFormat.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[numberFormat_annotation]]
+@NumberFormat::
++
+--
+Specifies a format for an attribute of the `Number` type (it can be `BigDecimal`, `Integer`, `Long` or `Double`). Values of such attribute will be formatted and parsed throughout the UI according to the provided annotation parameters:
+
+* `pattern` - format pattern as described for https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html[DecimalFormat].
+
+* `decimalSeparator` - character used as a decimal sign (optional).
+
+* `groupingSeparator` - character used as a thousands separator (optional).
+
+If `decimalSeparator` and/or `groupingSeparator` are not specified, the framework uses corresponding values from the format strings for the current user's locale. The server system locale characters are used in this case for formatting the attribute values with locale-independent methods.
+
+For example:
+
+[source, java]
+----
+@Column(name = "PRECISE_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "0.0000")
+protected BigDecimal preciseNumber;
+
+@Column(name = "WEIRD_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#,##0.0000", decimalSeparator = "_", groupingSeparator = "`")
+protected BigDecimal weirdNumber;
+
+@Column(name = "SIMPLE_NUMBER")
+@NumberFormat(pattern = "#")
+protected Integer simpleNumber;
+
+@Column(name = "PERCENT_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#%")
+protected BigDecimal percentNumber;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/OnDelete.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[onDelete_annotation]]
+@OnDelete::
++
+--
+Determines related entities handling policy in case of soft deletion of the entity, containing the attribute. See <<soft_deletion>>.
+
+Example:
+
+[source, java]
+----
+@OneToMany(mappedBy = "group")
+@OnDelete(DeletePolicy.CASCADE)
+private Set<Constraint> constraints;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/OnDeleteInverse.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[onDeleteInverse_annotation]]
+@OnDeleteInverse::
++
+--
+Determines related entities handling policy in case of soft deletion of the entity from the inverse side of the relationship. See <<soft_deletion>>.
+
+Example:
+
+[source, java]
+----
+@ManyToOne
+@JoinColumn(name = "DRIVER_ID")
+@OnDeleteInverse(DeletePolicy.DENY)
+private Driver driver;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/OneToMany.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[oneToMany_annotation]]
+@OneToMany::
++
+--
+Defines a collection attribute with one-to-many relationship type.
+
+Parameters:
+
+* `mappedBy` – the field of the referenced entity, which owns the relationship.
+
+* `targetEntity` – the type of referenced entity. This parameter is optional if the collection is declared using Java generics.
+
+* `fetch` – (optional parameter, `LAZY` by default) – determines whether JPA will <<eager_fetching, eagerly>> fetch the collection of referenced entities. This parameter should always remain `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+For example, several `Item` instances refer to the same `Order` instance using `@ManyToOne` field `Item.order`. In this case the `Order` class can contain a collection of `Item` instances:
+
+[source, java]
+----
+@OneToMany(mappedBy = "order")
+protected Set<Item> items;
+----
+
+[WARNING]
+====
+The usage of JPA `cascade` and `orphanRemoval` annotation attributes is not recommended. The entities persisted and merged implicitly using such declaration will bypass some system mechanisms. In particular, the <<entityStates,EntityStates>> bean does not detect the managed state correctly and <<entity_listeners, entity listeners>> are not invoked at all. The `orphanRemoval` annotation attribute does not respect the <<soft_deletion, soft deletion>> mechanism.
+====
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/OneToOne.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[oneToOne_annotation]]
+@OneToOne::
++
+--
+Defines a reference attribute with one-to-one relationship type.
+
+Parameters:
+
+* `fetch` – (`EAGER` by default) determines whether JPA will <<eager_fetching, eagerly>> fetch the referenced entity. This parameter should be set to `LAZY`, since retrieval of referenced entities in CUBA-application is determined dynamically by the <<views,views>> mechanism.
+
+* `mappedBy` – the field of the referenced entity, which owns the relationship. It must only be set on the non-owning side of the relationship.
+
+* `optional` – (optional parameter, `true` by default) – indicates whether the attribute can contain `null` value. If `optional = false` JPA ensures the existence of reference when the entity is saved. In addition, the visual components working with this attribute can request the user to enter a value.
+
+Example of owning side of the relationship in the `Driver` class:
+
+[source, java]
+----
+@OneToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CALLSIGN_ID")
+protected DriverCallsign callsign;
+----
+
+Example of non-owning side of the relationship in the `DriverCallsign` class:
+[source, java]
+----
+@OneToOne(fetch = FetchType.LAZY, mappedBy = "callsign")
+protected Driver driver;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/OrderBy.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[orderBy_annotation]]
+@OrderBy::
++
+--
+Determines the order of elements in a collection attribute at the point when the association is retrieved from the database. This annotation should be specified for ordered Java collections such as `List` or `LinkedHashSet` to get a predictable sequence of elements.
+
+Parameters:
+
+* `value` – string, determines the order in the format:
+
+[source, plain]
+----
+orderby_list::= orderby_item [,orderby_item]*
+orderby_item::= property_or_field_name [ASC | DESC]
+----
+
+Example:
+
+[source, java]
+----
+@OneToMany(mappedBy = "user")
+@OrderBy("createTs")
+protected List<UserRole> userRoles;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Temporal.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[temporal_annotation]]
+@Temporal::
++
+--
+Specifies the type of the stored value for `java.util.Date` attribute: date, time or date+time.
+
+Parameters:
+
+* `value` – the type of the stored value: `DATE`, `TIME`, `TIMESTAMP`
+
+Example:
+
+[source, java]
+----
+@Column(name = "START_DATE")
+@Temporal(TemporalType.DATE)
+protected Date startDate;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Transient.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[transient_annotation]]
+@Transient::
++
+--
+Indicates that field is not stored in the database, meaning it is non-persistent.
+
+The fields supported by JPA types (See link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html$$[http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html]) __are persistent by default__, that is why `@Transient` annotation is mandatory for non-persistent attribute of such type.
+
+<<metaProperty_annotation,@MetaProperty>> annotation is required if `@Transient` attribute should be included in metadata.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Version.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[version_annotation]]
+@Version::
++
+--
+Indicates that the annotated field stores a version for <<optimistic_locking, optimistic locking>> support.
+
+Such field is required when an entity class implements the `Versioned` interface (`StandardEntity` base class already contains such field).
+
+Example:
+
+[source, java]
+----
+@Version
+@Column(name = "VERSION")
+private Integer version;
+----
+--
+

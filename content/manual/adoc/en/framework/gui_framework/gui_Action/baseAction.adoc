@@ -1,0 +1,65 @@
+:sourcesdir: ../../../../../source
+
+[[baseAction]]
+===== BaseAction
+
+`BaseAction` is a base class for <<gui_Action,actions>> implementation. It is recommended to derive custom actions from it when <<declarative_actions,declarative actions creation>> functionality is insufficient.
+
+When creating a custom action class, you should implement `actionPerform()` method and pass action identifier to the `BaseAction` constructor. You can override any property getters: `getCaption()`, `getDescription()`, `getIcon()`, `getShortcut()`, `isEnabled()`, `isVisible()`, `isPrimary()`. Standard implementations of these methods return values set by setter methods, except the `getCaption()` method. If the action name is not explicitly set by `setCaption()` method, it retrieves message using action identifier as key from the the <<message_packs,localized message pack>> corresponding to the action class package. If there is no message with such key, then the key itself, i.e. the action identifier, is returned.
+
+Alternatively, you can use the fluent API for setting properties and providing a lambda expression for handling the action: see `withXYZ()` methods.
+
+`BaseAction` can change its `enabled` and `visible` properties depending on user <<permissions,permissions>> and current context.
+
+`BaseAction` is visible if the following conditions are met: 
+
+* `setVisible(false)` method was not called;
+
+* there is no `*hide*` UI permission for this action.
+
+The action is enabled if the following conditions are met: 
+
+* `setEnabled(false)` method was not called;
+
+* there are no `*hide*` or read-only UI permissions for this action;
+
+* `isPermitted()` method returns true;
+
+* `isApplicable()` method returns true. 
+
+Usage examples:
+
+* <<gui_Button,Button>> action: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/baseAction_1.java[]
+----
++
+In this example, the `helloBtn` button caption will be set to the string located in the message pack with the `hello` key. You can override the `getCaption()` action method to initialize button name in a different way.
+
+* Action of a programmatically created <<gui_PickerField,PickerField>>: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/baseAction_2.java[]
+----
++
+In this example an anonymous `BaseAction` derived class is used to set the action of the picker field button. The button caption is not displayed, as an icon with a description, which pops up when hovering mouse cursor, is used instead.
+
+* <<gui_Table,Table>> action: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/baseAction_3.java[]
+----
++
+In this example, the `HelloAction` class is declared, and its instance is added to the table's actions list. The action is enabled for users who have `*myapp.allow-greeting*` security permission and only when a single table row is selected. The latter is possible because BaseAction's `target` property is automatically assigned to the action when it is added to a `ListComponent` descendant (`Table` or `Tree`).
+
+* If you need an action, which becomes enabled when one or more table rows are selected, use BaseAction's descendant - `ItemTrackingAction`, which adds default implementation of `isApplicable()` method: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/baseAction_4.java[]
+---- 
+

@@ -1,0 +1,75 @@
+:sourcesdir: ../../../../source
+
+[[bean_extension]]
+==== Расширение бизнес-логики
+
+Основная часть бизнес-логики платформы сосредоточена в бинах *Spring*, что позволяет легко расширить или переопределить ее в приложении.
+
+Для подмены реализации бина достаточно создать свой класс, реализующий интерфейс или расширяющий базовый класс платформы, и зарегистрировать его в <<spring.xml,spring.xml>> приложения. Аннотацию `@Component` в расширяющем классе применять нельзя, переопределение бинов возможно только с помощью конфигурации в XML.
+
+Рассмотрим пример добавления метода в бин <<persistenceTools,PersistenceTools>>.
+
+Создаем класс с нужным методом:
+
+[source, java]
+----
+public class ExtPersistenceTools extends PersistenceTools {
+
+  public Entity reloadInSeparateTransaction(final Entity entity, final String... viewNames) {
+      Entity result = persistence.createTransaction().execute(new Transaction.Callable<Entity>() {
+          @Override
+          public Entity call(EntityManager em) {
+              return em.reload(entity, viewNames);
+          }
+      });
+      return result;
+  }
+}
+----
+
+Регистрируем класс в `spring.xml` модуля *core* проекта с тем же идентификатором, что и бин платформы:
+
+[source, xml]
+----
+<bean id="cuba_PersistenceTools" class="com.sample.sales.core.ExtPersistenceTools"/>
+----
+
+После этого контекст *Spring* вместо экземпляра базового класса `PersistenceTools` будет всегда возвращать `ExtPersistenceTools`, например:
+
+[source, java]
+----
+Persistence persistence;
+PersistenceTools tools;
+
+persistence = AppBeans.get(Persistence.class);
+tools = persistence.getTools();
+assertTrue(tools instanceof ExtPersistenceTools);
+
+tools = AppBeans.get(PersistenceTools.class);
+assertTrue(tools instanceof ExtPersistenceTools);
+
+tools = AppBeans.get(PersistenceTools.NAME);
+assertTrue(tools instanceof ExtPersistenceTools);
+----
+
+Таким же образом можно переопределять логику сервисов, например, из <<app_components_sample,компонентов приложения>>: для подмены реализации бина нужно создать класс, расширяющий функциональность исходного сервиса. В следующем примере мы создали новый класс `NewOrderServiceBean`, чтобы переопределить в нём метод из исходного сервиса `OrderServiceBean`:
+
+[source, java]
+----
+public class NewOrderServiceBean extends OrderServiceBean {
+    @Override
+    public BigDecimal calculateOrderAmount(Order order) {
+        BigDecimal total = super.calculateOrderAmount(order);
+        BigDecimal vatPercent = new BigDecimal(0.18);
+        return total.multiply(BigDecimal.ONE.add(vatPercent));
+    }
+}
+----
+
+Теперь, после регистрации нового класса в `spring.xml`, новая реализация будет использоваться в приложении вместо исходной, заданной в `OrderServiceBean`. Обратите внимание, что в определении бина используется идентификатор из компонента приложения и полное имя нового класса:
+
+[source, xml]
+----
+<bean id="workshop_OrderService" class="com.company.retail.service.NewOrderServiceBean"/>
+----
+

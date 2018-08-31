@@ -1,0 +1,155 @@
+:sourcesdir: ../../../../../source
+
+[[metadata_interfaces]]
+===== Metadata Interfaces
+
+Let's consider the basic metadata interfaces.
+
+.Metadata Framework Interfaces 
+image::MetadataFramework.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/Session.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Session:: Entry point of the metadata framework. Enables obtaining `MetaClass` instances by name and by the corresponding Java class. Note the difference in methods: `getClass()` methods can return `null` while `getClassNN()` (Non Null) methods cannot.
++
+`Session` object can be obtained using the <<metadata,Metadata>> infrastructure interface.
++
+Example:
+[source, java]
+----
+@Inject
+protected Metadata metadata;
+...
+Session session = metadata.getSession();
+MetaClass metaClass1 = session.getClassNN("sec$User");
+MetaClass metaClass2 = session.getClassNN(User.class);
+assert metaClass1 == metaClass2;
+----
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/MetaModel.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+MetaModel::
++
+Rarely used interface intended to group meta-classes.
++
+Meta-classes are grouped by the root name of Java project package specified in <<metadata.xml,metadata.xml>> file.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/MetaClass.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[metaClass]]
+MetaClass::
++
+--
+Entity class metadata interface. `MetaClass` is always associated with the Java class which it represents.
+
+Basic methods:
+
+* `getName()` – entity name, according to convention the first part of the name before `$` sign is the namespace code, for example, `sales$Customer`.
+
+* `getProperties()` – the list of meta-properties (`MetaProperty`).
+
+* `getProperty()`, `getPropertyNN()` – methods return meta-properties by name. If there is no attribute with provided name, the first method returns `null`, and the second throws an exception.
++
+Example:
++
+[source, java]
+----
+MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupProperty = userClass.getPropertyNN("group");
+----
+
+[[MetaPropertyPath]]
+* `getPropertyPath()` – allows you to navigate by references. This method accepts string parameter – path in the format of dot-separated attribute names. The returned `MetaPropertyPath` object enables accessing the required (the last in the path) attribute by invoking `getMetaProperty()` method.
++
+Example:
++
+[source, java]
+----
+MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupNameProp = userClass.getPropertyPath("group.name").getMetaProperty();
+assert groupNameProp.getDomain().getName().equals("sec$Group");
+----
+
+* `getJavaClass()` – entity class, corresponding to this `MetaClass`.
+
+* `getAnnotations()` – collection of <<meta_annotations,meta-annotations>>.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/MetaProperty.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[metaProperty]]
+MetaProperty::
++
+Entity attribute metadata interface.
++
+Basic methods:
+
+* `getName()` – property name, corresponds to entity attribute name.
+
+* `getDomain()` – meta-class, owning this property.
+
+[[metaProperty.getType]]
+* `getType()`- the property type:
+
+** simple type: `DATATYPE`
+
+** enumeration: `ENUM`
+
+** reference type of two kinds:
+
+*** `ASSOCIATION` − simple reference to another entity. For example, Order-Customer relationship is an association.
+
+*** `COMPOSITION` − reference to the entity, having no consistent value without the owning entity. `COMPOSITION` is considered to be a "closer" relationship than `ASSOCIATION`. For example, the relationship between Order and its Items is a `COMPOSITION`, as the Item cannot exist without the Order to which it belongs.
++
+The type of `ASSOCIATION` or `COMPOSITION` reference attributes affects entity edit mode: in the first case the related entity is persisted to the database independently, in the second case – only together with the owning entity. See <<composition_recipe>> for details.
+
+* `getRange()` – `Range` interface providing detailed description of the attribute type.
+
+* `isMandatory()` – indicates a mandatory attribute. For instance, it is used by visual components to signal a user that value is mandatory.
+
+* `isReadOnly()` – indicates a read-only attribute. 
+
+* `getInverse()` – for reference-type attribute, returns the meta-property from the other side of the association, if such exists.
+
+* `getAnnotatedElement()` – field (`java.lang.reflect.Field`) or method (`java.lang.reflect.Method`), corresponding to the entity attribute.
+
+* `getJavaType()` – Java class of the entity attribute. It can either be the type of corresponding field or the type of the value returned by corresponding method.
+
+* `getDeclaringClass()` – Java class containing this attribute.
+
+`Range`:: Interface describing entity attribute type in detail.
++
+Basic methods:
+
+* `isDatatype()` – returns `true` for simple <<metaProperty.getType,type>> attribute.
+
+* `asDatatype()` – returns <<datatype,Datatype>> for simple type attribute.
+
+* `isEnum()` – returns `true` for enumeration type attribute.
+
+* `asEnumeration()` – returns <<datatype,Enumeration>> for enumeration type attribute.
+
+* `isClass()` – returns `true` for reference attribute of `ASSOCIATION` or `COMPOSITION` type.
+
+* `asClass()` – returns <<metaClass,metaclass>> of associated entity for a reference attribute. 
+
+* `isOrdered()` – returns `true` if the attribute is represented by an ordered collection (for example `List`).
+
+* `getCardinality()` – relation kind of the reference attribute: `++ONE_TO_ONE++`, `++MANY_TO_ONE++`, `++ONE_TO_MANY++`, `++MANY_TO_MANY++`.
+

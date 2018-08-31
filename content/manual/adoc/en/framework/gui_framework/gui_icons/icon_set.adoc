@@ -1,0 +1,90 @@
+:sourcesdir: ../../../../../source
+
+[[icon_set]]
+===== Icon Sets
+
+Icon sets allow you to decouple usage of icons in visual components from real paths to images in theme or font element constants. They also simplify overriding of icons used in the UI inherited from application components.
+
+Icon sets are enumerations with items corresponding to icons. An icon set must implement the `Icons.Icon` interface which has one parameter: a string which denotes the source of an icon, for example, `font-icon:CHECK` or `icons/myawesomeicon.png`. To obtain the source, use the `Icons` bean provided by the platform.
+
+Icon sets should be created in the *gui* module to be accessible from *desktop* and *web* modules. If only *web* module is used, the icon set can be created in the *web* module. All names of icon set items should match the regexp: `[A-Z]_`, i.e. they should contain only upper-case letters and underscores.
+
+For example:
+
+[source, java]
+----
+public enum MyIcon implements Icons.Icon {
+
+    // adding new icon
+    COOL_ICON("icons/cool-icon.png"),
+
+    // overriding a CUBA default icon
+    OK("icons/my-ok.png");
+
+    protected String source;
+
+    MyIcon(String source) {
+        this.source = source;
+    }
+
+    @Override
+    public String source() {
+        return source;
+    }
+}
+----
+
+Icon sets should be registered in <<cuba.iconsConfig,cuba.iconsConfig>> application property, e.g:
+
+.web-app.properties
+[source, plain]
+----
+cuba.iconsConfig = +com.company.demo.gui.icons.MyIcon
+----
+
+[TIP]
+====
+To make the icon set from an application component accessible in the target project, this property should be added to the <<app-component.xml,component descriptor>>.
+====
+
+Now you can use the icons from this icon set simply by its name declaratively in screen XML descriptor:
+
+[source, xml]
+----
+<button icon="COOL_ICON"/>
+----
+
+or programmatically in the screen controller:
+
+[source, java]
+----
+button.setIconFromSet(MyIcon.COOL_ICON);
+----
+
+The following prefixes allow you to use icons from different sources in declarative way:
+
+* `theme` - the icon will be served from the current theme directory, for example, `web/themes/halo/awesomeFolder/superIcon.png`:
++
+[source, xml]
+----
+<button icon="theme:awesomeFolder/superIcon.png"/>
+----
+
+* `file` - the icon will be served from file system:
++
+[source, xml]
+----
+<button icon="file:D:/superIcon.png"/>
+----
+
+* `classpath` - icon will be served from classpath, for example, `com/company/demo/web/superIcon.png`
++
+[source, xml]
+----
+<button icon="classpath:/com/company/demo/web/superIcon.png"/>
+----
+
+There is one predefined icon set provided by the platform - `CubaIcon`. It includes almost full `FontAwesome` icon set and CUBA-specific icons. These icons can be selected in Studio icon editor:
+
+image::icon_set.png[align="center"]
+

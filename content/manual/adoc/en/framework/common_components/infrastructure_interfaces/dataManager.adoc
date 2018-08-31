@@ -1,0 +1,110 @@
+:sourcesdir: ../../../../../source
+
+[[dataManager]]
+===== DataManager
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/global/DataManager.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`DataManager` interface provides CRUD functionality on both middle and client tiers. It is a universal tool for loading entity graphs from the database and saving changed detached entity instances.
+
+[TIP]
+====
+See <<dm_vs_em>> for information on differences between DataManager and <<entityManager,EntityManager>>.
+====
+
+`DataManager` in fact just delegates to a <<data_store,DataStore>> implementation and handles cross-database references if needed. The most implementation details described below are in effect when you work with entities stored in a relational database through the standard `RdbmsStore`. For another type of data store, everything except the interface method signatures can be different. For simplicity, when we write _DataManager_ without additional clarification, we mean _DataManager via RdbmsStore_.
+
+`DataManager` methods are listed below:
+
+* `load(Class)` - loads entities of the specified class. This method is an entry point to the fluent API:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_4.java[]
+----
+
+* `loadValues(String query)` - loads key-value pairs by the query for scalar values. This method is an entry point to the fluent API:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_5.java[]
+----
+
+* `loadValue(String query, Class valueType)` - loads a single value by the query for scalar values. This method is an entry point to the fluent API:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_6.java[]
+----
+
+* `load(LoadContext)`, `loadList(LoadContext)` – load entities according to the parameters of the `LoadContext` object passed to it. `LoadContext` must include either a JPQL query or an entity identifier. If both are defined, the query is used, and the identifier is ignored.
++
+For example:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_1.java[]
+----
+
+* `loadValues(ValueLoadContext)` - loads a list of key-value pairs. The method accepts `ValueLoadContext` which defines a query for scalar values and a list of keys. The returned list contains instances of `KeyValueEntity`. For example:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_3.java[]
+----
+
+* `getCount(LoadContext)` - returns a number of records for a query passed to the method. When possible, the standard implementation in `RdbmsStore` executes `select count()` query with the same conditions as in the original query for maximum performance.
+
+* `commit(CommitContext)` – saves a set of entities passed in `CommitContext` to the database. Collections of entities for updating and deletion must be specified separately.
++
+The method returns the set of entity instances returned by <<entityManager,EntityManager>>.merge(); essentially these are fresh instances just updated in DB. Further work should be performed with these returned instances to prevent data loss or optimistic locking. You can ensure that required attributes are present in the returned entities by setting a view for each saved instance using `CommitContext.getViews()` map.
++
+Examples of saving a collection of entities:
++
+[source, java]
+----
+include::{sourcesdir}/common/dataManager_2.java[]
+----
+
+* `reload(Entity, View)` - convenience method to reload a specified instance from the database with the required <<views,view>>. It delegates to the `load()` method.
+
+* `remove(Entity)` - removes a specified instance from the database. Delegates to `commit()` method.
+
+[[dm_query]]
+Query::
++
+--
+The rules for JPQL queries are similar to those described in <<query>>. The difference is that the query executed via `DataManager` may only use named parameters; positional parameters are not supported.
+--
+
+[[dm_transactions]]
+Transactions::
++
+--
+DataManager always starts a new <<transactions,transaction>> and commits it on operation completion, thus returning entities in the <<entity_states,detached state>>.
+--
+
+[[dm_partial_entities]]
+Partial entities::
++
+--
+_Partial_ entity is an entity instance that can have only a subset of local attributes loaded. By default, DataManager loads partial entities according to <<views,views>> (in fact, `RdbmsStore` just sets the <<view_loadPartialEntities,loadPartialEntities>> property of the view to true and passes it down to <<entityManager,EntityManager>>).
+
+There are some conditions, when DataManager loads all local attributes and uses views only for fetching references:
+
+* The loaded entity is <<entity_cache,cached>>.
+* In-memory "read" <<constraints,constraints>> are defined for the entity.
+* Dynamic <<entity_attribute_access,attribute access control>> is set up for the entity.
+* The `loadPartialEntities` attribute of `LoadContext` is set to false.
+--
+
+include::dataManager/dm_security.adoc[]
+
+include::dataManager/query_with_distinct.adoc[]
+
+include::dataManager/query_from_selected.adoc[]
+

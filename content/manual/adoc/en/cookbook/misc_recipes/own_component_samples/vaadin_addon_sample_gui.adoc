@@ -1,0 +1,145 @@
+:sourcesdir: ../../../../../source
+
+[[vaadin_addon_sample_gui]]
+===== Integrating a Vaadin Component into the Generic UI
+
+In the <<vaadin_addon_sample,previous section>>, we have included the third-party Stepper component in the project. In this section, we will integrate it into CUBA Generic UI. This will allow developers to use the component declaratively in the screen XML and bind it to the data model entities through <<datasources,datasources>>.
+
+Create a new project in CUBA Studio and name it `addon-gui-demo`.
+
+Create the *web-toolkit* module by clicking the *Create web toolkit module* link of the *Project properties* navigator section.
+
+Then click the *New UI component* link. The *UI component generation* page will open. Select the *Vaadin add-on* value in the *Component type* section.
+
+image::ui_component/studio_vaadin_addon_wizard_gui.png[align="center"]
+
+Fill in the *Add-on Maven dependency* and *Inherited widgetset* as described in the <<vaadin_addon_sample,previous section>>.
+
+Then fill in the fields of the bottom section:
+
+* *Integrate into Generic UI* - defines that a component should be integrated into the Generic UI.
+
+* *Component XML element* - an element to be used in screen XML descriptors. Enter `stepper`.
+
+* *Component interface name* - a name of the component Generic UI interface. Enter `Stepper`.
+
+* *FQN of the Vaadin component from add-on* - fully qualified class name of the Vaadin component from the add-on. In our case it is `org.vaadin.risto.stepper.IntStepper`.
+
+When you click *OK*, Studio will do the following:
+
+* Add the Vaadin add-on as a *web* module dependency in `build.gradle`.
+
+* Include add-on widgetset in `AppWidgetSet.gwt.xml` of *web-toolkit* module.
+
+* Generate stubs for the following files:
+
+** `Stepper` - an interface of the component in the *gui* subfolder of the *web* module.
+
+** `WebStepper` - a component implementation in the *gui* subfolder of the *web* module.
+
+** `StepperLoader` - a component XML-loader in the *web* module.
+
+** `ui-component.xsd` - a new component XML schema definition. If the file already exists, the information about the new component will be added to the existing file.
+
+** `cuba-ui-component.xml` - the file that registers a new component loader in *web* module. If the file already exists, the information about the new component will be added to the existing file.
+
+Open the project in the IDE.
+
+Let's walk through generated files add make necessary changes.
+
+* Open the `Stepper` interface in the *gui* subfolder of the *web* module. Replace its content with the following code:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/Stepper.java[]
+----
++
+The base interface for the component is `Field`, which is designed to display and edit an entity attribute.
+
+* Open the `WebStepper` class - a component implementation in the *gui* subfolder of the *web* module. Replace its content with the following code:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/WebStepper.java[]
+----
++
+The chosen base class is `WebAbstractField`, which implements the methods of the `Field` interface.
+
+* The `StepperLoader` class in *web* module loads the component from its representation in XML.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/StepperLoader.java[]
+----
++
+The `AbstractFieldLoader` class contains code for loading basic properties of the `Field` component. So `StepperLoader` loads only the specific properties of the `Stepper` component.
+
+* The `cuba-ui-component.xml` file in the *web* module registers the new component and its loader. Leave the file unchanged.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/cuba-ui-component.xml[]
+----
+
+* The `ui-component.xsd` file in *web* module contains XML schema definitions of custom visual components. Add the `stepper` attributes definition.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/ui-component.xsd[]
+----
+
+Let's see how to add the new component to a screen.
+
+* Create a new entity `Customer`. The entity have two fields:
+
+** `name` of type String
+** `score` of type Integer
+
+* Generate standard screens for the new entity.
+
+* Add the `stepper` component to the editor screen. You can place it in a <<gui_FieldGroup,FieldGroup>> or in a separate container. We'll examine both methods.
+
+. Using the component inside a container.
++
+--
+* Open the `customer-edit.xml` file.
+
+* Define the new namespace `xmlns:app="http://schemas.company.com/agd/0.1/ui-component.xsd"`.
+
+* Remove the `score` field from `fieldGroup`.
+
+* Add `stepper` component to the screen.
+
+As a result, the XML descriptor should look like this:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-container.xml[]
+----
+
+In the example above, the `stepper` component is associated with the `score` attribute of the `Customer` entity. An instance of this entity is managed by the `customerDs` datasource.
+--
+
+. Using the new component inside a <<gui_FieldGroup>>:
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-custom-field.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/CustomerEditGuiCustomField.java[]
+----
+
+* To adapt the component style, create a theme extension in the project. Click the *Create theme extension* link in the *Project properties* navigator section. Select the `halo` theme. After that, open the `themes/halo/com.company.application/halo-ext.scss` file located in the *web* module and add the following code:
++
+[source, css]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/halo-ext.scss[]
+----
+
+* Start the application server. The resulting editor screen will look as follows:
+
+image::ui_component/customer_edit_result.png[align="center"]
+

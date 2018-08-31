@@ -1,0 +1,82 @@
+:sourcesdir: ../../../../../source
+
+[[datatype]]
+===== Datatype
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/datatypes/Datatype.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`Datatype` interface defines methods for converting values to and from strings (formatting and parsing). Each entity attribute, if it is not a reference, has a corresponding `Datatype`, which is used by the framework to format and parse the attribute value.
+
+Datatypes are registered in the `DatatypeRegistry` bean, which loads and initializes `Datatype` implementation classes from the <<metadata.xml,metadata.xml>> files of the project and its <<app_components,application components>>.
+
+Datatype of an entity attribute can be obtained from the corresponding <<metaProperty,meta-property>> using `getRange().asDatatype()` call.
+
+You can also use registered datatypes to format or parse arbitrary values of supported types. To do this, obtain a datatype instance from `DatatypeRegistry` using its `get(Class)` or `getNN(Class)` methods, passing the Java type that you want to convert.
+
+Datatypes are associated with entity attributes according to the following rules:
+
+* In most cases, an attribute is associated with a registered `Datatype` instance that can handle the attribute's Java type.
++
+In the example below, the `amount` attribute will get `BigDecimalDatatype`
++
+[source, java]
+----
+@Column(name = "AMOUNT")
+private BigDecimal amount;
+----
++
+because `cuba-metadata.xml` has the following entry:
++
+[source, xml]
+----
+<datatype id="decimal" class="com.haulmont.chile.core.datatypes.impl.BigDecimalDatatype"
+          default="true"
+          format="0.####" decimalSeparator="." groupingSeparator=""/>
+----
+
+* You can specify a datatype explicitly using the <<metaProperty_annotation,@MetaProperty>> annotation and its `datatype` attribute.
++
+In the example below, the `issueYear` entity attribute will be associated with the `year` datatype:
++
+[source, java]
+----
+@MetaProperty(datatype = "year")
+@Column(name = "ISSUE_YEAR")
+private Integer issueYear;
+----
++
+if the project's `metadata.xml` file has the following entry:
++
+[source, xml]
+----
+<datatype id="year" class="com.company.sample.YearDatatype"/>
+----
++
+As you can see, the `datatype` attribute of `@MetaProperty` contains identifier, which is used when registering the datatype implementation in `metadata.xml`.
+
+Basic methods of the `Datatype` interface:
+
+* `format()` – converts the passed value into a string.
+
+* `parse()` – transforms a string into the value of corresponding type.
+
+* `getJavaClass()` – returns the Java type which this datatype is designed for. This method has a default implementation that returns a value of the `@JavaClass` annotation if it is present on the class.
+
+`Datatype` defines two sets of methods for formatting and parsing: considering and not considering locale. Conversion considering locale is applied everywhere in user interface, ignoring locale – in system mechanisms, for example, serialization in <<rest_api_v2,REST API>>.
+
+Parsing formats ignoring locale are hardcoded or specified in the `metadata.xml` file when registering the datatype.
+
+See the next section for how to specify locale-dependent parsing formats.
+
+include::datatype/datatype_format_strings.adoc[]
+
+include::datatype/datatype_custom_example.adoc[]
+
+include::datatype/datatype_ui_format.adoc[]
+
+include::datatype/datatype_date_number_format.adoc[]
+

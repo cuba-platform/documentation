@@ -1,0 +1,145 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_DateField]]
+====== DateField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-datefield" class="live-demo-btn" target="_blank">ДЕМОНСТРАЦИЯ</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/DateField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Поле для отображения и ввода даты и времени. Представляет собой поле даты, внутри которого имеется кнопка с выпадающим календарем, а правее находится поле для ввода времени.
+
+image::gui_dateFieldSimple.png[align="center"]
+
+XML-имя компонента: `dateField`.
+
+Компонент `DateField` реализован для блоков *Web Client* и *Desktop Client*. 
+
+* Для создания поля даты, связанного с данными, необходимо использовать атрибуты <<gui_attr_datasource,datasource>> и <<gui_attr_property,property>>:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datefield_1.xml[]
+---- 
++
+Как видно из примера, в экране описывается источник данных `orderDs` для некоторой сущности Заказ (`Order`), имеющей атрибут `date`. В компоненте ввода даты в атрибуте <<gui_attr_datasource,datasource>> указывается ссылка на источник данных, а в атрибуте <<gui_attr_property,property>> − название атрибута сущности, значение которого должно быть отображено в поле.
+
+* Если поле связано с атрибутом сущности, то оно автоматически принимает соответствующий вид:
+
+** Если атрибут типа `java.sql.Date` или указана аннотация `@Temporal(TemporalType.DATE)`, то поле времени не отображается. Формат даты определяется <<datatype,типом данных>> `date` и задается в <<main_message_pack,главном пакете локализованных сообщений>> в ключе `dateFormat`.
+
+** В противном случае отображается также поле времени с часами и минутами. Формат времени определяется <<datatype,типом данных>> `time` и задается в <<main_message_pack,главном пакете локализованных сообщений>> в ключе `timeFormat`.
+
+[[gui_DateField_dateFormat]]
+* Изменить формат представления даты и времени можно с помощью атрибута `dateFormat`. Значением атрибута может быть либо сама строка формата, либо ключ в пакете сообщений (если значение начинается с `msg://`).
++
+Формат задается по правилам класса `SimpleDateFormat` (http://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html). Если в формате отсутствуют символы `H` или `h`, то поле времени не выводится.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datefield_2.xml[]
+----
++
+image::gui_dateField_format.png[align="center"]
++
+[WARNING]
+====
+`DateField` в основном предназначен для быстрого ввода с клавиатуры путем заполнения маски. Поэтому компонент поддерживает только форматы с цифрами и разделителями. Сложные форматы с текстовым представлением дня недели или месяца не будут работать.
+====
+
+[[gui_DateField_range]]
+* Диапазон доступных дат можно указать с помощью атрибутов `rangeStart` и `rangeEnd`. Если данные атрибуты установлены, все даты, выходящие за пределы диапазона, будут отключены. Значения доступных даты можно установить в XML в формате "yyyy-MM-dd", или программно с помощью соответствующих сеттеров.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datefield_4.xml[]
+----
++
+image::gui_datefield_month_range.png[align="center"]
+
+[[gui_DateField_resolution]]
+* Точность представления даты и времени можно определить с помощью атрибута `resolution`. Значение атрибута должно соответствовать перечислению `DateField.Resolution` − `SEC`, `MIN`, `HOUR`, `DAY`, `MONTH`, `YEAR`. По умолчанию - `MIN`, то есть до минут.
++
+Если `resolution="DAY"` и не указан атрибут `dateFormat`, то в качестве формата будет взят формат, указанный в <<main_message_pack,главном пакете сообщений>> с ключом `dateFormat`.
++
+Если `resolution="MIN"` и не указан атрибут `dateFormat`, то в качестве формата будет взят формат, указанный в <<main_message_pack,главном пакете сообщений>> с ключом `dateTimeFormat`.
++
+Ниже показано определения поля для ввода даты с точностью до месяца.
++
+[source, xml]
+----
+<dateField resolution="MONTH" caption="msg://monthOnlyDateField"/>
+----
++
+image::gui_dateField_resolution.png[align="center"]
+
+* Изменение значения поля `DateField`, так же, как и любого другого компонента, реализующего интерфейс `Field`, можно отслеживать с помощью слушателя `ValueChangeListener`.
+
+* Если для пользователя методом `setTimeZone()` задан <<timeZone,часовой пояс>>, то `DateField` может преобразовывать значения типа timestamp между часовыми поясами сервера и пользователя. Если компонент привязан к атрибуту типа timestamp, часовой пояс автоматически берется из текущей <<userSession,пользовательской сессии>>. Если нет, то можно вызвать метод `setTimeZone()` в контроллере экрана, чтобы `DateField` выполнил необходимые преобразования.
+
+[[gui_datefield_borderless]]
+* В веб-клиенте с темой, основанной на Halo, к компоненту `DateField` можно применить заданный стиль `borderless`, чтобы удалить рамку и фон поля. Стили задаются в XML-дексрипторе или контроллере экрана с помощью атрибута `stylename`:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datefield_5.xml[]
+----
++
+Чтобы применить стиль программно, выберите константу класса `HaloTheme` с префиксом компонента `DATEFIELD_`:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datefield_6.java[]
+----
+
+'''
+
+Атрибуты dateField::
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_contextHelpText,contextHelpText>> -
+<<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_DateField_dateFormat,dateFormat>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_attr_property,property>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_DateField_range,rangeEnd>> -
+<<gui_DateField_range,rangeStart>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_DateField_resolution,resolution>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Элементы dateField::
+<<gui_validator,validator>>
+
+Предопределенные стили dateField::
+<<gui_datefield_borderless,borderless>> -
+<<gui_attr_stylename_small,small>> -
+<<gui_attr_stylename_tiny,tiny>>
+
+API::
+<<gui_api_addValueChangeListener,addValueChangeListener>> -
+<<gui_api_commit,commit>> -
+<<gui_api_discard,discard>> -
+<<gui_api_isModified,isModified>> -
+<<gui_api_contextHelp,setContextHelpIconClickHandler>>
+
+'''
+

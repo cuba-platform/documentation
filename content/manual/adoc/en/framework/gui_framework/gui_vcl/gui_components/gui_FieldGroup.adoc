@@ -1,0 +1,327 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_FieldGroup]]
+====== FieldGroup
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-fieldgroup" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/FieldGroup.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`FieldGroup` is intended for the joint display and editing of multiple entity attributes. 
+
+image::gui_fieldGroup.png[align="center"]
+
+XML-name of the component: `fieldGroup`
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+Below is an example of defining a group of fields in an XML screen descriptor:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_1.xml[]
+---- 
+
+In the example above, `dsContext` defines an `orderDs` <<datasources,data source>>, which contains a single instance of the `Order` entity. The data source is specified in the `datasource` attribute of the `fieldGroup` component. `field` elements refer to the entity attributes that need to be displayed in the component.
+
+Elements of `fieldGroup`:
+
+[[gui_FieldGroup_column]]
+* `column` – optional element that allows you to position fields in multiple columns. For this purpose, `field` elements should be placed not immediately within `fieldGroup`, but within a `column`. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_2.xml[]
+---- 
++
+In this case, fields will be arranged in two columns; the first column will contain all fields with the width of `250px`, the second one with the width of `400px`.
++
+Attributes of `column`:
++
+--
+[[gui_FieldGroup_column_width]]
+** `width` – specifies the field width of a column. By default, fields have the width of `200px`. In this attribute, the width can be specified both in pixels and in percentage of the total horizontal width of the column.
+
+[[gui_FieldGroup_column_flex]]
+** `flex` – a number, which indicates the degree of horizontal change in the overall size of the column relative to other columns as a result of changing the entire width of `fieldGroup`. For example, you can specify `flex=1` for a column, and `flex=3` for another one. 
+
+[[gui_FieldGroup_column_id]]
+** `id` – an optional column identifier, which allows you to refer to it in case of <<screen_extension,screen extension>>.
+--
+
+[[gui_FieldGroup_field]]
+* `field` – the main component element. It defines one field of the component.
++
+Custom fields can be included in the `field` element as inline XML definition:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_6.xml[]
+----
++
+Attributes of `field`:
++
+--
+[[gui_FieldGroup_field_id]]
+** `id` – required attribute, if `property` is not set; otherwise it takes the same value as `property` by default. The `id` attribute should contain an arbitrary unique identifier either of a field with the `property` attribute set, or a programmatically defined field. In the latter case, the `field` should have the attribute `custom="true"` as well (see below).
+
+[[gui_FieldGroup_field_property]]
+** `property` - required attribute, if `id` is not set; it should contain an entity attribute name, which is displayed in the field, for data binding.
+
+[[gui_FieldGroup_field_caption]]
+** `caption` − allows you to specify a field caption. If not specified, an entity <<entity_localization,attribute localized name>> will be displayed.
+
+** `inputPrompt` - if the <<gui_attr_inputPrompt,inputPrompt>> attribute is available for the component used for this field, you can set its value directly for the field.
+
+[[gui_FieldGroup_field_visible]]
+** `visible` − allows you to hide the field together with the caption.
+
+[[gui_FieldGroup_field_datasource]]
+** `datasource` − allows you to specify a <<datasources,data source>> for the field, other than specified for the entire `fieldGroup` component. Thus, attributes of different entities can be displayed in a field group.
+
+** `optionsDatasource` specifies a name of a <<datasources,data source>>, used to create a list of options. You can specify this attribute for a field connected to a reference entity attribute. By default, the selection of a related entity is made through a lookup screen. If `optionsDatasource` is specified, you can select the related entity from a drop-down list of options. Actually, specifying `optionsDatasource` will lead to the fact that <<gui_LookupPickerField,LookupPickerField>> will be used in the field instead of <<gui_PickerField,PickerField>>.
+
+[[gui_FieldGroup_field_width]]
+** `width` − allows you to specify the field width excluding caption. By default, the field width will be `200px`. The width can be specified both in pixels and in percentage of the total horizontal width of the column. To specify the width of all fields simultaneously, you can use the `width` attribute of the `column` element described above.
+
+[[gui_FieldGroup_field_custom]]
+** `custom` – if set to `true`, it means that a field identifier does not refer to an entity attribute, and a component, which is in the field, will be set programmatically using `setComponent()` method of `FieldGroup` (see below).
+
+[[gui_FieldGroup_field_generator]]
+** the `generator` attribute is used for declarative creation of custom fields: you can specify the name of the method that returns a custom component for this field:
++
+[source, xml]
+----
+<fieldGroup datasource="productDs">
+    <column width="250px">
+        <field property="description" generator="generateDescriptionField"/>
+    </column>
+</fieldGroup>
+----
+
++
+[source, java]
+----
+public Component generateDescriptionField(Datasource datasource, String fieldId) {
+    TextArea textArea = componentsFactory.createComponent(TextArea.class);
+    textArea.setRows(5);
+    textArea.setDatasource(datasource, fieldId);
+    return textArea;
+}
+----
+
+[[gui_FieldGroup_field_link]]
+** `link` - if set to `true`, enables displaying a link to an entity editor instead of an entity picker field (supported for *Web Client* only). Such behaviour may be required when the user should be able to view the related entity, but should not change the relationship.
+
+[[gui_FieldGroup_field_linkScreen]]
+** `linkScreen` - contains the identifier of the screen that is opened by clicking the link, enabled in the `link` attribute.
+
+[[gui_FieldGroup_field_linkScreenOpenType]]
+** `linkScreenOpenType` - sets the screen opening mode (`++THIS_TAB++`, `++NEW_TAB++` or `DIALOG`).
+
+[[gui_FieldGroup_field_linkInvoke]]
+** `linkInvoke` - contains the controller method to be invoked instead of opening the screen.
+
+The following attributes of `field` can be applied depending on the type of the entity attribute displayed in the field:
+
+[[gui_FieldGroup_field_mask]]
+** If you specify a value of the `mask` attribute for a text entity attribute, <<gui_MaskedField,MaskedField>> with an appropriate mask will be used instead of <<gui_TextField,TextField>>. In this case, you can also specify the `valueMode` attribute.
+
+[[gui_FieldGroup_field_rows]]
+** If you specify a value of the `rows` attribute for a text entity attribute, <<gui_TextArea,TextArea>> with the appropriate number of rows will be used instead of <<gui_TextField,TextField>>. In this case, you can also specify the `cols` attribute.
+
+** For a text entity attribute, you can specify the `maxLength` attribute similarly to one described for <<gui_TextField,TextField>>.
+
+** For an entity attribute of the `date` or `dateTime` type, you can specify the `dateFormat` and `resolution` for the parameterization of the <<gui_DateField,DateField>> component used in the field.
+
+** For an entity attribute of the `time` type, you can specify the `showSeconds` attribute for the parameterization of the <<gui_TimeField,TimeField>> component used in the field.
+--
+
+Attributes of `fieldGroup`:
+
+[[gui_FieldGroup_border]]
+* The `border` attribute can be set either to `hidden` or `visible`. Default is `hidden`. If set to `visible`, the `fieldGroup` component is highlighted with a border. In the web implementation of the component, displaying a border is done by adding the `cuba-fieldgroup-border` CSS class. 
+
+[[gui_FieldGroup_captionAlignment]]
+* `captionAlignment` attribute defines the position of captions relative to the fields in within the `FieldGroup`. Two options are available: `LEFT` and `TOP`.
+
+[[gui_FieldGroup_fieldFactoryBean]]
+* `fieldFactoryBean`: declarative fields defined in the XML-descriptor are created with the `FieldGroupFieldFactory` interface. In order to override this factory, use this attribute with the name of your custom `FieldGroupFieldFactory` implementation.
++
+[[gui_FieldGroup_setFieldFactory]]
+For the `FieldGroup` created programmatically, use the `setFieldFactory()` method.
+
+Methods of the `FieldGroup` interface:
+
+[[gui_FieldGroup_addField]]
+* `addField` enables adding fields to the FieldGroup at runtime. As a parameter it takes a `FieldConfig` instance, you can also define the position of the new field by adding `colIndex` and `rowIndex` parameters.
+
+[[gui_FieldGroup_bind]]
+* `bind()` method applied to the field after `setDatasource()` triggers the creation of field components.
+
+[[gui_FieldGroup_createField]]
+* `createField()` is used to create a FieldGroup element implementing `FieldConfig` interface:
++
+[source, java]
+----
+fieldGroup.addField(fieldGroup.createField("newField"));
+----
+
+[[gui_FieldGroup_getComponent]]
+* `getComponent()` returns a visual component, which is located in a field with the specified identifier. This may be required for additional component parameterization, which is not available through XML attributes of `field` described above.
++
+To obtain a reference to a field component in a screen controller, you can use <<screen_controller_injection,injection>> instead of the explicit invocation of `getFieldNN("id").getComponentNN()`. To do this, use the `@Named` annotation and provide an identifier of `fieldGroup` and a field identifier after a dot.
++
+For example, in a field selecting a related entity, you can add an action to open an instance and remove the field cleaning action as follows:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_4.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_5.java[]
+----
++
+To use `getComponent()` or to inject field components, you need to know which component type is located in the field. The table below shows the correspondence between entity attribute types and components created for them:
++
+[cols="3*.^", frame="all"]
+|===
+| Entity attribute type| Additional conditions| Field component type
+
+.2+| Related Entity
+| `optionsDatasource` is specified
+| <<gui_LookupPickerField,LookupPickerField>>
+
+|
+| <<gui_PickerField,PickerField>>
+
+| Enumeration (`enum`)
+|
+| <<gui_LookupField,LookupField>>
+
+.3+| `string`
+| `mask` is specified
+| <<gui_MaskedField,MaskedField>>
+
+| `rows` is specified
+| <<gui_TextArea,TextArea>>
+
+|
+| <<gui_TextField,TextField>>
+
+| `boolean`
+|
+| <<gui_CheckBox,CheckBox>>
+
+| `date`, `dateTime`
+|
+| <<gui_DateField,DateField>>
+
+| `time`
+|
+| <<gui_TimeField,TimeField>>
+
+.2+| `int`, `long`, `double`, `decimal`
+| `mask` is specified
+| <<gui_MaskedField,MaskedField>>
+
+|
+| <<gui_TextField,TextField>>
+
+| `UUID`
+|
+| <<gui_MaskedField,MaskedField>> with hex mask
+
+|===
+
+[[gui_FieldGroup_removeField]]
+* `removeField()` enables removing fields at runtime by `id`.
+
+[[gui_FieldGroup_setComponent]]
+* `setComponent()` method is used to set your own field view. Can be used together with the `custom="true"` attribute of the `field` element or with the field created programmatically by the `createField()` method (see above). When used with `custom="true"`, the datasource and the property should be set up manually.
++
+The `FieldConfig` instance can be obtained with `getField()` or `getFieldNN()` method, then the `setComponent()` method is called:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_3.java[]
+----
+
+'''
+
+Attributes of fieldGroup::
+<<gui_attr_align,align>> -
+<<gui_FieldGroup_border,border>> -
+<<gui_attr_caption,caption>> -
+<<gui_FieldGroup_captionAlignment,captionAlignment>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_FieldGroup_fieldFactoryBean,fieldFactoryBean>> -
+<<gui_attr_id,id>> -
+<<gui_attr_height,height>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Attributes of column::
+<<gui_FieldGroup_column_flex,flex>> -
+<<gui_FieldGroup_column_id,id>> -
+<<gui_FieldGroup_column_width,width>>
+
+Attributes of field::
+<<gui_FieldGroup_field_caption,caption>> -
+<<gui_attr_captionProperty,captionProperty>> -
+<<gui_FieldGroup_field_rows,cols>> -
+<<gui_FieldGroup_field_custom,custom>> -
+<<gui_FieldGroup_field_datasource,datasource>> -
+<<gui_DateField_dateFormat,dateFormat>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_FieldGroup_field_generator,generator>> -
+<<gui_FieldGroup_field_id,id>> -
+<<gui_FieldGroup_field_link,link>> -
+<<gui_FieldGroup_field_linkInvoke,linkInvoke>> -
+<<gui_FieldGroup_field_linkScreen,linkScreen>> -
+<<gui_FieldGroup_field_linkScreenOpenType,linkScreenOpenType>> -
+<<gui_FieldGroup_field_mask,mask>> -
+<<gui_TextField_maxLength,maxLength>> -
+<<gui_attr_optionsDatasource,optionsDatasource>> -
+<<gui_FieldGroup_field_property,property>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_DateField_resolution,resolution>> -
+<<gui_FieldGroup_field_rows,rows>> -
+<<gui_TimeField_showSeconds,showSeconds>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_FieldGroup_field_visible,visible>> -
+<<gui_attr_width,width>>
+
+Elements of field::
+<<gui_FieldGroup_column,column>> -
+<<gui_FieldGroup_field,field>> -
+<<gui_attr_inputPrompt,inputPrompt>> -
+<<gui_validator,validator>>
+
+API::
+<<gui_FieldGroup_addField,addField>> -
+<<gui_FieldGroup_bind,bind>> -
+<<gui_FieldGroup_createField,createField>> -
+<<gui_FieldGroup_getComponent,getComponent>> -
+<<gui_FieldGroup_removeField,removeField>> -
+<<gui_FieldGroup_setComponent,setComponent>> -
+<<gui_FieldGroup_setFieldFactory,setFieldFactory>>
+
+'''
+

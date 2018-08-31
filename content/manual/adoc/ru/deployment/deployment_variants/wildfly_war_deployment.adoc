@@ -1,0 +1,132 @@
+:sourcesdir: ../../../../source
+
+[[wildfly_war_deployment]]
+==== Развертывание WAR в WildFly
+
+WAR-файлы с приложением CUBA можно разворачивать на сервере *WildFly*. Рассмотрим пример сборки WAR-файлов для приложения, использующего PostgreSQL 9.6, и их развертывания на сервере WildFly версии 13.0.0 под Windows.
+
+. Соберите приложение и выполните *Run* - *Deploy*, чтобы получить локальную инсталляцию Tomcat, в которой будут все необходимые зависимости для приложения.
+
+. Подготовьте <<app_home,домашний каталог>> приложения:
++
+--
+* Создайте каталог, который будет полностью доступен процессу сервера WildFly, например, `C:\Users\UserName\app_home`.
+
+* Скопируйте файл `logback.xml` из `tomcat/conf` в этот каталог и отредактируйте в нём свойство `logDir` следующим образом:
+
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
+--
+
+. Настройте конфигурацию сервера WildFly:
++
+--
+* Установите WildFly, например, в каталог `C:\wildfly`.
+
+* Отредактируйте файл `\wildfly\bin\standalone.conf.bat`, добавив в конец следующую строку:
+
+[source, plain]
+----
+set "JAVA_OPTS=%JAVA_OPTS% -Dapp.home=%USERPROFILE%/app_home -Dlogback.configurationFile=%USERPROFILE%/app_home/logback.xml"
+----
+
+Здесь мы задаём системное свойство `app.home`, содержащее домашний каталог приложения, и указываем, где находится конфигурационный файл `logback.xml`. Вместо переменной `%USERPROFILE%` можно использовать абсолютный путь.
+
+* Сравните версии Hibernate Validator в WildFly и приложении CUBA (платформа обычно использует более свежую версию). Замените файл `\wildfly\modules\system\layers\base\org\hibernate\validator\main\hibernate-validator-x.y.z-sometext.jar` более новым файлом из каталога `tomcat\shared\lib`, например, `hibernate-validator-5.4.2.Final.jar`.
+
+* Обновите номер версии указанного JAR-файла в файле `\wildfly\modules\system\layers\base\org\hibernate\validator\main\module.xml`.
+
+* Зарегистрируйте драйвер PostgreSQL в WildFly, скопировав файл `postgresql-9.4.1212.jar` из каталога `tomcat\lib` в `\wildfly\standalone\deployments`.
+
+* Настройте логирование WildFly: отредактируйте файл `\wildfly\standalone\configuration\standalone.xml`, добавив две строки в блок `<subsystem xmlns="urn:jboss:domain:logging:{version}"`:
++
+[source, xml]
+----
+<subsystem xmlns="urn:jboss:domain:logging:5.0">
+    <add-logging-api-dependencies value="false"/>
+    <use-deployment-logging-config value="false"/>
+    . . .
+</subsystem>
+----
+--
+
+. Создайте JDBC Datasource:
++
+--
+* Запустите WildFly, выполнив `standalone.bat`.
+
+* Откройте консоль администратора по адресу `++http://localhost:9990++`. При первом входе потребуется создать пользователя и задать пароль.
+
+* Перейдите в раздел *Configuration - Subsystems - Datasources and Drivers - Datasources* и добавьте источник данных для вашего приложения:
+
+[source, plain]
+----
+Name: Cuba
+JNDI Name: java:/jdbc/CubaDS
+JDBC Driver: postgresql-9.4.1212.jar
+Driver Module Name: org.postgresql
+Driver Class Name: org.postgresql.Driver
+Connection URL: URL вашей БД
+Username: имя пользователя БД
+Password: пароль БД
+----
+Драйвер JDBC будет доступен в списке обнаруженных драйверов, если вы скопировали файл `postgresql-x.y.z.jar` на предыдущем шаге.
+
+Выполните проверку соединения, нажав кнопку *Test connection*.
+
+* Активируйте источник данных.
+--
+
+. Соберите приложение:
++
+--
+* Откройте вкладку *Deployment settings* > *WAR* в Studio.
+
+* Включите флаг *Build WAR*.
+
+* Задайте значение `${app.home}` в поле *Application home directory*.
+
+* Сохраните настройки.
+
+* Откройте файл <<build.gradle,build.gradle>> в IDE и добавьте свойство `doAfter` для копирования дескриптора развертывания WildFly в задачу <<build.gradle_buildWar,buildWar>>:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/wildfly.groovy[]
+----
++
+[TIP]
+====
+Для конфигурации singleWAR задача будет отличаться:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/wildfly-singlewar.groovy[]
+----
+
+Если ваш проект также содержит модуль <<polymer_ui,Polymer>>, нужно добавить в файл `single-war-web.xml` следующую конфигурацию:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/wildfly-polymer.xml[]
+----
+====
+
+* В корневом каталоге проекта создайте файл `jboss-deployment-structure.xml` и добавьте в него дескриптор развертывания WildFly:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/wildfly.xml[]
+----
+
+* Запустите сборку WAR-файлов с помощью задачи `buildWar`.
+--
+
+. Скопируйте файлы `app-core.war` и `app.war` из каталога `build\distributions\war` в каталог WildFly `\wildfly\standalone\deployments`.
+
+. Перезапустите WildFLy.
+
+. Приложение будет доступно по адресу `++http://localhost:8080/app++`. Логи записываются в домашний каталог приложения: `C:\Users\UserName\app_home\logs`.
+

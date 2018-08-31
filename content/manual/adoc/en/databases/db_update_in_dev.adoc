@@ -1,0 +1,36 @@
+:sourcesdir: ../../../source
+
+[[db_update_in_dev]]
+=== Creating the DB Schema
+
+In the process of application development, you need to create and maintain the database schema that corresponds to the model entities. The platform offers an approach based on <<db_scripts,DB create and update scripts>> to solve this task. The practical steps to apply this approach are provided below.
+
+The task to create and maintain the DB schema consists of two parts: creating the scripts and executing them.
+
+Scripts can be created both manually and using Studio. The process of creating scripts in Studio is provided below. Run the *Generate DB scripts* command in the *Entities* section. In this case, Studio will connect to the database defined on the *Project properties* page and compare the available DB schema with the current data model.
+
+If the database does not exist or does not have *SYS_DB_CHANGELOG* and *SEC_USER* tables, the system generates only DB initialization scripts. Otherwise, update scripts are created as well. Then, a page with the generated scripts is opened.
+
+Update scripts are displayed on the *Update scripts* tab. Scripts with the *new* status reflect the difference between the current state of the data model and the DB schema. A separate script is created for each new or modified table. Some scripts also contain sets of referential integrity constraints. When the page is closed by clicking *OK*, the scripts are saved in the `db/update/{db_type}` directory of the *core* module.
+
+Scripts that exist in the project and have been applied to the DB before are displayed with the *applied* status. They cannot be edited or removed.
+
+The *Update scripts* tab can also display scripts with *to be deleted* status. These are the scripts available in the project, but not applied to the DB yet. These scripts are removed when you close the page by clicking OK. This is the standard behavior in case the scripts are created during previous scripts generation, but not applied by invoking *Update database*. In this case, you don't need them any longer, because the current difference between the DB schema and the data model is reflected in newly generated scripts. However, if the scripts were authored by another developer and retrieved from a version control system, you should cancel the saving and apply the other party's scripts to your DB first, and then generate new ones.
+
+The *Init tables*, *Init constraints* and *Init data* tabs display DB create scripts that are located in the `db/init/{db_type}` directory of the *core* module.
+
+The *Init tables* tab displays the `10.create-db.sql` script that creates the tables. The code related to one and the same table is separated by `++begin {table_name} ... end {table_name}++` comments. When an entity in the model is changed, Studio will replace code only for the corresponding table between the comments, while leaving the rest of the code, where manual changes could have been made, untouched. Therefore, do not remove these comments when editing the code manually, otherwise, Studio will not be able to properly apply the changes to the existing files.
+
+The *Init constraints* tab displays the `20.create-db.sql` script that creates integrity constraints. It also has table-separating comments that you should not remove.
+
+The *Init data* tab displays the `30.create-db.sql` script designed to provide additional information when initializing the DB. These may be, for example, functions, triggers or DML operators to fill the database with the necessary data. The contents of this script are created manually, if necessary.
+
+[TIP]
+====
+At the initial stage of application development, when the data model is being actively changed, we recommend using only the DB creation scripts (located in the *Init tables*, *Init constraints*, *Init data*) tabs) and removing the update scripts in the *Update scripts* tab immediately after invoking the *Generate DB scripts* command. This is the most simple and reliable way to keep the DB up to date. Of course, it has a major drawback, since applying these scripts recreates the DB from scratch, and all data are lost. You can partially compensate this drawback at the development stage by adding commands to the *Init data* script that will create primary data upon initialization.
+
+Update scripts become a convenient and necessary tool for developing and maintaining the DB at a later stage, when the data model is relatively stable, and the development and production databases have the data that can not be lost as a result of recreating the DB from scratch.
+====
+
+Use <<db_update_gradle,DB script execution by Gradle tasks>> to apply scripts: invoke *Run* > *Create database* to recreate the database and *Run* > *Update database* to apply the scripts. Please note that these items are available only if the application server is stopped. Of course, you can invoke the corresponding Gradle tasks (`createDb` and `updateDb`) at any time from the command line, but if the database or any of its objects are locked, script execution may fail.
+

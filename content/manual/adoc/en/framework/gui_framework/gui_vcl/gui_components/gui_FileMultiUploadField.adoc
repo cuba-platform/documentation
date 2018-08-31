@@ -1,0 +1,115 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_FileMultiUploadField]]
+====== FileMultiUploadField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/FileMultiUploadField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+The `FileMultiUploadField` component allows a user to upload files to the server. The component is a button; when it is clicked, a standard OS file picker window is shown, where the user can select multiple files for upload.
+
+image::gui_multipleUpload.png[align="center"]
+
+XML name of the component: `multiUpload`.
+
+The component is implemented for *Web Client* and *Desktop Client*.
+
+* Declare the component in an XML screen descriptor: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/multiupload_1.xml[]
+----
+
+[[gui_FileMultiUploadField_QueueUploadCompleteListener]]
+* In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. In the `init()` method, add listeners which will react on successful uploads and errors:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/multiupload_2.java[]
+---- 
++
+The component uploads all selected files to the temporary storage of the client <<app_tiers,tier>> and invokes the listener added by the `addQueueUploadCompleteListener()` method. In this listener, the `FileMultiUploadField.getUploadsMap()` method is invoked to obtain a map of temporary storage file identifiers to file names. Then, corresponding `FileDescriptor` objects are created by calling `FileUploadingAPI.getFileDescriptor()` for each map entry. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
++
+--
+Below is the list of listeners available to track the upload process:
+
+[[gui_FileMultiUploadField_FileUploadErrorListener]]
+* `FileUploadErrorListener`,
+
+[[gui_FileMultiUploadField_FileUploadStartListener]]
+* `FileUploadStartListener`,
+
+[[gui_FileMultiUploadField_FileUploadFinishListener]]
+* `FileUploadFinishListener`,
+
+* `QueueUploadCompleteListener`.
+
+`FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object.
+
+After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in a database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration* -> *External Files* screen.
+
+After processing, the list of files should be cleared by calling the `clearUploads()` method in order to prepare for further uploads.
+--
+
+* Maximum upload size is determined by the <<cuba.maxUploadSizeMb,cuba.maxUploadSizeMb>> application property and is  20MB by default. If a user selects a file of a larger size, a corresponding message will be displayed, and the upload will be interrupted.
+
+[[gui_FileMultiUploadField_accept]]
+* The `accept` XML attribute (and the corresponding `setAccept()` method) can be used to set the file type mask in the file selection dialog. Users still be able to change the mask to "All files" and upload arbitrary files.
++
+The value of the attribute should be a comma-separated list of masks. For example: `++*.jpg,*.png++`.
+
+[[gui_FileMultiUploadField_fileSizeLimit]]
+* The `fileSizeLimit` XML attribute (and the corresponding `setFileSizeLimit()` method) can be used to set maximum allowed file size in bytes. This limit defines a maximum size for each file.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/multiupload_3.xml[]
+----
+
+[[gui_FileMultiUploadField_permittedExtensions]]
+* The `permittedExtensions` XML attribute (and the corresponding `setPermittedExtensions()` method) sets the white list of permitted file extensions.
++
+The value of the attribute should be a set of string values, where each string is a permitted extension with leading dot. For example:
++
+[source,java]
+----
+uploadField.setPermittedExtensions(Sets.newHashSet(".png", ".jpg"));
+----
+
+[[gui_FileMultiUploadField_dropZone]]
+* The `dropZone` XML attribute allows you to specify a <<gui_BoxLayout,BoxLayout>> to be used as a target for drag-and-dropping files from outside of the browser. If the container style <<gui_FileUploadField_dropZone,is not set>>, the selected container is highlighted when a user drags files over the container, otherwise the dropZone is not visible.
+
+See <<images_recipe>> for more complex example of working with uploaded files.
+
+'''
+
+Attributes of multiUpload::
+<<gui_FileMultiUploadField_accept,accept>> -
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_description,description>> -
+<<gui_FileMultiUploadField_dropZone,dropZone>> -
+<<gui_attr_enable,enable>> -
+<<gui_FileMultiUploadField_fileSizeLimit,fileSizeLimit>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_FileUploadField_pasteZone,pasteZone>> -
+<<gui_FileMultiUploadField_permittedExtensions,permittedExtensions>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Listeners of multiUpload::
+<<gui_FileMultiUploadField_FileUploadErrorListener,FileUploadErrorListener>> -
+<<gui_FileMultiUploadField_FileUploadFinishListener,FileUploadFinishListener>> -
+<<gui_FileMultiUploadField_FileUploadStartListener,FileUploadStartListener>> -
+<<gui_FileMultiUploadField_QueueUploadCompleteListener,QueueUploadCompleteListener>>
+
+'''
+

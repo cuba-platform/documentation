@@ -1,0 +1,20 @@
+:sourcesdir: ../../../../../../source
+
+[[scheduled_tasks_cuba_impl]]
+====== Scheduling Implementation Details
+
+* Tasks processing invocation (the `SchedulingAPI.processScheduledTasks()` method) interval is specified in `cuba-spring.xml` and is equal to 1 second by default. It sets the minimal interval between task launches, which should be twice higher, i.e. 2 seconds. Reducing these values is not recommended.
+
+* The current implementation of the scheduler is based on the synchronization using row locks in the database table. This means that under significant load the database may not respond to the scheduler in time and it might be necessary to increase the launch interval (>1 second), thus the minimum period of launching tasks will be increased accordingly.
+
+* If the `Permitted servers` attribute is not specified, singleton tasks are performed only on the master node of the cluster (in case other conditions are met). It should be kept in mind that a standalone server outside the cluster is also considered a master.
+
+* The task will not be launched if its previous execution has not yet finished and the specified `Timeout` has not expired. For singleton tasks in the current implementation, this is achieved using the information in the database; for non-singletons, the execution status table is maintained in the server memory.
+
+* The execution mechanism creates and caches <<userSession,user sessions>> for users, specified in the *User name* attribute of the tasks or in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. The session is available in the execution thread of a launched task through the standard <<userSessionSource,UserSessionSource>> interface.
+
+[WARNING]
+====
+Precise time synchronization of Middleware servers is required for correct execution of singleton tasks!
+====
+

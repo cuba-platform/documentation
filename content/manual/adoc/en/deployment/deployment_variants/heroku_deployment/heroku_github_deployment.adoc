@@ -1,0 +1,165 @@
+:sourcesdir: ../../../../../source
+
+[[heroku_github_deployment]]
+===== Deployment from GitHub to Heroku
+
+This guide is intended for developers who have a CUBA project located on GitHub.
+
+Heroku account::
++
+--
+Create an account on Heroku using the web browser, free account `hobby-dev` is enough. Then login to the account and create new application using *New* button at the top of the page.
+
+Select unique name (or left the field blank to assign automatically) and choose a server location. Now you have an application, for example, `space-sheep-02453`, this is a Heroku application name.
+
+At the first time, you will be redirected to *Deploy* tab. Use *GitHub* deployment method. Follow the screen instructions how to authorize your GitHub account.
+Click *Search* button to list all available Git repositories then connect to desired repo. When your Heroku application is connected to GitHub you are able to activate *Automatic Deploys*. This allows you to redeploy Heroku application automatically on each Git push event. In this tutorial, the option is enabled.
+--
+
+Heroku CLI::
++
+--
+* Install https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI]
+* Open command prompt in any folder of your computer and type:
++
+[source,plain]
+----
+heroku login
+----
++
+* Enter your credentials when prompted. From now on you don't need to enter credentials for this project.
+--
+
+PostgreSQL database::
++
+--
+* Return to web browser with Heroku https://dashboard.heroku.com[dashboard]
+* Go to *Resources* tab
+* Click *Find more add-ons* button to find the database add-on
+* Find *Heroku Postgres* block and click it. Follow the instruction on the screen, click *Login to install* / *Install Heroku Postgres*.
+
+Alternatively, you can install PostgreSQL using Heroku CLI:
+
+[source,plain]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app space-sheep-02453
+----
+where `space-sheep-02453` is your Heroku application name.
+
+Now you can find the new database on the *Resources* tab. The database is connected to the Heroku application. To obtain database credentials go to the *Datasource* page of your Heroku database, scroll down to *Administration* section and click *View credentials* button.
+
+[source,plain]
+----
+Host compute.amazonaws.com
+Database zodt
+User artd
+Port 5432
+Password 367f
+URI postgres://artd:367f@compute.amazonaws.com:5432/zodt
+----
+--
+
+Project deployment settings::
++
+--
+* Navigate to your local CUBA project folder (`$PROJECT_FOLDER`)
+* Copy the content of `modules/core/web/META-INF/context.xml` to `modules/core/web/META-INF/heroku-context.xml`
+* Fill `heroku-context.xml` with your actual database connection details (see example below):
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/heroku-context.xml[]
+----
+--
+
+Build configuration::
++
+--
+Add the following Gradle task to your `$PROJECT_FOLDER/build.gradle`
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/heroku_buildGradle.groovy[]
+----
+--
+
+Procfile::
++
+--
+A command that launches the application on Heroku side is passed by special file `Procfile`. Create a file named `Procfile` in `$PROJECT_FOLDER` with following text:
+
+[source,plain]
+----
+web: cd ./deploy/tomcat/bin && export 'JAVA_OPTS=-Dport.http=$PORT' && ./catalina.sh run
+----
+
+This provides JAVA_OPTS environment setting to Tomcat which starts with the Catalina script.
+--
+
+Premium addons::
++
+--
+If your project uses CUBA Premium Add-ons, set additional variables for the Heroku application.
+
+* Open the Heroku dashboard.
+* Go to the *Settings* tab.
+* Expand the *Config Variables* section clicking the *Reveal Config Vars* button.
+* Add new *Config Vars* using your license key parts (separated by dash) as *username* and *password*:
+
+[source,plain]
+----
+CUBA_PREMIUIM_USER    | username
+CUBA_PREMIUM_PASSWORD | password
+----
+--
+
+Gradle wrapper::
++
+--
+Your project requires Gradle wrapper. You can use CUBA Studio to add it: see the *Build > Create or update Gradle wrapper* main menu command.
+
+* Create the `system.properties` file in `$PROJECT_FOLDER` with the following content (example corresponds to local JDK 1.8.0_121 installed):
++
+[source,plain]
+----
+java.runtime.version=1.8.0_121
+----
++
+* Check that files `Procfile`, `system.properties`, `gradlew`, `gradlew.bat` and `gradle` are not in `.gitignore`
+* Add these files to repository and commit it
+
+[source,plain]
+----
+git add gradlew gradlew.bat gradle/* system.properties Procfile
+git commit -am "Added Gradle wrapper and Procfile"
+----
+--
+
+Application deployment::
++
+--
+Once you commit and push all changes to GitHub, Heroku starts redeploying the application.
+
+[source,plain]
+----
+git push
+----
+
+The building process is available on the dashboard on the *Activity* tab. Click *View build log* link to track the build log.
+
+After building process is completed, your application will become accessible in browser using the `++https://space-sheep-02453.herokuapp.com/++`. You can open the application from Heroku dashboard using the *Open app* button.
+--
+
+Logs monitoring::
++
+--
+Heroku application log is shown by console command:
+
+[source,plain]
+----
+heroku logs --tail --app space-sheep-02453
+----
+
+Tomcat logs are also available in web application: *Menu > Administration > Server Log*
+--
+

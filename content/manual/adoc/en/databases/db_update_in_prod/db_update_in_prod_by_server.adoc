@@ -1,0 +1,38 @@
+:sourcesdir: ../../../../source
+
+[[db_update_in_prod_by_server]]
+==== Execution of Database Scripts by Server
+
+<<db_update_server,The execution of DB scripts by server>> mechanism can be used for both database initialization and its further update during the application development and data schema modification.
+
+The following actions should be completed to initialize a new database:
+
+* Enable the <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property by adding the following line to the <<app_properties_files,local.app.properties>> file of the Middleware block:
++
+[source, properties]
+----
+cuba.automaticDatabaseUpdate = true
+----
++
+For <<fast_deployment,fast deployment>> to Tomcat, this file is located in the `tomcat/conf/app-core` directory. If the file does not exist, create it.
+
+* Create an empty database corresponding to the URL specified in the data source description in <<context.xml,context.xml>>.
+
+* Start the application server containing the Middleware block. At application start, the database will be initialized and ready for work.
+
+After that, each time when the application server starts, a scripts execution mechanism will compare the set of scripts located in the <<db_dir,database scripts directory>> with the list of already executed scripts registered in the database. If new scripts are found, they will be executed and registered as well. Typically it is enough to include the update scripts in each new application version, and the database will be actualized each time when the application server is restarted.
+
+When using the database scripts execution mechanism at server start, the following should be considered:
+
+* If any error occurs when running a script, the Middleware block stops initialization and becomes inoperable. The client blocks generate messages about inability to connect to the Middleware.
++
+Check the app.log file located in <<log_dir,the server's log folder>> for a message about SQL execution from the `com.haulmont.cuba.core.sys.DbUpdaterEngine` logger and, possibly, further error messages to identify the error reasons.
+
+* The update scripts, as well as the DDL and the SQL commands within the scripts separated with `"^"`, are executed in separate transactions. That is why when an update fails there is still a big chance that a part of the scripts or even individual commands of the last script will have been executed and committed to the database.
++
+With this in mind, creating a backup copy of the database immediately before starting the server is highly recommended. Then, when the error reason is fixed, the database can be restored and the automatic process restarted.
++
+If the backup is missing, you should identify which part of the script was executed and committed after the error is fixed. If the entire script failed to execute, the automatic process can be simply restarted. If some of the commands before the erroneous one were separated with the `"^"` character, executed in a separate transaction and committed, then the remaining part of the commands should be run and this script should be registered in *SYS_DB_CHANGELOG* manually. After that, the server can be started and the automatic update mechanism will start processing the next unexecuted script.
++
+CUBA Studio generates update scripts with ";" delimiter for all database types except Oracle. If update script commands are separated by semicolons, the script is executed in one transaction and entirely rolled back in case of failure. This behavior ensures consistency between the database schema and the list of executed update scripts.
+

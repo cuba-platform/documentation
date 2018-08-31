@@ -1,0 +1,62 @@
+:sourcesdir: ../../../../../source
+
+[[cluster_webclient_lb]]
+===== Installing and Setting up a Load Balancer
+
+Let us consider the installation of a load balancer based on *Apache HTTP Server* for *Ubuntu 14.04*.
+
+. Install *Apache HTTP Server* and its *mod_jk* module:
++
+`$ sudo apt-get install apache2 libapache2-mod-jk`
+
+. Replace the contents of the `/etc/libapache2-mod-jk/workers.properties` file with the following:
++
+[source,plain]
+----
+workers.tomcat_home=
+workers.java_home=
+ps=/
+
+worker.list=tomcat1,tomcat2,loadbalancer,jkstatus
+
+worker.tomcat1.port=8009
+worker.tomcat1.host=host1
+worker.tomcat1.type=ajp13
+worker.tomcat1.connection_pool_timeout=600
+worker.tomcat1.lbfactor=1
+
+worker.tomcat2.port=8009
+worker.tomcat2.host=host2
+worker.tomcat2.type=ajp13
+worker.tomcat2.connection_pool_timeout=600
+worker.tomcat2.lbfactor=1
+
+worker.loadbalancer.type=lb
+worker.loadbalancer.balance_workers=tomcat1,tomcat2
+
+worker.jkstatus.type=status
+----
+
+. Add the lines listed below to `/etc/apache2/sites-available/000-default.conf`:
++
+[source, xml]
+----
+<VirtualHost *:80>
+...
+    <Location /jkmanager>
+        JkMount jkstatus
+        Order deny,allow
+        Allow from all
+    </Location>
+
+    JkMount /jkmanager/* jkstatus
+    JkMount /app loadbalancer
+    JkMount /app/* loadbalancer
+
+</VirtualHost>
+----
+
+. Restart the Apache HTTP service:
++
+`$ sudo service apache2 restart`
+

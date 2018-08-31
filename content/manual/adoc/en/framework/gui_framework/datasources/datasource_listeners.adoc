@@ -1,0 +1,49 @@
+:sourcesdir: ../../../../../source
+
+[[datasource_listeners]]
+===== Datasource Listeners
+
+<<datasources,Datasource>> listeners receive notifications of changes in the state of datasources and entities contained in them.
+
+There are four types of listeners. Three of them: `ItemPropertyChangeListener`, `ItemChangeListener` and `StateChangeListener` are defined in the `Datasource` interface and can be used in any datasource. `CollectionChangeListener` is defined in `CollectionDatasource` and can be used only in datasources working with collections of entities.
+
+Compared to <<gui_api_addValueChangeListener,ValueChangeListener>>, datasource listeners give finer control over the screen lifecycle and are recommended to be used with visual components bound to datasources.
+
+Example of using datasource listeners:
+
+[source, java]
+----
+include::{sourcesdir}/gui/datasources_14.java[]
+----
+
+The listener interfaces are described below.
+
+* `ItemPropertyChangeListener` is added by the `Datasource.addItemPropertyChangeListener()` method. The listener is invoked when an attribute of an entity contained in the datasource is changed. The modified entity instance itself, the name of changed attribute, old and new values can be obtained from the event object passed to the listener.
++
+The `ItemPropertyChangeListener` can be used to react to changes made in an entity instance by UI components, i.e. when a user edits input fields.
+
+* `ItemChangeListener` is added by the `Datasource.addItemChangeListener()` method. The listener is invoked when a selected entity instance returned by the `Datasource.getItem()` method is changed.
++
+For `Datasource`, it happens when another instance (or `null`) is set to the datasource with `setItem()` method.
++
+For `CollectionDatasource`, this listener is invoked when a selected element is changed in a linked visual component. For example, it may be a selected table row, tree element or item in a drop-down list.
+
+* `StateChangeListener` is added by the `Datasource.addStateChangeListener()` method. The listener is invoked when a state of the datasource is changed. The datasource can be in one of three states corresponding to the `Datasource.State` enumeration:
++
+--
+** `++NOT_INITIALIZED++` – datasource has just been created.
+
+** `INVALID` – the whole <<dsContext,DsContext>>, which this datasource is related to, is created.
+
+** `VALID` – datasource is ready: `Datasource` contains an entity instance or null, `CollectionDatasource` – collection of instances or an empty collection.
+
+Receiving a notification about changes in datasource state may be important for complex <<screen_edit,editors>>, which consist of several <<frame,frames>> where it is difficult to trace the moment of setting an edited entity into the datasource. In this case, `StateChangeListener` can be used for the delayed initialization of certain screen elements:
+
+[source, java]
+----
+include::{sourcesdir}/gui/datasources_17.java[]
+---- 
+--
+
+* `CollectionChangeListener` is added by the `CollectionDatasource.addCollectionChangeListener()` method. The listener is invoked when a entity collection, which is stored in the datasource, is changed. The event object provides the `getOperation()` method returning value of type `CollectionDatasource.Operation`: `REFRESH`, `CLEAR`, `ADD`, `REMOVE`, `UPDATE`. It indicates the operation that caused the collection changes.
+

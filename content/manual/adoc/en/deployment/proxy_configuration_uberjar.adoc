@@ -1,0 +1,99 @@
+:sourcesdir: ../../../source
+
+[[proxy_configuration_uberjar]]
+=== Proxy Configuration for Uber JAR
+
+This part describes the configuration of Nginx HTTP-server as a proxy for CUBA Uber JAR application.
+
+NGINX::
+--
+For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 16.04.
+
+. Direct Proxy
+. Redirect to Path
+
+For example, your web application works on `++http://localhost:8080/app++`.
+
+[TIP]
+====
+Uber JAR application uses Jetty 9.2 server. It is required to preconfigure Jetty in <<proxy_for_jetty,JAR>> to dispatch Nginx headers by Jetty.
+====
+--
+
+[[proxy_for_jetty]]
+Jetty Setup::
++
+--
+* *Using Internal jetty.xml*
++
+First, create Jetty configuration file `jetty.xml` in the root of your project, copy and paste the following code:
++
+[source,xml]
+----
+include::{sourcesdir}/deployment/jetty.xml[]
+----
++
+Add `webJettyConfPath` property to the task `buildUberJar` in your `build.gradle`:
++
+[source,groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    singleJar = true
+    coreJettyEnvPath = 'modules/core/web/META-INF/jetty-env.xml'
+    appProperties = ['cuba.automaticDatabaseUpdate' : true]
+    webJettyConfPath = 'jetty.xml'
+}
+----
++
+You may use Studio to generate `jetty-env.xml` by following *Project Properties > Deployment Settings > Uber Jar* tab, or use an example below:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/jetty-env.xml[]
+----
++
+Build Uber JAR using the following command:
++
+[source,plain]
+----
+gradlew buildUberJar
+----
++
+Your application will be located in `build/distributions/uberJar`, the default name is `app.jar`.
++
+Run your application:
++
+[source,plain]
+----
+java -jar app.jar
+----
++
+Then install and configure Nginx as described in <<install_nginx,Tomcat section>>.
++
+Depending on your schema, you can access your site via `++http://localhost/app++` or `++http://localhost++` URL.
+
+* *Using External jetty.xml*
++
+Use the same configuration file `jetty.xml` from the project root, as described above. Place it in your home folder and do not modify `buildUberJar` task in `build.gradle`.
++
+Build Uber JAR using the following command:
++
+[source,plain]
+----
+gradlew buildUberJar
+----
++
+Your application will be located in `build/distributions/uberJar` folder, default name is `app.jar`.
++
+First, run the application with a parameter `-jettyConfPath`:
++
+[source,plain]
+----
+java -jar app.jar -jettyConfPath jetty.xml
+----
++
+Then install and configure Nginx as described in <<install_nginx,Tomcat section>>.
++
+Depending on your schema and setings in `jetty.xml` file, you can access your site via `++http://localhost/app++` or `++http://localhost++` URL.
+--
+

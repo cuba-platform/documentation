@@ -1,0 +1,52 @@
+:sourcesdir: ../../../../source
+
+[[polymer_build_and_structure]]
+==== Build System and Project Structure
+The following tools are used in Polymer client build chain:
+
+* https://nodejs.org/en/[Node.js]
+* https://bower.io/[bower]
+* https://github.com/Polymer/polymer-cli[polymer-cli]
+
+By default Gradle handles installation and invocation of these tools. It's possible to use them directly, see <<polymer_tools,Using Native Polymer Tools>>.
+
+Polymer 2.x and its native elements are written using ES6, thus it requires additional build step (ES6 → ES5 https://www.polymer-project.org/2.0/docs/es6[compilation]) in order to support old browsers.
+
+[WARNING]
+====
+The default preset used in Polymer client is `es6-unbundled`. It means that if you are targeting old browsers and production deployment you should change it to `es5-bundled`.
+====
+
+In order to change build preset open `polymer.json` and change `builds` property accordingly e.g.:
+
+[source,json]
+----
+  "builds": [
+    {
+      "preset": "es5-bundled",
+      "basePath": "/app-front/",
+      "addServiceWorker": false
+    }
+  ]
+----
+
+You can specify several presets or customize build process in `polymer.json`. More info about presets and options is available on https://www.polymer-project.org/2.0/toolbox/build-for-production[Polymer website].
+
+In order the results of specific preset build being deployed to Tomcat you need to change `deploy` task in `build.gradle`:
+
+[source,groovy]
+----
+    task deploy(type: Copy, dependsOn: [assemble, deployUnbundled]) {
+        from file('build/es5-unbundled')
+        into "$cuba.tomcat.dir/webapps/$frontAppDir"
+    }
+----
+
+Notice `es6-bundled` → `es5-unbundled` change in `polymer.json` and `build.gradle`.
+
+include::polymer_build_and_structure/polymer_directory_structure.adoc[]
+
+include::polymer_build_and_structure/polymer_hot_deploy.adoc[]
+
+include::polymer_build_and_structure/polymer_tools.adoc[]
+

@@ -1,0 +1,54 @@
+:sourcesdir: ../../../../source
+
+[[db_scripts]]
+==== Scripts to Create and Update the Database
+
+A CUBA-application project always contains two sets of scripts (see also <<db_update_in_dev,>>):
+
+* Scripts to __create__ the database, intended for the creation of the database from scratch. They contain a set of the DDL and DML operators, which create an empty database schema that is fully consistent with the current state of the <<data_model,data model>> of the application. These scripts can also fill the database with the necessary initialization data.
+
+* Scripts to __update__ the database, intended for bringing the database structure to the current state of the data model from any of the previous states.
+
+When changing the data model, it is necessary to reproduce the corresponding change of the database schema in Create and Update scripts. For example, when adding the `address` attribute to the `Customer` entity, it is necessary to:
+
+. Change the table creation script:
++
+[source, sql]
+----
+include::{sourcesdir}/dbms/dbscripts_1.sql[]
+----
+. Add an update script, which modifies the same table:
++
+[source, sql]
+----
+include::{sourcesdir}/dbms/dbscripts_2.sql[]
+----
++
+[TIP]
+====
+Please note that Studio update scripts generator does not track changes of attributes' *Column definition* and custom <<datatype,datatype>>'s `sqlType`. So if you changed them, create appropriate update scripts manually.
+====
+
+The create scripts are located in the `/db/init` directory of the *core* module. For each type of DBMS supported by the application, a separate set of scripts is created and located in the subdirectory specified in <<cuba.dbmsType,cuba.dbmsType>> application property, for example `/db/init/postgres`. Create scripts names should have the following format `++{optional_prefix}create-db.sql++`.
+
+The update scripts are located in the `/db/update` directory of the *core* module. For each type of DBMS supported by the application, a separate set of scripts is created and located in the subdirectory specified in <<cuba.dbmsType,cuba.dbmsType>> application property, for example, `/db/update/postgres`.
+
+The update scripts can be of two types: with the `++*.sql++` or `++*.groovy++` extension. The primary way to update the database is with SQL scripts. Groovy scripts are only executed by <<db_update_server,the server mechanism to launch database scripts>>, therefore they are mainly used at the production stage, in cases when migration or import of the data that cannot be implemented in pure SQL. If you want to skip Groovy update scripts, you can run the following in command line:
+
+[source, sql]
+----
+delete from sys_db_changelog where script_name like '%groovy' and create_ts > (now() - interval '1 hour')
+----
+
+The update scripts should have names, which form the correct sequence of their execution when sorted in the alphabetical order (usually, it is a chronological sequence of their creation). Therefore, when creating such scripts manually, it is recommended to specify the name of the update scripts in the following format: `{yymmdd}-{description}.sql`, where `yy` is a year, `mm` is a month, `dd` is a day, and `description` is a short description of the script. For example, `121003-addCodeToCategoryAttribute.sql`. Studio also adheres to this format when generating scripts automatically.
+
+In order to be executed by the `updateDb` task, the groovy scripts should have `.upgrade.groovy` extension and the same naming logic. Post update actions are not allowed in that scripts, while the same `ds` (access to datasource) and `log` (access to logging) <<db_scripts_groovy,variables>> are used for the data binding. The execution of groovy scripts can be disabled by setting `executeGroovy = false` in the `updateDb` task of `build.gradle`.
+
+It is possible to group update scripts into subdirectories, however, the path to the script with the subdirectory should not break the chronological sequence. For example, subdirectories can be created by using year, or by year and month.
+
+In a deployed application, the scripts to create and update the database are located in a special <<db_dir,database script directory>>, that is set by the <<cuba.dbDir,cuba.dbDir>> application property.
+
+include::db_scripts/db_scripts_sql.adoc[]
+
+include::db_scripts/db_scripts_groovy.adoc[]
+

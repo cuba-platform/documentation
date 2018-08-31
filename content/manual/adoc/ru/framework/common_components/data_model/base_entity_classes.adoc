@@ -1,0 +1,122 @@
+:sourcesdir: ../../../../../source
+
+[[base_entity_classes]]
+===== Базовые классы сущностей
+
+Рассмотрим базовые классы и интерфейсы сущностей более подробно.
+
+[[entity_base_classes]]
+image::EntityClasses.png[align="center"]
+
+* `Instance` – декларирует базовые методы работы с объектами предметной области:
+
+** Получение ссылки на мета-класс объекта.
+
+** Генерация имени экземпляра.
+
+** Чтение/установка значений атрибутов по имени.
+
+** Добавление слушателей, получающих уведомления об изменениях атрибутов.
+
+* `Entity` – дополняет `Instance` понятием идентификатора сущности, причем `Entity` не определяет тип идентификатора, оставляя эту возможность наследникам.
+
+* `AbstractInstance` – реализует логику работы со слушателями изменения атрибутов.
++
+[WARNING]
+====
+`AbstractInstance` хранит слушателей в коллекции `WeakReference`, т.е. при отсутствии внешних ссылок на добавленного слушателя, он будет немедленно уничтожен сборщиком мусора. Как правило, слушателями изменения атрибутов являются <<gui_vcl,визуальные компоненты>> и <<datasources,источники данных>> UI, на которые всегда имеются ссылки из других объектов, поэтому проблема исчезновения слушателей не возникает. Однако если слушатель создается прикладным кодом и на него никто не ссылается естественным образом, необходимо кроме добавления в `Instance` сохранить его в некотором поле объекта.
+====
+
+* `BaseGenericIdEntity` - базовый класс персистентных и неперсистентных сущностей. Реализует `Entity`, но не специфицирует тип идентификатора (то есть первичного ключа) сущности.
+
+* `EmbeddableEntity` - базовый класс персистентных встраиваемых сущностей.
+
+Ниже рассмотрены базовые классы, от которых рекомендуется наследовать сущности. Неперсистентные сущности наследуются от тех же классов, что и персистентные. Фреймворк определяет, является ли сущность персистентной или нет по файлу, в котором зарегистрирован класс: <<persistence.xml>> или <<metadata.xml>>.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/StandardEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+StandardEntity::
+Наследуйте от `StandardEntity`, если необходим стандартный набор свойств сущности: первичный ключ типа UUID, экземпляры должны содержать информацию о том, кто и когда создал и изменил их, необходима оптимистичная блокировка и мягкое удаление.
++
+--
+image::EntityClasses_Standard.png[align="center"]
+
+* `HasUuid` – интерфейс сущностей имеющих глобальные уникальные идентификаторы
+
+* `Versioned` – интерфейс сущностей, поддерживающих <<optimistic_locking,оптимистичную блокировку>>
+
+* `Creatable` – интерфейс сущностей, для которых требуется сохранять информацию о том, кто и когда ее создал
+
+* `Updatable` – интерфейс сущностей, для которых требуется сохранять информацию о том, кто и когда изменял экземпляр в последний раз
+
+* `SoftDelete` – интерфейс сущностей, поддерживающих <<soft_deletion,мягкое удаление>>
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseUuidEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseUuidEntity::
+Наследуйте от `BaseUuidEntity`, если необходима сущность с идентификатором типа UUID, но не нужны все остальные свойства `StandardEntity`. Интерфейсы `Creatable`, `Versioned` и др. можно выборочно реализовать в конкретном классе сущности.
++
+image::EntityClasses_Uuid.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseLongIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseLongIdEntity::
+Наследуйте от `BaseLongIdEntity` или `BaseIntegerIdEntity`, если необходима сущность с идентификатором типа `Long` или `Integer`. Интерфейсы `Creatable`, `Versioned` и др. можно выборочно реализовать в конкретном классе сущности. Рекомендуется реализовать `HasUuid`, так как это позволяет платформе в некоторых случаях работать с сущностью более оптимально, а кроме того, сущность получает уникальный идентификатор в распределенном окружении.
++
+image::EntityClasses_Long.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseStringIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseStringIdEntity::
+Наследуйте от `BaseStringIdEntity`, если необходима сущность с идентификатором типа `String`. Интерфейсы `Creatable`, `Versioned` и др. можно выборочно реализовать в конкретном классе сущности. Рекомендуется реализовать `HasUuid`, так как это позволяет платформе в некоторых случаях работать с сущностью более оптимально, а кроме того, сущность получает уникальный идентификатор в распределенном окружении. В конкретном классе сущности, унаследованной от `BaseStringIdEntity`, необходимо задать атрибут-идентификатор типа `String` и добавить ему <<jpa,JPA>>-аннотацию `@Id`.
++
+image::EntityClasses_String.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseIdentityIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseIdentityIdEntity::
+Наследуйте от `BaseIdentityIdEntity`, если необходимо отобразить сущность на таблицу с первичным ключом типа IDENTITY. Интерфейсы `Creatable`, `Versioned` и др. можно выборочно реализовать в конкретном классе сущности. Рекомендуется реализовать `HasUuid`, так как это позволяет платформе в некоторых случаях работать с сущностью более оптимально, а кроме того, сущность получает уникальный идентификатор в распределенном окружении. Атрибут `id` сущности (т.е. методы getId/setId) будут иметь тип `IdProxy`, который предназначен для использования вместо реального идентификатора, пока он не сгенерирован базой данных на вставке записи.
++
+image::EntityClasses_Identity.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseIntIdentityIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseIntIdentityIdEntity::
+Наследуйте от `BaseIntIdentityIdEntity`, если необходимо отобразить сущность на таблицу с целочисленным первичным ключом типа IDENTITY (в отличие от `Long` в `BaseIdentityIdEntity`). В остальных отношениях `BaseIntIdentityIdEntity` повторяет `BaseIdentityIdEntity`.
++
+image::EntityClasses_IntIdentity.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseGenericIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseGenericIdEntity::
+Наследуйте напрямую от `BaseGenericIdEntity`, если необходимо отобразить сущность на таблицу с композитным первичным ключом. В этом случае в классе сущности необходимо создать поле встраиваемого типа, представляющего композитный ключ, и аннотировать его <<jpa,JPA>>-аннотацией `@EmbeddedId`.
+

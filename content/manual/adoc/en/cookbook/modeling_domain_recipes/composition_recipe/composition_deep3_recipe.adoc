@@ -1,0 +1,36 @@
+:sourcesdir: ../../../../../source
+
+[[composition_deep3_recipe]]
+===== One-to-Many: Three Levels of Nesting
+
+Suppose that you need an additional entity that contains some details of the meeting point: *Note*. So the whole structure looks as follows: *Airport > Terminal > Meeting Point > Note*.
+
+image::cookbook/composition_recipe_4.png[align="center"]
+
+CUBA can handle compositions with up to 2 levels of nesting. Here we have 3 levels, so we should limit the depth either from the top or from the bottom. Below we consider two different approaches (from the user experience perspective) of excluding the airport from the composition. Both of them solve the same problem: as now terminals are saved to the database independently from the airport, you cannot save a terminal for a newly created airport which is not saved to the database yet.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+* In the first approach, the airport browser and editor look the same as above, but the editor has additional *Save* button to save a new airport without closing the screen. A user cannot create terminals until the new airport is saved.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_2/airport/airport-edit.xml[airport-edit.xml] contains a standalone datasource for terminals instead of the nested one. This standalone datasource is linked to the airport datasource and thus loads terminals for the edited airport. Besides, airport editor contains `extendedEditWindowActions` frame which allows a user to save airport without closing the screen.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_2/airport/AirportEdit.java[AirportEdit.java] - here in the `postInit()` method of the airport editor, we manage the enabled state of the terminal's *Create* action and pass the current airport instance to initialize the airport attribute of a created terminal.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+* In the second approach, we have split the airport browser into two panels: one for the list of airports and another for the dependent list of terminals. That is the list of terminals is now outside of the airport editor. The terminal's *Create* action is disabled until an airport is selected.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_3/airport-browse.xml[airport-browse.xml] contains a standalone datasource for the list of terminals. It is linked to the airports datasource and thus loads terminals for a selected airport.
+
+** {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_3/AirportBrowse.java[AirportBrowse.java] - here in the `init()` method of the airport browse controller, we manage the enabled state of the terminal's *Create* action and pass the currently selected airport instance to initialize the airport attribute of a created terminal.
+
+

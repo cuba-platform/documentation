@@ -1,0 +1,101 @@
+:sourcesdir: ../../../../../source
+
+[[events]]
+===== Events
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/global/Events.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`Events` bean encapsulates the application-scope event publication functionality. Application events can be used to exchange information between loosely coupled components. `Events` bean is a simple facade for `ApplicationEventPublisher` of the Spring Framework.
+
+[source, java]
+----
+include::{sourcesdir}/common/events.java[]
+----
+
+It has only one method `publish()` that receives an event object. `Events.publish()` notifies all matching listeners registered with this application of an application event. You can use `PayloadApplicationEvent` to publish any object as an event.
+
+See also https://spring.io/blog/2015/02/11/better-application-events-in-spring-framework-4-2[Spring Framework tutorial].
+
+[[bean_events]]
+Event handling in beans::
++
+--
+
+First of all, we have to create a new event class. It should extend the `ApplicationEvent` class. An event class can contain any additional data. For instance:
+[source, java]
+----
+include::{sourcesdir}/common/events_DemoEvent.java[]
+----
+
+Beans can publish an event using the `Events` bean:
+[source, java]
+----
+include::{sourcesdir}/common/events_DemoBean.java[]
+----
+
+By default, all events are handled synchronously.
+
+There are two ways to handle events:
+
+- Implement the `ApplicationListener` interface.
+- Use the `@EventListener` annotation for a method.
+
+In the first case, we have to create a bean that implements `ApplicationListener` with the type of our event:
+[source, java]
+----
+include::{sourcesdir}/common/events_DemoEventListener.java[]
+----
+
+The second way can be used to hide implementation details and listen for multiple events in a single bean:
+[source, java]
+----
+include::{sourcesdir}/common/events_MultipleEventListener.java[]
+----
+
+[WARNING]
+====
+Methods with `@EventListener` annotation do not work for JMX beans. If you use this approach you will see the following error on application start:
+----
+BeanInitializationException: Failed to process @EventListener annotation on bean. Need to invoke method declared on target class, but not found in any interface(s) of the exposed proxy type. Either pull the method up to an interface or switch to CGLIB proxies by enforcing proxy-target-class mode in your configuration.
+----
+Implement `ApplicationListener` interface instead.
+====
+
+You can use Spring Framework `Ordered` interface and `@Order` annotation for event handlers ordering. All the platform beans and event handlers use `order` value between 100 and 1000, thus you can add your custom handling before or after the platform code. If you want to add your bean or event handler before platform beans - use a value lower than 100.
+
+See also <<login_events,Login Events>>.
+--
+
+[[ui_events]]
+Event handling in UI screens::
++
+--
+Usually, `Events` delegates event publishing to the `ApplicationContext`. On the web tier, you can use a special interface for event classes - `UiEvent`. It is a marker interface for events that are sent to UIs screens in the current UI instance (the current web browser tab). Please note that `UiEvent` instances are not sent to Spring beans.
+
+Sample event class:
+[source, java]
+----
+include::{sourcesdir}/common/events_UserRemovedEvent.java[]
+----
+
+It can be fired using `Events` bean from a window controller the same way as from a bean:
+[source, java]
+----
+include::{sourcesdir}/common/events_publish.java[]
+----
+
+In order to handle an event you have to define methods in UI screens with a special annotation `@EventListener` (`ApplicationListener` interface is not supported):
+[source, java]
+----
+include::{sourcesdir}/common/events_EventListener.java[]
+----
+
+You can use `@Order` annotation for event listener ordering.
+
+If an event is `UiEvent` and fired using the `Events` bean from UI thread then opened windows and/or frames with such methods will receive the event. Event handling is synchronous. Only UI screens of the current web browser tab opened by the user receive the event.
+--
+

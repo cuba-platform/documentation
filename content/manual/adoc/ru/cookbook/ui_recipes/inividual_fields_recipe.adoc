@@ -1,0 +1,83 @@
+:sourcesdir: ../../../../source
+
+[[inividual_fields_recipe]]
+==== Использование независимых полей вместо FieldGroup
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Использование компонента <<gui_FieldGroup,FieldGroup>> в <<screen_edit,редакторе>> сущности не является обязательным. Мы можете легко заменить `FieldGroup` на отдельные поля, чтобы кастомизировать стандартную разметку экрана.
+
+Ниже приведён пример такого экрана для редактирования сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order].
+
+XML-дескриптор экрана https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/order-edit-2.xml[order-edit.xml] содержит основной источник данных `orderDs` и вложенный в него `orderLinesDs` для строк заказа, а также независимый источник данных `customersDs`, чтобы загружать список покупателей для выбора из выпадающего списка `lookupField`:
+
+[source, xml]
+----
+<dsContext>
+    <datasource id="orderDs"
+                class="com.company.sample.entity.Order"
+                view="order-edit">
+        <collectionDatasource id="orderLinesDs"
+                              property="orderLines"/>
+    </datasource>
+    <collectionDatasource id="customersDs"
+                          class="com.company.sample.entity.Customer"
+                          view="_minimal">
+        <query>
+            <![CDATA[select e from sample$Customer e]]>
+        </query>
+    </collectionDatasource>
+</dsContext>
+----
+
+Теперь достаточно создать поля для всех атрибутов сущности `Order`, указать для каждого поля соответствующий источник данных и нужный атрибут сущности, используя XML-атрибут <<gui_attr_property,property>>:
+
+* поле номера заказа:
++
+[source, xml]
+----
+<textField id="numField"
+           caption="msg://order.num"
+           datasource="orderDs"
+           property="num"/>
+----
+
+* поле выбора покупателя:
++
+[source, xml]
+----
+<lookupField id="customerField"
+             caption="msg://order.customer"
+             datasource="orderDs"
+             property="customer"
+             optionsDatasource="customersDs"/>
+----
+
+* выбор даты заказа:
++
+[source, xml]
+----
+<datePicker id="datePicker"
+            caption="msg://order.date"
+            datasource="orderDs"
+            property="date"/>
+----
+
+* таблица строк заказа:
++
+[source, xml]
+----
+<table id="orderLinesTable"
+       height="300px"
+       width="100%">
+    <rows datasource="orderLinesDs"/>
+    . . .
+</table>
+----
+
+Такой подход к созданию экранов предоставляет большую гибкость в использовании визуальных компонентов и их расположении на экране.
+

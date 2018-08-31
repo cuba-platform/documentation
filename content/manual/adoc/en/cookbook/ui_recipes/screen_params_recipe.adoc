@@ -1,0 +1,88 @@
+:sourcesdir: ../../../../source
+
+[[screen_params_recipe]]
+==== Passing Parameters to a Screen
+
+Passing parameters from one screen to another is one of the most common tasks in UI development. Let’s consider this task taking an "order management" application as an example.
+
+[[screen_params_recipe_open]]
+Opening screen with openWindow::
++
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Parameters can be passed by providing them in a map to `openWindow()`, `openLookup()` or `openEditor()` methods. They will be available in the opened screen as a map in the <<abstractFrame_init,init()>> method and individually if you inject them with the <<screen_controller_injection_params,@WindowParam>> annotation.
+
+Suppose we want to filter the products in the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product] browser passing some parameters from the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order] editor.
+
+* https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] screen contains the `addOrderLine()` method which is invoked by `addOrderLine` action. The method <<abstractFrame_openWindow,opens>> a products lookup screen passing two parameters to it:
++
+** the currently selected customer,
++
+** the list of already added products.
++
+After a user selects a product, the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/QuantityDialog.java[QuantityDialog] screen is opened for entering product quantity. When the user closes it, a new instance of https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/OrderLine.java[OrderLine] entity is created and added to the table.
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params.java[]
+----
+
+* https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/product/ProductBrowse.java[ProductBrowse] screen modifies its <<datasource_query_params,datasource query>> depending on passed customer. If a customer is provided, the table shows only products for this customer and those without reference to a customer. The parameters are injected in the screen controller using the <<screen_controller_injection_params,@WindowParam>> annotation:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_2.java[]
+----
++
+When the product browser is opened for looking up items to be used as order lines, it also creates and applies programmatically a filter to show only products not yet added to the order.
++
+[TIP]
+====
+<<gui_Filter,Filters>> should be added in the <<abstractWindow_ready,ready()>> method, as at the moment of the <<abstractFrame_init,init()>> method invocation filters are not yet initialized.
+====
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_3.java[]
+----
++
+The contents of the `FilterEntity.xml` attribute can be taken from a filter created at runtime: go to *Entity Inspector*, find the created filter which is stored as an instance of the `sec$Filter` entity and copy its XML.
+--
+
+[[screen_params_recipe_picker]]
+Opening screen from a PickerField::
++
+--
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Product.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+The <<gui_PickerField,PickerField>> component and its ancestors can also pass parameters to opened screens. The parameters should be defined for the `PickerField` <<picker_actions,actions>>: `LookupAction` or `OpenAction`.
+
+Suppose we want to customize the caption of the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer] browser if it is opened from a `PickerField` in the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product] editor.
+
+ * In the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/product/ProductEdit.java[ProductEdit] screen we set the parameters for the `PickerField` <<lookupAction,LookupAction>> using its `setLookupScreenParams()` method:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_6.java[]
+----
+
+* Then, we inject the passed parameter in the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/customer/CustomerBrowse.java[CustomerBrowse] screen:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_7.java[]
+----
+
+Now, if the customer browser is opened from the product editor, we will know exactly which product it was.
+--
+

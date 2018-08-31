@@ -1,0 +1,82 @@
+:sourcesdir: ../../../../../source
+
+[[datatype]]
+===== Datatype
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/datatypes/Datatype.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Интерфейс `Datatype` определяет методы конвертации значение в строку и из строки (formatting & parsing). Каждый атрибут сущности, не являющийся ссылкой, имеет некоторый `Datatype`, который и используется фреймворком для конвертации значений данного атрибута.
+
+Экземпляры `Datatype` регистрируются в бине `DatatypeRegistry`, который выполняет загрузку и инициализацию классов реализации `Datatype` из файлов <<metadata.xml,metadata.xml>> <<app_components,компонентов приложения>> и самого проекта.
+
+`Datatype` атрибута сущности может быть получен из соответствующего <<metaProperty,meta-property>> методом `getRange().asDatatype()`.
+
+Кроме конвертации значений атрибутов сущностей, зарегистрированные экземпляры `Datatype` могут быть использованы для преобразования в строку и из строки произвольных значений поддерживаемых типов. Для этого необходимо получить экземпляр `Datatype` из `DatatypeRegistry` с помощью его методов `get(Class)` или `getNN(Class)`, передавая тип Java, который необходимо конвертировать.
+
+`Datatype` сопоставляется атрибуту сущности по следующим правилам:
+
+* Как правило, атрибуту сопоставляется экземпляр `Datatype`, зарегистрированный в `DatatypeRegistry` и предназначенный для конвертации типа атрибута.
++
+Например, в данном случае атрибут `amount` получит `BigDecimalDatatype`:
++
+[source, java]
+----
+@Column(name = "AMOUNT")
+private BigDecimal amount;
+----
++
+потому что в `cuba-metadata.xml` есть следующий элемент:
++
+[source, xml]
+----
+<datatype id="decimal" class="com.haulmont.chile.core.datatypes.impl.BigDecimalDatatype"
+          default="true"
+          format="0.####" decimalSeparator="." groupingSeparator=""/>
+----
+
+* Для поля или метода можно задать аннотацию <<metaProperty_annotation,@MetaProperty>>, указав в ней атрибут `datatype`.
++
+Например, атрибут `issueYear` получит тип `YearDatatype`:
++
+[source, java]
+----
+@MetaProperty(datatype = "year")
+@Column(name = "ISSUE_YEAR")
+private Integer issueYear;
+----
++
+если файл `metadata.xml` проекта содержит следующий элемент:
++
+[source, xml]
+----
+<datatype id="year" class="com.company.sample.YearDatatype"/>
+----
++
+Как видно, атрибут `datatype` аннотации `@MetaProperty` указывает на идентификатор, который использован при регистрации класса имплементации `Datatype` в файле `metadata.xml`.
+
+Основные методы интерфейса `Datatype`:
+
+* `format()` - преобразовывает переданное значение в строку
+
+* `parse()` - преобразовывает строку в значение нужного типа 
+
+* `getJavaClass()` – возвращает тип Java, для конвертации которого создан данный `Datatype`. Этот метод имеет реализацию по умолчанию, которая считывает значение аннотации `@JavaClass`, если она присутствует на классе.
+
+`Datatype` определяет два набора методов для форматирования/парсинга: с учетом локали и без учета локали. Преобразование с учетом локали используется повсеместно в пользовательском интерфейсе, преобразование без учета локали используется в системных механизмах, например, для сериализации в <<rest_api_v2,REST API>>.
+
+Форматы для преобразований без учета локали задаются в коде имплементации или в файле `metadata.xml`.
+
+В следующем разделе описано, как задать форматы преобразований с учетом локали.
+
+include::datatype/datatype_format_strings.adoc[]
+
+include::datatype/datatype_custom_example.adoc[]
+
+include::datatype/datatype_ui_format.adoc[]
+
+include::datatype/datatype_date_number_format.adoc[]
+

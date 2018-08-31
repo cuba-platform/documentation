@@ -1,0 +1,59 @@
+:sourcesdir: ../../../../source
+
+[[images_recipe]]
+==== Loading and Displaying Images
+
+Let's consider a task of loading, storing and displaying employee photos:
+
+* An employee is represented by `Employee` entity.
+
+* Image files are stored in the <<file_storage,FileStorage>>. The `Employee` entity contains a link to the corresponding `FileDescriptor`.
+
+* The `Employee` edit screen shows the picture and also supports uploading, downloading and clearing the picture.
+
+Entity class with a link to the image file:
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/images_1.java[]
+----
+
+A <<views,view>> for loading an `Employee` together with `FileDescriptor` should include all local attributes of `FileDescriptor`:
+
+[source, xml]
+----
+include::{sourcesdir}/cookbook/images_2.xml[]
+----
+
+A fragment of the `Employee` edit screen XML descriptor:
+
+[source, xml]
+----
+include::{sourcesdir}/cookbook/images_3.xml[]
+----
+
+Components used to display, upload and download images are contained within the <<gui_GroupBoxLayout,groupBox>> container. Its top part shows a picture using the <<gui_Image,image>> component, while its bottom part from left to right contains the <<gui_FileUploadField,upload>> component and <<gui_Button,buttons>> to download and clear the image. As a result, this part of the screen should look like this:
+
+image::images_recipe.png[align="center"]
+
+Now, let us have a look at the <<abstractEditor,edit screen controller>>.
+
+[source, java]
+----
+include::{sourcesdir}/cookbook/images.java[]
+----
+
+* The `init()` method first initializes the `uploadField` component that is used for uploading new images. In the case of a successful upload, a new `FileDescriptor` instance is retrieved from the component and the corresponding files are sent from the temporary client storage to `FileStorage` by invoking `FileUploadingAPI.putFileIntoStorage()`. After that, the `FileDescriptor` is saved to the database by invoking  <<dataSupplier,DataSupplier.commit()>>, and the saved instance is assigned to the `imageFile` attribute of the edited `Employee` entity. Then, the controller's `displayImage()` method is invoked to display the uploaded image.
++
+After that, a listener is added in the `init()` method to the datasource containing an `Employee` instance. The listener enables or disables download and clear buttons, depending on the fact whether the file has been loaded or not.
+
+* `postInit()` method performs file display and refreshes the button states, depending on the existence of a loaded file.
+
+* `onDownloadImageBtnClick()` is invoked when the `downloadImageBtn` button is clicked; it downloads the file using the <<file_download,ExportDisplay>> interface.
+
+* `onClearImageBtnClick()` is invoked when the `clearImageBtn` is clicked; it clears the `imageFile` attribute of the `Employee` entity. The file is not deleted from storage.
+
+* `displayImage()` loads the file from storage and sets the content of the `image` component.
+
+include::images_recipe/images_in_table.adoc[]
+

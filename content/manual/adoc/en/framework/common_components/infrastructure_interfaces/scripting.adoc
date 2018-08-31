@@ -1,0 +1,79 @@
+:sourcesdir: ../../../../../source
+
+[[scripting]]
+===== Scripting
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/global/Scripting.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`Scripting` interface is used to compile and load Java and Groovy classes dynamically (i.e. at runtime) as well as to execute Groovy scripts and expressions.
+
+`Scripting` methods: 
+
+* `evaluateGroovy()` – executes the Groovy expression and returns its result.
++
+<<cuba.groovyEvaluatorImport,cuba.groovyEvaluatorImport>> application property is used to define the common set of the imported classes inserted into each executed expression. By default, all standard application blocks import <<persistenceHelper,PersistenceHelper>> class.
++
+The compiled expressions are cached, and this considerably speeds up repeated execution. 
++
+Example:
++
+[source, java]
+----
+include::{sourcesdir}/common/scripting_1.java[]
+----
+
+[[scripting.runGroovyScript]]
+* `runGroovyScript()` – executes Groovy script and returns its result.
++
+The script should be located either in application <<conf_dir,configuration folder>> or in classpath (the current `Scripting` implementation supports classpath resources within JAR files only). A script in the configuration folder overrides the script in classpath with the same name.
++
+The path to the script is constructed using separators `/`. The separator is not required in the beginning of the path. 
++
+Example:
++
+[source, java]
+----
+include::{sourcesdir}/common/scripting_2.java[]
+----
+
+* `loadClass()` – loads Java or Groovy class using the following steps:
++
+--
+. If the class is already loaded, it will be returned.
+
+. The Groovy source code (file `*.groovy`) is searched in the configuration folder. If it is found, it will be compiled and the class will be returned.
+
+. The Java source code (file `*.java`) is searched in the configuration folder. If it is found, it will be compiled and the class will be returned.
+
+. The compiled class is searched in classpath. If it is found, it will be loaded and returned.
+
+. If nothing is found, `null` will be returned.
+--
++
+--
+The files in configuration folder containing Java and Groovy source code can be modified at runtime. On the next `loadClass()` call the corresponding class will be recompiled and the new one will be returned, with the following restrictions:
+
+* The type of the source code must not be changed from Groovy to Java;
+
+* If Groovy source code was once compiled, the deletion of the source code file will not lead to loading of another class from classpath. Instead of this, the class compiled from the removed source code will still be returned.
+--
++
+--
+Example:
+
+[source, java]
+----
+include::{sourcesdir}/common/scripting_3.java[]
+----
+--
+
+* `getClassLoader()` – returns `ClassLoader`, which is able to work according to the rules for `loadClass()` method described above.
+
+Cache of the compiled classes can be cleaned at runtime using <<cachingFacadeMBean,CachingFacadeMBean>> JMX bean.
+
+See also <<scriptingManagerMBean>>.
+

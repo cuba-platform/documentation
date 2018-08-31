@@ -1,0 +1,497 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_Table]]
+====== Table
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-table" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/Table.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+The `Table` component presents information in a table view, sorts data, manages table columns and headers and invokes actions for selected rows.
+
+image::gui_table.png[align="center"]
+
+XML-name of the component: `table`
+
+The component is implemented for both *Web Client* and *Desktop Client*. 
+
+An example of component definition in an XML-descriptor of a screen: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/table_1.xml[]
+---- 
+
+In the example the `dsContext` element defines <<datasources,collectionDatasource>>, which selects `Order` entities using <<jpql,JPQL>> query. The `rows` element defines the data source, while `columns` element defines which entity attributes are used as table columns.
+
+`table` elements:
+
+[[gui_Table_rows]]
+* `rows` – a required element; its `datasource` attribute defines the <<datasources,data source>> to be used by the table.
++
+Each row can have an icon in an additional column on the left. Create an implementation of the `ListComponent.IconProvider` interface in the screen controller and set it for the table:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableIconProvider_1.java[]
+----
+
+[[gui_Table_columns]]
+* `columns` – a required element defining the set of columns for a table.
++
+Each column is described in a nested `column` element with the following attributes:
++
+--
+[[gui_Table_column_id]]
+** `id` − a mandatory attribute, contains the name of an entity attribute displayed in the column. Can be either an attribute of the entity from the data source or a linked entity – object graph traversal is indicated with a dot. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableId_1.xml[]
+---- 
+
+[[gui_Table_column_caption]]
+** `caption` − an optional attribute containing the column caption. If not specified, a <<entity_localization,localized attribute name>> will be displayed.
+
+[[gui_Table_column_collapsed]]
+** `collapsed` − an optional attribute; hides the column by default when set to `true`. Users can control column's visibility using the menu available via a image:gui_table_columnControl.png[] button in the top right part of the table when the table's `columnControlVisible` attribute is not `false`. By default, `collapsed` is `false`.
+
+[[gui_Table_column_width]]
+** `width` − an optional attribute controlling default column width. May contain only numeric values in pixels.
+
+[[gui_Table_column_align]]
+** `align` − an optional attribute that sets text alignment of column cells. Possible values: `LEFT`, `RIGHT`, `CENTER`. Default is `LEFT`.
+
+[[gui_Table_column_editable]]
+** `editable` − an optional attribute allowing editing of the corresponding column in the table. In order for a column to be editable, the <<gui_Table_editable,editable>> attribute of the entire table should be set to `true` as well. Changing this property at runtime is not supported.
+
+[[gui_Table_column_sortable]]
+** `sortable` − an optional attribute to disable sorting of the column. Takes effect if the whole table has <<gui_Table_sortable,sortable>> attribute set to `true` (which is by default).
+
+[[gui_Table_column_maxTextLength]]
+** `maxTextLength` – an optional attribute allowing to limit the number of characters in a cell. If the difference between the actual and the maximum allowed number of characters does not exceed the 10 character threshold, the "extra" characters remain unhidden. To see the entire record, users need to click on its visible part. An example of a column with a 5 character limitation:
++
+image::gui_table_column_maxTextLength.png[align="center"]
+
+[[gui_Table_column_link]]
+** `link` - if set to `true`, enables displaying a link to an entity editor in a table column (supported for *Web Client* only). The `link` attribute may be set to true for primitive type columns, too; in this case, the main entity editor will be opened. This approach may be used to simplify navigation: the users will be able to open entity editors simply by clicking on some key attributes.
+
+[[gui_Table_column_linkScreen]]
+** `linkScreen` - contains the identifier of the screen that is opened by clicking the link enabled in the `link` attribute.
+
+[[gui_Table_column_linkScreenOpenType]]
+** `linkScreenOpenType` - sets the screen opening mode (`++THIS_TAB++`, `++NEW_TAB++` or `DIALOG`).
+
+[[gui_Table_column_linkInvoke]]
+** `linkInvoke` - invokes the controller method instead of opening the screen.
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_4.java[]
+----
+
+[[gui_Table_column_captionProperty]]
+** `captionProperty` - the name of an entity attribute which should be shown in the column instead of specified by <<gui_Table_column_id,id>>. For example, if you have a reference to the `Priority` entity with the `name` and `orderNo` attributes, you can define the following column:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableColumnCaptionProperty_1.xml[]
+----
++
+In this case, the column will display the priority name, but the sorting of the column will be done by the priority order.
+
+[[gui_Table_column_generator]]
+** an optional `generator` attribute contains the link to a method in the screen controller that creates a visual component to be shown in table cells:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/table_generator.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_generator.java[]
+----
++
+It can be used instead of providing an implementation of `Table.ColumnGenerator` to the <<gui_Table_addGeneratedColumn,addGeneratedColumn()>> method.
+
+** `column` element may contain a nested <<gui_formatter,formatter>> element that allows you to represent the attribute value in a format different from the standard for this <<datatype,Datatype>>:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableFormatter_1.xml[]
+----
+--
+
+[[gui_Table_rowsCount]]
+* `rowsCount` − an optional element adding the `RowsCount` component for the table; this component enables loading the table data in pages. Page size can be defined by limiting the number of records in the data source using `CollectionDatasource.setMaxResults()` method. Typically, this is performed by a <<gui_Filter,Filter>> component linked to the table's data source. However, if there is no generic filter, this method can be called directly from the screen controller.
++
+`RowsCount` component can also show the total number of records returned by the current query from the datasource without extracting the records themselves. It invokes `AbstractCollectionDatasource.getCount()` when user clicks the *?* icon, which results in performing a database query with the same conditions as the current query, but using a `++COUNT(*)++` aggregate function instead. The number retrieved is displayed instead of the *?* icon.
+
+[[gui_Table_actions]]
+* `actions` − an optional element describing the <<gui_Action,actions>>, related to the table. In addition to custom arbitrary actions, the element supports the following <<standard_actions,standard actions>>, defined in `ListActionType` enum: `create`, `edit`, `remove`, `refresh`, `add`, `exclude`, `excel`.
+
+[[gui_Table_buttonsPanel]]
+* `buttonsPanel` – an optional element, which adds a <<gui_ButtonsPanel,ButtonsPanel>> container to show action buttons above the table.
+
+`table` attributes:
+
+[[gui_Table_multiselect]]
+* `multiselect` attribute enables setting multiple selection mode for table rows. If `multiselect` is `true`, users can select multiple rows in the table using keyboard or mouse holding *Ctrl* or *Shift* keys. By default, multiple selection mode is switched off.
+
+[[gui_Table_sortable]]
+* `sortable` attribute enables sorting data in the table. By default, it is set to `true`. If sorting is allowed, clicking a column header will show a image:gui_sortable_down.png[]/image:gui_sortable_up.png[] icon to the right of the column name. You can disable sorting for a particular column by using its <<gui_Table_column_sortable, sortable>> attribute.
++
+Table sorting can be performed differently depending on whether all the records can be placed on one page or not. If they can, sorting is performed in memory without database queries. If there is more than one page, sorting is performed in the database by sending a new query with the corresponding `ORDER BY` condition.
++
+A table column may refer to a local attribute or a linked entity. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableSortable_1.xml[]
+----
++
+In the latter case, the database sorting will be performed by attributes defined in the `@NamePattern` annotation of the related entity. If the entity has no such annotation, the sorting will be performed in memory only within the current page.
++
+If the column refers to a non-persistent entity attribute, the database sorting will be performed by attributes defined in the `related()` parameter of the `@MetaProperty` annotation. If no related attributes are specified, the sorting will be performed in memory only within the current page.
++
+If the table is connected to a nested <<datasources,datasource>> that contains a collection of related entities, the collection attribute must be of ordered type (`List` or `LinkedHashSet`) for table to be sortable. If the attribute is of type `Set`, the `sortable` attribute has no effect and the table cannot be sorted by users.
+
+[[gui_Table_presentations]]
+* `presentations` attribute controls the mechanism of <<gui_presentations,presentations>>. By default, the value is `false`. If the attribute value is `true`, a corresponding icon is added to the top right corner of the table image:gui_presentation.png[]. The mechanism of presentations is implemented for the *Web Client* only.
+
+[[gui_Table_columnControlVisible]]
+* If the `columnControlVisible` attribute is set to `false`, users cannot hide columns using the drop-down menu of the image:gui_table_columnControl.png[] button in the right part of the table header. Currently displayed columns are marked with checkmarks in the menu.
+
+image::gui_table_columnControl_all.png[align="center"]
+
+[[gui_Table_reorderingAllowed]]
+* If the `reorderingAllowed` attribute is set to `false`, users cannot change columns order by dragging them with a mouse.
+
+[[gui_Table_columnHeaderVisible]]
+* If the `columnHeaderVisible` attribute is set to `false`, the table has no header.
+
+[[gui_Table_showSelection]]
+* If the `showSelection` attribute is set to `false`, a current row is not highlighted.
+
+[[gui_Table_allowPopupMenu]]
+* `contextMenuEnabled` attribute enables the context menu. By default this attribute is set to `true`. The context menu shows table actions (if any) and the *System Information* item containing information on the selected entity (if the user has `cuba.gui.showInfo` <<permissions,permission>>).
+
+[[gui_Table_multiLineCells]]
+* Setting `multiLineCells` to `true` enables multi-line display for cells containing several lines of text. In this mode, the web browser will load all the rows of the current table page at once, instead of lazy-loading the visible part of the table. It is required for proper scrolling in the Web Client. The default value is `false`.
+
+[[gui_Table_aggregatable]]
+* `aggregatable` attribute enables aggregation for table rows. The following operations are supported: 
++
+--
+
+** `SUM` – calculate the sum
+
+** `AVG` – find the average value
+
+** `COUNT` – calculate the total number
+
+** `MIN` – find the minimum value
+
+** `MAX` – find the maximum value 
+
+[[gui_Table_column_aggregation]]
+The `aggregation` element should be set for aggregated table columns with the `type` attribute, which sets the aggregation function. By default, only numeric data types are supported in aggregated columns, such as `Integer, Double, Long` and `BigDecimal`. The aggregated table values are shown in an additional row at the top of the table. An example of an aggregated table description:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableAggregatable_1.xml[]
+---- 
+
+[[gui_Table_column_aggregation_strategyClass]]
+The `aggregation` element can also contain the `strategyClass` attribute specifying a class implementing the `AggregationStrategy` interface (see below the example of setting an aggregation strategy programmatically).
+
+A <<gui_formatter,Formatter>> can be specified to display the aggregated value in the format other than the standard for this <<datatype,Datatype>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableAggregatable_2.xml[]
+---- 
+
+[[gui_Table_aggregationStyle]]
+The `aggregationStyle` attribute allows you to specify the location of the aggregation row: `TOP` or `BOTTOM`. `TOP` is used by default.
+
+In addition to the operations listed above, you can define a custom aggregation strategy by implementing the `AggregationStrategy` interface and passing it to the `setAggregation()` method of the `Table.Column` class inside the `AggregationInfo` instance. For example: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableAggregationStrategy_1.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableAggregationStrategy_2.java[]
+---- 
+--
+
+[[gui_Table_editable]]
+* `editable` attribute enables switching the table to in-place editing mode. In this mode, the columns with `editable = true` attribute show components to edit the attributes of the corresponding entity.
++
+The component type for each editable column is selected automatically based on the type of the corresponding entity attribute. For example, for string and numeric attributes, the application will use <<gui_TextField,TextField>>, for `Date` – <<gui_DateField,DateField>>, for lists – <<gui_LookupField,LookupField>>, for links to other entities – <<gui_PickerField,PickerField>>. 
++
+For a `Date` type editable column, you can additionally define `dateFormat` or `resolution` attributes similar to the ones described for the <<gui_DateField,DateField>>.
++
+<<gui_attr_optionsDatasource,optionsDatasource>> and <<gui_attr_captionProperty,captionProperty>> attributes can be additionally defined for an editable column showing a linked entity. If `optionsDatasource` is set, the application will use <<gui_LookupField,LookupField>> instead of <<gui_PickerField,PickerField>>.
++
+Custom configuration (including editing) of a cell can be performed using `Table.addGeneratedColumn()` method – see below.
+
+[[gui_Table_stylename]]
+* In Web Client with a Halo-based theme, `stylename` attribute enables setting predefined styles to the `Table` component either in the XML descriptor or in the screen controller:
++
+--
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/table_2.xml[]
+----
+
+When setting a style programmatically, select one of the `HaloTheme` class constants with the `TABLE_` prefix:
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_3.java[]
+----
+
+Table styles:
+
+[[gui_table_borderless]]
+* `borderless` - removes the outer border of the table.
+
+[[gui_table_compact]]
+* `compact` - reduces the white space inside the table cells.
+
+[[gui_table_no-header]]
+* `no-header` - hides the table column headers.
+
+[[gui_table_no-horizontal-lines]]
+* `no-horizontal-lines` - removes the horizontal divider lines between the table rows.
+
+[[gui_table_no-stripes]]
+* `no-stripes` - removes the alternating row colors.
+
+[[gui_table_no-vertical-lines]]
+* `no-vertical-lines` - removes the vertical divider lines between the table columns.
+
+[[gui_table_small]]
+* `small` - small font size and reduced the white space inside the table cells.
+--
+
+Methods of the `Table` interface:
+
+[[gui_Table_ColumnCollapseListener]]
+* `addColumnCollapsedListener`() method is useful for tracking the columns visibility with the help of the `ColumnCollapsedListener` interface implementation.
+
+[[gui_Table_getSelected]]
+* `getSelected()`, `getSingleSelected()` return instances of the entities corresponding to the selected rows of the table. A collection can be obtained by invoking `getSelected()`. If nothing is selected, the application returns an empty set. If `multiselect` is disabled, it is more convenient to use `getSingleSelected()` method returning one selected entity or `null`, if nothing is selected.
+
+[[gui_Table_addGeneratedColumn]]
+* `addGeneratedColumn()` method allows you to define custom representation of data in a column. It takes two parameters: identifier of the column and an implementation of the `Table.ColumnGenerator` interface. Identifier can match one of the identifiers set for table columns in XML-descriptor – in this case the new column is inserted instead of the one defined in XML. If the identifier does not match any of the columns, a new column is added to the right.
++
+[[gui_Table_generateCell]]
+`generateCell()` method of the `Table.ColumnGenerator` interface is invoked for each row of the table. The method receives an instance of the entity displayed in the corresponding row. `generateCell()` method should return a visual component which will be displayed in the cell. 
++
+Example of using the component: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableColumnGenerator_1.java[]
+---- 
++
+In the example above, all cells within the `colour` column in the table show the <<gui_LookupPickerField,LookupPickerField>> component. The component should save its value into the `colour` attribute of the entity which instance is displayed in the corresponding row. For this purpose `getItemDatasource()` method is used to get the datasource for the current entity instance from the table and pass it to the `LookupPickerField` component.
++
+If you want to display just dynamic text, use special class `Table.PlainTextCell` instead of the <<gui_Label,Label>> component. It will simplify rendering and make the table faster.
++
+If `addGeneratedColumn()` method receives the identifier of a column which is not declared in XML-descriptor, the header for the new column to be set as follows: 
++
+[source, java]
+----
+carsTable.getColumn("colour").setCaption("Colour");
+----
++
+Consider also using a more declarative approach with the <<gui_Table_column_generator,generator>> XML attribute.
+
+[[gui_Table_requestFocus]]
+* `requestFocus()` method allows you to set focus on the concrete editable field of a certain row. It takes two parameters: an entity instance which identifies the row and the column identifier. Example of requesting a focus:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_requestFocus_1.java[]
+----
+
+[[gui_Table_scrollTo]]
+* `scrollTo()` method allows you to scroll table to the concrete row. It takes one parameter: an entity instance identifying the row.
++
+Example of scrolling:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_scrollTo_1.java[]
+----
+
+[[gui_Table_CellClickListener]]
+* `setClickListener()` method can save you from adding generated columns with components when you need to draw something in cells and receive notifications when a user clicks inside these cells. The `CellClickListener` implementation passed to this method receives the selected entity and the column identifier. The cells content will be wrapped in span element with `cuba-table-clickable-cell` style which can be used to specify the cell representation.
+
+[[gui_Table_setStyleProvider]]
+*  `setStyleProvider()` method enables setting table cell display style. The method accepts an implementation of `Table.StyleProvider` interface as a parameter. `getStyleName()` method of this interface is invoked by the table for each row and each cell separately. If the method is invoked for a row, the first parameter contains the entity instance displayed by the row, the second parameter is `null`. If the method is called for a cell, the second parameter contains the name of the attribute displayed by the cell.
++
+Example of setting a style:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_setStyleProvider_1.java[]
+----
++
+Then the cell and row styles set in the application theme should be defined. Detailed information on creating a theme is available in <<gui_themes>>. For web client, new styles are defined in the `styles.scss` file. Style names defined in the controller, together with prefixes identifying table row and column form CSS selectors. For example:
++
+[source, css]
+----
+include::{sourcesdir}/gui_vcl/table_setStyleProvider_2.css[]
+---- 
+
+[[gui_Table_addPrintable]]
+* `addPrintable()` method enables setting a custom presentation of the data within a column when exporting to an XLS file via the `excel` <<standard_actions,standard action>> or directly using the `ExcelExporter` class. The method accepts the column identifier and an implementation of the `Table.Printable` interface for the column. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_addPrintable_1.java[]
+---- 
++
+`getValue()` method of the `Table.Printable` interface should return data to be displayed in the table cell. This is not necessarily a string – the method may return values of other types, for example, numeric data or dates, which will be represented in the XLS file accordingly. 
++
+If formatted output to XLS is required for a generated column, an implementation of the `Table.PrintableColumnGenerator` interface passed to the `addGeneratedColumn()` method should be used. The value for a cell in an XLS document is defined in the `getValue()` method of this interface: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_addPrintable_2.java[]
+---- 
++
+If `Printable` presentation is not defined for a generated column in one way or another, then the column will either show the value of corresponding entity attribute or nothing if there is no associated entity attribute.
+
+[[gui_Table_setItemClickAction]]
+
+* The `setItemClickAction()` method allows you to define an <<gui_Action,action>> that will be performed when a table row is double-clicked. If such action is not defined, the table will attempt to find an appropriate one in the list of its actions in the following order: 
+
+** The action assigned to the Enter key by the `shortcut` property
+
+** The `edit` action
+
+** The `view` action
++
+If such action is found, and has `enabled = true` property, the action is executed.
+
+[[gui_Table_setEnterPressAction]]
+* The `setEnterPressAction()` allows you to define an <<gui_Action,action>> executed when Enter is pressed. If such action is not defined, the table will attempt to find an appropriate one in the list of its actions in the following order: 
++
+--
+** The action defined by the `setItemClickAction()` method
+
+** The action assigned to the Enter key by the `shortcut` property
+
+** The `edit` action
+
+** The `view` action
+
+If such action is found, and has `enabled = true` property, the action is executed.
+--
+
+'''
+
+Attributes of table::
+<<gui_attr_align,align>> -
+<<gui_Table_aggregatable,aggregatable>> -
+<<gui_Table_aggregationStyle,aggregationStyle>> -
+<<gui_Table_columnControlVisible,columnControlVisible>> -
+<<gui_Table_columnHeaderVisible,columnHeaderVisible>> -
+<<gui_Table_allowPopupMenu,contextMenuEnabled>> -
+<<gui_Table_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_id,id>> -
+<<gui_Table_multiLineCells,multiLineCells>> -
+<<gui_Table_multiselect,multiselect>> -
+<<gui_Table_presentations,presentations>> -
+<<gui_Table_reorderingAllowed,reorderingAllowed>> -
+<<gui_attr_settingsEnabled,settingsEnabled>> -
+<<gui_Table_showSelection,showSelection>> -
+<<gui_Table_sortable,sortable>> -
+<<gui_Table_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_attr_textSelectionEnabled,textSelectionEnabled>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Elements of table::
+<<gui_Table_actions,actions>> -
+<<gui_Table_buttonsPanel,buttonsPanel>> -
+<<gui_Table_columns,columns>> -
+<<gui_Table_rows,rows>> -
+<<gui_Table_rowsCount,rowsCount>>
+
+Attributes of <<gui_Table_columns,column>>::
+<<gui_Table_column_align,align>> -
+<<gui_Table_column_caption,caption>> -
+<<gui_Table_column_captionProperty,captionProperty>> -
+<<gui_Table_column_collapsed,collapsed>> -
+<<gui_DateField_dateFormat,dateFormat>> -
+<<gui_Table_column_editable,editable>> -
+<<gui_Table_column_generator,generator>> -
+<<gui_Table_column_id,id>> -
+<<gui_Table_column_link,link>> -
+<<gui_Table_column_linkInvoke,linkInvoke>> -
+<<gui_Table_column_linkScreen,linkScreen>> -
+<<gui_Table_column_linkScreenOpenType,linkScreenOpenType>> -
+<<gui_Table_column_maxTextLength,maxTextLength>> -
+<<gui_attr_optionsDatasource,optionsDatasource>> -
+<<gui_DateField_resolution,resolution>> -
+<<gui_Table_column_sortable,sortable>> -
+<<gui_attr_visible,visible>> -
+<<gui_Table_column_width,width>>
+
+Elements of <<gui_Table_columns,column>>::
+<<gui_Table_column_aggregation,aggregation>> -
+<<gui_formatter,formatter>>
+
+Attributes of <<gui_Table_column_aggregation,aggregation>>::
+<<gui_Table_column_aggregation,type>> -
+<<gui_Table_column_aggregation_strategyClass,strategyClass>>
+
+Attributes of <<gui_Table_rows,rows>>::
+<<gui_attr_datasource,datasource>>
+
+Predefined styles of table::
+<<gui_table_borderless,borderless>> -
+<<gui_table_compact,compact>> -
+<<gui_table_no-header,no-header>> -
+<<gui_table_no-horizontal-lines,no-horizontal-lines>> -
+<<gui_table_no-stripes,no-stripes>> -
+<<gui_table_no-vertical-lines,no-vertical-lines>> -
+<<gui_table_small,small>>
+
+API::
+<<gui_Table_addGeneratedColumn,addGeneratedColumn>> -
+<<gui_Table_addPrintable,addPrintable>> -
+<<gui_Table_ColumnCollapseListener,addColumnCollapseListener>> -
+<<gui_api_settings,applySettings>> -
+<<gui_Table_generateCell,generateCell>> -
+<<gui_Table_getSelected,getSelected>> -
+<<gui_Table_requestFocus,requestFocus>> -
+<<gui_api_settings,saveSettings>> -
+<<gui_Table_scrollTo,scrollTo>> -
+<<gui_Table_CellClickListener,setClickListener>> -
+<<gui_Table_setEnterPressAction,setEnterPressAction>> -
+<<gui_Table_setItemClickAction,setItemClickAction>> -
+<<gui_Table_setStyleProvider,setStyleProvider>>
+
+'''
+

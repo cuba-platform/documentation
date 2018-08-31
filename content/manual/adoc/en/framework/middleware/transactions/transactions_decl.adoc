@@ -1,0 +1,31 @@
+:sourcesdir: ../../../../../source
+
+[[transactions_decl]]
+===== Declarative Transaction Management
+
+Any method of the Middleware <<managed_beans,managed bean>> may be annotated with `@org.springframework.transaction.annotation.Transactional`, which will automatically create a transaction when the method is called. Such method does not require invoking `Persistence.createTransaction()`, you can immediately get `EntityManager` and work with it.
+
+`@Transactional` annotation supports a number of parameters, including:
+
+* `propagation` - transaction creation mode. The `REQUIRED` value corresponds to `getTransaction()`, the `REQUIRES_NEW` value – to `createTransaction()`. The default value is `REQUIRED`.
++
+[source, java]
+----
+@Transactional(propagation = Propagation.REQUIRES_NEW)
+public void doSomething() {
+}
+----
+
+* `value` - <<data_store,data store>> name. If omitted, the main data store is assumed. For example:
++
+[source, java]
+----
+@Transactional("db1")
+public void doSomething() {
+}
+----
+
+Declarative transaction management allows you to reduce the amount of https://en.wikipedia.org/wiki/Boilerplate_code[boilerplate code], but it has the following drawback: transactions are committed outside of the application code, which often complicates debugging because it conceals the moment when changes are sent to the database and the entities become <<entity_states,Detached>>. Additionally, keep in mind that declarative markup will only work if the method is called by the container, i.e. calling a transaction method from another method of the same object will not start a transaction.
+
+With this in mind, we recommend using declarative transaction management only for simple cases like a <<services,service>> method reading a certain object and returning it to the client. 
+

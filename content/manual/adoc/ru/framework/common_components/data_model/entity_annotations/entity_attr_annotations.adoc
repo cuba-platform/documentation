@@ -1,0 +1,669 @@
+:sourcesdir: ../../../../../../source
+
+[[entity_attr_annotations]]
+====== Аннотации атрибутов
+
+Аннотации атрибутов устанавливаются на соответствующие поля класса, за одним исключением: если требуется объявить неизменяемый (read only) неперсистентный атрибут `foo`, то достаточно создать метод доступа `getFoo()` и поместить на этот метод аннотацию `@MetaProperty`.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/CaseConversion.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[caseconversion_annotation]]
+@CaseConversion::
++
+--
+Применяет автоматическую конвертацию регистра к текстовым полям ввода, связанным с аннотированным атрибутом.
+
+Параметры:
+
+* `type` - тип конвертации: `UPPER` (по умолчанию), `LOWER`.
+
+Пример:
+
+[source, java]
+----
+@CaseConversion(type = ConversionType.UPPER)
+@Column(name = "COUNTRY_CODE")
+protected String countryCode;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Column.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[column_annotation]]
+@Column::
++
+--
+Определяет колонку БД, в которой будут храниться значения данного атрибута.
+
+Параметры:
+
+* `name` - имя колонки
+
+* `length` - (необязательный параметр, по умолчанию `255`) - длина колонки. Используется также при формировании <<metadata_framework,метаданных>> и, в конечном счете, может ограничивать максимальную длину вводимого текста в визуальных компонентах, работающих с данным атрибутом. Для отмены ограничения по длине атрибуту необходимо добавить аннотацию <<lob_annotation,@Lob>>.
+
+* `nullable` - (необязательный параметр, по умолчанию `true`) - может ли атрибут содержать `null`. При указании `nullable = false` <<jpa,JPA>> контролирует наличие значения поля при сохранении, кроме того, визуальные компоненты, работающие с данным атрибутом, могут сигнализировать пользователю о необходимости ввода значения.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/annotations/Composition.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[composition_annotation]]
+@Composition::
++
+--
+Указывает на то, что связь является композицией - более тесным вариантом ассоциации. Это означает, что связанная сущность имеет смысл только как часть владеющей сущности, т.е. создается и удаляется вместе с ней.
+
+Например, список пунктов в заказе (класс `Order` содержит коллекцию экземпляров `Item`):
+
+[source, java]
+----
+@OneToMany(mappedBy = "order")
+@Composition
+protected List<Item> items;
+----
+
+Другой пример - one-to-one отношение:
+
+[source, java]
+----
+@Composition
+@OneToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "DETAILS_ID")
+protected CustomerDetails details;
+----
+
+Указание для связи аннотации `@Composition` позволяет организовать в <<screen_edit,экранах редактирования>> специальный режим коммита источников данных, при котором изменения экземпляров детализирующей сущности сохраняются в базе данных только при коммите основной сущности. Подробнее см. <<composition_recipe,>>.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Embedded.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[embedded_annotation]]
+@Embedded::
++
+--
+Определяет атрибут типа встраиваемой сущности, в свою очередь аннотированной `@Embeddable`.
+
+Пример:
+
+[source, java]
+----
+@Embedded
+protected Address address;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/EmbeddedParameters.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[embeddedParameters_annotation]]
+@EmbeddedParameters::
++
+--
+По умолчанию <<orm,ORM>> не создает экземпляр встроенной сущности если все ее атрибуты равны null в базе данных. Аннотацию `@EmbeddedParameters` можно использовать для указания того, что экземпляр всегда должен создаваться, например:
+
+[source, java]
+----
+@Embedded
+@EmbeddedParameters(nullAllowed = false)
+protected Address address;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Id.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[id_annotation]]
+@Id::
++
+--
+Указывает, что данный атрибут является первичным ключом сущности. Обычно эта аннотация присутствует на поле базового класса, такого как <<base_entity_classes,BaseUuidEntity>>. Использовать эту аннотацию в конкретном классе сущности необходимо только при наследовании от базового класса `BaseStringIdEntity` (то есть при создании сущности со строковым первичным ключом).
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/IgnoreUserTimeZone.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[ignoreUserTimeZone]]
+@IgnoreUserTimeZone::
++
+--
+Для атрибутов типа timestamp с аннотацией `@javax.persistence.Temporal.TIMESTAMP` заставляет платформу игнорировать <<timeZone,часовой пояс>> пользователя, если он задан для текущей сессии.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/JoinColumn.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[joinColumn_annotation]]
+@JoinColumn::
++
+--
+Используется для указания колонки БД, определяющей ассоциацию между сущностями. Наличие этой аннотации указывает, что данная сторона отношения является владеющей (owning).
+
+Параметры:
+
+* `name` - имя колонки
+
+Пример:
+
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/JoinTable.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[joinTable_annotation]]
+@JoinTable::
++
+--
+Используется для указания таблицы связи на ведущей стороне `@ManyToMany` ассоциации.
+
+Параметры:
+
+* `name` - имя таблицы связи
+
+* `joinColumns` - элемент `@JoinColumn`, определяющий колонку таблицы связей, соответствующую первичному ключу ведущей стороны ассоциации (т.е. содержащей аннотацию `@JoinTable`)
+
+* `inverseJoinColumns` - элемент `@JoinColumn`, определяющий колонку таблицы связей, соответствующую первичному ключу ведомой стороны ассоциации
+
+Пример атрибута `customers` класса `Group`, являющегося ведущей стороной ассоциации:
+
+[source, java]
+----
+@ManyToMany
+@JoinTable(name = "SALES_CUSTOMER_GROUP_LINK",
+  joinColumns = @JoinColumn(name = "GROUP_ID"),
+  inverseJoinColumns = @JoinColumn(name = "CUSTOMER_ID"))
+protected Set<Customer> customers;
+----
+
+Пример атрибута `groups` класса `Customer`, являющегося ведомой стороной этой же ассоциации:
+
+[source, java]
+----
+@ManyToMany(mappedBy = "customers")
+protected Set<Group> groups;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Lob.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[lob_annotation]]
+@Lob::
++
+--
+Указывает, что данный атрибут не имеет ограничений длины. Применяется совместно с аннотацией `@Column`. Если `@Lob` указан, то длина, заданная в `@Column` явно или по умолчанию, игнорируется.
+
+Пример:
+
+[source, java]
+----
+@Column(name = "DESCRIPTION")
+@Lob
+private String description;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/LocalizedValue.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[localizedValue_annotation]]
+@LocalizedValue::
++
+--
+Служит для описания способа получения локализованного значения некоторого изменяющегося атрибута, которое возвращает метод <<messageTools,MessageTools>>.`getLocValue()`.
+
+Параметры:
+
+* `messagePack` - явное указание пакета, из которого будет взято локализованное сообщение, например, `com.haulmont.cuba.core.entity`
+
+* `messagePackExpr` - выражение в терминах пути к атрибуту, хранящему имя пакета, из которого будет взято локализованное сообщение, например `proc.messagesPack`. Путь начинается с атрибута текущей сущности.
+
+Пример аннотации, означающей, что локализованное значение атрибута `state` будет взято из пакета, имя которого хранится в атрибуте `messagesPack` связанной сущности `proc`:
+
+[source, java]
+----
+@Column(name = "STATE")
+@LocalizedValue(messagePackExpr = "proc.messagesPack")
+protected String state;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "PROC_ID")
+protected Proc proc;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/Lookup.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[lookup_annotation]]
+@Lookup::
++
+--
+Определяет тип просмотра ссылочных атрибутов.
+
+Параметры:
+
+* `type` - по умолчанию имеет значение `SCREEN`, при котором ссылки открываются через <<screen_lookup,lookup-экран>>. Значение `DROPDOWN` позволяет открывать ссылки в виде выпадающего списка. Если за способ отображения выбран `DROPDOWN`, Studio создаст <<datasources,options datasource>> для выпадающего списка при скаффолдинге экрана редактирования. Таким образом, параметр Lookup type необходимо задать ДО генерации экрана редактирования сущности. Кроме того, компонент <<gui_Filter,Filter>> позволит пользователям выбирать параметры фильтрации также из выпадающего списка вместо lookup-экрана.
+
+* `actions` - определяет действия, которые будут использованы в компоненте `PickerField` в составе `FieldGroup` по умолчанию. Возможные значения: `lookup`, `clear`, `open`.
+
+[source, java]
+----
+@Lookup(type = LookupType.DROPDOWN, actions = {"open"})
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToMany.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[manyToMany_annotation]]
+@ManyToMany::
++
+--
+Определяет атрибут-коллекцию ссылок на сущность с типом ассоциации много-ко-многим.
+
+Ассоциация много-ко-многим может иметь ведущую сторону и обратную - ведомую. На ведущей стороне указывается дополнительная аннотация `@JoinTable`, на ведомой стороне - параметр `mappedBy`.
+
+Параметры:
+
+* `mappedBy` - поле связанной сущности, определяющее ассоциацию с ведущей стороны. Необходимо указывать только на ведомой стороне.
+
+* `targetEntity` - тип связанной сущности. Необязательный параметр, если коллекция объявлена с использованием *Java generics*.
+
+* `fetch` - (необязательный параметр, по умолчанию `LAZY`) - определяет, будет ли <<jpa,JPA>> <<eager_fetching,жадно>> загружать коллекцию связанных сущностей. Необходимо всегда оставлять значение по умолчанию `LAZY`, так как в CUBA-приложении политика загрузки связей определяется динамически на основе механизма <<views,представлений>>.
+
+[WARNING]
+====
+Использование параметра `cascade` аннотации не рекомендуется. Сущности, сохраняемые неявно при использовании такого объявления, будут пропущены некоторыми системными механизмами. В частности, бин <<entityStates,EntityStates>> некорректно определяет для них состояние managed, а <<entity_listeners, entity listeners>> не вызываются вообще.
+====
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/ManyToOne.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[manyToOne_annotation]]
+@ManyToOne::
++
+--
+Определяет атрибут-ссылку на сущность с типом ассоциации много-к-одному.
+
+Параметры:
+
+* `fetch` - (по умолчанию `EAGER`) параметр, определяющий, будет ли <<jpa,JPA>> <<eager_fetching,жадно>> загружать ассоциированную сущность. Данный параметр всегда должен быть установлен в значение `LAZY`, так как в CUBA-приложении политика загрузки связей определяется динамически на основе механизма <<views,представлений>>.
+
+* `optional` - (необязательный параметр, по умолчанию `true`) - может ли атрибут содержать `null`. При указании `optional = false` <<jpa,JPA>> контролирует наличие ссылки при сохранении, кроме того, визуальные компоненты, работающие с данным атрибутом, могут сигнализировать пользователю о необходимости ввода значения.
+
+Например, несколько экземпляров `Order` (заказов) ссылаются на один экземпляр `Customer` (покупателя), в этом случае класс `Order` должен содержать следующее объявление:
+
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+protected Customer customer;
+----
+
+[WARNING]
+====
+Использование параметра `cascade` аннотации не рекомендуется. Сущности, сохраняемые неявно при использовании такого объявления, будут пропущены некоторыми системными механизмами. В частности, бин <<entityStates,EntityStates>> некорректно определяет для них состояние managed, а <<entity_listeners, entity listeners>> не вызываются вообще.
+====
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/annotations/MetaProperty.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[metaProperty_annotation]]
+@MetaProperty::
++
+--
+Указывает, что данный атрибут должен быть включен в <<metadata_framework,метаданные>>. Данная аннотация может быть установлена как на поле класса, так и на метод доступа, в случае отсутствия соответствующего атрибуту поля.
+
+Данная аннотация не обязательна для полей, снабженных следующими аннотациями пакета `javax.persistence`: `@Column`, `@OneToOne`, `@OneToMany`, `@ManyToOne`, `@ManyToMany`, `@Embedded`. Такие поля отражаются в метаданных автоматически. Поэтому `@MetaProperty` в основном применяется для определения неперсистентных атрибутов сущностей.
+
+Параметры (опционально):
+
+* `mandatory` - может ли атрибут содержать `null`. При указании `mandatory = true` визуальные компоненты, работающие с данным атрибутом, могут сигнализировать пользователю о необходимости ввода значения.
+
+* `datatype` - явно задает <<datatype,datatype>>, чтобы переопределить datatype задаваемый Java-типом атрибута.
+
+* `related` - задает массив связанных персистентных атрибутов, которые должны быть загружены из БД, если данный атрибут включен во <<views,view>>.
+
+Пример использования для поля:
+
+[source, java]
+----
+@Transient
+@MetaProperty
+protected String token;
+----
+
+Пример использования для метода:
+
+[source, java]
+----
+@MetaProperty
+public String getLocValue() {
+  if (!StringUtils.isBlank(messagesPack)) {
+      return AppBeans.get(Messsages.class).getMessage(messagesPack, value);
+  } else {
+      return value;
+  }
+}
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/annotations/NumberFormat.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[numberFormat_annotation]]
+@NumberFormat::
++
+--
+Задает формат атрибута типа `Number` (это может быть `BigDecimal`, `Integer`, `Long` или `Double`). Значения такого атрибута будут форматироваться в пользовательском интерфейсе в соответствии с указанными параметрами аннотации:
+
+* `pattern` - паттерн форматирования, задается по правилам, описанным в https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html[DecimalFormat].
+
+* `decimalSeparator` - символ, используемый в качестве разделителя целой и дробной части (опционально).
+
+* `groupingSeparator` - символ, используемый в качестве разделителя групп разрядов (optional).
+
+Если `decimalSeparator` и/или `groupingSeparator` не указаны, фреймворк использует соответствующие значения из format strings для локали текущего пользователя. При форматировании без учета локали в этом случае используются символы из системной локали сервера.
+
+Примеры:
+
+[source, java]
+----
+@Column(name = "PRECISE_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "0.0000")
+protected BigDecimal preciseNumber;
+
+@Column(name = "WEIRD_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#,##0.0000", decimalSeparator = "_", groupingSeparator = "`")
+protected BigDecimal weirdNumber;
+
+@Column(name = "SIMPLE_NUMBER")
+@NumberFormat(pattern = "#")
+protected Integer simpleNumber;
+
+@Column(name = "PERCENT_NUMBER", precision = 19, scale = 4)
+@NumberFormat(pattern = "#%")
+protected BigDecimal percentNumber;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/OnDelete.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[onDelete_annotation]]
+@OnDelete::
++
+--
+Определяет политику обработки связи в случае мягкого удаления сущности, содержащей данный атрибут. См. <<soft_deletion,Мягкое удаление>>.
+
+Пример:
+
+[source, java]
+----
+@OneToMany(mappedBy = "group")
+@OnDelete(DeletePolicy.CASCADE)
+private Set<Constraint> constraints;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/annotation/OnDeleteInverse.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[onDeleteInverse_annotation]]
+@OnDeleteInverse::
++
+--
+Определяет политику обработки связи в случае мягкого удаления сущности с обратной стороны ассоциации. См. <<soft_deletion,Мягкое удаление>>.
+
+Пример:
+
+[source, java]
+----
+@ManyToOne
+@JoinColumn(name = "DRIVER_ID")
+@OnDeleteInverse(DeletePolicy.DENY)
+private Driver driver;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/OneToMany.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[oneToMany_annotation]]
+@OneToMany::
++
+--
+Определяет атрибут-коллекцию ссылок на сущность с типом ассоциации один-ко-многим.
+
+Параметры:
+
+* `mappedBy` - поле связанной сущности, определяющее ассоциацию
+
+* `targetEntity` - тип связанной сущности. Необязательный параметр, если коллекция объявлена с использованием *Java generics*.
+
+* `fetch` - (необязательный параметр, по умолчанию `LAZY`) - определяет, будет ли <<jpa,JPA>> <<eager_fetching,жадно>> загружать коллекцию связанных сущностей. Необходимо всегда оставлять значение по умолчанию `LAZY`, так как в CUBA-приложении политика загрузки связей определяется динамически на основе механизма <<views,представлений>>.
+
+* `cascade` - (необязательный параметр, по умолчанию `{}`) - каскадирование операций определяет, какие операции над сущностью должны быть применены к ассоциированным сущностям. Каскадирование на данном уровне не рекомендуется использовать.
+
+Например, несколько экземпляров `Item` (пунктов заказа) ссылаются на один экземпляр `Order` (заказ) с помощью `@ManyToOne` поля `Item.order`, в этом случае класс `Order` может содержать коллекцию экземпляров `Item`:
+
+[source, java]
+----
+@OneToMany(mappedBy = "order")
+protected Set<Item> items;
+----
+
+[WARNING]
+====
+Использование параметра `cascade` аннотации не рекомендуется. Сущности, сохраняемые неявно при использовании такого объявления, будут пропущены некоторыми системными механизмами. В частности, бин <<entityStates,EntityStates>> некорректно определяет для них состояние managed, а <<entity_listeners, entity listeners>> не вызываются вообще. Параметр `orphanRemoval` не принимает во внимание механизм <<soft_deletion, мягкого удаления>>.
+====
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/OneToOne.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[oneToOne_annotation]]
+@OneToOne::
++
+--
+Определяет атрибут-ссылку на сущность с типом ассоциации один-к-одному.
+
+Параметры:
+
+* `fetch` - (по умолчанию `EAGER`) параметр, определяющий, будет ли <<jpa,JPA>> <<eager_fetching,жадно>> загружать ассоциированную сущность. Данный параметр всегда должен быть установлен в значение `LAZY`, так как в CUBA-приложении политика загрузки связей определяется динамически на основе механизма <<views,представлений>>.
+
+* `mappedBy` - поле связанной сущности, определяющее ассоциацию. Требуется устанавливать только на ведомой стороне ассоциации.
+
+* `optional` - (необязательный параметр, по умолчанию `true`) - может ли атрибут содержать `null`. При указании `optional = false` <<jpa,JPA>> контролирует наличие ссылки при сохранении, кроме того, визуальные компоненты, работающих с данным атрибутом, могут сигнализировать пользователю о необходимости ввода значения.
+
+Пример ведущей стороны ассоциации, класс `Driver`:
+
+[source, java]
+----
+@OneToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CALLSIGN_ID")
+protected DriverCallsign callsign;
+----
+
+Пример ведомой стороны ассоциации, класс `DriverCallsign`:
+
+[source, java]
+----
+@OneToOne(fetch = FetchType.LAZY, mappedBy = "callsign")
+protected Driver driver;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/OrderBy.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[orderBy_annotation]]
+@OrderBy::
++
+--
+Определяет порядок элементов в атрибуте-коллекции на момент извлечения из базы данных. Данную аннотацию необходимо задавать для упорядоченных коллекций, таких как `List` или `LinkedHashSet` для получения предсказуемого порядка следования элементов.
+
+Параметры:
+
+* `value` - строка, определяющая порядок, в формате:
++
+[source, java]
+----
+orderby_list::= orderby_item [,orderby_item]*
+orderby_item::= property_or_field_name [ASC | DESC]
+----
+
+Пример:
+
+[source, java]
+----
+@OneToMany(mappedBy = "user")
+@OrderBy("createTs")
+protected List<UserRole> userRoles;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Temporal.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[temporal_annotation]]
+@Temporal::
++
+--
+Для атрибута типа `java.util.Date` уточняет тип хранимого значения: дата, время или дата+время.
+
+Параметры:
+
+* `value` - тип хранимого значения: `DATE`, `TIME`, `TIMESTAMP`
+
+Пример:
+
+[source, java]
+----
+@Column(name = "START_DATE")
+@Temporal(TemporalType.DATE)
+protected Date startDate;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Transient.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[transient_annotation]]
+@Transient::
++
+--
+Указывает, что данное поле не хранится в БД, т.е. является неперсистентным.
+
+Поля поддерживаемых <<jpa,JPA>> типов (см. link:$$http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html$$[http://docs.oracle.com/javaee/7/api/javax/persistence/Basic.html]) _по умолчанию являются персистентными_, поэтому аннотация `@Transient` обязательна для объявления неперсистентного атрибута такого типа.
+
+Для включения `@Transient` атрибута в метаданные, необходимо также указать аннотацию <<metaProperty_annotation,@MetaProperty>>.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://docs.oracle.com/javaee/7/api/javax/persistence/Version.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[version_annotation]]
+@Version::
++
+--
+Указывает, что данное поле хранит версию для поддержки <<optimistic_locking,оптимистичной блокировки>> сущностей.
+
+Применение такого поля необходимо при реализации классом сущности интерфейса `Versioned` (базовый класс `StandardEntity` уже содержит такое поле).
+
+Пример:
+
+[source, java]
+----
+@Version
+@Column(name = "VERSION")
+private Integer version;
+----
+--
+

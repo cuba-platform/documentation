@@ -1,0 +1,46 @@
+:sourcesdir: ../../../source
+
+[[db_mysql_features]]
+=== MySQL Database Specifics
+
+The MySQL JDBC driver is not distributed with CUBA Studio due to the license restrictions, so you should do the following:
+
+* Download the driver archive from https://dev.mysql.com/downloads/connector/j
+
+* Extract JAR file and rename it to `mysql-connector-java.jar`
+
+* Copy the JAR file to the `~/.haulmont/studio/lib/` directory and to the `lib` subdirectory of the installed Tomcat server
+
+* Stop Studio and Gradle daemon by executing `gradle --stop` in the command line, then start Studio again
+
+MySQL does not support partial indexes, so the only way to implement a unique constraint for a <<soft_deletion,soft deleted>> entity is to use the `DELETE_TS` column in the index. But there is another problem: MySQL allows multiple NULLs in a column with a unique constraint. Since the standard `DELETE_TS` column is nullable, it cannot be used in the unique index. We recommend the following workaround for creating unique constraints for soft deleted entities:
+
+. Create a `DELETE_TS_NN` column in the database table. This column is not null and is initialized by a default value:
++
+[source, sql]
+----
+create table DEMO_CUSTOMER (
+    ...
+    DELETE_TS_NN datetime(3) not null default '1000-01-01 00:00:00.000',
+    ...
+)
+----
+
+. Create a trigger that will change `DELETE_TS_NN` value when `DELETE_TS` value is changed:
++
+[source, sql]
+----
+create trigger DEMO_CUSTOMER_DELETE_TS_NN_TRIGGER before update on DEMO_CUSTOMER
+for each row
+    if not(NEW.DELETE_TS <=> OLD.DELETE_TS) then
+        set NEW.DELETE_TS_NN = if (NEW.DELETE_TS is null, '1000-01-01 00:00:00.000', NEW.DELETE_TS);
+    end if
+----
+
+. Create a unique index including unique columns and `DELETE_TS_NN`:
++
+[source, sql]
+----
+create unique index IDX_DEMO_CUSTOMER_UNIQ_NAME on DEMO_CUSTOMER (NAME, DELETE_TS_NN)
+----
+

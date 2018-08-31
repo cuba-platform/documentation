@@ -1,0 +1,106 @@
+:sourcesdir: ../../../../../source
+
+[[polymer_working_with_data]]
+===== Working With Data
+
+In order to load data just place some of https://cuba-elements.github.io/cuba-elements/components/cuba-data/[cuba-data]
+elements in HTML and specify required attributes.
+
+*Entities Loading*
+
+Use https://cuba-elements.github.io/cuba-elements/components/cuba-data/#cuba-entities[cuba-entities] to load entities. Once `entity-name` and `view` attributes are specified the element loads list of entities and exposes it to the Polymer data binding via `data` property:
+
+[source,html]
+----
+<cuba-entities entity-name="sec$User" view="_local" data="{{users}}"></cuba-entities>
+----
+
+Then you can display the data as simple as:
+
+[source,html]
+----
+<template is="dom-repeat" items="[[users]]" as="user">
+  <div>[[user.login]]</div>
+</template>
+----
+
+
+*Entities Querying*
+
+Define a query as described <<rest_api_v2_queries_config,here>>.
+
+Use https://cuba-elements.github.io/cuba-elements/components/cuba-data/#cuba-query[cuba-query] element to retrieve query results. You can optionally pass parameters using `params` property:
+
+[source,html]
+----
+<cuba-query id="query"
+            auto="[[auto]]"
+            entity-name="sec$User"
+            query-name="usersByName"
+            data="{{users}}">
+</cuba-query>
+
+<template is="dom-repeat" items="[[users]]" as="user">
+  <div>[[user.login]]</div>
+</template>
+----
+
+*Service Invocation*
+
+Expose a service and it's method as described <<rest_api_v2_services_config,here>>. Use https://cuba-elements.github.io/cuba-elements/components/cuba-data/#cuba-service[cuba-service] element
+to invoke the method:
+
+[source,html]
+----
+<cuba-service service-name="cuba_ServerInfoService"
+              method="getReleaseNumber"
+              data="{{releaseNumber}}"
+              handle-as="text"></cuba-service>
+
+Release number: [[releaseNumber]]
+----
+
+*Entity Creation*
+
+`cuba-entity-form` and `cuba-service-form` elements facilitate sending data to the backend.
+
+In the example below, we bind `user` object which should be persisted to the `entity` property.
+
+[source,html]
+----
+<cuba-entity-form id="entityForm"
+                  entity-name="sec$User"
+                  entity="[[user]]"
+                  on-cuba-form-response="_handleFormResponse"
+                  on-cuba-form-error="_handleFormError">
+
+  <label>Login: <input type="text" name="login" value="{{user.login::input}}"></label>
+  <label>Name: <input type="text" name="login" value="{{user.name::input}}"></label>
+
+  <button on-tap="_submit">Submit</button>
+
+</cuba-entity-form>
+
+<paper-toast id="successToast">Entity created</paper-toast>
+<paper-toast id="errorToast">Entity creation error</paper-toast>
+----
+
+[source,javascript]
+----
+_submit: function() {
+  this.$.entityForm.submit();
+},
+_handleFormResponse: function() {
+  this.user = getUserStub();
+  this.$.successToast.open();
+},
+_handleFormError: function() {
+  this.$.errorToast.open();
+}
+----
+
+[TIP]
+====
+You should enable <<rest_api_v2_anonymous, anonymous access>> in the REST API if you want to use the examples above without forcing users to log in.
+====
+

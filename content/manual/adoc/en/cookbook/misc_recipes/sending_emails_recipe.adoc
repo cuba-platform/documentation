@@ -1,0 +1,78 @@
+:sourcesdir: ../../../../source
+
+[[sending_emails_recipe]]
+==== Sending Emails
+
+This section contains a practical guide to sending emails using the CUBA email sending <<email_sending,mechanism>>.
+
+Let us consider the following task:
+
+--
+* There are the `NewsItem` entity and the `NewsItemEdit` screen.
+
+* The `NewsItem` entity contains the following attributes: `date`, `caption`, `content`.
+
+* We want to send emails to some addresses every time a new instance of `NewsItem` is created through the `NewsItemEdit` screen. An email should contain `NewsItem.caption` as a subject and the message body should be created from a template including `NewsItem.content`.
+--
+
+. Add the following code to `NewsItemEdit.java`:
++
+--
+[source, java]
+----
+include::{sourcesdir}/cookbook/sending_emails_1.java[]
+----
+
+As you can see, the `sendByEmail()` method invokes the `EmailService` and passes the `EmailInfo` instance describing the the messages. The body of the messages will be created on the basis of the `news_item.txt` template.
+--
+
+. Create the body template file `news_item.txt` in the `com.company.demo.templates` package of the *core* module:
++
+--
+[source, plain]
+----
+include::{sourcesdir}/cookbook/sending_emails_2.txt[]
+----
+
+This is a link:http://freemarker.incubator.apache.org[Freemarker] template which will use parameters passed in the `EmailInfo` instance (`newsItem` in this case).
+--
+
+. Launch the application, open the `NewsItem` entity browser and click *Create*. The editor screen will be opened. Fill in the fields and press *OK*. The confirmation dialog with the question about sending emails will be shown. Click *Yes*.
+
+. Go to the *Administration > Email History* screen of your application. You will see two records (by the number of recipients) with the `Queue` status. It means that the emails are in the queue and not yet sent.
+
+. To process the queue, set up a <<scheduled_tasks_cuba,scheduled task>>. Go to the *Administration > Scheduled Tasks* screen of your application. Create a new task and set the following parameters:
++
+--
+* *Bean Name* - `cuba_Emailer`
+* *Method Name* - `processQueuedEmails()`
+* *Singleton* - yes (this is important only for a cluster of middleware servers)
+* *Period, sec* - 10
+--
++
+Save the task and click *Activate* on it.
++
+If you did not set up the scheduled tasks execution for this project before, nothing will happen on this stage - the task will not be executed until you start the whole scheduling mechanism.
+
+. Open the `modules/core/src/app.properties` file and add the following <<cuba.schedulingActive,property>>:
++
+[source, properties]
+----
+cuba.schedulingActive = true
+----
++
+Restart the application server. The scheduling mechanism is now active and invokes the email queue processing.
+
+. Go to the *Administration > Email History* screen. The status of the emails will be `Sent` if they were successfully sent, or, most probably, `Sending` or `Queue` otherwise. In the latter case, you can open the application log in `build/tomcat/logs/app.log` and find out the reason. The email sending mechanism will take several (10 by default) attempts to send the messages and if they fail, set the status to `Not sent`.
+
+. The most obvious reason that emails cannot be sent is that you have not set up the SMTP server <<email_sending_properties,parameters>>. You can set the parameters in the database through the `app-core.cuba:type=Emailer` JMX bean or in the application properties file of your middleware. Let us consider the latter. Open the `modules/core/src/app.properties` file and add the required <<email_sending_properties,parameters>>:
++
+[source, properties]
+----
+include::{sourcesdir}/cookbook/sending_emails_3.properties[]
+----
++
+Restart the application server. Go to *Administration > JMX Console*, find the `Emailer` JMX bean and try to send a test email to yourself using the `sendTestEmail()` operation.
+
+. Now your sending mechanism is set up correctly, but it will not send the messages in the `Not sent` state. So you have to create another `NewsItem` in the editor screen. Do it and then watch how the status of new messages in the *Email History* screen will change to `Sent`.
+

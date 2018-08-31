@@ -1,0 +1,101 @@
+:sourcesdir: ../../../../source
+
+[[datasources]]
+==== Datasources
+
+Datasources provide data to data-aware components.
+
+Visual components themselves do not access Middleware: they get entity instances from linked datasources. Furthermore, one datasource can work with multiple visual components if they need the same instance or set of instances.
+
+* When a user changes a value in the component, the new value is set for the entity attribute in the datasource.
+
+* When the entity attribute is modified in the code, the new value is set and displayed in the visual component.
+
+* User input can be monitored both by <<datasource_listeners,datasource listeners>> and value listeners on the component – they are notified sequentially.
+
+* To read or write the value of an attribute in the application code, it is recommended to use the datasource, rather than the component. Below is an example of reading the attribute:
++
+[source, java]
+----
+include::{sourcesdir}/gui/datasources_1.java[]
+---- 
++
+As you can see, working with entity attribute values through a component is not very straightforward. In the first example, it requires type casting and specifying <<gui_FieldGroup,FieldGroup>> field `id` as a string. The second example is more safe and direct, but requires you to know exactly the type of the field to be <<screen_controller_injection,injected>>. At the same time, if the instance is obtained from the datasource via the `getItem()` method, the values of attributes can be read and modified directly.
+
+Datasources also track changes in entities contained therein and can send modified instances back to the middleware for storing in the database.
+
+[WARNING]
+====
+Typically, a visual component is bound to an attribute that directly belongs to the entity in the datasource. In the example above, the component is bound to the `customer` attribute of the `Order` entity.
+
+A component can also be associated with an attribute of a related entity, for example, `customer.name`. In this case, the component will display the value of the `name` attribute, however when the user changes the value, the datasource listeners will not be invoked and the changes will not be saved. Therefore, it makes sense to bind the component to second-level entity attributes only if they are intended for display. For example in a <<gui_Label,Label>>, a <<gui_Table,Table>> column, or in a <<gui_TextField,TextField>>, where `editable = false`.
+====
+
+The basic interfaces of datasources are described below.
+
+.Datasource interfaces
+image::Datasources.png[align="center"]
+
+* http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/Datasource.html[Datasource] is a simple datasource designed to work with one entity instance. The instance is set by the `setItem()` method and is accessed via `getItem()`.
++
+`DatasourceImpl` class is the standard implementation of such datasource, which is used, for instance, as a main datasource on entity <<screen_edit,edit screens>>.
+
+* http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/CollectionDatasource.html[CollectionDatasource] is a datasource designed to work with a collection of entity instances. The collection is loaded with the invocation of the `refresh()` method, instance keys are accessible through the `getItemIds()` method. The `setItem()` method sets the "current" instance of the collection and `getItem()` returns it (for example, the one that corresponds to the currently selected table row).
++
+The way of loading collections is determined by implementation. The most typical one is loading from Middleware via <<dataManager,DataManager>>; in this case, `setQuery()`, `setQueryFilter()` are used to form a JPQL query.
++
+`CollectionDatasourceImpl` class is the standard implementation of such datasources, which is used on screens with entity lists.
+
+** http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/GroupDatasource.html[GroupDatasource] is a subtype of `CollectionDatasource`, designed to work with the <<gui_GroupTable,GroupTable>> component.
++
+Standard implementation is the `GroupDatasourceImpl` class.
+
+** http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/HierarchicalDatasource.html[HierarchicalDatasource] is a subtype of `CollectionDatasource`, designed to work with the <<gui_Tree,Tree>> and <<gui_TreeTable,TreeTable>> components.
++
+Standard implementation is the `HierarchicalDatasourceImpl` class.
+
+* http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/NestedDatasource.html[NestedDatasource] is a datasource designed to work with instances that are loaded in an attribute of another entity. In this case, a datasource that contains a parent entity is accessible via `getMaster()`, and <<metaProperty,meta property>> that corresponds to the parent attribute containing instances of this datasource is accessible via `getProperty()`.
++
+For example an `Order` instance which contains a reference to the `Customer` instance is set in the `dsOrder` datasource. Then, to link the `Customer` instance with visual components, it is enough to create `NestedDatasource` with `dsOrder` as parent and meta property to point to the `Order.customer` attribute.
+
+** http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/PropertyDatasource.html[PropertyDatasource] is a subtype of `NestedDatasource`, designed to work with one instance or collection of related entities that are not embedded.
++
+Standard implementations: for working with one instance – `PropertyDatasourceImpl`, with a collection – `CollectionPropertyDatasourceImpl`, `GroupPropertyDatasourceImpl`, `HierarchicalPropertyDatasourceImpl`. The latter also implements the `CollectionDatasource` interface, however some of its irrelevant methods like `setQuery()` throw `UnsupportedOperationException`.
+
+** http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/EmbeddedDatasource.html[EmbeddedDatasource] is a subtype of `NestedDatasource`, which contains an instance of an embedded entity.
++
+Standard implementation is the `EmbeddedDatasourceImpl` class.
+
+* http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/data/RuntimePropsDatasource.html[RuntimePropsDatasource] is a specific datasource, designed to work with <<dynamic_attributes,dynamic attributes>> of entities.
+
+Typically, datasources are declared in the `dsContext` section of a <<screen_xml,screen descriptor>>.
+
+[[datasource_auto_refresh]]
+Automatic CollectionDatasource refresh::
++
+--
+When the screen opens, its visual components connected to collection datasources cause the datasources to load data. As a result, <<gui_Table,tables>> show data right after opening the screen, without any explicit user action. If you want to prevent automatic loading of collection datasources, set the `DISABLE_AUTO_REFRESH` screen parameter to `true` in the screen's `init()` method or pass it from the calling code. This parameter is defined in the `WindowParams` enumeration, so it can be set as shown below:
+
+[source, java]
+----
+@Override
+public void init(Map<String, Object> params) {
+    WindowParams.DISABLE_AUTO_REFRESH.set(params, true);
+}
+----
+
+In this case, the screen collection datasources will be loaded only when their `refresh()` method will be called. It can be done by the application code or when the user clicks *Search* in the <<gui_Filter,Filter>> component.
+--
+
+include::datasources/datasource_creation.adoc[]
+
+include::datasources/datasource_query.adoc[]
+
+include::datasources/value_datasources.adoc[]
+
+include::datasources/datasource_listeners.adoc[]
+
+include::datasources/dsContext.adoc[]
+
+include::datasources/dataSupplier.adoc[]
+

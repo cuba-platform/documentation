@@ -1,0 +1,34 @@
+:sourcesdir: ../../../../../source
+
+[[dsContext]]
+===== DsContext
+
+All datasources that are created declaratively are registered in the `DsContext` object which belongs to a screen. A reference to `DsContext` can be obtained using the `getDsContext()` method of a screen controller or via <<screen_controller_injection>>.
+
+`DsContext` is designed for the following tasks:
+
+. Organizes dependencies between datasources when navigation through a record set in one datasource (i.e. changing a "current" instance with the `setItem()` method) causes a related datasource to be updated. These dependencies allow you to organize master-detail relationships between visual components on screens.
++
+Dependencies between datasources are organized using <<datasource_query,query parameters>> with the `ds$` prefix.
+
+. Collects all changed entity instances and sends them to Middleware in a single invocation of `DataManager.commit()`, i.e. to save them into the database in a single transaction.
++
+--
+As an example, let's assume that some screen allows a user to edit an instance of the `Order` entity and a collection of `OrderLine` instances belonging to it. The `Order` instance is located in `Datasource`; the `OrderLine` collection – in nested `CollectionDatasource`, which is created using the `Order.lines` attribute.
+
+If a user changes some attribute of `Order` and creates a new instance, `OrderLine`, then, when a screen is committed to <<dataManager,DataManager>>, two instances – changed `Order` and new `OrderLine` – will be sent simultaneously. After that, they will together be merged into one <<entityManager,persistent context>> and saved into the database on the transaction commit. It allows you to not specify cascade parameters on the ORM level and avoid the problems mentioned in the <<oneToMany_annotation, @OneToMany>> annotation description.
+
+As a result of committing the transaction, `DsContext` receives a set of saved instances from Middleware (in the case of optimistic locking they, at least, have an increased value of the `version` attribute), and sets these instances in datasources replacing old ones. It allows you to work with the latest instances immediately after committing without an extra datasource refresh that produces queries to Middleware and the database.
+--
+
+. Declares two listeners: `BeforeCommitListener` and `AfterCommitListener`. They receive notifications before and after committing modified instances. `BeforeCommitListener` enables to supplement a collection of entities sent to <<dataManager,DataManager>> to save arbitrary entities in the same transaction. A collection of saved instances that are returned from `DataManager` can be obtained after commit in the `AfterCommitListener` listener.
++
+This mechanism is required if some entities, with which a screen works, are not under control of datasources, but are created and changed directly in the controller code. For example, a visual component, <<gui_FileUploadField,FileUploadField>>, after uploading a file, creates a new entity instance, `FileDescriptor`, which can be saved together with other screen entities by adding to `CommitContext` in `BeforeCommitListener`.
++
+In the following example, a new instance of `Customer` will be sent to Middleware and saved to the database together with other modified screen entities when the screen is committed:
++
+[source, java]
+----
+include::{sourcesdir}/gui/dscontext_1.java[]
+---- 
+

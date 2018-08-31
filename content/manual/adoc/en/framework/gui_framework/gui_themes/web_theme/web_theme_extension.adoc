@@ -1,0 +1,146 @@
+:sourcesdir: ../../../../../../source
+
+[[web_theme_extension]]
+====== Extending an Existing Theme
+
+A platform theme can be modified in the project. In the modified theme, you can:
+
+* Change branding images.
+
+* Add icons to use them in visual components. See the <<gui_icons,>> section below.
+
+* Create new styles for visual components and use them in the <<gui_attr_stylename,stylename>> attribute. This requires some expertise in CSS.
+
+* Modify existing styles of the visual components.
+
+* Modify common parameters, such as background color, margins, spacing, etc.
+
+[[web_theme_extension_structure]]
+File structure and build scripts::
++
+--
+Themes are defined in link:http://sass-lang.com[SCSS] files. To modify (extend) a theme in the project, you should create a specific file structure in the *web* module.
+
+A convenient way to do this is to use *CUBA Studio*: open the *Project properties* section and click *Create theme extension*. Select the theme you want to extend in the popup window. Another way is to use the `theme` command in https://github.com/cuba-platform/cuba-cli[CUBA CLI].
+
+As a result, the following directory structure will be created in the `modules/web` directory (for Halo theme extension):
+
+[source, plain]
+----
+include::{sourcesdir}/gui/themes/themes_42.scss[]
+----
+
+Apart from that, the <<build.gradle,build.gradle>> script will be complemented with the `buildScssThemes` task, which is executed automatically each time the *web* module is built. The optional <<build.gradle_deployThemes,deployThemes>> task can be used to quickly apply changes in themes to the running application.
+
+[TIP]
+====
+If your project contains an <<app_components,application component>> with extended theme, and you want this extension to be used for the whole project, then you should create theme extension for the project too. For more details on how to inherit the component's theme, see the <<web_theme_inheritance>> section.
+====
+--
+
+[[web_theme_extension_branding]]
+Changing branding::
++
+--
+You can configure some branding properties, such as icons, login and main application window captions, and the website icon (`favicon.ico`).
+
+To use custom images, replace default ones in the `modules/web/themes/halo/branding` directory.
+
+To set window captions and the login window welcome text, edit *Project properties* in CUBA Studio and click *Branding* at the bottom of the page. Set window captions and the login window welcome text using the appropriate links.
+
+These parameters are saved in the <<main_message_pack,main message pack>> of the *web* module (i.e the `modules/web/<root_package>/web/messages.properties` file and its variants for different locales). Message packs allow you to use different image files for different user locales. The sample `messages.properties` file:
+
+[source, plain]
+----
+include::{sourcesdir}/gui/themes/themes_43.scss[]
+----
+
+The path to `favicon.ico` is not specified since it must be located in the root directory of the theme.
+--
+
+[[web_theme_extension_fonts]]
+Adding fonts::
++
+--
+You can add custom fonts to your web theme. To add a font family, import it in the first line of the `styles.scss` file, for example:
+
+[source, properties]
+----
+@import url(http://fonts.googleapis.com/css?family=Roboto);
+----
+--
+
+[[web_theme_extension_styles]]
+Creating new styles::
++
+--
+Consider the example of setting the yellow background color to the field displaying the customer's name.
+
+In an XML descriptor, the <<gui_FieldGroup,FieldGroup>> component is defined:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/themes/themes_20.xml[]
+----
+
+The `field` elements of `FieldGroup` do not have the <<gui_attr_stylename,stylename>> attribute, therefore we have to set the field's style name in the controller:
+
+[source, java]
+----
+include::{sourcesdir}/gui/themes/themes_21.java[]
+----
+
+In the `halo-ext.scss` file, add the new style definition to the `halo-ext` mixin:
+
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_22.scss[]
+----
+
+After rebuilding the project, the fields will look as follows:
+
+image::gui_themes_fieldgroup_1.png[align="center"]
+--
+
+[[web_theme_extension_modify_styles]]
+Modifying existing styles of the visual components::
++
+--
+To modify style parameters of existing components, add the corresponding CSS code to the `halo-ext` mixin of the `halo-ext.scss` file. Use developer tools of your web browser to find out CSS classes assigned to the elements of visual components. For example, to display the application menu items in bold, the contents of the `halo-ext.scss` file should be as follows:
+
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_6.scss[]
+----
+--
+
+[[web_theme_extension_common]]
+Modifying common parameters::
++
+--
+Themes contain a number of SCSS variables that control application background colour, component size, margins and other parameters.
+
+Below is the example of a Halo theme extension, since it is based on link:https://vaadin.com/valo[Valo] theme from *Vaadin*, and provides the widest range of options for customization.
+
+The `themes/halo/halo-ext-defaults.scss` file is intended for overriding theme variables. Most of the Halo variables correspond to those described in the link:https://vaadin.com/api/valo[Valo documentation]. Below are the most common variables:
+
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_4.scss[]
+---- 
+
+The sample `halo-ext-defaults.scss` for a theme with a dark background and slightly minimized margins is provided below:
+
+[source, css]
+----
+include::{sourcesdir}/gui/themes/themes_5.scss[]
+----
+--
+
+[[web_theme_extension_header]]
+Changing the application header::
++
+--
+Halo theme supports the <<cuba.web.useInverseHeader,cuba.web.useInverseHeader>> property, which controls the colour of the application header. By default, this property is set to `true`, which sets a dark (inverse) header.You can make a light header without any changes to the theme, simply by setting this property to `false`.
+--
+

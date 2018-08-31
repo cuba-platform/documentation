@@ -1,0 +1,49 @@
+:sourcesdir: ../../../../../source
+
+[[value_datasources]]
+===== Value Datasources
+
+Value datasources enable execution of queries that return scalar values and aggregates. For example, you can load some aggregated statistics for customers:
+
+[source, sql]
+----
+select o.customer, sum(o.amount) from demo$Order o group by o.customer
+----
+
+Value datasources work with entities of a special type named `KeyValueEntity`. This entity can contain an arbitrary number of attributes which are defined at runtime. So in the example above, the `KeyValueEntity` instances will contain two attributes: the first of type `Customer` and the second of type `BigDecimal`.
+
+Value datasource implementations extend other widely used collection datasource classes and implement a specific interface: `ValueDatasource`. Below is a diagram showing the value datasource implementations and their base classes:
+
+image::ValueDatasources.png[align="center"]
+
+The `ValueDatasource` interface declares the following methods:
+
+* `addProperty()` - as the datasource can return entities with any number of attributes, you have to specify what attributes are expected by using this method. It accepts a name of the attribute and its type in the form of <<datatype,Datatype>> or a Java class. In the latter case, the class should be either an entity class or a class supported by one the datatypes.
+
+* `setIdName()` is an optional method which allows you to define one of the attributes as an identifier attribute of the entity. It means that `KeyValueEntity` instances contained in this datasource will have identifiers obtained from the given attribute. Otherwise, `KeyValueEntity` instances get randomly generated UUIDs.
+
+* `getMetaClass()` returns a dynamic implementation of the `MetaClass` interface that represents the current schema of `KeyValueEntity` instances. It is defined by previous calls to `addProperty()`.
+
+Value datasources can be used declaratively in a screen XML descriptor. There are three XML elements corresponding to the implementation classes:
+
+* `valueCollectionDatasource`
+* `valueGroupDatasource`
+* `valueHierarchicalDatasource`
+
+XML definition of a value datasource must contain the `properties` element that defines the attributes of `KeyValueEntity` instances that will be contained in the datasource (see the `addProperty()` method description above). The order of `property` elements should conform to the order of result set columns returned by the query. For example, in the following definition the `customer` attribute will get its value from `o.customer` column and the `sum` attribute from `sum(o.amount)` column:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/value_datasources_1.xml[]
+----
+
+Value datasources are designed only for reading data, because `KeyValueEntity` is not persistent and cannot be saved by standard persistence mechanisms.
+
+You can create value datasources either manually or in Studio in the *Datasources* tab of the *Screen designer* page.
+
+image::ValueDatasources_Studio.png[align="center"]
+
+The *Properties* editor allows you to create the datasource attributes of a certain datatype and/or a Java class.
+
+image::ValueDatasources_Studio_properties.png[align="center"]
+

@@ -1,0 +1,122 @@
+:sourcesdir: ../../../../../source
+
+[[base_entity_classes]]
+===== Base Entity Classes
+
+The base entity classes and interfaces are described in detail in this section. 
+
+[[entity_base_classes]]
+image::EntityClasses.png[align="center"]
+
+* `Instance` – declares the basic methods for working with objects of application domain:
+
+** getting references to the object meta-class;
+
+** generating the instance name;
+
+** reading/writing attribute values by name;
+
+** adding listeners receiving notifications about attribute changes.
+
+* `Entity` – extends `Instance` with entity identifier; at the same time `Entity` does not define the type of the identifier leaving this option to descendants.
+
+* `AbstractInstance` – implements the logic of working with attribute change listeners.
++
+[WARNING]
+====
+`AbstractInstance` stores the listeners in `WeakReference`, and if there are no external references to the added listener, it will be immediately destroyed by garbage collector. Normally, attribute change listeners are <<gui_vcl,visual components >> and <<datasources,UI datasources>> that are always referenced by other objects, so there is no problem with listeners dropout. However, if a listener is created by application code and no objects refer to it in a natural way, it is necessary to save it in a certain object field apart from just adding it to `Instance`.
+====
+
+* `BaseGenericIdEntity` – base class of persistent and non-persistent entities. It implements `Entity` but does not specify the type of the identifier (i.e. the primary key) of the entity.
+
+* `EmbeddableEntity` - base class of embeddable persistent entities.
+
+Below we consider base classes recommended for inheriting your entities from. Non-persistent entities should be inherited from the same base classes as persistent ones. The framework determines if the entity is persistent or not by the file where it is registered: <<persistence.xml>> or <<metadata.xml>>.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/StandardEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+StandardEntity::
+Inherit from `StandardEntity` if you want a standard set of features: the primary key of UUID type, the instances have information on who and when created and modified them, require optimistic locking and soft deletion.
++
+--
+image::EntityClasses_Standard.png[align="center"]
+
+* `HasUuid` – interface for entities having a globally unique identifier.
+
+* `Versioned` – interface for entities supporting <<optimistic_locking, optimistic locking>>.
+
+* `Creatable` – interface for entities that keep the information about when and by whom the instance was created.
+
+* `Updatable` – interface for entities that keep the information about when and by whom the instance was last changed.
+
+* `SoftDelete` – interface for entities supporting <<soft_deletion,soft deletion>>.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseUuidEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseUuidEntity::
+Inherit from `BaseUuidEntity` if you want an entity with the primary key of UUID type but you don't need all features of `StandardEntity`. You can implement some of the interfaces `Creatable`, `Versioned`, etc. in your concrete entity class.
++
+image::EntityClasses_Uuid.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseLongIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseLongIdEntity::
+Inherit from `BaseLongIdEntity` or `BaseIntegerIdEntity` if you want an entity with the primary key of the `Long` or `Integer` type. You can implement some of the interfaces `Creatable`, `Versioned`, etc. in your concrete entity class. Implementing `HasUuid` is highly recommended, as it enables some optimizations and allows you to identify your instances uniquely in a distributed environment.
++
+image::EntityClasses_Long.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseStringIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseStringIdEntity::
+Inherit from `BaseStringIdEntity` if you want an entity with the primary key of the `String` type. You can implement some of the interfaces `Creatable`, `Versioned`, etc. in your concrete entity class. Implementing `HasUuid` is highly recommended, as it enables some optimizations and allows you to identify your instances uniquely in a distributed environment. The concrete entity class must have a string field annotated with the `@Id` JPA annotation.
++
+image::EntityClasses_String.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseIdentityIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseIdentityIdEntity::
+Inherit from `BaseIdentityIdEntity` if you need to map the entity to a table with IDENTITY primary key. You can implement some of the interfaces `Creatable`, `Versioned`, etc. in your concrete entity class. Implementing `HasUuid` is highly recommended, as it enables some optimizations and allows you to identify your instances uniquely in a distributed environment. The `id` attribute of the entity (i.e. getId/setId methods) will be of type `IdProxy` which is designed to substitute the real identifier until it is generated by the database on insert.
++
+image::EntityClasses_Identity.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseIntIdentityIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseIntIdentityIdEntity::
+Inherit from `BaseIntIdentityIdEntity` if you need to map the entity to a table with IDENTITY primary key of `Integer` type (compared to `Long` in `BaseIdentityIdEntity`). In other respects, `BaseIntIdentityIdEntity` is similar to `BaseIdentityIdEntity`.
++
+image::EntityClasses_IntIdentity.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/entity/BaseGenericIdEntity.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+BaseGenericIdEntity::
+Inherit from `BaseGenericIdEntity` directly if you need to map the entity to a table with a composite key. In this case, the concrete entity class must have a field of the embeddable type representing the key, annotated with the `@EmbeddedId` JPA annotation.
+

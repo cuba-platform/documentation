@@ -1,0 +1,95 @@
+:sourcesdir: ../../../../source
+
+[[screen_extension]]
+==== Extending Screens
+
+The platform supports creating new <<screen_xml,XML descriptors>> by inheriting them from the existing ones.
+
+XML inheritance is implemented by specifying the parent descriptor path in the `extends` attribute of the root `window` element.
+
+XML screen elements overriding rules:
+
+* If the extending descriptor has a certain element, the corresponding element will be searched for in the parent descriptor using the following algorithm:
+
+** If the overriding element is a `view`, the corresponding element will be searched by the `name`, `class` and `entity` attributes.
+
+** If the overriding element is a `property`, the corresponding element will be searched by the `name` attribute.
+
+** In other cases, if the overrinding element has the `id` attribute, the corresponding element with the same `id` will be searched for. 
+
+** If the search is successful, the found element is *overridden*.
+
+** Otherwise, the platform determines how many elements with the provided path and name are contained in the parent descriptor. If there is only one element, it is *overridden*.
+
+** If search yields no result and there is either zero or more than one element with the given path and name in the parent descriptor, a new element is *added*.
+
+* The text for the overridden or added element is copied from the extending element. 
+
+* All attributes from the extending element are copied to the overridden or added element. If attribute names match, the value is taken from the extending element.
+
+* By default, the new element is added to the end of the list of adjacent elements. In order to add a new element to the beginning or with an arbitrary index, you can do the following: 
+
+** Define an additional namespace in the extending descriptor: `xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"`.
+
+** Add the `ext:index` attribute with a desired index, for example: `ext:index="0"` to the extending element.
+
+In order to debug the descriptor conversion, you can output the resulting XML to the server log by specifying the `TRACE` level for the `com.haulmont.cuba.gui.xml.XmlInheritanceProcessor` logger in the *Logback* configuration file.
+
+Below is an example descriptor of the `ExtUser` entities browser screen:
+
+[source, xml]
+----
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
+      extends="/com/haulmont/cuba/gui/app/security/user/browse/user-browse.xml">
+  <layout>
+      <groupTable id="usersTable">
+          <columns>
+              <column id="address" ext:index="2"/>
+          </columns>
+      </groupTable>
+  </layout>
+</window>
+----
+
+In this example, the descriptor is inherited from the standard `User` entities browser of the platform. The `address` column is added to the table with index `2`, so it is displayed after `login` and `name`.
+
+If you register a new screen in <<screens.xml,screens.xml>> with the same identifiers that were used for the parent screen, the new screen will be invoked everywhere instead of the old one.
+
+[source, xml]
+----
+<screen id="sec$User.browse"
+      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
+<screen id="sec$User.lookup"
+      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
+----
+
+Similarly, let us create an edit screen:
+
+[source, xml]
+----
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
+      extends="/com/haulmont/cuba/gui/app/security/user/edit/user-edit.xml">
+  <layout>
+      <fieldGroup id="fieldGroup">
+          <column id="fieldGroupColumn2">
+              <field property="address" ext:index="4"/>
+          </column>
+      </fieldGroup>
+  </layout>
+</window>
+----
+
+Register it in `screens.xml` with the identifier of the parent screen:
+
+[source, xml]
+----
+<screen id="sec$User.edit"
+      template="com/sample/sales/gui/extuser/extuser-edit.xml"/>
+----
+
+Once all the abovementioned actions are completed, the application will use `ExtUser` with the corresponding screens instead of the standard `User` entity of the platform.
+
+Screen controller can be extended by creating a new class that is inherited from the base screen controller. Class name is specified in the `class` attribute of the root element of the extending XML descriptor; the usual rules of inheriting XML described above will apply.
+

@@ -1,0 +1,87 @@
+:sourcesdir: ../../../../source
+
+[[getting_messages]]
+==== Getting Localized Messages
+
+This section covers ways of getting <<localization,localized messages>> in different parts of the application.
+
+* In screen <<screen_xml,XML-descriptors>>, component attributes for displaying static text (such as <<gui_attr_caption,caption>>) can address localized messages using the rules of <<messageTools.loadString,MessageTools.loadString()>> method. For example:
+
+** `caption="msg://roleName"` – gets a message defined by the `roleName` key in the message pack of the current screen. Screen message pack is defined by the `messagesPack` attribute of the root `window` element.
+
+** `caption="msg://com.company.sample.entity/Role.name"` – gets a message defined by the `Role.name` key in the `com.company.sample.entity` message pack.
+
+* In <<screen_controller,screen controllers>>, localized strings can be retrieved in the following ways:
+
+** From the current screen message pack:
+
+*** Using `getMessage()` method inherited from the <<abstractFrame,AbstractFrame>> base class. For example:
++
+[source, java]
+----
+String msg = getMessage("warningMessage");
+----
+
+*** Using `formatMessage()` method inherited from the `AbstractFrame` base class. In this case, the extracted message is used to format submitted parameters according to the rules of `String.format()` method. For example:
++
+messages.properties:
++
+[source, properties]
+----
+warningMessage = Invalid email address: '%s'
+----
++
+Java controller:
++
+[source, java]
+----
+String msg = formatMessage("warningMessage", email);
+----
+
+** From an arbitrary messages pack via an injection of <<messages,Messages>> infrastructure interface. For example:
++
+[source, java]
+----
+@Inject
+private Messages messages;
+
+@Override
+public void init(Map<String, Object> params) {
+    String msg = messages.getMessage(getClass(), "warningMessage");
+    ...
+}
+----
+
+* For components managed by a Spring container (<<managed_beans,managed beans>>, <<services,services>>, <<jmx_beans,JMX-beans>>, Spring MVC controllers of the *portal* module), localized messages can be retrieved with the help of the <<messages,Messages>> infrastructure interface injection:
++
+[source, java]
+----
+@Inject
+protected Messages messages;
+...
+String msg = messages.getMessage(getClass(), "warningMessage");
+----
++
+Localized messages for the https://www.thymeleaf.org/[Thymeleaf] templates in the *portal* module can also be obtained by the message key from the main message pack of the portal module:
++
+.template
+[source, xml]
+----
+<h1 th:text="#{messageKey}"></h1>
+----
++
+.portal main message pack
+[source, plain]
+----
+messageKey = Localized message
+----
+
+* In application code where injection is not possible, the `Messages` interface can be obtained using the static `get()` method of the `AppBeans` class:
++
+[source, java]
+----
+protected Messages messages = AppBeans.get(Messages.class);
+...
+String msg = messages.getMessage(getClass(), "warningMessage");
+----
+

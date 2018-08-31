@@ -1,0 +1,32 @@
+:sourcesdir: ../../../../../source
+
+[[dbms_version]]
+===== DBMS Version
+
+In addition to <<cuba.dbmsType,cuba.dbmsType>> application property, there is an optional <<cuba.dbmsVersion,cuba.dbmsVersion>> property. It affects the choice of interface implementations for `DbmsFeatures`, `SequenceSupport`, `DbTypeConverter`, and the search for database init and update scripts.
+
+The name of the implementation class of the integration interface is constructed as follows: `TypeVersionName`. Here, `Type` is the value of the `cuba.dbmsType` property (capitalized), `Version` is the value of `cuba.dbmsVersion`, and `Name` is the interface name. The package of the class must correspond to that of the interface. If a class with the same name is not available, an attempt is made to find a class with the name without version: `TypeName`. If such class does not exist either, an exception is thrown.
+
+For example, the `com.haulmont.cuba.core.sys.persistence.Mssql2012SequenceSupport` class is defined in the platform. This class will take effect if the following properties are specified in the project:
+
+[source, properties]
+----
+cuba.dbmsType = mssql
+cuba.dbmsVersion = 2012
+----
+
+The search for <<db_scripts,database init and update scripts>> prioritizes the `type-version` directory over the `type` directory. This means that the scripts in the `type-version` directory replace the scripts with the same name in the `type` directory. The `type-version` directory can also contain some scripts with unique names; they will be added to the common set of scripts for execution, too. Script sorting is performed by path, starting with the first subdirectory of the `type` or `type-version` directory, i.e. regardless of the directory where the script is located (versioned or not).
+
+For example, the init script for Microsoft SQL Server versions below and above 2012 should look as follows:
+
+[source, properties]
+----
+modules/core/db/init/
+   mssql/
+       10.create-db.sql
+       20.create-db.sql
+       30.create-db.sql
+   mssql-2012/
+       10.create-db.sql 
+----
+

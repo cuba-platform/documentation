@@ -1,0 +1,57 @@
+:sourcesdir: ../../../../../../source
+
+[[datasource_query_filter]]
+====== Query Filter
+
+A datasource query can be modified at runtime depending on conditions entered by the user. This allows you to efficiently filter data at the database level.
+
+The easiest way to provide such ability is to connect the datasource to a special visual component: <<gui_Filter,Filter>>.
+
+If the universal filter is not suitable for some reason, a special XML markup can be embedded into the query text. This allows you to create a resulting query based on values entered by the user into any visual components of the screen.
+
+The following elements can be used in this filter:
+
+* `filter` – a root element of the filter. It can directly contain only one condition.
+
+** `and`, `or` – logical conditions, may contain any number of other conditions and statements. 
+
+** `c` – JPQL condition, which is added to the `where` section of the query. If the query does not contain `where` clause, it will be added before the first condition. An optional `join` attribute can be used to specify joined entities. The value of the `join` attribute is added after the root entity declaration as is, so it must contain `join` keyword or comma.
+
+Conditions and statements are added to the resulting query only if corresponding parameters have values, i.e. when they are not `null`.
+
+[WARNING]
+====
+Use only <<datasource_query_params_custom,custom>>, <<datasource_query_params_param,param>>, <<datasource_query_params_component,component>> and <<datasource_query_params_session,session>> parameters in query filters. The <<datasource_query_params_ds,ds>> parameter will not work as expected.
+====
+
+Example:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_13.xml[]
+---- 
+
+In this case, if `state` and `initiator` parameters are passed to the `refresh()` method of the datasource, and the `barCodeFilterField` visual component has some value, then the resulting query will be as follows:
+
+[source, jpql]
+----
+select distinct d from app$GeneralDoc d, app$DocRole dr
+where
+(
+  (dr.doc.id = d.id and d.processState = :custom$state)
+  and
+  (d.barCode like :component$barCodeFilterField)
+)
+or
+(dr.doc.id = d.id and dr.user.id = :custom$initiator)
+----
+
+If, for example, the `barCodeFilterField` component is empty and only `initiator` parameter is passed to the `refresh()` method, the query will be as follows:
+
+[source, jpql]
+----
+select distinct d from app$GeneralDoc d, app$DocRole dr
+where
+(dr.doc.id = d.id and dr.user.id = :custom$initiator)
+----
+

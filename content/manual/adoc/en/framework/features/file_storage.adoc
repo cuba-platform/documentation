@@ -1,0 +1,44 @@
+:sourcesdir: ../../../../source
+
+[[file_storage]]
+==== File Storage
+
+File storage enables uploading, storing and downloading arbitrary files associated with the entities. In the standard implementation, the files are stored outside of the main database using a specialized structure within the file system.
+
+File storage mechanism includes the following parts:
+
+* `FileDescriptor` entity – the descriptor of the uploaded file (not to be confused with `java.io.FileDescriptor`) enables referencing the file from the data model objects.
+
+* `FileStorageAPI` interface – provides access to the file storage at the middle <<app_tiers,tier>>. Its main methods are:
+
+** `saveStream()` – saves the contents of the file passed as the `InputStream` according to the specified `FileDescriptor`.
+
+** `openStream()` – returns the contents of the file defined by the `FileDescriptor` in the form of an opened `InputStream`.
+
+* `FileUploadController` class – a Spring MVC controller, which enables sending files from the Client to the Middleware with HTTP POST requests.
+
+* `FileDownloadController` class – Spring MVC controller which enables retrieving files from the Middleware to the Client with HTTP GET requests.
+
+*  <<gui_FileUploadField,FileUpload>> and <<gui_FileMultiUploadField,FileMultiUpload>> visual components – enable uploading files from the user's computer to the client tier of the application and then transferring them to the Middleware.
+
+* `FileUploadingAPI` interface – temporary storage for files uploaded to the client tier. It is used for uploading files to the client tier by the visual components mentioned above. The application code can use `putFileIntoStorage()` method for moving a file into the persistent storage of the Middleware.
+
+* <<fileLoader,FileLoader>> - an interface for working with the file storage using the same set of methods on both middle and client tiers.
+
+* `ExportDisplay` – client tier interface allowing downloading various application resources to the user's computer. Files can be retrieved from persistent storage using the `show()` method, which requires a `FileDescriptor`. An instance of `ExportDisplay` may be obtained either by calling the `AppConfig.createExportDisplay()` static method, or through <<screen_controller_injection,injection>> into the controller class.
+
+[TIP]
+====
+File transfer between the user's computer and the storage in both directions is always performed by copying data between input and output streams. Files are never fully loaded into memory at any application level, which enables transferring files of almost any size.
+====
+
+include::file_storage/file_upload.adoc[]
+
+include::file_storage/file_download.adoc[]
+
+include::file_storage/fileLoader.adoc[]
+
+include::file_storage/file_storage_impl.adoc[]
+
+include::file_storage/aws_file_storage_impl.adoc[]
+

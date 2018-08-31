@@ -1,0 +1,170 @@
+:sourcesdir: ../../../../../source
+
+[[metadata_interfaces]]
+===== Интерфейсы метаданных
+
+Рассмотрим основные интерфейсы метаданных.
+
+.Интерфейсы фреймворка метаданных
+image::MetadataFramework.png[align="center"]
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/Session.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Session::
++
+--
+Точка входа в фреймворк метаданных. Позволяет получать экземпляры `MetaClass` по имени и по соответствующему классу Java. Обратите внимание на различие методов `getClass()` и `getClassNN()` - первые могут возвращать `null`, вторые нет (NonNull).
+
+Объект `Session` может быть получен через интерфейс инфраструктуры <<metadata,Metadata>>.
+
+Пример:
+
+[source, java]
+----
+@Inject
+protected Metadata metadata;
+...
+Session session = metadata.getSession();
+MetaClass metaClass1 = session.getClassNN("sec$User");
+MetaClass metaClass2 = session.getClassNN(User.class);
+assert metaClass1 == metaClass2;
+----
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/MetaModel.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+MetaModel::
++
+--
+Редко используемый интерфейс, служит для группировки мета-классов. 
+
+Группировка осуществляется по имени корневого Java пакета проекта, указываемого в файле <<metadata.xml,metadata.xml>>.
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/MetaClass.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[metaClass]]
+MetaClass::
++
+--
+Интерфейс метаданных класса сущности. `MetaClass` всегда ассоциирован с классом Java, которого он представляет.
+
+Основные методы:
+
+* `getName()` – имя сущности, по соглашению первой частью имени до знака `$` является код пространства имен, например, `sales$Customer`
+
+* `getProperties()` – список мета-свойств (`MetaProperty`)
+
+* `getProperty()`, `getPropertyNN()` - получение мета-свойства по имени. Первый метод в случае отсутствия атрибута с указанным именем возвращает `null`, второй выбрасывает исключение.
++
+Пример:
++
+[source, java]
+----
+MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupProperty = userClass.getPropertyNN("group");
+----
+
+[[MetaPropertyPath]]
+* `getPropertyPath()` - позволяет перемещаться по ссылкам. Данный метод принимает строковый параметр - путь из имен атрибутов, разделенных точкой. Возвращаемый объект `MetaPropertyPath` позволяет обратиться к искомому (последнему в пути) атрибуту вызовом `getMetaProperty()`.
++
+Пример:
++
+[source, java]
+----
+MetaClass userClass = session.getClassNN(User.class);
+MetaProperty groupNameProp = userClass.getPropertyPath("group.name").getMetaProperty();
+assert groupNameProp.getDomain().getName().equals("sec$Group");
+----
+
+* `getJavaClass()` – класс сущности, которому соответствует данный `MetaClass`
+
+* `getAnnotations()` – коллекция <<meta_annotations,мета-аннотаций>> 
+
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/chile/core/model/MetaProperty.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+[[metaProperty]]
+MetaProperty::
++
+--
+Интерфейс метаданных атрибута сущности. 
+
+Основные методы:
+
+* `getName()` – имя свойства, соответствует имени атрибута сущности
+
+* `getDomain()` – мета-класс, которому принадлежит данное свойство
+
+[[metaProperty.getType]]
+* `getType()` – тип свойства:
+
+** простой тип: `DATATYPE`
+
+** перечисление: `ENUM`
+
+** ссылочный тип двух видов:
+*** `ASSOCIATION` − простая ссылка на другую сущность. Например, отношение заказа и покупателя − ассоциация.
+
+*** `COMPOSITION` − ссылка на сущность, которая не имеет самостоятельного значения без владеющей сущности. `COMPOSITION` можно считать "более тесным" отношением, чем `ASSOCIATION`. Например, отношение заказа и пункта этого заказа − `COMPOSITION`, т.к. пункт не может существовать без заказа, которому он принадлежит.
++
+Вид ссылочного атрибута `ASSOCIATION` или `COMPOSITION` влияет на режим редактирования сущности: в первом случае сохранение связанной сущности в базу данных происходит независимо, а во втором − связанная сущность сохраняется в БД только вместе с владеющей сущностью.
+
+* `getRange()` – интерфейс `Range`, детально описывающий тип данного атрибута
+
+* `isMandatory()` – признак обязательности атрибута. Используется, например, визуальными компонентами для сигнализации пользователю о необходимости ввода значения.
+
+* `isReadOnly()` – признак неизменности атрибута
+
+* `getInverse()` – для ссылочного атрибута возвращает мета-свойство с обратной стороны ассоциации, если таковое имеется
+
+* `getAnnotatedElement()` – поле (`java.lang.reflect.Field`) или метод (`java.lang.reflect.Method`), соответствующие данному атрибуту сущности
+
+* `getJavaType()` – класс Java данного атрибута сущности. Это либо тип поля класса, либо тип возвращаемого значения метода.
+
+* `getDeclaringClass()` – класс Java, содержащий данный атрибут
+
+--
+
+`Range`:: 
++
+--
+Интерфейс, детально описывающий тип атрибута сущности.
+
+Основные методы:
+
+* `isDatatype()` – возвращает `true` для атрибута простого <<metaProperty.getType,типа>>
+
+* `asDatatype()` - возвращает <<datatype,Datatype>> для атрибута простого <<metaProperty.getType,типа>>
+
+* `isEnum()` – возвращает `true` для атрибута <<metaProperty.getType,типа>> перечисления
+
+* `asEnumeration()` - возвращает <<datatype,Enumeration>> для атрибута <<metaProperty.getType,типа>> перечисления
+
+* `isClass()` – возвращает `true` для ссылочного атрибута <<metaProperty.getType, типа>> `ASSOCIATION` или `COMPOSITION`
+
+* `asClass()` - возвращает <<metaClass,мета-класс>> ассоциированной сущности для ссылочного атрибута
+
+* `isOrdered()` – возвращает `true` если атрибут представляет собой упорядоченную коллекцию (например, `List`)
+
+* `getCardinality()` – вид отношения для ссылочного атрибута: `++ONE_TO_ONE++`, `++MANY_TO_ONE++`, `++ONE_TO_MANY++`, `++MANY_TO_MANY++`
+
+--
+

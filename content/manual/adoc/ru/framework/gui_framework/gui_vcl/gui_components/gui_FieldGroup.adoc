@@ -1,0 +1,327 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_FieldGroup]]
+====== FieldGroup
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-fieldgroup" class="live-demo-btn" target="_blank">ДЕМОНСТРАЦИЯ</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/FieldGroup.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Компонент `FieldGroup` предназначен для совместного отображения и редактирования нескольких атрибутов сущностей. 
+
+image::gui_fieldGroup.png[align="center"]
+
+XML-имя компонента: `fieldGroup`
+
+Компонент реализован для блоков *Web Client* и *Desktop Client*.
+
+Пример описания группы полей в XML-дескрипторе экрана: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_1.xml[]
+---- 
+
+Здесь в элементе `dsContext` определен <<datasources,источник данных>> `datasource`, который содержит один экземпляр сущности `Order`. Для компонента `fieldGroup` в атрибуте `datasource` указывается используемый источник данных, а в элементах `field` - какие атрибуты сущности, содержащейся в источнике данных, необходимо отобразить.
+
+Элементы `fieldGroup`:
+
+[[gui_FieldGroup_column]]
+* `column` - необязательный элемент, позволяющий располагать поля в несколько колонок. Для этого элементы `field` должны находиться не непосредственно внутри `fieldGroup`, а внутри своего `column`. Например: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_2.xml[]
+---- 
++
+В данном случае поля будут расположены в две колонки, причем в первой колонке все поля будут шириной `250px`, а во второй - `400px`.
++
+Атрибуты `column`:
++
+--
+[[gui_FieldGroup_column_width]]
+** `width` - задает ширину полей данной колонки. По умолчанию ширина полей - `200px`. В данном атрибуте ширина может быть задана как в пикселах, так и в процентах от общего размера колонки по горизонтали.
+
+[[gui_FieldGroup_column_flex]]
+** `flex` - число, задающее степень изменения общего размера данной колонки по горизонтали относительно других колонок при изменении ширины всего компонента `fieldGroup`. Например, можно задать одной колонке `flex=1` а другой `flex=3`.
+
+[[gui_FieldGroup_column_id]]
+** `id` - необязательный идентификатор колонки, позволяющий ссылаться на нее в случае <<screen_extension,расширении экрана>>.
+--
+
+[[gui_FieldGroup_field]]
+* `field` - основной элемент компонента, описывает одно поле компонента.
++
+Собственные настраиваемые поля можно определить внутри элемента `field`:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_6.xml[]
+----
++
+Атрибуты элемента `field`:
++
+--
+[[gui_FieldGroup_field_id]]
+** `id` - обязательный атрибут в случае, если не определён атрибут `property`; в противном случае по умолчанию принимает то же значение, что и `property`. Атрибут `id` должен содержать произвольный уникальный идентификатор либо поля с заданным атрибутом `property`, либо программно определяемого поля. В последнем случае элемент `field` должен иметь также атрибут `custom="true"` (см. далее).
+
+[[gui_FieldGroup_field_property]]
+** `property` - обязательный атрибут в случае, если не определён атрибут `id`; должен содержать название атрибута сущности, выводимого в поле, для связывания поля и данных.
+
+[[gui_FieldGroup_field_caption]]
+** `caption` − позволяет задать заголовок поля. Если не задан, будет отображено <<entity_localization,локализованное название атрибута>> сущности.
+
+** `inputPrompt` - если для компонента, представляющего данное поле, доступен атрибут <<gui_attr_inputPrompt,inputPrompt>>, его значение можно установить напрямую для этого поля.
+
+[[gui_FieldGroup_field_visible]]
+** `visible` − позволяет скрыть поле вместе с заголовком.
+
+[[gui_FieldGroup_field_datasource]]
+** `datasource` − позволяет задать для данного поля <<datasources,источник данных>>, отличный от заданного для всего компонента `fieldGroup`. Таким образом в группе полей могут отображаться атрибуты разных сущностей.
+
+** `optionsDatasource` − задает имя <<datasources,источника данных>>, используемого для формирования списка опций. Данный атрибут можно задать для поля, связанного со ссылочным атрибутом сущности. По умолчанию выбор связанной сущности производится через экран выбора, а если `optionsDatasource` указан, то связанную сущность можно выбирать из выпадающего списка опций. Фактически указание `optionsDatasource` приводит к тому, что вместо компонента <<gui_PickerField,PickerField>> в поле используется <<gui_LookupPickerField,LookupPickerField>>. 
+
+[[gui_FieldGroup_field_width]]
+** `width` − позволяет задать ширину поля без учета заголовка. По умолчанию ширина поля - `200px`. Ширина может быть задана как в пикселах, так и в процентах от общего размера колонки по горизонтали. Для указания ширины всех полей одновременно можно использовать атрибут `width` элемента `column`, описанный выше.
+
+[[gui_FieldGroup_field_custom]]
+** `custom` - установка этого атрибута в `true` позволяет задать собственное представление поля, или говорит о том, что идентификатор поля не ссылается на атрибут сущности, и компонент, находящийся в поле, будет задан программно с помощью метода `setComponent()` компонента `FieldGroup` (см. ниже).
+
+[[gui_FieldGroup_field_generator]]
+** атрибут `generator` позволяет декларативно создавать собственные представления полей, указав имя метода, возвращающего компонент для данного поля:
++
+[source, xml]
+----
+<fieldGroup datasource="productDs">
+    <column width="250px">
+        <field property="description" generator="generateDescriptionField"/>
+    </column>
+</fieldGroup>
+----
+
++
+[source, java]
+----
+public Component generateDescriptionField(Datasource datasource, String fieldId) {
+    TextArea textArea = componentsFactory.createComponent(TextArea.class);
+    textArea.setRows(5);
+    textArea.setDatasource(datasource, fieldId);
+    return textArea;
+}
+----
+
+[[gui_FieldGroup_field_link]]
+** `link` - установка атрибута в `true` позволяет отобразить вместо поля выбора сущности ссылку на экран просмотра экземпляра сущности (поддерживается только для *Web Client*). Такое поведение может быть необходимо, если требуется дать пользователю возможность просматривать связанную сущность, но саму связь он менять не должен.
+
+[[gui_FieldGroup_field_linkScreen]]
+** `linkScreen` - позволяет указать идентификатор экрана, который будет открыт по нажатию на ссылку, включенную свойством `link`.
+
+[[gui_FieldGroup_field_linkScreenOpenType]]
+** `linkScreenOpenType` - задает режим открытия экрана редактирования (`++THIS_TAB++`, `++NEW_TAB++` или `DIALOG`).
+
+[[gui_FieldGroup_field_linkInvoke]]
+** `linkInvoke` - позволяет заменить открытие окна на вызов метода контроллера.
+
+Следующие атрибуты элемента `field` можно применять в зависимости от типа атрибута сущности, отображаемого полем:
+
+[[gui_FieldGroup_field_mask]]
+** Если для текстового атрибута сущности задать значение атрибута `mask`, то в поле вместо компонента <<gui_TextField,TextField>> будет использоваться компонент <<gui_MaskedField,MaskedField>> с соответствующей маской. В этом случае можно также задать атрибут `valueMode`.
+
+[[gui_FieldGroup_field_rows]]
+** Если для текстового атрибута сущности задать значение атрибута `rows`, то в поле вместо компонента <<gui_TextField,TextField>> будет использоваться компонент <<gui_TextArea,TextArea>> с соответствующим количеством строк. В этом случае можно также задать атрибут `cols`.
+
+** Для текстового атрибута сущности можно задать атрибут `maxLength` аналогично описанному для <<gui_TextField,TextField>>.
+
+** Для атрибута сущности типа `date` или `dateTime` можно задать атрибуты `dateFormat` и `resolution` для параметризации находящегося в поле компонента <<gui_DateField,DateField>>.
+
+** Для атрибута сущности типа `time` можно задать атрибут `showSeconds` для параметризации находящегося в поле компонента <<gui_TimeField,TimeField>>.
+--
+
+Атрибуты `fieldGroup`:
+
+[[gui_FieldGroup_border]]
+* Атрибут `border` может принимать значение `hidden` или `visible`. По умолчанию - `hidden`. При установке в значение `visible` компонент `fieldGroup` выделяется рамкой. В веб-реализации компонента отображение рамки осуществляется добавлением CSS-класса `cuba-fieldgroup-border`. 
+
+[[gui_FieldGroup_captionAlignment]]
+* `captionAlignment` определяет расположение заголовков относительно полей компонента `FieldGroup`. Принимает два значения: `LEFT` и `TOP`.
+
+[[gui_FieldGroup_fieldFactoryBean]]
+* `fieldFactoryBean`: декларативные поля, объявленные в XML-дескрипторе, создаются с помощью интерфейса `FieldGroupFieldFactory`. Чтобы переопределить эту фабрику, используйте атрибут `fieldFactoryBean` с именем вашей реализации `FieldGroupFieldFactory`.
++
+[[gui_FieldGroup_setFieldFactory]]
+Для элемента `FieldGroup`, полностью созданного программно, для этой цели используется метод `setFieldFactory()`.
+
+Методы интерфейса `FieldGroup`:
+
+[[gui_FieldGroup_addField]]
+* `addField` позволяет добавлять поля в FieldGroup на лету. В качестве параметра принимает экземпляр `FieldConfig`, также можно указать положение нового поля в FieldGroup с помощью параметров `colIndex` и `rowIndex`.
+
+[[gui_FieldGroup_bind]]
+* метод `bind()` необходимо применить к полю после вызова метода `setDatasource()`, чтобы вызвать создание компонентов поля.
+
+[[gui_FieldGroup_createField]]
+* `createField()` используется для создания элементов FieldGroup, реализующих интерфейс `FieldConfig`:
++
+[source, java]
+----
+fieldGroup.addField(fieldGroup.createField("newField"));
+----
+
+[[gui_FieldGroup_getComponent]]
+* Метод `getComponent()` возвращает визуальный компонент, находящийся в поле с указанным идентификатором. Это может потребоваться для дополнительной параметризации компонента, недоступной через атрибуты XML-элемента `field`, описанные выше.
++
+Вместо явного вызова `getFieldNN("id").getComponentNN()` для получения ссылки на компонент поля в контроллере экрана можно использовать <<screen_controller_injection,инжекцию>>. Для этого следует использовать аннотацию `@Named` с указанием идентификатора самого `fieldGroup`, и через точку - идентификатора поля.
++
+Например, следующим образом в поле выбора связанной сущности можно добавить действие открытия экземпляра и убрать действие очистки поля:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_4.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_5.java[]
+----
++
+Для использования метода `getComponent()` или инжекции компонентов полей необходимо знать тип компонента, находящегося в поле. В следующей таблице приведено соответствие типов атрибутов сущностей и создаваемых для них компонентов:
++
+[cols="3*.^", frame="all"]
+|===
+| Тип атрибута сущности | Дополнительные условия| Тип компонента поля
+
+.2+| Связанная сущность
+| Задан атрибут `optionsDatasource`
+| <<gui_LookupPickerField,LookupPickerField>>
+
+|
+| <<gui_PickerField,PickerField>>
+
+| Перечисление (`enum`)
+|
+| <<gui_LookupField,LookupField>>
+
+.3+| `string`
+| Задан атрибут `mask`
+| <<gui_MaskedField,MaskedField>>
+
+| Задан атрибут `rows`
+| <<gui_TextArea,TextArea>>
+
+|
+| <<gui_TextField,TextField>>
+
+| `boolean`
+|
+| <<gui_CheckBox,CheckBox>>
+
+| `date`, `dateTime`
+|
+| <<gui_DateField,DateField>>
+
+| `time`
+|
+| <<gui_TimeField,TimeField>>
+
+.2+| `int`, `long`, `double`, `decimal`
+| Задан атрибут `mask`
+| <<gui_MaskedField,MaskedField>>
+
+|
+| <<gui_TextField,TextField>>
+
+| `UUID`
+|
+| <<gui_MaskedField,MaskedField>> с hex-маской
+
+|===
+
+[[gui_FieldGroup_removeField]]
+* `removeField()` позволяет удалять поля на лету по `id`.
+
+[[gui_FieldGroup_setComponent]]
+* Метод `setComponent()` задаёт собственное представление поля. Он может быть использован вместе с атрибутом `custom="true"` элемента `field` или с полем, созданным программно методом `createField()` (см. выше). При использовании с `custom="true"` необходимо вручную указать источник данных и свойство.
++
+Экземпляр FieldConfig можно получить с помощью методов `getField()` или `getFieldNN()`, и затем вызвать метод `setComponent()`, как показано в следующем примере:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/fieldgroup_3.java[]
+---- 
+
+'''
+
+Атрибуты fieldGroup::
+<<gui_attr_align,align>> -
+<<gui_FieldGroup_border,border>> -
+<<gui_attr_caption,caption>> -
+<<gui_FieldGroup_captionAlignment,captionAlignment>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_FieldGroup_fieldFactoryBean,fieldFactoryBean>> -
+<<gui_attr_id,id>> -
+<<gui_attr_height,height>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Атрибуты column::
+<<gui_FieldGroup_column_flex,flex>> -
+<<gui_FieldGroup_column_id,id>> -
+<<gui_FieldGroup_column_width,width>>
+
+Атрибуты field::
+<<gui_FieldGroup_field_caption,caption>> -
+<<gui_attr_captionProperty,captionProperty>> -
+<<gui_FieldGroup_field_rows,cols>> -
+<<gui_FieldGroup_field_custom,custom>> -
+<<gui_FieldGroup_field_datasource,datasource>> -
+<<gui_DateField_dateFormat,dateFormat>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_FieldGroup_field_generator,generator>> -
+<<gui_FieldGroup_field_id,id>> -
+<<gui_FieldGroup_field_link,link>> -
+<<gui_FieldGroup_field_linkInvoke,linkInvoke>> -
+<<gui_FieldGroup_field_linkScreen,linkScreen>> -
+<<gui_FieldGroup_field_linkScreenOpenType,linkScreenOpenType>> -
+<<gui_FieldGroup_field_mask,mask>> -
+<<gui_TextField_maxLength,maxLength>> -
+<<gui_attr_optionsDatasource,optionsDatasource>> -
+<<gui_FieldGroup_field_property,property>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_DateField_resolution,resolution>> -
+<<gui_FieldGroup_field_rows,rows>> -
+<<gui_TimeField_showSeconds,showSeconds>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_FieldGroup_field_visible,visible>> -
+<<gui_attr_width,width>>
+
+Элементы field::
+<<gui_FieldGroup_column,column>> -
+<<gui_FieldGroup_field,field>> -
+<<gui_attr_inputPrompt,inputPrompt>> -
+<<gui_validator,validator>>
+
+API::
+<<gui_FieldGroup_addField,addField>> -
+<<gui_FieldGroup_bind,bind>> -
+<<gui_FieldGroup_createField,createField>> -
+<<gui_FieldGroup_getComponent,getComponent>> -
+<<gui_FieldGroup_removeField,removeField>> -
+<<gui_FieldGroup_setComponent,setComponent>> -
+<<gui_FieldGroup_setFieldFactory,setFieldFactory>>
+
+'''
+

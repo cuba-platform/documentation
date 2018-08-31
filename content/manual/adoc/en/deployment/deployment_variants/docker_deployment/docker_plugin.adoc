@@ -1,0 +1,84 @@
+:sourcesdir: ../../../../../source
+
+[[docker_plugin]]
+===== Gradle Plugin for Docker
+
+In this section, we cover the building and pushing the Docker images into the single Uber JAR using Gradle.
+
+There are many Gradle plugins for Docker. We are going to use the https://github.com/bmuschko/gradle-docker-plugin[bmuschko/gradle-docker-plugin].
+
+In the `build.gradle` file import the necessary classes for managing images and add the buildscript dependency on the plugin:
+
+[source, plain]
+----
+buildscript {
+
+    dependencies {
+        classpath 'com.bmuschko:gradle-docker-plugin:X.Y.Z'
+    }
+}
+
+import com.bmuschko.gradle.docker.tasks.image.Dockerfile
+import com.bmuschko.gradle.docker.tasks.image.DockerBuildImage
+import com.bmuschko.gradle.docker.tasks.image.DockerPushImage
+import com.bmuschko.gradle.docker.DockerRegistryCredentials
+----
+
+The plugin `com.bmuschko.docker-remote-api` allows interacting with Docker via its remote API. You can model any workflow imaginable by creating enhanced task of the custom task provided by the plugin.
+To use the plugin, include the following code snippet in your build script:
+
+[source, plain]
+----
+apply plugin: 'com.bmuschko.docker-remote-api'
+----
+
+A Dockerfile can be created by the `Dockerfile` custom tasks. The Dockerfile instructions need to be declared in the correct order.
+
+[source, groovy]
+----
+task createDockerfile(type: Dockerfile, dependsOn: buildUberJar)  {
+    destFile = project.file('build/distributions/uberJar/Dockerfile')
+    from 'openjdk:8'
+    addFile("app.jar", "/usr/src/cuba-sales/app.jar")
+    defaultCommand("java", "-Dapp.home=/usr/src/cuba-sales/home", "-jar", "/usr/src/cuba-sales/app.jar")
+}
+----
+
+* `from` property adds the base Docker image used during building images.
+* `addFile` property defines the path to the source JAR that will be copied to the image. Note, that the source JAR should be in the same folder as the `Dockerfile`.
+* `defaultCommand` property defines the command for running the application.
+
+Image pull or push operations against the public Docker Hub registry or a private registry may require authentication. You can provide your credentials with the registryCredentials closure. Set your credentials in the https://docs.gradle.org/current/userguide/build_environment.html[gradle.properties] file:
+
+[source, groovy]
+----
+dockerHubEmail = 'example@email.com'
+dockerHubPassword = 'docker-hub-password'
+dockerHubUsername = 'docker-hub-username'
+----
+
+You can access a project property in your build script simply by using its name as you would use a variable:
+
+[source, groovy]
+----
+def dockerRegistryCredentials = new DockerRegistryCredentials()
+dockerRegistryCredentials.email = dockerHubEmail
+dockerRegistryCredentials.password = dockerHubPassword
+dockerRegistryCredentials.username = dockerHubUsername
+----
+
+Define the following tasks to build a Docker image from a Dockerfile and to push this image to the public Docker Hub registry:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/dockerFile.groovy[]
+----
+Set up the single Uber JAR as it is described in the <<single_jar_deployment>> section. Then run the `pushImage` task from the terminal or from the *Search* field in Studio.
+
+[source, plain]
+----
+gradle pushImage
+----
+
+This task successively builds Uber JAR, generates the `Dockerfile`, builds the image and pushes this image to your Docker Hub registry.
+

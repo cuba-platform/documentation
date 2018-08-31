@@ -1,0 +1,83 @@
+:sourcesdir: ../../../../source
+
+[[views]]
+==== Views
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/core/global/View.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+When retrieving entities from the database, we often face the question: how to ensure loading of related entities to the desired depth?
+
+For example, you need to display the date and amount together with the Customer name in the Orders browser, which means that you need to fetch the related Customer instance. And for the Order editor screen, you need to fetch the collection of Items, in addition to that each Item should contain a related Product instance to display its name.
+
+<<lazy_loading,Lazy loading>> can not help in most cases because data processing is usually performed not in the transaction where the entities were loaded but, for example, on the client <<app_tiers,tier>> in UI. At the same time, it is unacceptable to apply <<eager_fetching, eager fetching>> using <<entity_annotations,entity annotations>> as it leads to constant retrieval of the entire graph of related entities which can be very large.
+
+Another similar problem is the requirement to limit the set of <<local_attribute, local>> entity attributes of the loaded graph: for example, some entity can have 50 attributes, including BLOB, but only 10 attributes need to be displayed on the screen. In this case, why should we download 40 remaining attributes from the database, then serialize them and transfer to the client when it does not need them at the moment?
+
+_Views_ mechanism resolves these issues by retrieving from the database and transmitting to the client entity graphs limited by depth and by attributes. A _view_ is a descriptor of the object graph required for a certain UI screen or data-processing operation.
+
+Views processing is performed in the following way:
+
+* All relations in the data model are declared with lazy fetching property (`fetch = FetchType.LAZY`. See <<entity_annotations>>).
+
+* In the data loading process, the calling code provides required view together with <<jpql, JPQL>> query or entity identifier.
+
+* The so-called _FetchGroup_ is produced on the base of the view – this is a special feature of *EclipseLink* framework lying in the base of the <<orm, ORM>> layer. FetchGroup affects the generation of SQL queries to the database: both the list of returned fields and joins with other tables containing related entities.
+
+.View Classes
+image::View.png[align="center"]
+
+A view is determined by an instance of the `View` class, where:
+
+* `entityClass` – the entity class, for which the view is defined. In other words, it is the "root" of the loaded entities tree.
+
+* `name` – the name of the view. It should be either `null` or a unique name within all views for the entity.
+
+* `properties` – collection of `ViewProperty` instances corresponding to the entity attributes that should be loaded.
+
+* `includeSystemProperties` – if set, system attributes (defined by <<entity_base_classes,basic interfaces>> of persistent entities, such as `BaseEntity` and `Updatable`) are automatically included in the view.
+
+[[view_loadPartialEntities]]
+* `loadPartialEntities` - specifies whether the view affects loading of local (in other words, immediate) attributes. If false, only reference attributes are affected, and local ones are loaded regardless of their presence in the view.
++
+This property is controlled to some extent by the platform data loading mechanisms, see the sections about loading partial entities in <<dm_partial_entities,DataManager>> and <<em_partial_entities,EntityManager>>.
+
+`ViewProperty` class has the following properties:
+
+* `name` – the name of the entity attribute.
+
+* `view` – for reference attributes, specifies the view which will be used to load the related entity.
+
+* `fetch` - for reference attributes, specifies how to fetch the related entity from the database. It corresponds to the `FetchMode` enum and can have one of the following values:
++
+--
+** `AUTO` - the platform will choose an optimal mode depending on the relation type.
+
+** `UNDEFINED` - fetching will be performed according to JPA rules, which effectively means loading by a separate select.
+
+** `JOIN` - fetching in the same select by joining with referenced table.
+
+** `BATCH` - queries of related objects will be optimized in batches. See more link:$$http://java-persistence-performance.blogspot.ru/2010/08/batch-fetching-optimizing-object-graph.html$$[here].
+--
++
+If the `fetch` attribute is not specified, the `AUTO` mode is applied. If the reference represents a <<entity_cache,cacheable>> entity, `UNDEFINED` will be used regardless of the value specified in the view.
+
+[TIP]
+====
+Regardless of the attributes defined in the view, the following attributes are always loaded:
+
+* `id` – entity identifier.
+* `version` – used for optimistic locking of the entities implementing `Versioned`.
+* `deleteTs`, `deletedBy` – used for the entities, implementing <<soft_deletion,SoftDelete>>.
+====
+
+[WARNING]
+====
+An attempt to get or set a value for a not loaded attribute (not included into a view) raises an exception. You can check whether the attribute was loaded using the `EntityStates.isLoaded()` method.
+====
+
+include::views/views_creation.adoc[]
+

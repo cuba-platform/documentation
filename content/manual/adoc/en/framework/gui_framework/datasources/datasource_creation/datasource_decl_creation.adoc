@@ -1,0 +1,67 @@
+:sourcesdir: ../../../../../../source
+
+[[datasource_decl_creation]]
+====== Declarative Creation
+
+Typically, datasources are declared in the `dsContext` element of a screen descriptor. Depending on the relative position of declaration elements, datasources of two varieties are created:
+
+* if an element is located directly in `dsContext`, a normal `Datasource` or `CollectionDatasource`, which contains an independently loaded entity or collection, is created;
+
+* if an element is located inside an element of another datasource, `NestedDatasource` is created and the external datasource becomes its parent.
+
+Below is an example of declaring a datasource:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_2.xml[]
+---- 
+
+In the example above, `carDs` contains one entity instance, `Car`, and nested `allocationsDs` and `repairsDs` contain collections of related entities from the `Car.driverAllocations` and `Car.repairs` attributes, respectively. The `Car` instance together with related entities is set into the datasource from the outside. If this screen is an <<screen_edit,edit screen>>, it happens automatically when opening the screen. The `colorsDs` datasource contains a collection of instances of the `Color` entity, which is loaded by the datasource itself using the specified JPQL <<datasource_query,query>> with the _local <<views,view>>.
+
+Below is the XML scheme. 
+
+`dsContext` – root element.
+
+`dsContext` elements:
+
+* `datasource` – defines a datasource that contains a single entity instance.
++
+Attributes:
+
+** `id` – datasource identifier, must be unique for this `DsContext`.
+
+** `class` – Java class of an entity that will be contained in this datasource.
+
+** `view` – name of entity <<views,view>>. If the datasource itself loads instances, then this view will be used during loading. Otherwise, this view makes signals to external mechanisms on how to load an entity for this datasource.
+
+** `allowCommit` – if set to `false`, the `isModified()` method of this datasource always returns `false` and the `commit()` method does nothing. Thus, changes in entities that are contained in the datasource are ignored. By default, it is set to `true`, i.e., changes are tracked and can be saved.
+
+** `datasourceClass` is a <<datasource_custom_class, custom implementation class>>, if necessary.
+
+* `collectionDatasource` – defines a datasource that contains a collection of instances.
++
+--
+`collectionDatasource` attributes:
+
+** `refreshMode` – a datasource update mode, default is `ALWAYS`. In the `NEVER` mode, when `refresh()` method is invoked, the datasource does not load data and only changes its state to `Datasource.State.VALID`, notifies listeners and sorts available instances. The `NEVER` mode is useful if you need to programmatically fill `CollectionDatasource` with preloaded or created entities. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/datasources_3.java[]
+---- 
+
+** `softDeletion` – the false value disables the <<soft_deletion,soft deletion>> mode when loading entities, i.e., deleted instances will also be loaded. Default value is `true`.
+
+`collectionDatasource` elements:
+
+** `query` – query to load entities
+--
+
+* `groupDatasource` – completely similar to `collectionDatasource`, but creates datasource implementation that is suitable to use in conjunction with the <<gui_GroupTable,GroupTable>> component.
+
+* `hierarchicalDatasource` – similar to `collectionDatasource`, and creates datasource implementation that is suitable to use in conjunction with the <<gui_Tree,Tree>> and <<gui_TreeTable,TreeTable>> components.
++
+`hierarchyProperty` is a specific attribute. It specifies an attribute name, upon which a hierarchy is built.
+
+A datasource implementation class is selected implicitly based on the name of the XML element and, as mentioned above, the mutual arrangement of elements. However, if you need to apply a custom datasource, you can explicitly specify its class in the `datasourceClass` attribute.
+

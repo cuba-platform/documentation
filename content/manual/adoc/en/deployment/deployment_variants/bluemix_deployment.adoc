@@ -1,0 +1,119 @@
+:sourcesdir: ../../../../source
+
+[[bluemix_deployment]]
+==== Deployment to Bluemix Cloud
+
+CUBA Studio provides support of IBM® Bluemix® cloud deployment in a few easy steps.
+
+[TIP]
+====
+Bluemix cloud deployment is currently applicable only to projects using PostgreSQL database. HSQLDB is available with _in-process_ option only, that means the database will be recreated on every application restart, and the user data will be lost.
+====
+
+. Create an account on the Bluemix. Download and install:
+.. Bluemix CLI: http://clis.ng.bluemix.net/ui/home.html
+.. Cloud Foundry CLI: https://github.com/cloudfoundry/cli/releases
+.. Make sure the commands `bluemix` and `cf` work in the command line. If not, add your `\IBM\Bluemix\bin` path to the `PATH` environment variable.
+
+. Create a Space in the Bluemix with any space name. You can group several applications within one space if needed.
+
+. In the Space create an application server: *Create App* -> *CloudFoundry Apps* -> *Tomcat*.
+
+. Specify the name of the application. The name should be unique as it will be used as part of the URL of your application.
+
+. To create a Database service, click *Create service* in the Space dashboard and choose *ElephantSQL*.
+
+. Open the application manager and connect the created DB Service to the application. Click *Connect Existing*. For the changes to take effect, the system requires restaging (updating) the application. In our case, it is not necessary, as the application will be redeployed.
+
+. After the DB Service is connected, DB credentials become available with the *View Credentials* button. The DB properties are also stored in the `VCAP_SERVICES` environment variable of the application runtime and could be viewed by calling the `cf&#160;env` command. The created database is also accessible from outside of the Space, so you can work with it from your development environment.
+
+. Setup your CUBA project to run with the PostgreSQL (the DBMS similar to the one you have in the Bluemix).
+
+. Generate DB scripts and start the local Tomcat server. Make sure the application works.
+
+. Generate WAR-file to deploy the application to Tomcat.
+.. Click *Deployment Settings* in the *Project Properties* section of Studio navigation panel.
+.. Switch to the *WAR* tab.
+.. Enable all the options using checkboxes, as for correct deployment it should be the *Single WAR* with JDBC driver and `context.xml` inside.
++
+image::bluemix_war_settings.png[align="center"]
+
+.. Click *Generate* button near the *Custom context.XML field*. In the opened dialog fill the credentials of the Database you have created in Bluemix.
++
+Use the credentials from `uri` of your DB service following the example below:
++
+[source, json]
+----
+include::{sourcesdir}/deployment/bluemix_credentials.json[]
+----
++
+*Database user*: `ixbtsvsq`
++
+*Database password*: `F_KyeQjpEdpQfd4n0KpEFCYyzKAbN1W9`
++
+*Database URL*: `qdjjtnkv.db.elephantsql.com:5432`
++
+*Database name*: `ixbtsvsq`
+
+.. Click *Generate* button to generate the custom `web.xml` file required for the single WAR.
+
+.. Save the settings. Generate the WAR-file using the `buildWar` Gradle task in Studio or command line.
++
+image::bluemix_buildWar.png[align="center"]
++
+As a result, the  `app.war` appears in the `build/distributions/war/` sub-directory of the project.
+
+. In the root directory of the project create manually the `manifest.yml` file. The contents of the file should be as follows:
++
+[source, yml]
+----
+include::{sourcesdir}/deployment/bluemix_manifest.yml[]
+----
++
+where
++
+* `path` is the relative path to WAR-file.
+* `memory`: the default memory limit is 1G. You may want to allocate less or more memory to your application, this can also be done via Bluemix WEB interface. Note that the allocated memory affects the Runtime Cost.
+* `name` is the name of the Tomcat application you have created in the Cloud above (depends on your application location, see your `App URL`, for example, `\https://myluckycuba.eu-gb.mybluemix.net/`).
+* `host`: the same as name.
+* `env`: the environment variables used to set the Tomcat and Java versions.
+
+. In the command line switch to the root directory of your CUBA project.
++
+[source, yml]
+----
+cd your_project_directory
+----
+
+. Connect to Bluemix (double check the domain name).
++
+[source, yml]
+----
+cf api https://api.eu-gb.bluemix.net
+----
+
+. Log in to your Bluemix account.
++
+[source, yml]
+----
+cf login -u your_bluemix_id -o your_bluemix_ORG
+----
+
+. Deploy your WAR to your Tomcat.
++
+[source, yml]
+----
+cf push
+----
++
+The `push` command gets all the required parameters from the `manifest.yml` file.
+
+. You can find Tomcat server logs via Bluemix WEB-interface in the *Logs* tab on the application dashboard, as well as in command line using the command
++
+[source, yml]
+----
+cf logs cuba-app --recent
+----
+
+. After the deployment process is completed, your application will become accessible in browser using the URL `host.domain`. This URL will be displayed in the *ROUTE* field in the table of your *Cloud Foundry Apps*.
+

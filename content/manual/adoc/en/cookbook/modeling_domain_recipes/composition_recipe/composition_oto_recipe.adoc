@@ -1,0 +1,37 @@
+:sourcesdir: ../../../../../source
+
+[[composition_oto_recipe]]
+===== One-to-One Composition
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Customer.browse2" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+The one-to-one composition will be illustrated by the `Customer` and `CustomerDetails` entities:
+
+image::cookbook/composition_recipe_3.png[align="center"]
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/Customer.java[Customer.java] - the `Customer` entity contains an optional link to `CustomerDetails` annotated with `@Composition`.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/customers/CustomerDetails.java[CustomerDetails.java] - the `CustomerDetails` entity.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/customers_2/customer-edit.xml[customer-edit.xml] - the customer edit screen descriptor. It contains a nested datasource for the `CustomerDetails` instance. In order to load the nested instance, the root datasource uses a <<views,view>> of the `Customer` entity that includes the `details` attribute. The field group in the customer edit screen just declares a field for the `details` attribute.
+
+As a result, customer editing works as follows:
+
+* The customer edit screen contains the <<gui_PickerField,PickerField>> component with two actions: <<openAction,OpenAction>> and <<clearAction,ClearAction>>:
+
+image::cookbook/composition_recipe_oto_1.png[align="center"]
+
+* When the open action is invoked, a new instance of `CustomerDetails` is created and its edit screen is shown. When *OK* is clicked in the details editor, the details instance is not saved to the database, but to the `detailsDs` datasource of the customer edit screen.
+
+* The picker field displays the <<namePattern_annotation,instance name>> of the details entity:
+
+image::cookbook/composition_recipe_oto_2.png[align="center"]
+
+* When a user clicks *OK* in the customer edit screen, the updated `Customer` instance together with the `CustomerDetails` instance is submitted to the `DataManager.commit()` method on the Middleware and saved to the database within a single transaction.
+
+* If the user invokes the clear action of the picker field, the `CustomerDetails` instance is deleted and the reference to it is cleared in the same transaction after the user commits the customer editor.
+

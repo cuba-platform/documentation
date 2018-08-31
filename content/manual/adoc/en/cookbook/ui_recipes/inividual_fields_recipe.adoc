@@ -1,0 +1,83 @@
+:sourcesdir: ../../../../source
+
+[[inividual_fields_recipe]]
+==== Using Individual Fields instead of FieldGroup
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Using the <<gui_FieldGroup,FieldGroup>> component in an entity's <<screen_edit,editor>> is not mandatory. You can easily replace it with separate fields to create a custom screen layout.
+
+Below is an example of such editor for the https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order] entity.
+
+The https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/order-edit-2.xml[order-edit.xml] descriptor contains the main `orderDs` and the nested `orderLinesDs` <<datasources,datasources>>, as well as the independent `customersDs` datasource for selecting a customer in a `lookupField`:
+
+[source, xml]
+----
+<dsContext>
+    <datasource id="orderDs"
+                class="com.company.sample.entity.Order"
+                view="order-edit">
+        <collectionDatasource id="orderLinesDs"
+                              property="orderLines"/>
+    </datasource>
+    <collectionDatasource id="customersDs"
+                          class="com.company.sample.entity.Customer"
+                          view="_minimal">
+        <query>
+            <![CDATA[select e from sample$Customer e]]>
+        </query>
+    </collectionDatasource>
+</dsContext>
+----
+
+Now, all we have to do is to create the fields for the `Order` attributes, bind them to the appropriate datasources and define the entity's attribute using the <<gui_attr_property,property>> attribute:
+
+* the order's number:
++
+[source, xml]
+----
+<textField id="numField"
+           caption="msg://order.num"
+           datasource="orderDs"
+           property="num"/>
+----
+
+* the order's customer:
++
+[source, xml]
+----
+<lookupField id="customerField"
+             caption="msg://order.customer"
+             datasource="orderDs"
+             property="customer"
+             optionsDatasource="customersDs"/>
+----
+
+* the order date:
++
+[source, xml]
+----
+<datePicker id="datePicker"
+            caption="msg://order.date"
+            datasource="orderDs"
+            property="date"/>
+----
+
+* the table containing the order lines:
++
+[source, xml]
+----
+<table id="orderLinesTable"
+       height="300px"
+       width="100%">
+    <rows datasource="orderLinesDs"/>
+    . . .
+</table>
+----
+
+This approach is more flexible in terms of screen layout design. You can select any visual components for the fields, group the fields and place them wherever you like on the screen.
+

@@ -1,0 +1,191 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_Button]]
+====== Button
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-button" class="live-demo-btn" target="_blank">ДЕМОНСТРАЦИЯ</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/Button.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Кнопка (`Button`) − компонент, обеспечивающий выполнение действия при нажатии.
+
+image::Button.png[align="center"]
+
+XML-имя компонента: `button`
+
+Компонент кнопки реализован для блоков *Web Client* и *Desktop Client*.
+
+Кнопка может содержать текст или значок (или и то и другое). На рисунке ниже отображены разные виды кнопок.
+
+image::gui_buttonTypes.png[align="center"]
+
+Пример кнопки с названием, взятым из <<message_packs,пакета локализованных сообщений>>, и с всплывающей подсказкой:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_1.xml[]
+----
+
+Название кнопки задается с помощью атрибута <<gui_attr_caption,caption>>, всплывающая подсказка − с помощью атрибута <<gui_attr_description,description>>.
+
+[[gui_Button_disableOnClick]]
+Если атрибут `disableOnClick` имеет значение `true`, кнопка будет автоматически отключена после клика по ней. Обычно это делается для того, чтобы предотвратить случайные повторные клики по кнопке. Впоследствии, вы можете снова включить кнопку с помощью вызова метода `setEnabled(true)`.
+
+Атрибут <<gui_attr_icon,icon>> указывает на местоположение значка в каталоге темы или имя элемента в используемом <<icon_set,наборе значков>>. Подробную информацию о том, где следует располагать файлы значков, можно прочитать в разделе <<gui_icons>>.
+
+Пример создания кнопки со значком:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_2.xml[]
+----
+
+[[gui_Button_invoke]]
+Основная функция кнопки − выполнить некоторое действие при нажатии на нее. Определить метод контроллера, который будет вызываться при нажатии на кнопку, можно с помощью атрибута `invoke`. Значением атрибута должно быть имя метода контроллера, удовлетворяющего следующим условиям:
+
+* Метод должен быть `public`.
+
+* Метод должен возвращать `void`.
+
+* Метод должен либо не иметь аргументов, либо иметь один аргумент типа `Component`. Если метод имеет аргумент `Component`, то при вызове в него будет передан экземпляр вызвавшей кнопки.
+
+В качестве примера показано описание кнопки, вызывающей метод `someMethod:`
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_3.xml[]
+----
+
+В контроллере экрана необходимо определить метод `someMethod`:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/button_4.java[]
+----
+
+[[gui_Button_action]]
+Атрибут `invoke` игнорируется, если для кнопки задан атрибут `action`. Атрибут `action` содержит имя <<gui_Action,действия>>, соответствующего данной кнопке.
+
+Пример кнопки с атрибутом `action`:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_5.xml[]
+----
+
+Кнопке можно назначить любое действие, имеющееся в каком-либо компоненте, реализующем интерфейс `Component.ActionsHolder` (это актуально для <<gui_Table,Table>>, <<gui_GroupTable,GroupTable>>, <<gui_TreeTable,TreeTable>>, <<gui_Tree,Tree>>). Причем неважно, каким образом эти действия добавлены - декларативно в XML-дескрипторе или программно в контроллере. В любом случае для использования такого действия достаточно в атрибуте `action` указать через точку имя компонента и идентификатор нужного действия. Например, в следующем примере кнопке назначается действие `create` таблицы `coloursTable`:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_6.xml[]
+----
+
+Действие для кнопки можно также создавать программно, в контроллере экрана, используя наследование от класса <<baseAction,BaseAction>>.
+
+[TIP]
+====
+Если для `Button` установлен экземпляр `Action`, то кнопка возьмет из него следующие свои свойства: <<gui_attr_caption,caption>>, <<gui_attr_description,description>>, <<gui_attr_icon,icon>>, <<gui_attr_enable,enable>>, <<gui_attr_visible,visible>>. Свойства `caption`, `description` и `icon` будут проставлены из действия только в том случае, если они не установлены в самом `Button`. Остальные перечисленные свойства действия имеют безусловный приоритет над свойствами кнопки.
+
+Если свойства действия меняются уже после установки этого `Action` для `Button`, то соответственно меняться будут и свойства `Button`, то есть кнопка слушает изменение свойств действия. В этом случае меняются и свойства `caption`, `description` и `icon`, причем даже если они изначально были назначены на саму кнопку.
+====
+
+[[gui_Button_stylenames]]
+Стили компонента Button::
++
+--
+Атрибут `primary` позволяет задать подсветку отдельных кнопок. Подсветка автоматически применится к кнопке, если у действия, вызываемого этой кнопкой, атрибут <<actions_primary, primary>> имеет значение `true`.
+
+[source, xml]
+----
+<button primary="true"
+        invoke="foo"/>
+----
+
+В теме Hover подсветка доступна по умолчанию; для её активации в теме, основанной на Halo, установите значение `true` для <<web_theme_extension_common,переменной стиля>> `$cuba-highlight-primary-action`.
+
+image::actions_primary.png[align="center"]
+
+Далее, в веб-клиенте с темой, основанной на Halo, к компоненту `Button` можно применить предопределенные стили. Стили задаются в XML-дексрипторе или контроллере экрана с помощью атрибута `stylename`:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/button_7.xml[]
+----
+
+Чтобы применить стиль программно, выберите одну из констант класса `HaloTheme` с префиксом компонента `BUTTON_`:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/button.java[]
+----
+
+[[gui_button_borderless]]
+* `borderless` - кнопка без полей.
+
+[[gui_button_borderless-colored]]
+* `borderless-colored` - кнопка без полей с цветной надписью.
+
+[[gui_button_danger]]
+* `danger` - выделенная кнопка, обозначающая действие, потенциально небезопасное для пользователя (которое может вызвать потерю данных и прочие необратимые изменения).
+
+[[gui_button_friendly]]
+* `friendly` - выделенная кнопка, обозначающая предпочтительное действие, безопасное для пользователя (не вызывающее потери данных и прочих необратимых изменений).
+
+[[gui_button_icon-align-right]]
+* `icon-align-right` - выравнивание значка по правому краю надписи.
+
+[[gui_button_icon-align-top]]
+* `icon-align-top` - расположение значка над надписью.
+
+[[gui_button_icon-only]]
+* `icon-only` - отображается только значок, кнопка квадратной формы.
+
+[[gui_button_primary]]
+* `primary` - кнопка основного действия (т.е.кнопка, которая получает фокус при нажатии кнопки Enter в форме ввода). Используйте внимательно, не более одной основной кнопки на представление.
+
+[[gui_button_quiet]]
+* `quiet` - "незаметная" кнопка, поля которой не видны до наведения указателя мыши.
+--
+
+'''
+
+Атрибуты button::
+<<gui_Button_action,action>> -
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_description,description>> -
+<<gui_Button_disableOnClick,disableOnClick>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_Button_invoke,invoke>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Предопределенные стили button::
+<<gui_button_borderless,borderless>> -
+<<gui_button_borderless-colored,borderless-colored>> -
+<<gui_button_danger,danger>> -
+<<gui_button_friendly,friendly>> -
+<<gui_attr_stylename_huge,huge>> -
+<<gui_button_icon-align-right,icon-align-right>> -
+<<gui_button_icon-align-top,icon-align-top>> -
+<<gui_button_icon-only,icon-only>> -
+<<gui_attr_stylename_large,large>> -
+<<gui_button_primary,primary>> -
+<<gui_button_quiet,quiet>> -
+<<gui_attr_stylename_small,small>> -
+<<gui_attr_stylename_tiny,tiny>>
+
+'''
+

@@ -1,0 +1,19 @@
+:sourcesdir: ../../../../../../source
+
+[[query_with_distinct]]
+====== Queries with distinct
+
+If a screen contains a table with paging, and JPQL that is used to load data can be modified at run time as a result of applying a <<gui_Filter,generic filter>> or access group <<constraints,constraints>>, the following can happen when `distinct` operator is omitted in JPQL queries:
+
+* If a collection is joined at the database level, the loaded dataset will contain duplicate rows.
+* On client level, the duplicates disappear in the datasource as they are added to a map (`java.util.Map`).
+* In case of paged table, a page may show fewer lines than requested, while the total number of lines exceeds requested.
+
+Thus, we recommend including `distinct` in JPQL queries, which ensures the absence of duplicates in the dataset returned from the database. However, certain DB servers (PostgreSQL in particular) have performance problems when executing SQL queries with `distinct` if the number of returned records is large (more than 10000).
+
+To solve this, the platform contains a mechanism to operate correctly without `distinct` at SQL level. This mechanism is enabled by <<cuba.inMemoryDistinct,cuba.inMemoryDistinct>> application property. When activated, it does the following:
+
+* The JPQL query should still include `select distinct`.
+* `DataManager` cuts `distinct` out of the JPQL query before sending it to ORM.
+* After the data page is loaded by `DataManager`, it deletes the duplicates and runs additional queries to DB in order to retrieve the necessary number of rows which are then returned to the client.
+

@@ -1,0 +1,205 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_FileUploadField]]
+====== FileUploadField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/FileUploadField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+The `FileUploadField` component allows a user to upload files to the server. The component can contain a caption, a link to uploaded file, and two buttons: for uploading and for clearing the selected file. When the upload button is clicked, a standard OS file picker window is shown, where the user can select a file. In order to upload multiple files, use <<gui_FileMultiUploadField,FileMultiUploadField>>.
+
+image::gui_upload.png[align="center"]
+
+XML name of the component: `upload`.
+
+The component is implemented for *Web Client* and *Desktop Client*. 
+
+* `FileUploadField` is automatically used inside <<gui_FieldGroup,FieldGroup>> for entity attributes of type `FileDescriptor`. In this case, the field looks as shown above and does not require additional configuration. An uploaded file is immediately stored in <<file_storage,file storage>> and the corresponding `FileDescriptor` instance is saved to the database.
+
+* You can use the component outside `FieldGroup` and connect it to a datasource. For example, here we suppose that the `personDs` datasource contains an entity with the `photo` attribute which is a reference to `FileDescriptor`:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/upload_0.xml[]
+----
+
+* You can also control the saving of file and `FileDescriptor` programmatically.
+
+** Declare the component in an XML screen descriptor:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/upload_1.xml[]
+---- 
+
+[[gui_FileUploadField_FileUploadSucceedListener]]
+** In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. In the `init()` method, add listeners which will react on successful uploads and errors:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/upload_2.java[]
+---- 
++
+--
+The component will upload the file to the temporary storage of the client <<app_tiers,tier>> and invoke the listener added by the `addFileUploadSucceedListener()` method. In this listener, a `FileDescriptor` object is requested from the component. `com.haulmont.cuba.core.entity.FileDescriptor` is a persistent entity, which uniquely identifies an uploaded file and is used to download the file from the system.
+
+`FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object. Both of these parameters are provided by `FileUploadField`.
+
+After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in the database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration* -> *External Files* screen.
+
+The listener added by the `addFileUploadErrorListener()` method will be invoked if an error occurs when uploading a file to the temporary storage of the client tier.
+
+Below is the list of listeners available to track the upload process:
+
+[[gui_FileUploadField_AfterValueClearListener]]
+* `AfterValueClearListener`,
+
+[[gui_FileUploadField_BeforeValueClearListener]]
+* `BeforeValueClearListener`,
+
+[[gui_FileUploadField_FileUploadErrorListener]]
+* `FileUploadErrorListener`,
+
+[[gui_FileUploadField_FileUploadFinishListener]]
+* `FileUploadFinishListener`
+
+[[gui_FileUploadField_FileUploadStartListener]]
+* `FileUploadStartListener`,
+
+[[gui_FileUploadField_FileUploadSucceedListener]]
+* `FileUploadSucceedListener`,
+
+* `ValueChangeListener`.
+--
+
+`fileUploadField` attributes:
+
+[[gui_FileUploadField_fileStoragePutMode]]
+* `fileStoragePutMode` - defines how the file and the corresponding `FileDescriptor` are stored.
++
+** In the `IMMEDIATE` mode it is done right after uploading file to the temporary storage of the client tier.
++
+** In the `MANUAL` mode, you should do it programmatically in a `FileUploadSucceedListener`.+
++
+The `IMMEDIATE` mode is selected by default when `FileUploadField` is used inside `FieldGroup`. Otherwise, the default mode is `MANUAL`.
+
+[[gui_FileUploadField_uploadButtonCaption]]
+* `uploadButtonCaption`, `uploadButtonIcon` and `uploadButtonDescription` XML attributes allow you to set the properties of the upload button.
+
+[[gui_FileUploadField_showFileName]]
+* `showFileName` - controls whether the name of uploaded file is displayed next to upload button. It is `false` by default.
+
+[[gui_FileUploadField_showClearButton]]
+* `showClearButton` - controls whether the clear button is visible. It is `false` by default.
+
+[[gui_FileUploadField_clearButtonCaption]]
+* `clearButtonCaption`, `clearButtonIcon` and `clearButtonDescription` XML attributes allow you to set the properties of the clear button if it is visible.
+
+[[gui_FileUploadField_accept]]
+* The `accept` XML attribute (and the corresponding `setAccept()` method) can be used to set the file type mask in the file selection dialog. Users still be able to change the mask to "All files" and upload arbitrary files.
++
+The value of the attribute should be a comma-separated list of masks. For example: `++*.jpg,*.png++`.
+
+* Maximum upload size is determined by the <<cuba.maxUploadSizeMb,cuba.maxUploadSizeMb>> application property and is  20MB by default. If a user selects a file of a larger size, a corresponding message will be displayed, and the upload will be interrupted.
+
+[[gui_FileUploadField_fileSizeLimit]]
+* The `fileSizeLimit` XML attribute (and the corresponding `setFileSizeLimit()` method) can be used to set maximum allowed file size specified in bytes.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/upload_3.xml[]
+----
+
+[[gui_FileUploadField_permittedExtensions]]
+* The `permittedExtensions` XML attribute (and the corresponding `setPermittedExtensions()` method) sets the white list of permitted file extensions.
++
+The value of the attribute should be a comma-separated list of extensions with leading dots. For example:
++
+[source,java]
+----
+uploadField.setPermittedExtensions(Sets.newHashSet(".png", ".jpg"));
+----
+
+[[gui_FileUploadField_dropZone]]
+* `dropZone` - allows you to specify a <<gui_BoxLayout,BoxLayout>> to be used as a target for drag-and-dropping files from outside of the browser. The dropZone can cover the whole layout of a dialog window. The selected container is highlighted when a user drags a file over the container, otherwise it is not visible.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/dropZone.xml[]
+----
++
+image::gui_dropZone.png[align="center"]
++
+To make a dropZone static and display it permanently, assign the predefined `dropzone-container` style to its container. In this case the container should be empty with only the `label` component inside:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/dropzone_static.xml[]
+----
++
+image::gui_dropZone_static.png[align="center"]
+
+[[gui_FileUploadField_pasteZone]]
+* `pasteZone` allows you to specify a <<gui_layouts,container>> to be used for handling paste shortcuts when a text input field nested in this container is focused. This feature is supported by Chromium-based browsers.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pasteZone.xml[]
+----
+
+See <<images_recipe>> for more complex example of working with uploaded files.
+
+'''
+
+Attributes of upload::
+<<gui_FileUploadField_accept,accept>> -
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_FileUploadField_clearButtonCaption,clearButtonCaption>> -
+<<gui_FileUploadField_clearButtonCaption,clearButtonDescription>> -
+<<gui_FileUploadField_clearButtonCaption,clearButtonIcon>> -
+<<gui_attr_contextHelpText,contextHelpText>> -
+<<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_description,description>> -
+<<gui_FileUploadField_dropZone,dropZone>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_FileUploadField_fileSizeLimit,fileSizeLimit>> -
+<<gui_FileUploadField_fileStoragePutMode,fileStoragePutMode>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_FileUploadField_pasteZone,pasteZone>> -
+<<gui_FileUploadField_permittedExtensions,permittedExtensions>> -
+<<gui_attr_property,property>> -
+<<gui_FileUploadField_showClearButton,showClearButton>> -
+<<gui_FileUploadField_showFileName,showFileName>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_FileUploadField_uploadButtonCaption,uploadButtonCaption>> -
+<<gui_FileUploadField_uploadButtonCaption,uploadButtonDescription>> -
+<<gui_FileUploadField_uploadButtonCaption,uploadButtonIcon>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+API::
+<<gui_api_addValueChangeListener,addValueChangeListener>> -
+<<gui_api_commit,commit>> -
+<<gui_api_discard,discard>> -
+<<gui_api_isModified,isModified>> -
+<<gui_api_contextHelp,setContextHelpIconClickHandler>>
+
+Listeners of upload::
+<<gui_FileUploadField_AfterValueClearListener,AfterValueClearListener>> -
+<<gui_FileUploadField_BeforeValueClearListener,BeforeValueClearListener>> -
+<<gui_FileUploadField_FileUploadErrorListener,FileUploadErrorListener>> -
+<<gui_FileUploadField_FileUploadFinishListener,FileUploadFinishListener>> -
+<<gui_FileUploadField_FileUploadStartListener,FileUploadStartListener>> -
+<<gui_FileUploadField_FileUploadSucceedListener,FileUploadSucceedListener>>
+
+'''
+

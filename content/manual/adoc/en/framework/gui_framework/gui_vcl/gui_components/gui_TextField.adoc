@@ -1,0 +1,231 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_TextField]]
+====== TextField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-textfield" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/TextField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`TextField` is a component for text editing. It can be used both for working with entity attributes and entering/displaying arbitrary textual information.
+
+XML-name of the component: `textField`
+
+`TextField` is implemented for both *Web Client* and *Desktop Client*.
+
+* An example of a text field with a caption retrieved from the <<message_packs,localized messages pack>>: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_1.xml[]
+---- 
++
+The figure below shows an example of a simple text field.
++
+image::gui_textField_data.png[align="center"]
+
+* In Web Client with a Halo-based theme, you can set predefined styles to the TextField component using the `stylename` attribute either in the XML descriptor or in the screen controller:
++
+--
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_7.xml[]
+----
+
+When setting a style programmatically, select one of the `HaloTheme` class constants with the `TEXTFIELD_` prefix:
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_8.java[]
+----
+
+TextField styles:
+
+[[gui_textfield_align-center]]
+*  `align-center` - align the text inside the field to center.
+
+[[gui_textfield_align-right]]
+* `align-right` - align the text inside the field to the right.
+
+[[gui_textfield_borderless]]
+* `borderless` - removes the border and background from the text field.
+
+[[gui_textfield_inline-icon]]
+* `inline-icon` - moves the default caption icon inside the text field.
+
+[[gui_TextField_caseConversion]]
+TextField supports automatic case conversion. The `caseConvertion` attribute can have one of the following values:
+
+* `UPPER` - the upper case,
+
+* `LOWER` - the lower case,
+
+* `NONE` - without conversion (the default value). Use this option to support key-sequence input using IME (for example, for Japanese, Korean or Chinese language).
+--
+
+* To create a text field connected to data, use <<gui_attr_datasource,datasource>> and <<gui_attr_property,property>> attributes.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_2.xml[]
+---- 
++
+As you can see in the example, the screen describes the `customerDs` <<datasources,datasource>> for `Customer` entity, which has `name` attribute. The text field component has a link to the data source specified in the <<gui_attr_datasource,datasource>> attribute; <<gui_attr_property,property>> attribute contains the name of the entity attribute that is displayed in the text field.
+
+[[gui_TextField_datatype]]
+* If the field is not connected to an entity attribute (i.e. the data source and attribute name are not set), you can set the data type using the `datatype` attribute. It is used to format field values. The attribute value accepts any data type registered in the application metadata – see <<datatype>>. Typically, `TextField` uses the following data types:
+
+** `decimal`
+
+** `double`
+
+** `int`
+
+** `long`
++
+As an example, let's look at a text field with an `Integer` data type.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_3.xml[]
+---- 
++
+If a user enters a value that cannot be interpreted as an integer number, then when the field looses focus, the application will show an error message and revert field value to the previous one.
+
+* Text field can be assigned a <<gui_validator,validator>> – a class implementing `Field.Validator` interface. The validator limits user input in addition to what is already done by the `datatype`. For example, to create an input field for positive integer numbers, you need to create a validator class:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_4.java[]
+---- 
++
+and assign it as a validator to the text field with `int` datatype: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_5.xml[]
+---- 
++
+Unlike input check against the data type, validation is performed not when the field looses focus, but after invocation of the field's `validate()` method. It means that the field (and the linked entity attribute) may temporarily contain a value that does not satisfy validation conditions (a non-positive number in the example above). This should not be an issue, because validated fields are typically used in <<screen_edit,editor screens>>, which automatically invoke validation for all their fields before commit. If the field is located not in an editing screen, the field's `validate()` method should be invoked explicitly in the controller.
+
+[[gui_TextField_TextChangeListener]]
+* `TextField` supports `TextChangeListener` defined in its parent `TextInputField` interface. Text change events are processed asynchronously after typing in order not to block the typing.
++
+--
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_9.java[]
+----
+
+image::gui_textfield_2.png[align="center"]
+--
+* The `TextChangeEventMode` defines the way the changes are transmitted to the server to cause a server-side event. There are 3 predefined event modes:
++
+--
+* `LAZY` (default) - an event is triggered when there is a pause in editing the text. The length of the pause can be modified with `setInputEventTimeout()`. A text change event is forced before a possible `ValueChangeEvent`, even if the user did not keep a pause while entering the text.
+
+* `TIMEOUT` - an event is triggered after a timeout period. If more changes are made during this period, the event sent to the server-side includes the changes made up to the last change. The length of the timeout can be set with `setInputEventTimeout()`.
++
+If a `ValueChangeEvent` would occur before the timeout period, a `TextChangeEvent` is triggered before it, on the condition that the text content has changed since the previous `TextChangeEvent`.
+
+* `EAGER` - an event is triggered immediately for every change in the text content, typically caused by a key press. The requests are separate and are processed sequentially one after another. Change events are nevertheless communicated asynchronously to the server, so further input can be typed while event requests are being processed.
+--
+
+[[gui_TextField_EnterPressListener]]
+* `EnterPressListener` allows you to define an <<gui_Action,action>> executed when Enter is pressed:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_10.java[]
+----
+
+[[gui_TextField_ValueChangeListener]]
+* `ValueChangeListener` is triggered on the value changes when the user finished the text input, i.e. after the Enter press or when the component loses focus. An event object of the `ValueChangeEvent` type is passed to the listener. It has the following methods:
++
+** `getPrevValue()` returns the value of the component before the change.
++
+** `getValue()` method return the current value of the component.
++
+[source, java]
+----
+textField.addValueChangeListener(e ->
+        showNotification("Before: " + e.getPrevValue() + ". After: " + e.getValue()));
+----
+
+* If a text field is linked to an entity attribute (via `datasource` and `property`), and if the entity attribute has a `length` parameter defined in the `@Column` JPA-annotation, then the `TextField` will limit the maximum length of entered text accordingly.
++
+[[gui_TextField_maxLength]]
+If a text field is not linked to an attribute, or if the attribute does not have `length` value defined, or this value needs to be overridden, then the maximum length of the entered text can be limited using `maxLength` attribute. The value of "-1" means there are no limitations. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_6.xml[]
+----
+
+[[gui_TextField_trim]]
+* By default, text field trims spaces at the beginning and at the end of the entered string. I.e. if user enters " aaa bbb ", the value of the field returned by the `getValue()` method and saved to the linked entity attribute will be "aaa bbb". You can disable trimming of spaces by setting the `trim` attribute to `false`.
++
+It should be noted that trimming only works when users enter a new value. If the value of the linked attribute already has spaces in it, the spaces will be displayed until user edits the value.
+
+* Text field always returns `null` instead of an entered empty string. Therefore, with the `trim` attribute enabled, any string containing spaces only will be converted to `null`.
+
+* The `setCursorPosition()` method can be used to focus the field and set the cursor position to the specified 0-based index.
+
+'''
+
+Attributes of textField::
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_TextField_caseConversion,caseConversion>> -
+<<gui_attr_contextHelpText,contextHelpText>> -
+<<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_TextField_datatype,datatype>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_attr_inputPrompt,inputPrompt>> -
+<<gui_TextField_maxLength,maxLength>> -
+<<gui_attr_property,property>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_TextField_trim,trim>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Elements of textField::
+<<gui_validator,validator>>
+
+Predefined styles of textField::
+<<gui_textfield_align-center,align-center>> -
+<<gui_textfield_align-right,align-right>> -
+<<gui_textfield_borderless,borderless>> -
+<<gui_attr_stylename_huge,huge>> -
+<<gui_textfield_inline-icon,inline-icon>> -
+<<gui_attr_stylename_large,large>> -
+<<gui_attr_stylename_small,small>> -
+<<gui_attr_stylename_tiny,tiny>>
+
+API::
+<<gui_TextField_EnterPressListener,addEnterPressListener>> -
+<<gui_TextField_TextChangeListener,addTextChangeListener>> -
+<<gui_api_addValueChangeListener,addValueChangeListener>> -
+<<gui_api_commit,commit>> -
+<<gui_api_discard,discard>> -
+<<gui_api_isModified,isModified>> -
+<<gui_api_contextHelp,setContextHelpIconClickHandler>>
+
+'''
+

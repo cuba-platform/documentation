@@ -1,0 +1,51 @@
+:sourcesdir: ../../../../source
+
+[[using_services_recipe]]
+==== Using Middleware Services
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$Customer.browse_3" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+In the <<using_client_beans_recipe,previous>> section we considered the encapsulation of business logic in a managed bean of the client tier. Now we will go further and implement our logic in the most appropriate place: on the <<middleware,middle tier>>. By doing this, we will achieve the following goals:
+
+* Our business methods will be available for all types of clients including <<polymer_ui,Polymer UI>>.
+
+* We will be able to use APIs available only on the middleware: <<entityManager,EntityManager>>, <<transactions,transactions>>, etc.
+
+In order to invoke a middleware business method from the client, you need to create a <<services,service>>. Studio can help you to scaffold the service stub:
+
+* Switch to the *Middleware* section and click *New > Service*.
+
+* Change the service interface name to `DiscountService`. The bean class and service names will be changed accordingly. Click *OK* or *Apply*.
+
+* Click *IDE* and open the service interface in your IDE. Create a method and implement it in the service class.
+
+See an example implementation in the demo application:
+
+image::using_services_1.png[align="center"]
+
+ * {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex3/customer/CustomerBrowse.java[CustomerBrowse.java] and {proj_business_logic}/blob/master/modules/web/src/com/company/sample/web/ex3/customer/CustomerEdit.java[CustomerEdit.java] - screen controllers that invoke the service.
+
+ * {proj_business_logic}/blob/master/modules/global/src/com/company/sample/service/DiscountService.java[DiscountService.java] - service interface.
+
+ * {proj_business_logic}/blob/master/modules/core/src/com/company/sample/service/DiscountServiceBean.java[DiscountServiceBean.java] - service implementation.
+
+ * {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/DiscountCalculator.java[DiscountCalculator.java] - a managed bean of the middle tier which actually calculates discounts. Of course, a service can contain the business logic itself, but we will use this delegate to share logic with entity listeners and JMX beans (see next sections).
++
+Please note that this bean is different from the one mentioned in the <<using_client_beans_recipe,previous>> section: it is located in the *core* module and uses <<entityManager,EntityManager>> for loading the amount of purchases from the database.
+
+Let's now make our business method accessible for external clients through the <<rest_api_v2,REST API>>:
+
+* Open the service editor in Studio and switch to the *REST Methods* tab.
+
+* Select the *REST invocation allowed* checkbox for the method.
+
+Studio will create the `rest-services.xml` file and write the method description into it. After restarting the application server you will be able to invoke your business method using HTTP requests. For example, the following GET request should work with our online demo server:
+
+`\https://demo1.cuba-platform.com/business-logic/rest/v2/services/sample_DiscountService/calculateDiscount?customerId=1797f54d-5bec-87a6-4330-d958955743a2`
+
+Please note that the demo application allows <<rest_api_v2_anonymous,anonymous access>>. In the most real-world usage scenarios you need to authenticate prior to executing REST requests.
+

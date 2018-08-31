@@ -1,0 +1,62 @@
+:sourcesdir: ../../../../../source
+
+[[entityManager]]
+===== EntityManager
+
+`EntityManager` – main ORM interface for working with <<data_model,persistent entities>>.
+
+[TIP]
+====
+See <<dm_vs_em>> for information on differences between EntityManager and <<dataManager,DataManager>>.
+====
+
+Reference to `EntityManager` may be obtained via the <<persistence,Persistence>> interface by calling its `getEntityManager()` method. The retrieved instance of `EntityManager` is bound to the current <<transactions,transaction>>, i.e. all calls to `getEntityManager()` as part of one transaction return one and the same instance of `EntityManager`. After the end of the transaction using the corresponding `EntityManager` instance is impossible.
+
+An instance of `EntityManager` contains a _persistence context_ – a set of instances loaded from the database or newly created. The persistence context is a data cache within a transaction. `EntityManager` automatically flushes to the database all changes made in its persistence context on the transaction commit or when the `EntityManager.flush()` method is called.
+
+The `EntityManager` interface used in CUBA applications mainly copies the standard link:http://docs.oracle.com/javaee/7/api/javax/persistence/EntityManager.html[javax.persistence.EntityManager] interface. Let us have a look at its main methods:
+
+* `persist()` – adds a <<entity_states,new instance>> of the entity to the persistence context. When the transaction is committed a corresponding record is created in DB using SQL `INSERT`.
+
+* `merge()` – copies the state of <<entity_states,detached instance>> to the persistence context the following way: an instance with the same identifier gets loaded from DB and the state of the passed Detached instance is copied into it and then the loaded Managed instance is returned. After that you should work with the returned Managed instance. The state of this entity will be stored in DB using SQL `UPDATE` on transaction commit.
+
+* `remove()` – removes an object from the database, or, if <<soft_deletion,soft deletion>> mode is turned on, sets `deleteTs` and `deletedBy` attributes.
++
+If the passed instance is in Detached state, `merge()` is performed first.
+
+* `find()` – loads an entity instance by its identifier. 
++
+--
+When forming a request to the database the system considers the <<views,view>> which has been passed as a parameter to this method. As a result, the persistence context will contain a graph of objects with all view attributes loaded.
+--
+
+* `createQuery()` – creates a `Query` or `TypedQuery` object for executing a <<query,JPQL query>>.
+
+* `createNativeQuery()` – creates a `Query` object to execute an <<nativeQuery,SQL query>>.
+
+* `reload()` – reloads the entity instance with the provided <<views,view>>.
+
+* `isSoftDeletion()` – checks if the `EntityManager` is in <<soft_deletion,soft deletion>> mode.
+
+* `setSoftDeletion()` – sets <<soft_deletion,soft deletion>> mode for this `EntityManager`.
+
+* `getConnection()` – returns a `java.sql.Connection`, which is used by this instance of `EntityManager`, and hence by the current transaction. Such connection does not need to be closed, it will be closed automatically when the transaction is complete.
+
+* `getDelegate()` – returns `javax.persistence.EntityManager` provided by the ORM implementation. 
+
+Example of using `EntityManager` in a <<services,service>>:
+
+[source, java]
+----
+include::{sourcesdir}/middleware/entityManager_1.java[]
+----
+
+[[em_partial_entities]]
+Partial entities::
++
+--
+By default, in EntityManager, a view affects only reference attributes, i.e. all local attributes are loaded.
+
+You can force EntityManager to load _partial_ entities if you set the <<view_loadPartialEntities,loadPartialEntities>> attribute of the view to true (for example, <<dataManager,DataManager>> does this). However, if the loaded entity is <<entity_cache,cached>>, this view attribute is ignored and the entity will still be loaded with all local attributes.
+--
+

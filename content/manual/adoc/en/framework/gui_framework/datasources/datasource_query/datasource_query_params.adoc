@@ -1,0 +1,112 @@
+:sourcesdir: ../../../../../../source
+
+[[datasource_query_params]]
+====== Query Parameters
+
+A JPQL query in a datasource may contain parameters of several types. A parameter type is determined by a prefix of a parameter name. A prefix is a part of the name before the $ character. The interpretation of the name after $ is described below.
+
+[[datasource_query_params_ds]]
+* The `ds` prefix
++
+The parameter value is data from another datasource that is registered in the same `DsContext`. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_6.xml[]
+---- 
++
+In the example above, a query parameter of the `ordersDs` datasource will be a current entity instance located in the `customersDs` datasource.
++
+If parameters with the `ds` prefix are used, dependencies between datasources are created automatically. They lead to updating the datasource if its parameter are changed. In the example above, if the selected Customer is changed, the list of its Orders is changed automatically.
++
+Please note that in the example of the parameterized query, the left part of the comparison operator is the value of the `o.customer.id` identifier, and the right part – the `Customer` instance that is contained in the `customersDs` datasource. This comparison is valid since when running a query at *Middleware*, the implementation of the <<query,Query>> interface, by assigning values to query parameters, automatically adds entity ID instead of a passed entity instance.
++
+A path through the entity graph to an attribute (from which the value should be used) can be specified in the parameter name after the prefix and name of a datasource, for example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_7.xml[]
+---- 
++
+or 
++
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_8.xml[]
+---- 
+
+[[datasource_query_params_custom]]
+* The `custom` prefix.
++
+A parameter value will be taken from the `Map<String, Object>` object that is passed into the `refresh()` method of a datasource. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_9.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui/datasources_10.java[]
+---- 
++
+Casting an instance to its identifier, if necessary, is performed similarly to parameters with the `ds` prefix. The path through the entity graph in the parameter name is not supported in this case.
+
+[[datasource_query_params_param]]
+* The `param` prefix.
++
+A parameter value is taken from the `Map<String, Object>` object that is passed into the `init()` method of a <<screen_controller,controller>>. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_15.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui/datasources_18.java[]
+----
++
+Casting an instance to its identifier, if necessary, is performed similarly to parameters with the `ds` prefix. The path through the entity graph in the parameter name is supported.
+
+[[datasource_query_params_component]]
+* The `component` prefix.
++
+A parameter value will be a current value of a visual component, which path is specified in the parameter name. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_11.xml[]
+---- 
++
+The path to a component should include all nested <<frame,frames>>.
++
+Casting an instance to its identifier, if necessary, is similar to `ds` parameters. The path through the entity graph in the parameter name is supported as the continuation of the path to a component in this case.
++
+[TIP]
+====
+The datasource will not be refreshed automatically if the component value is changed.
+====
+
+[[datasource_query_params_session]]
+* The `session` prefix.
++
+--
+A parameter value will be a value of the <<userSession,user session>> attribute specified in the parameter name.
+
+The value is extracted by the `UserSession.getAttribute()` method, so predefined names of session attributes are also supported. 
+
+** `userId` – ID of the currently registered or substituted user;
+
+** `userLogin` – login of the currently registered or substituted user in lowercase.
+
+Example: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui/datasources_12.xml[]
+---- 
+
+Casting an instance to its identifier, if necessary, is similar to `ds` parameters. In this case, the path through the entity graph in the parameter name is not supported.
+--
+

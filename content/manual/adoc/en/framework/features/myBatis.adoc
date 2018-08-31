@@ -1,0 +1,37 @@
+:sourcesdir: ../../../../source
+
+[[myBatis]]
+==== Integration with MyBatis
+
+The platform includes *MyBatis* framework, which offers wider capabilities for running SQL and mapping query results to objects compared to ORM <<nativeQuery,native query>> or <<queryRunner,QueryRunner>>.
+
+The following beans must be added into <<spring.xml,spring.xml>> file of the *core* module to use MyBatis in the project:
+
+[source, xml]
+----
+include::{sourcesdir}/features/MyBatis.xml[]
+----
+
+The `MapperLocations` parameter defines a path to `mapperLocations` mapping files (according to the rules of `ResourceLoader` Spring interface).
+
+Below is the an example of a mapping file for loading an instance of `Order` together with a related `Customer` and a collection of `Order` items:
+
+[source, xml]
+----
+include::{sourcesdir}/features/mapper.xml[]
+----
+
+The following code can be used to retrieve query results from the example above:
+
+[source, java]
+----
+Transaction tx = persistence.createTransaction();
+try {
+  SqlSession sqlSession = AppBeans.get("sqlSession");
+  Order order = (Order) sqlSession.selectOne("com.sample.sales.selectOrder", orderId);
+  tx.commit();
+} finally {
+  tx.end();
+}
+----
+

@@ -1,0 +1,27 @@
+:sourcesdir: ../../../../source
+
+[[db_update_gradle]]
+==== The Execution of Database Scripts by Gradle Tasks
+
+This mechanism is generally used by application developers for updating their own database instance. The execution of scripts essentially comes down to running a special Gradle task from <<build.gradle,build.gradle>> build script. This can be done from the command line or via the Studio interface.
+
+To run scripts to __create__ the database, the `createDb` task is used. In Studio, it corresponds to the *Run* -> *Create database* command in the main menu. When this task is started, the following occurs:
+
+. Scripts of the <<app_components,application components>> and `++db/**/*.sql++` scripts of the *core* module of the current project are built in the `modules/core/build/db` directory. Sets of scripts for application components are located in subdirectories with numeric prefixes. The prefixes are used to provide the alphabetical order of the execution of scripts according to the dependencies between components.
+
+. If the database exists, it is completely erased. A new empty database is created.
+
+. All creation scripts from `++modules/core/build/db/init/**/*create-db.sql++` subdirectory are executed sequentially in the alphabetical order, and their names along with the path relative to the db directory are registered in the *SYS_DB_CHANGELOG* table.
+
+. Similarly, in the *SYS_DB_CHANGELOG* table, all currently available `++modules/core/build/db/update/**/*.sql++` update scripts are registered. This is required for applying the future incremental updates to the database.
+
+To run scripts to __update__ the database, the `updateDb` task is used. In Studio, it corresponds to the *Run* -> *Update database* command in the main menu. When this task is started, the following occurs:
+
+. The scripts are built in the same way as for the `createDb` command described above.
+
+. The execution mechanism checks, whether all creation scripts of application components have been run (by checking the `SYS_DB_CHANGELOG` table). If not, the application component creation scripts are executed and registered in the `SYS_DB_CHANGELOG` table.
+
+. A search is performed in `++modules/core/build/db/update/**++` directories, for update scripts which are not registered in the `SYS_DB_CHANGELOG` table, i.e., not previously executed.
+
+. All scripts found in the previous step are executed sequentially in the alphabetical order, and their names along with the path relative to the `db` directory are registered in the `SYS_DB_CHANGELOG` table.
+

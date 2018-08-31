@@ -1,0 +1,60 @@
+:sourcesdir: ../../../../source
+
+[[rest_api_v2_ex_service_post]]
+==== Service Method Invocation (POST)
+
+REST API allows execution not only of methods that have arguments of simple datatypes, but also of methods with the following arguments:
+
+* entities
+* entities collections
+* serializable POJOs
+
+Suppose we added a new method to the `OrderService` created in the previous section:
+
+[source, java]
+----
+@Override
+public OrderValidationResult validateOrder(Order order, Date validationDate){
+    OrderValidationResult result=new OrderValidationResult();
+    result.setSuccess(false);
+    result.setErrorMessage("Validation of order "+order.getNumber()+" failed. validationDate parameter is: "+validationDate);
+    return result;
+}
+----
+
+`OrderValidationResult` class looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderValidationResult.java[]
+----
+
+The new method has an `Order` entity in the arguments list and returns a POJO.
+
+Before the invocation with the REST API the method must be allowed, so we add a record to the `rest-services.xml` configuration file (it was described in the <<rest_api_v2_ex_service_get>>).
+
+[source, xml]
+----
+include::{sourcesdir}/rest/sales-rest-services-2.xml[]
+----
+
+The `validateOrder` service method may be called with the *POST* request on the address:
+
+`\http://localhost:8080/app/rest/v2/services/sales_OrderService/validateOrder`
+
+In case of the POST request parameters are passed in the request body. The request body must contain a JSON object, each field of this object corresponds to the service method argument.
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-validateOrder-service-request.json[]
+----
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+The REST API method returns a serialized POJO:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-validateOrder-service-response.json[]
+----
+

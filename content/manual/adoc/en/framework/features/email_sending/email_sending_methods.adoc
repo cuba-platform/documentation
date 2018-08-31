@@ -1,0 +1,19 @@
+:sourcesdir: ../../../../../source
+
+[[email_sending_methods]]
+===== Sending Methods
+
+To send an email, the `EmailerAPI` bean should be used at the Middleware, and the `EmailService` service – at the client tier.
+
+The basic methods of these components are described below:
+
+* `sendEmail()` – synchronous message sending. The calling code is blocked while sending the message to the SMTP server.
++
+The message can be transmitted in the form of a set of parameters (the comma-separated list of recipients, subject, content, array of attachments), and in the form of a special `EmailInfo` object, which encapsulates all this information and allows you to explicitly set the sender's address and to form the message body using a *FreeMarker* template.
++
+`EmailException` may be thrown during synchronous sending, containing the information on the recipient addresses, where delivery has failed, and the corresponding error messages.
++
+During the execution of the method, a `SendingMessage` instance is created in the database for each recipient. It has the initial `SendingStatus.SENDING` status, and `SendingStatus.SENT` after successful sending. In case of a message sending error, the message status changes to `SendingStatus.NOTSENT`.
+
+* `sendEmailAsync()` – asynchronous message sending. This method returns the list (by the number of recipients) of `SendingMessage` instances in `SendingStatus.QUEUE` status, which were created in the database. The actual sending is performed with the subsequent call of the `EmailerAPI.processQueuedEmails()` method, which should be invoked from a <<scheduled_tasks,scheduled task>> with the desired frequency.
+

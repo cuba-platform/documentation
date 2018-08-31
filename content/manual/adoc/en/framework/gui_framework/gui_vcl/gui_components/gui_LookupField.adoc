@@ -1,0 +1,263 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_LookupField]]
+====== LookupField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-lookupfield" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.10/com/haulmont/cuba/gui/components/LookupField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+This is a component to select a value from drop-down list. Drop-down list provides the filtering of values as the user inputs some text, and the pagination of available values.
+
+image::gui_lookupField.png[align="center"]
+
+XML name of the component: `lookupField`.
+
+The `LookupField` component is implemented for *Web Client* and *Desktop Client*.
+
+. The simplest case of using `LookupField` is to select an enumeration value for an entity attribute. For example, a `Role` entity has a `type` attribute of the `RoleType` type, which is an enumeration. Then you can use `LookupField` to edit this attribute as follows:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_1.xml[]
+---- 
++
+In the example above, the screen defines `roleDs` <<datasources,data source>> for the `Role` entity. In the `lookupField` component, a link to a data source is specified in the <<gui_attr_datasource,datasource>> attribute, and a name of an entity attribute is specified in the <<gui_attr_property,property>> attribute. In this case, the entity attribute is an enumeration and the drop-down list will display <<enum_localization,localized names>> of all enumeration values.
+
+. Similarly, `LookupField` can be used to select an instance of a related entity. <<gui_attr_optionsDatasource,optionsDatasource>> attribute is used to create a list of options:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_2.xml[]
+---- 
++
+In this case, the component will display <<namePattern_annotation,instance names>> of the `Colour` entity located in the `colorsDs` data source, and the selected value will be set into the `colour` attribute of the `Car` entity, which is located in the `carDs` data source.
++
+<<gui_attr_captionProperty,captionProperty>> attribute defines which entity attribute can be used instead of an instance name for string option names.
+
+. The list of component options can be specified arbitrarily using the `setOptionsList()`, `setOptionsMap()` and `setOptionsEnum()` methods, or using the XML `optionsDatasource` attribute.
++
+--
+[[gui_LookupField_setOptionsList]]
+* `setOptionsList()` allows you to programmatically specify a list of component options. To do this, declare a component in the XML descriptor:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_3.xml[]
+---- 
++
+Then inject the component into the controller and specify a list of options in the `init()` method: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_4.java[]
+---- 
++
+In the component's drop-down list the values 2, 4, 5 and 7 will be displayed. Selected number will be put into the `numberOfSeats` attribute of an entity located in the `modelDs` data source.
+
+[[gui_LookupField_setOptionsMap]]
+* `setOptionsMap()` allows you to specify string names and option values separately. For example, in the `numberOfSeatsField` component in the XML descriptor, specify an option map in `init()`:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_5.java[]
+---- 
++
+In the component's drop-down list, `*two*`, `*four*`, `*five*`, `*seven*` strings will be displayed. However, the value of the component will be a number that corresponds to the selected option. It will be put into the `numberOfSeats` attribute of an entity located in the `modelDs` data source.
+
+[[gui_LookupField_setOptionsEnum]]
+* `setOptionsEnum()` takes the class of an enumeration as a parameter. The drop-down list will show localized names of enum values, the value of the component will be an enum value.
+--
+
+[[gui_LookupField_OptionsStyleProvider]]
+* `OptionsStyleProvider` enables you to use separate style names for the the options displayed by the component using the `setOptionsStyleProvider()` method:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupField_10.java[]
+----
+
+[[gui_LookupField_iconProvider]]
+* Each drop-down list component can have an icon on the left. Create an implementation of the `LookupField.OptionIconProvider` interface in the screen controller and set it for the `lookupField`:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_8.java[]
+----
++
+image::gui_lookupField_2.png[align="center"]
++
+[TIP]
+====
+If you use SVG icons, set the icon size explicitly to avoid icons overlay.
+====
++
+[source, xml]
+----
+<svg version="1.1"
+     id="Capa_1"
+     xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     xml:space="preserve"
+
+     style="enable-background:new 0 0 55 55;"
+     viewBox="0 0 55 55"
+
+     height="25px"
+     width="25px">
+----
+
+* If the `LookupField` component is not <<gui_attr_required,required>> and if the related entity attribute is not declared as required, the list of component options has an empty row. If this row is selected, the component returns `null`. The <<gui_attr_nullName,nullName>> attribute allows you to specify a row to be displayed in this case instead of an empty one. Below is an example:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_6.xml[]
+---- 
++
+In this case, instead of an empty row, `(none)` will be displayed. If this row is selected, `null` will be set to a related entity attribute.
++
+If you specify a list of options programmatically using `setOptionsList()`, you can pass one of the options into `setNullOption()` method. Then, if the user selects it, the component value will be `null`.
+
+LookupField filters: ::
++
+--
+[[gui_LookupField_filterMode]]
+* Using the `filterMode` attribute, option filtering type can be defined for the user input:
++
+** `NO` − no filtering.
++
+** `STARTS_WITH` − by the beginning of a phrase.
++
+** `CONTAINS` − by any occurrence (is used by default).
+
+[[gui_LookupField_setFilterPredicate]]
+* The `setFilterPredicate()` method enables to setup how items should be filtered. The predicate tests whether an item with the given caption matches to the given search string. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_11.java[]
+----
++
+The functional interface `FilterPredicate` has the `test` method that enables implementing custom filtering logic, for example, to escape accents or special characters:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_12.java[]
+----
+--
+
+[[gui_LookupField_newOptionHandler]]
+* The `LookupField` component is able to handle user input if there is no suitable option in the list. In this case, `setNewOptionAllowed()` and `setNewOptionHandler()` are used. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_7.java[]
+---- 
++
+The `NewOptionHandler` handler is invoked if the user enters a value that does not coincide with any option and presses Enter. In this case, a new `Colour` entity instance is created in the handler, its `name` attribute is set to the value entered by the user, this instance is added to the options data source and selected in the component.
++
+Instead of implementing the `LookupField.NewOptionHandler` interface for processing user input, the controller method name can be specified in the `newOptionHandler` XML-attribute. This method should have two parameters, one of `LookupField` type, and the other of `String` type. They will be set to the component instance and the value entered by the user, accordingly. The `newOptionAllowed` attribute is used to enable adding new options instead of the `setNewOptionAllowed()` method.
+
+[[gui_LookupField_nullOptionVisible]]
+* The `nullOptionVisible` XML attribute sets visibility for the null option in the drop-down list. It allows you to make `LookupField` not <<gui_attr_required,required>> but still without the null option.
+
+[[gui_LookupField_textInputAllowed]]
+* The `textInputAllowed` XML attribute can be used to disable filtering options from keyboard. It can be convenient for short lists. The default value is `true`.
+
+[[gui_LookupField_pageLength]]
+* The `pageLength` XML attribute allows you to redefine the number of options on one page of the drop-down list, specified in the <<cuba.gui.lookupFieldPageLength,cuba.gui.lookupFieldPageLength>> application property.
+
+* In Web Client with a Halo-based theme, you can set predefined styles to the `LookupField` component using the `stylename` attribute either in the XML descriptor or in the screen controller:
++
+--
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_8.xml[]
+----
+
+When setting a style programmatically, select one of the `HaloTheme` class constants with the `LOOKUPFIELD_` prefix:
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/lookupfield_9.java[]
+----
+
+LookupField styles:
+
+[[gui_LookupField_align-center]]
+*  `align-center` - align the text inside the field to center.
+
+[[gui_LookupField_align-right]]
+* `align-right` - align the text inside the field to the right.
+
+[[gui_LookupField_borderless]]
+* `borderless` - removes the border and background from the text field.
+
+--
+
+'''
+
+Attributes of lookupField:: 
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_captionProperty,captionProperty>> -
+<<gui_attr_contextHelpText,contextHelpText>> -
+<<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_LookupField_filterMode,filterMode>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_attr_inputPrompt,inputPrompt>> -
+<<gui_LookupField_newOptionHandler,newOptionAllowed>> -
+<<gui_LookupField_newOptionHandler,newOptionHandler>> -
+<<gui_attr_nullName,nullName>> -
+<<gui_LookupField_nullOptionVisible,nullOptionVisible>> -
+<<gui_attr_optionsDatasource,optionsDatasource>> -
+<<gui_attr_optionsEnum,optionsEnum>> -
+<<gui_LookupField_pageLength,pageLength>> -
+<<gui_attr_property,property>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_LookupField_textInputAllowed,textInputAllowed>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Elements of lookupField::
+<<gui_validator,validator>>
+
+Predefined styles of lookupField::
+<<gui_LookupField_align-right,align-right>> -
+<<gui_LookupField_align-center,align-center>> -
+<<gui_LookupField_borderless,borderless>> -
+<<gui_attr_stylename_huge,huge>> -
+<<gui_attr_stylename_large,large>> -
+<<gui_attr_stylename_small,small>> -
+<<gui_attr_stylename_tiny,tiny>>
+
+API::
+<<gui_api_addValueChangeListener,addValueChangeListener>> -
+<<gui_api_commit,commit>> -
+<<gui_api_discard,discard>> -
+<<gui_api_isModified,isModified>> -
+<<gui_api_contextHelp,setContextHelpIconClickHandler>> -
+<<gui_LookupField_setFilterPredicate,setFilterPredicate>> -
+<<gui_LookupField_setOptionsEnum,setOptionsEnum>> -
+<<gui_LookupField_setOptionsList,setOptionsList>> -
+<<gui_LookupField_setOptionsMap,setOptionsMap>> -
+<<gui_LookupField_OptionsStyleProvider,setOptionsStyleProvider>>
+
+'''
+

@@ -1,0 +1,78 @@
+:sourcesdir: ../../../../source
+
+[[background_tasks]]
+==== Background Tasks
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=normal-progressbar" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Background tasks mechanism is designed for performing tasks at the client tier asynchronously without blocking the user interface.
+
+In order to use background tasks, do the following:
+
+. Define a task as an inheritor of the `BackgroundTask` abstract class. Pass a link to a screen controller which will be associated with the task and the task timeout to the task constructor.
++
+Closing the screen will interrupt the tasks associated with it. Additionally, the task will be interrupted automatically after the specified timeout.
++
+Actual actions performed by the task are implemented in the <<background_tasks_run,run()>> method.
+
+. Create an object of `BackgroundTaskHandler` class controlling the task by passing the task instance to the `handle()` method of the `BackgroundWorker` bean. A link to `BackgroundWorker` can be obtained by an injection in a <<screen_controller,screen controller>>, or through the `AppBeans` class.
+
+. Run the task by invoking the `execute()` method of `BackgroundTaskHandler`.
+
+Example:
+
+[source, java]
+----
+include::{sourcesdir}/gui/backgroundtasks_1.java[]
+----
+
+Detailed information about methods is provided in JavaDocs for `BackgroundTask`, `TaskLifeCycle`, `BackgroundTaskHandler` classes. 
+
+Please note the following:
+
+* `BackgroundTask<T, V>` is a parameterized class:
+
+** `T` − the type of objects displaying task progress. Objects of this type are passed to the task's `progress()` method during an invocation of `TaskLifeCycle.publish()` in the working thread.
+
+** `V` − task result type passed to the `done()` method. It can also be obtained by invoking `BackgroundTaskHandler.getResult()` method, which will wait for a task to complete.
+
+* `canceled()` method is invoked only during a controlled cancellation of a task, i.e. when `cancel()` is invoked in the `TaskHandler`.
+
+* `handleTimeoutException()` is invoked when the task timeout expires. If the window where the task is running closes, the task is stopped without a notification.
+
+[[background_tasks_run]]
+* `run()` method of a task should support external interruptions. To ensure this, we recommend checking the `TaskLifeCycle.isInterrupted()` flag periodically during long processes and stopping execution when needed. Additionally, you should not silently discard `InterruptedException` (or any other exception) - instead you should either exit the method correctly or not handle the exception at all.
++
+** `isCancelled()` method returns `true` if a task was interrupted by calling the `cancel()` method.
++
+[source, java]
+----
+include::{sourcesdir}/gui/backgroundtasks_2.java[]
+----
+
+* `BackgroundTask` objects are stateless. If you did not create fields for temporary data when implementing task class, you can start several parallel processes using a single task instance.
+
+* `BackgroundHandler` object (its `execute()` method) can only be started once. If you need to restart a task frequently, use `BackgroundTaskWrapper` class.
+
+* Use `BackgroundWorkWindow` or `BackgroundWorkProgressWindow` classes with a set of static methods to show a modal window with progress indicator and *Cancel* button. You can define progress indication type and allow or prohibit cancellation of the background task for the window.
+
+* If you need to use certain values of visual components in the task thread, you should implement their acquisition in `getParams()` method, which runs in the UI thread once, when a task starts. In the run() method, these parameters will be accessible via the `getParams()` method of the `TaskLifeCycle` object.
+
+* If any exception occurs, the framework invokes `BackgroundTask.handleException()` method in the UI thread, which can be used to display the error.
+
+* Background tasks are affected by <<cuba.backgroundWorker.maxActiveTasksCount,cuba.backgroundWorker.maxActiveTasksCount>> and <<cuba.backgroundWorker.timeoutCheckInterval,cuba.backgroundWorker.timeoutCheckInterval>> application properties.
+
+[WARNING]
+====
+In Web Client, background tasks are implemented using HTTP push provided by the Vaadin framework. See https://vaadin.com/wiki/-/wiki/Main/Working+around+push+issues for information on how to set up your web servers for this technology.
+====
+
+[TIP]
+====
+If you don't use background tasks, but want to update UI state from a non-UI thread, use methods of the `UIAccessor` interface. You should get a reference to `UIAccessor` using the `BackgroundWorker.getUIAccessor()` method in the UI thread, and after that you can invoke its `access()` and `accessSynchronously()` methods from a background thread to safely read or modify the state of UI components.
+====
+

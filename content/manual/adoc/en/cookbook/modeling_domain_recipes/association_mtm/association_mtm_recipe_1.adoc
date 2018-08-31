@@ -1,0 +1,63 @@
+:sourcesdir: ../../../../../source
+
+[[association_mtm_recipe_1]]
+===== Direct Many-to-Many Association
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airline.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Let's implement a many-to-many association using the `Airport` and the `Airline` entities as an example. An airport can handle many airlines, and an airline carrier, in turn, can provide service to many airports:
+
+image::cookbook/association_recipe_1.png[align="center"]
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - the `Airport` entity contains a many-to-many list of airlines.
++
+In the Studio entity designer, set for the `airlines` attribute: *Attribute type* - `ASSOCIATION`, *Cardinality* - `MANY_TO_MANY`.
++
+`Airport` will be marked as the owning side of the relationship, and Studio will ask you to create the corresponding `airports` attribute in the `Airline` entity as the inverse side of the relationship.
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_AIRLINE_AIRPORT_LINK",
+    joinColumns = @JoinColumn(name = "AIRPORT_ID"),
+    inverseJoinColumns = @JoinColumn(name = "AIRLINE_ID"))
+@ManyToMany
+protected List<Airline> airlines;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airline.java[Airline.java] - the `Airline` entity now contains the many-to-many list of airports: *Attribute type* - `ASSOCIATION`, *Cardinality* - `MANY_TO_MANY`.
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_AIRLINE_AIRPORT_LINK",
+    joinColumns = @JoinColumn(name = "AIRLINE_ID"),
+    inverseJoinColumns = @JoinColumn(name = "AIRPORT_ID"))
+@ManyToMany
+protected List<Airport> airports;
+----
++
+`Airline` will be also marked by default as the owning side of the relationship, which enables modification of the collections on the both sides.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - the `airport-airlines` view of the airport editing screen contains the airlines association attribute with the `_minimal` view. The `airline-airports` view includes the airports association as well.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[airport-edit.xml] - the XML descriptor of the airport editor defines a datasource for the `Airport` instance and a nested one for its airlines. It also contains a table displaying airlines and the actions https://doc.cuba-platform.com/manual-latest/list_actions.html#addAction[add] and https://doc.cuba-platform.com/manual-latest/list_actions.html#removeAction[remove].
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airline/airline-edit.xml[airline-edit.xml] - the XML descriptor of the airline editor defines a datasource for the `Airline` instance and a nested one for its airports. It also contains a table displaying airports and the actions *add* and *remove*.
++
+So, the `Airport` and the `Airline` editors are absolutely symmetrical.
+
+As a result, editing of an airline instance works as follows:
+
+The airline edit screen shows a list of airports.
+
+A user can click *Add*, the https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-browse.xml[`Airport` lookup] will be opened, and the user can either select an airport to add or open its editor. When OK is clicked in the https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[airport editor], the updated instance of the airport is saved both to the database and to the https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airline/airline-edit.xml#L12[`airportsDs` datasource] of the airline editor, as the `Airport` entity is fully independent.
+
+The user can create new airports and delete existing ones, and all changes will be saved to the database in a separate transactions and to the `airportsDs` datasource.
+
+When a user clicks OK in the airline edit screen, the updated `Airline` instance together with newly created links to the `Airport` instances is submitted to the <<dataManager,DataManager>>.commit() method on the middleware and saved to the database.
+
+It works absolutely the same way from the other side in the `Aiport` editor.
+

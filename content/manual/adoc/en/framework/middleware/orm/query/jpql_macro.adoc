@@ -1,0 +1,117 @@
+:sourcesdir: ../../../../../../source
+
+[[jpql_macro]]
+====== Macros in JPQL
+
+JPQL query text can include macros, which are processed before the query is executed. They are converted into the executable JPQL and can additionally modify the set of query parameters.
+
+The macros solve the following problems:
+
+* Provide a workaround for the limitation of JPQL which makes it impossible to express the condition of dependency of a given field on current time (i.e. expressions like "current_date -1" do not work).
+
+* Enable comparing `Timestamp` type fields (the date/time fields) with a date.
+
+Let us consider them in more detail:
+
+@between:: 
++
+--
+Has the format `++@between(field_name, moment1, moment2, time_unit)++` or `++@between(field_name, moment1, moment2, time_unit, user_timezone)++`, where
+
+* `++field_name++` is the name of the compared attribute. 
+
+* `moment1`, `moment2` – start and end points of the time interval where the value of `++field_name++` should fall into. Each of the points should be defined by an expression containing `now` variable with an addition or subtraction of an integer number.
+
+* `++time_unit++` – defines the unit for time interval added to or subtracted from `now` in the time point expressions and time points rounding precision. May be one of the following: `year`, `month`, `day`, `hour`, `minute`, `second`.
+
+* `++user_timezone++` - an optional argument that defines the current user's <<timeZone, time zone>> to be considered in the query.
+
+The macro gets converted to the following expression in JPQL: `++field_name >= :moment1 and field_name < :moment2++`
+
+Example 1. Customer was created today: 
+
+[source, jpql]
+----
+select c from sales$Customer where @between(c.createTs, now, now+1, day)
+----
+
+Example 2. Customer was created within the last 10 minutes:
+
+[source, jpql]
+----
+select c from sales$Customer where @between(c.createTs, now-10, now, minute)
+----
+
+Example 3. Documents dated within the last 5 days, considering current user time zone:
+
+[source, jpql]
+----
+select d from sales$Doc where @between(d.createTs, now-5, now, day, user_timezone)
+----
+--
+
+@today:: 
++
+--
+Has the format `++@today(field_name)++` or `++@today(field_name, user_timezone)++` and helps to define a condition checking that the attribute value falls into the current date. Essentially, this is a special case of the `@between` macro.
+
+Example. Customer was created today: 
+
+[source, jpql]
+----
+select d from sales$Doc where @today(d.createTs)
+----
+--
+
+@dateEquals:: 
++
+--
+Has the format `++@dateEquals(field_name, parameter)++` or `++@dateEquals(field_name, parameter, user_timezone)++` and allows you to define a condition checking that `++field_name++` value (in `Timestamp` format) falls into the date passed as `parameter`.
+
+Example: 
+
+[source, jpql]
+----
+select d from sales$Doc where @dateEquals(d.createTs, :param)
+----
+--
+
+@dateBefore:: 
++
+--
+Has the format `++@dateBefore(field_name, parameter)++` or `++@dateBefore(field_name, parameter, user_timezone)++` and allows you to define a condition checking that `++field_name++` value (in `Timestamp` format) is smaller than the date passed as `parameter`.
+
+Example: 
+
+[source, jpql]
+----
+select d from sales$Doc where @dateBefore(d.createTs, :param, user_timezone)
+----
+--
+
+@dateAfter:: 
++
+--
+Has the format `++@dateAfter(field_name, parameter)++` or `++@dateAfter(field_name, parameter, user_timezone)++` and allows you to define a condition that the date of the `++field_name++` value (in `Timestamp` format) is more or equal to the date passed as `parameter`.
+
+Example: 
+
+[source, jpql]
+----
+select d from sales$Doc where @dateAfter(d.createTs, :param)
+----
+--
+
+@enum:: 
++
+--
+Allows you to use a fully qualified enum constant name instead of its database identifier. This simplifies searching for enum usages throughout the application code.
+
+Example: 
+
+[source, jpql]
+----
+select r from sec$Role where r.type = @enum(com.haulmont.cuba.security.entity.RoleType.SUPER) order by r.name
+----
+--
+

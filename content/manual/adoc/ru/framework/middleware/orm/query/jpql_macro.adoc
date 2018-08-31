@@ -1,0 +1,117 @@
+:sourcesdir: ../../../../../../source
+
+[[jpql_macro]]
+====== Макросы в JPQL
+
+Текст JPQL запроса может включать макросы, которые обрабатываются перед выполнением и превращаются в исполняемый JPQL, дополнительно модифицируя набор параметров.
+
+Макросы решают следующие задачи:
+
+* Позволяют обойти принципиальную невозможность средствами JPQL выразить условие зависимости значения поля от текущего момента времени (не работает арифметика типа current_date-1)
+
+* Позволяют сравнивать с датой поля типа Timestamp (содержащие дату+время)
+
+Рассмотрим их подробно:
+
+@between:: 
++
+--
+Имеет вид `++@between(field_name, moment1, moment2, time_unit)++` или `++@between(field_name, moment1, moment2, time_unit, user_timezone)++`, где
+
+* `++field_name++` - имя атрибута для сравнения 
+
+* `moment1`, `moment2` - моменты времени, в которые должно попасть значение атрибута `++field_name++`. Каждый из моментов должен быть определен выражением с участием переменной `now`, к которой может быть прибавлено или отнято целое число 
+
+* `++time_unit++` - определяет единицу измерения времени, которое прибавляется или вычитается из `now` в выражениях моментов, а также точность округления моментов. Может быть следующим: `year`, `month`, `day`, `hour`, `minute`, `second`.
+
+* `++user_timezone++` - необязательный аргумент, указывающий, что в запросе необходимо использовать <<timeZone,часовой пояс>> текущего пользователя.
+
+Макрос преобразуется в следующее выражение JPQL: `++field_name >= :moment1 and field_name < :moment2++`
+
+Пример 1. Покупатель создан сегодня:
+
+[source, jpql]
+----
+select c from sales$Customer where @between(c.createTs, now, now+1, day)
+----
+
+Пример 2. Покупатель создан в течение последних 10 минут:
+
+[source, jpql]
+----
+select c from sales$Customer where @between(c.createTs, now-10, now, minute)
+----
+
+Пример 3. Документы, датированные последними 5 днями и с учетом часового пояса текущего пользователя:
+
+[source, jpql]
+----
+select d from sales$Doc where @between(d.createTs, now-5, now, day, user_timezone)
+----
+--
+
+@today:: 
++
+--
+Имеет вид `++@today(field_name)++` или `++@today(field_name, user_timezone)++` и обеспечивает формирование условия попадания значения атрибута в текущий день. По сути это частный случай макроса `@between`.
+
+Пример. Пользователь создан сегодня:
+
+[source, jpql]
+----
+select d from sales$Doc where @today(d.createTs)
+----
+--
+
+@dateEquals:: 
++
+--
+Имеет вид `++@dateEquals(field_name, parameter)++` или `++@dateEquals(field_name, parameter, user_timezone)++` и позволяет сформировать условие попадания значения поля `++field_name++` типа `Timestamp` в дату, задаваемую параметром `parameter`.
+
+Пример:
+
+[source, jpql]
+----
+select d from sales$Doc where @dateEquals(d.createTs, :param)
+----
+--
+
+@dateBefore:: 
++
+--
+Имеет вид `++@dateBefore(field_name, parameter)++` или `++@dateBefore(field_name, parameter, user_timezone)++` и позволяет сформировать условие, что дата значения поля `++field_name++` типа `Timestamp` меньше даты, задаваемой параметром `parameter`.
+
+Пример:
+
+[source, jpql]
+----
+select d from sales$Doc where @dateBefore(d.createTs, :param)
+----
+--
+
+@dateAfter:: 
++
+--
+Имеет вид `++@dateAfter(field_name, parameter)++` или `++@dateAfter(field_name, parameter, user_timezone)++` и позволяет сформировать условие, что дата значения поля `++field_name++` типа `Timestamp` больше или равна дате, задаваемой параметром `parameter`.
+
+Пример:
+
+[source, jpql]
+----
+select d from sales$Doc where @dateAfter(d.createTs, :param)
+----
+--
+
+@enum:: 
++
+--
+Позволяет использовать полное имя константы enum вместо ее идентификатора в БД. Это упрощает поиск использований enum в коде приложения.
+
+Пример: 
+
+[source, jpql]
+----
+select r from sec$Role where r.type = @enum(com.haulmont.cuba.security.entity.RoleType.SUPER) order by r.name
+---- 
+--
+

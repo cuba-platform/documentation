@@ -1,0 +1,101 @@
+:sourcesdir: ../../../../../source
+
+[[build.gradle_buildWar]]
+===== buildWar
+
+`buildWar` - задача типа `CubaWarBuilding`, выполняющая сборку приложения и его зависимостей в WAR-файл. Должна быть объявлена в корне скрипта `build.gradle`. Собранные WAR-файлы находятся в подкаталоге `build/distributions` проекта.
+
+[TIP]
+====
+Эту задачу можно настроить на странице *Deployment settings > WAR* в Studio. См. контекстную помощь.
+====
+
+Любое CUBA-приложение состоит как минимум из двух <<app_tiers,блоков>>: Middleware и Web Client. Поэтому наиболее естественный способ развертывания приложения это создание двух файлов WAR: один для Middleware, второй для Web Client. Это также позволяет <<scaling,масштабировать>> приложение при увеличении нагрузки. Однако раздельные WAR-файлы содержат дублированные зависимости, что увеличивает их общий размер. Кроме того, часто расширенные возможности развертывания не нужны и только усложняют процесс. Задача `CubaWarBuilding` может создавать WAR-файлы обоих типов: один файл на блок или единственный WAR, содержащий оба блока. В последнем случае блоки приложения загружаются в раздельные class loaders внутри одного веб-приложения.
+
+Создание раздельных WAR-файлов для Middleware и Web Client::
++
+--
+Для создания двух отдельных WAR-файлов для Middleware и Web Client используйте следующую конфигурацию:
+[source, groovy]
+----
+include::{sourcesdir}/development/build_gradle_buildWar_2.groovy[]
+----
+
+Параметры задачи:
+
+* `appName` - имя приложения. По умолчанию совпадает с *Modules prefix*, например, `app`.
+
+* `appHome` - путь к <<app_home,домашнему каталогу>> приложения. В параметре `appHome` можно указать как абсолютный или относительный путь к домашнему каталогу, так и системную переменную, которая должна быть задана при запуске сервера.
+
+* `appProperties` - опциональный мэп <<app_properties,свойств приложения>>. Эти свойства будут добавлены в файлы `/WEB-INF/local.app.properties` внутри создаваемых WAR.
+
+* `singleWar` - должен быть установлен в `false` для создания раздельных WAR-файлов.
+
+* `includeJdbcDriver` - включить JDBC драйвер, который используется в проекте. По умолчанию `false`.
+
+* `includeContextXml` - включить файл `context.xml`, который используется в проекте. По умолчанию `false`.
+
+* `coreContextXmlPath` - относительный путь к файлу, который должен быть использован вместо проектного `context.xml` если параметр `includeContextXml` установлен в `true`.
+
+* `hsqlInProcess` - если установлен в `true`, то URL подключения к БД в `context.xml` будет изменен на подключение к HSQL в режиме in-process.
+
+* `coreProject` - проект Gradle, представляющий модуль *core* (Middleware). Если не установлено, используется стандартный модуль *core* проекта.
+
+* `webProject` - проект Gradle, представляющий модуль *web* (Web Client). Если не установлено, используется стандартный модуль *web* проекта.
+
+* `portalProject` - проект Gradle, представляющий модуль *portal* (Web Portal). Установите данное свойство, если в проекте используется модуль *portal*. Например, `portalProject = project(':app-portal')`.
+
+* `coreWebXmlPath`, `webWebXmlPath`, `portalWebXmlPath` - относительный путь к файлу, который будет использован в качестве `web.xml` соответствующего блока приложения.
++
+Пример использования собственных `web.xml`:
++
+[source, groovy]
+----
+include::{sourcesdir}/development/build_gradle_buildWar_4.groovy[]
+----
+
+* `logbackConfigurationFile` - задает относительный путь к файлу, в котором содержится конфигурация логирования.
++
+Например:
++
+[source, groovy]
+----
+logbackConfigurationFile = "/modules/global/src/logback.xml"
+----
+
+* `useDefaultLogbackConfiguration` - пока установлено значение `true` (по умолчанию), задача будет копировать конфигурацию из её собственного стандартного файла `logback.xml`.
+
+* `polymerBuildDir` - имя каталога, в который собирается <<polymer_build_and_structure,собирается Polymer UI>>. По умолчанию `es6-unbundled`. Установите данный параметр, если вы изменили build preset в файле `polymer.json`.
+--
+
+[[build.gradle_buildWar_single]]
+Создание единого WAR-файла::
++
+--
+Для создания единого файла WAR, включающего в себя блоки Middleware и Web Client, используйте следующую конфигурацию:
+
+[source, groovy]
+----
+include::{sourcesdir}/development/build_gradle_buildWar_1.groovy[]
+----
+
+Следующие параметры должны быть указаны в дополнение к описанным выше:
+
+* `singleWar` - должен быть опущен или установлен в `true`.
+
+* `webXmlPath` - относительный путь к файлу, который будет использован в качестве `web.xml` единого WAR. Этот файл задает два servlet context listeners, которые загружают блоки приложения: `SingleAppCoreServletListener` и `SingleAppWebServletListener`. Все параметры инициализации передаются через параметры контекста.
++
+Пример файла `single-war-web.xml`:
++
+[source, xml]
+----
+include::{sourcesdir}/development/build_gradle_buildWar_3.xml[]
+----
+
+Все фильтры и сервлеты при развёртывании в единый WAR-файл необходимо программно зарегистрировать, см. <<servlet_registration_single_war,Регистрация сервлетов для развертывания в единый WAR-файл>>.
+
+Единый WAR файл содержит только модули *core* и *web* (Middleware и Web Client). Для развертывания модуля *portal* используйте раздельные WAR-файлы.
+--
+
+В разделе <<war_deployment>> содержатся пошаговые инструкции по некоторым вариантам развертывания WAR-файлов.
+

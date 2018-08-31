@@ -1,0 +1,72 @@
+:sourcesdir: ../../../../../source
+
+[[association_mtm_recipe_2]]
+===== Ассоциация Many-to-Many через связующую сущность
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$DutyFree.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Отношения many-to-many всегда требуют создания связующей таблицы в базе данных, однако создание отдельной сущности для отражения этой таблицы является опциональным. Связующую сущность необходимо создать в том случае, если вы хотите хранить в связующей таблице некие дополнительные поля.
+
+Продемонстрируем этот подход на примере сущностей `Airport` и `DutyFree`. В одном аэропорту может располагаться множество разных сетей магазинов беспошлинной торговли, и одна сеть duty-free может быть представлена во множестве разных аэропортов. Предположим, что кроме связи сущностей мы хотим хранить ещё и валюту, используемую в данном магазине в данном аэропорту:
+
+image::cookbook/association_recipe_2.png[align="center"]
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - сущность `Airport` содержит one-to-many коллекцию экземпляров  `AirportDutyFree`.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `dutyFreeShops`: *Attribute type* - `COMPOSITION`, *Cardinality* - `ONE_TO_MANY`.
++
+[source, java]
+----
+@Composition
+@OnDelete(DeletePolicy.CASCADE)
+@OneToMany(mappedBy = "airport")
+protected List<AirportDutyFree> dutyFreeShops;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/DutyFree.java[DutyFree.java] - сущность `DutyFree` также содержит one-to-many коллекцию экземпляров  `AirportDutyFree`.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `airports`: *Attribute type* - `COMPOSITION`, *Cardinality* - `ONE_TO_MANY`.
++
+[source, java]
+----
+@Composition
+@OnDelete(DeletePolicy.CASCADE)
+@OneToMany(mappedBy = "dutyFree")
+protected List<AirportDutyFree> airports;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/AirportDutyFree.java[AirportDutyFree.java] - таким образом, связующая сущность `AirportDutyFree` содержит два ссылочных атрибута с отношением many-to-one: `airport` и `dutyFree`:
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "AIRPORT_ID")
+protected Airport airport;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "DUTY_FREE_ID")
+protected DutyFree dutyFree;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - представление `airport-duty-free` экрана редактирования аэропорта содержит атрибут-коллекцию `dutyFreeShops` (со ссылками на `AirportDutyFree`), а в ней атрибуты `dutyFree` и `currency`.
++
+Представление `dutyFree-airport` следует той же логике: оно содержит атрибут-коллекцию `airports` (со ссылками на `AirportDutyFree`), а в ней атрибуты `airport` и `currency`.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/duty-free-edit.xml[duty-free-edit.xml] - XML-дескриптор экрана редактирования магазина duty-free определяет источник данных для экземпляра `DutyFree` и вложенный источник для его аэропортов. Кроме того, экран содержит таблицу, отображающую аэропорты, и действие, позволяющее выбирать аэропорт напрямую, минуя экран редактирования связующей сущности `AirportDutyFree`.
+
+В результате редактирование экземпляра `DutyFree` работает следующим образом:
+
+В экране редактирования `DutyFree` отображается таблица аэропортов и выпадающий список валют.
+
+По нажатию *Add airport* открывается экран выбора `Airport`, и пользователь может как выбрать аэропорт, так и открыть экран его редактирования. Когда экземпляр аэропорта выбран, создаётся https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/DutyFreeEdit.java#L29[новый экземпляр] сущности `AirportDutyFree`, которому проставляется валюта по умолчанию. Этот экземпляр связующей сущности не сохраняется в базу данных, а добавляется в источник данных `airportsDs` экрана редактирования `DutyFree`.
+
+Когда пользователь нажимает *OK* в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[экране редактирования аэропорта], изменённый экземпляр аэропорта сохраняется и в базу данных, и в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/duty-free-edit.xml#L12[источник данных] `airportsDs` экрана редактирования `DutyFree`, так как сущность `Airport` является полностью независимой.
+
+Пользователь может сохранять новые аэропорты или удалять их, и все изменения будут сохраняться в базу данных в отдельных транзакциях, а также в источник данных `airportsDs`.
+
+Когда пользователь нажимает *OK* в экране редактирования магазина, изменённый экземпляр `DutyFree` вместе со всеми измененными экземплярами `AirportDutyFree` отправляется на middleware в метод  <<dataManager,DataManager>>.commit() и сохраняется в базе данных в рамках одной транзакции.
+

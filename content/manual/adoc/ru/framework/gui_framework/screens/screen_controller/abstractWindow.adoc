@@ -1,0 +1,160 @@
+:sourcesdir: ../../../../../../source
+
+[[abstractWindow]]
+====== AbstractWindow
+
+`AbstractWindow` является наследником <<abstractFrame,AbstractFrame>>, и определяет следующие собственные методы:
+
+[[dialogOptions]]
+* `getDialogOptions()` - получить объект `DialogOptions` для управления геометрией и поведением экрана когда он открывается в режиме диалога (`WindowManager.OpenType.DIALOG`). Эти параметры могут быть заданы при инициализации экрана, а также могут изменяться на лету.
++
+Установка ширины и высоты:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_2.java[]
+----
++
+Установка положения диалога на экране:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_9.java[]
+----
++
+Возможность закрыть диалог кликом по окружающей области:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_7.java[]
+----
++
+Указание того, что диалог должен быть немодальным и с изменяемыми размерами:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_3.java[]
+----
++
+Указание того, что диалог должен быть развёрнут во весь экран:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_8.java[]
+----
++
+Указание того, что экран должен всегда открываться в режиме диалога, независимо от того, какой `WindowManager.OpenType` был выбран в вызывающем коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_4.java[]
+----
+
+[[abstractWindow_contentSwitchMode]]
+* `setContentSwitchMode()` - определяет режим переключения вкладок <<cuba.web.mainTabSheetMode,главного TabSheet>> для вкладки, содержащей данное окно: скрывать содержимое или полностью выгружать его.
++
+--
+Доступны следующие режимы:
+
+* `DEFAULT` - режим переключения определяется режимом главного TabSheet, установленном в свойстве приложения <<cuba.web.managedMainTabSheetMode,cuba.web.managedMainTabSheetMode>>.
+
+* `HIDE` - содержимое вкладки должно быть только скрыто, независимо от режима главного TabSheet.
+
+* `UNLOAD` - содержимое вкладки должно быть выгружено, независимо от режима главного TabSheet.
+--
+
+[[abstractWindow_saveSettings]]
+* `saveSettings()` - сохраняет настройки экрана для текущего пользователя в базе данных при закрытии экрана.
++
+К примеру, на экране имеется чекбокс *showPanel*, управляющий отображением некой панели. Мы переопределяем метод `saveSettings()`: создаём в нём XML-элемент для этого чекбокса, добавляем ему атрибут `showPanel`, содержащий текущее значение чекбокса, а затем сохраняем элемент `settings` в XML-файл для текущего пользователя в базе данных.
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_6.java[]
+----
+
+[[abstractWindow_applySettings]]
+* `applySettings()` - восстанавливает настройки экрана для текущего пользователя из базы данных при открытии экрана.
++
+Переопределим метод для восстановления настроек из предыдущего примера. Получаем XML-элемент чекбокса, проверяем, что нужный нам атрибут `showPanel` не равен `null`, а затем восстанавливаем для чекбокса предыдущее сохранённое значение:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_5.java[]
+----
++
+Другой пример управления настройками экрана можно увидеть на стандартном экране *Server Log* в меню *Administration* приложения CUBA, который автоматически сохраняет и восстанавливает последние открытые пользователем лог-файлы.
+
+[[abstractWindow_ready]]
+* `ready()` - шаблонный метод, который можно имплементировать в контроллере для перехвата момента открытия экрана. Метод `ready()` вызывается фреймворком после метода `init()` непосредственно перед показом экрана в главном окне приложения.
+
+[[abstractWindow_validateAll]]
+* `validateAll()` - валидация экрана. Реализация по умолчанию вызывает метод `validate()` у всех компонентов экрана, реализующих интерфейс `Component.Validatable`, накапливает информацию об исключениях, и если таковые имеются, выводит соответствующее сообщение и возвращает `false`, иначе возвращает `true`.
++
+Данный метод следует переопределять только в том случае, если необходимо полностью заменить стандартную процедуру валидации экрана. Если же нужно только дополнить ее, достаточно определить специальный шаблонный метод `postValidate()`.
+
+[[abstractWindow_postValidate]]
+* `postValidate()` - шаблонный метод, который можно имплементировать в контроллере для дополнительной валидации экрана. Получаемый методом объект `ValidationErrors` используется для добавления информации об ошибках валидации, которая будет отображена совместно с ошибками стандартной валидации. Например:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_1.java[]
+----
+
+[[abstractWindow_showValidationErrors]]
+* `showValidationErrors()` - метод, который отображает сообщение об ошибках валидации экрана. Чтобы изменить поведение стандартных сообщений, метод можно переопределить. Тип уведомления определяется свойством приложения <<cuba.gui.validationNotificationType,cuba.gui.validationNotificationType>>.
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_10.java[]
+----
+
+[[abstractWindow_close]]
+* `close()` - закрыть данный экран. 
++
+Метод принимает строковое значение, передаваемое далее в шаблонный метод `preClose()` и слушателям `CloseListener`. Таким образом, заинтересованный код может получить информацию о причине закрытия экрана от кода, инициирующего закрытие. В частности, в экранах редактирования сущностей при закрытии экрана после коммита изменений рекомендуется использовать константу `++Window.COMMIT_ACTION_ID++`, без коммита изменений - константу `++Window.CLOSE_ACTION_ID++`.
++
+Если какой-либо из источников данных содержит несохраненные изменения, перед закрытием экрана будет выдано диалоговое окно с соответствующим предупреждением. Тип предупреждения можно выбрать с помощью свойства приложения <<cuba.gui.useSaveConfirmation,cuba.gui.useSaveConfirmation>>.
++
+Вариант метода `close()` с параметром `force = true` закрывает экран без вызова `preClose()` и без предупреждения, независимо от наличия несохраненных изменений.
++
+Метод `close()` возвращает `true`, если экран был успешно закрыт, и `false` - если закрытие было прервано.
+
+[[abstractWindow_preClose]]
+* `preClose()` - шаблонный метод, который можно имплементировать в контроллере для перехвата момента закрытия экрана. Метод получает строковое значение, указанное инициатором закрытия при вызове метода `close()`.
++
+Если метод `preClose()` возвращает `false`, то процесс закрытия экрана прерывается.
+
+[[abstractWindow_addBeforeCloseWithCloseButtonListener]]
+* `addBeforeCloseWithCloseButtonListener()` - добавляет слушатель, который отслеживает закрытие окна одним из следующих способов: кнопка закрытия окна, панель breadcrumbs или действия для закрытия вкладок `TabSheet` (Close, Close All, Close Others). Чтобы предотвратить случайное закрытие окна пользователем, можно вызвать метод `preventWindowClose()` события `BeforeCloseEvent`:
++
+[source, java]
+----
+addBeforeCloseWithCloseButtonListener(BeforeCloseEvent::preventWindowClose);
+----
+
+[[abstractWindow_addBeforeCloseWithShortcutListener]]
+* `addBeforeCloseWithShortcutListener` - добавляет слушатель, который отслеживает закрытие окна горячими клавишами (например, нажатием `Esc`). Чтобы предотвратить случайное закрытие окна пользователем, можно вызвать метод `preventWindowClose()` события `BeforeCloseEvent`:
++
+[source, java]
+----
+addBeforeCloseWithShortcutListener(BeforeCloseEvent::preventWindowClose);
+----
+
+'''
+
+API::
+<<abstractWindow_addBeforeCloseWithCloseButtonListener,addBeforeCloseWithCloseButtonListener()>> -
+<<abstractWindow_addBeforeCloseWithShortcutListener,addBeforeCloseWithShortcutListener()>> -
+<<abstractWindow_applySettings,applySettings()>> -
+<<abstractWindow_close,close()>> -
+<<abstractWindow_contentSwitchMode,setContentSwitchMode()>> -
+<<dialogOptions,getDialogOptions()>> -
+<<abstractWindow_postValidate,postValidate()>> -
+<<abstractWindow_preClose,preClose()>> -
+<<abstractWindow_ready,ready()>> -
+<<abstractWindow_saveSettings,saveSettings()>> -
+<<abstractWindow_validateAll,validateAll()>>
+
+'''
+

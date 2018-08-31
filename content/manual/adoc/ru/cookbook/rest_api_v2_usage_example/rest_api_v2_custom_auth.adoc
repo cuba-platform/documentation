@@ -1,0 +1,59 @@
+:sourcesdir: ../../../../source
+
+[[rest_api_v2_custom_auth]]
+==== Собственный механизм аутентификации
+
+Различные механизмы аутентификации могут предоставлять токен по ключу, по ссылке, по логину и паролю LDAP и т.д. Стандартный механизм аутентификации в REST API изменить нельзя, но можно создать свой механизм. Для этого необходимо создать REST-контроллер, который предоставит свой URL для входа в приложение.
+
+В этом примере мы рассмотрим механизм аутентификации, позволяющий получить OAuth-токен по промо-коду. За основу возьмём приложение, содержащее сущность `Coupon` (Купон) с атрибутом `code` (промо-код). Значение этого атрибута мы будем передавать в качестве параметра аутентификации в GET-запросе.
+
+. Создайте сущность `Coupon` и добавьте ей атрибут `code`:
++
+[source, java]
+----
+@Column(name = "CODE", unique = true, length = 4)
+protected String code;
+----
+
+. Создайте нового <<users,пользователя>> с логином *promo-user*, от лица которого будет выполняться аутентификация по промо-коду.
+
+. В корневом каталоге модуля *web* (`com.company.demo`) создайте новый файл конфигурации Spring `rest-dispatcher-spring.xml` со следующим содержанием:
++
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring-ex.xml[]
+----
+
+. Ссылку на этот файл укажите в свойстве приложения `cuba.restSpringContextConfig` в файле `modules/web/src/web-app.properties`:
++
+[source, properties]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring.properties[]
+----
+
+. Создайте пакет `rest` в корневом каталоге модуля *web*, а в нём - свой контроллер Spring MVC. В контроллере используйте бин `OAuthTokenIssuer`, который позволяет сгенерировать и выдать REST API токен после аутентификации:
++
+[source, java]
+----
+include::{sourcesdir}/rest/customRestController.java[]
+----
+
+. Исключите пакет `rest` из сканирования в модулях *web/core*: это необходимо, так как бин `OAuthTokenIssuer` доступен только внутри контекста REST API, и сканирование его в контексте приложения будет вызывать ошибку.
++
+[source, xml]
+----
+include::{sourcesdir}/rest/web-spring-ex.xml[]
+----
+
+. Теперь пользователи могут получать код доступа OAuth2 через обычный запрос GET HTTP, передавая значение промо-кода в параметре `code`:
++
+`\http://localhost:8080/app/rest/auth-code?code=A325`
++
+Результат:
++
+  {"access_token":"74202587-6c2b-4d74-bcf2-0d687ea85dca","token_type":"bearer","expires_in":43199,"scope":"rest-api"}
++
+Теперь полученный access token нужно передавать в REST API, как описано в общей документации.
+
+include::rest_api_v2_custom_auth/rest_api_v2_social_login.adoc[]
+
