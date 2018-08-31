@@ -70,7 +70,7 @@ class DocSplitter {
             dstFile.delete()
         }
 
-        if (section.level > 2) {
+        if (section.level > 1) {
             dstFile << ":sourcesdir: ${'../'.multiply(section.level)}source\n\n"
         }
 
