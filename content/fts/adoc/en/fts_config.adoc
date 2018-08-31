@@ -1,0 +1,83 @@
+:sourcesdir: ../../source
+
+[[fts_config]]
+[appendix]
+== FTS Configuration File
+
+The full text search configuration file is an XML file, which is usually located in the `src` directory of the *core* module and contains the description of indexed entities and their attributes.
+
+The file is specified in the <<cuba.ftsConfig,cuba.ftsConfig>> application property.
+
+The file has the following structure: 
+
+`fts-config` - root element.
+
+`fts-config` elements:
+
+* `entities` - list of entities to be indexed and searched.
++
+`entities` elements:
+
+** entity - indexed entity description.
++
+`entity` attributes:
++
+--
+*** `class` - entity Java class.
+*** `show` - defines whether this entity should appear in the search results. The `false` value is used for connecting entities which are not of interest to the user, but are required, for example, to link uploaded files and entities of the domain model. Default is `true`.
+--
++
+`entity` elements:
+
+*** `include` - determines whether to include a single or multiple entity attributes in the index.+
+`include` attributes:
+
+**** `re` - regular expression to select attributes by name.
+
+**** `name` - attribute name. It can be reference attributes path (divided by period). The type is not checked. However, if the name is defined by a path, then two options are possible. 
++
+--
+. The final attribute must be a non-embeddable entity. Including non-entity type attribute does not make sense here, as it must be indexed within its owning entity.
+. The final attribute must be a non-entity field of the embedded entity. For example, if the indexed entity has an "address" field of the Address type (embeddable entity) then the attribute name should be "address.city" or "address.street", but not the "address".
+--
+
+*** `exclude` - excludes attributes previously included by `include` element. Possible attributes are the same as in include.
+
+*** `searchables` - a Groovy script to add arbitrary entities associated with the changed one to the indexing queue.
++
+For example, when a `CardAttachment` instance is either added or removed, the associated `Card` instance should also be re-indexed. The reason is that the `Card` instance itself will not be added to the queue, as it has not been changed (it stores a collection of `CardAttachment` instances). Thus it will not be shown in search results if matching data is found in its linked entity - a newly added `CardAttachment`.
++
+The following objects are passed into the script at invocation: 
++
+--
+**** `searchables` - the list of entities that should be appended.
+**** `entity` - the current entity instance, which is being added to the queue automatically.
+--
++
+Script example:
++
+[source,xml]
+----
+include::{sourcesdir}/fts_config_1.xml[]
+----
+
+*** `searchableIf` - a Groovy script to exclude certain instances of the indexed entity from the queue.
++
+For example, you may not want to index old versions of documents. 
++
+When running the script, the `entity` variable - the current entity instance - is passed into it. The script should return a boolean value: `true` if the current instance should be indexed, and `false` otherwise.
++
+Script example:
++
+[source, xml]
+----
+include::{sourcesdir}/fts_config_2.xml[]
+----
+
+FTS configuration file example:
+
+[source, xml]
+----
+include::{sourcesdir}/fts_config_3.xml[]
+----
+

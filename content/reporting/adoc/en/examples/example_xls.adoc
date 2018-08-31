@@ -1,0 +1,94 @@
+:sourcesdir: ../../../source
+
+[[example_xls]]
+=== Sample XLS Report
+
+In this chapter we will consider the structure of one of reports from the sample *Library* application, which source code is available at https://github.com/cuba-platform/sample-library.
+
+To use reports in your project, activate the *reports* item in the *App components* list on the *Project properties* page
+of CUBA Studio.
+
+Open the *Reports* -> *Reports* screen and click on the *Import* button to import the report. Choose Reports.zip in the project root directory. Two reports will appear in the table, one of them will be Books by author. This report displays the list of book publications for selected author; books will be grouped by book name and publisher. The output format is XLS.
+
+. <<structure,Report data structure>>.
++
+--
+.Report data structure
+image::sample1_structure.png[align="center"]
+
+Let us consider report bands.
+
+* *header* band - report header. It contains the dataset with the Groovy script which outputs the report <<parameters, external parameters>> values:
+
+[source, groovy]
+----
+[['authorName' : (params['author'].firstName + ' ' + params['author'].lastName)]]
+----
+
+* The *book* band outputs the list of books by running the following SQL query:
+
+[source, sql]
+----
+select b.name as book_name, b.id as book_id
+from library_book b 
+    join library_book_author_link ba on ba.book_id = b.id
+    join library_author a on a.id = ba.author_id
+where a.id = ${author}
+----
+
+This query uses the external report parameter - *author*. The parameter has the *Entity* type, however in SQL queries you can compare it directly with entity identifier fields; the conversion will be done automatically.
+
+* The *publisher* band, which is a child band of *book*, outputs the book publishers by running the following SQL query:
+
+[source, sql]
+----
+select p.name as publisher, bp.year, p.id as publisher_id
+from library_book_publication bp
+    join library_publisher p on p.id = bp.publisher_id
+where bp.book_id = ${book.book_id}
+----
+
+This query uses the parent band field `++book_id++` as a parameter. This provides dependency between the parent and child bands.
+
+* The *publication* band, which is a child of the *publisher* band, outputs the book publications by running the following SQL query:
+
+[source, sql]
+----
+select ld.name as department, count(bi.id) as amount
+from library_book_instance bi
+    join library_book_publication bp on bp.id = bi.book_publication_id
+    join library_library_department ld on ld.id = bi.library_department_id
+where bp.publisher_id = ${publisher.publisher_id} and bp.book_id = ${book.book_id}
+group by ld.name
+----
+
+This query uses both parent bands fields as parameters - `++book_id++` and `++publisher_id++`.
+--
+
+. Report <<parameters, parameters>>.
++
+The *Parameters and Formats* tab contains one declared report external parameter - *Author*:
++
+.Report parameters
+image::sample1_param.png[align="center"]
++
+When running the report, the user will have to enter this parameter. The author selection will be performed via the `library$Author.lookup` screen, available in the application.
+
+. Report <<template, templates>>.
++
+The *Templates* tab contains a single defined XLS template, loaded from `BooksByAuthor.xls`
++
+.Report templates
+image::sample1_template.png[align="center"]
+
+. Report Name <<localization, Localization>>.
++
+The *Localization* tab contains the report name for the Russian locale:
++
+[source, properties]
+----
+ru = Книги по автору
+----
+
+You can <<running, run>> report from the generic browser in the *Reports* -> *Run Reports* screen.
+

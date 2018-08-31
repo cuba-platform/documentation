@@ -1,0 +1,36 @@
+:sourcesdir: ../../../source
+
+[[transitions]]
+=== Transitions Depending on Task Outcomes
+
+BPMN 2.0 notation doesn't provide a way to define multiple outcomes for a User task. To make a process to continue in a required direction, the *Exclusive gateway* is used. Its outgoing flows have conditions that operate with the results of the preceding task. When a user completes the task, its result is written to the process variable with the name generated as `[taskId]_result`. The variable type is `ProcTaskResult`.
+
+Methods of the `ProcTaskResult` class:
+
+* `count(String outcomeName): int` - returns the number of users who completed the task with the given outcome.
+* `exists(String outcomeName): boolean` - returns `true` if there are users who completed the task with the given outcome.
+
+The result object of the task completion is used in the *Flow condition* expression of gateway outgoing flows.
+
+*Example*
+
+.Task Outcomes Example
+image::TaskOutcomesExample.png[align="center"]
+
+Suppose that the `approval` task was assigned to multiple uses in parallel. There are two outcomes defined for the task: `approve` and `reject`. When all users have completed the task, the process goes to the exclusive gateway. We want to implement the following behavior: if anyone chooses the `reject` option then go to the `Rejected` flow; if everyone approved the task then go to the `Approved` flow.
+
+Defining a Condition in a Flow Outcome Field::
++
+The simplest way to define the flow condition is to select the name of the previous task outcome in the *Flow outcome* property of the flow node. The flow will be activated if there was at least one task completion with the selected outcome.
+
+Defining a Complex Condition for the Flow Node::
++
+If you need to implement more complex condition for the outcome, you can define it in the *Flow condition* field. For example, "More than 5 users selected the Reject option" condition looks as follows:
++
+[source,groovy]
+----
+${approval_result.count('reject') > 5}
+----
+
+include::transitions/flow_order.adoc[]
+

@@ -1,0 +1,118 @@
+:sourcesdir: ../../../../source
+
+[[qs_process_model_creation]]
+==== Создание модели процесса
+
+Конечная версия модели процесса будет выглядеть следующим образом:
+
+image::ProcessFull.png[align="center"]
+
+Рассмотрим последовательность шагов для создания модели.
+
+В веб-интерфейсе запущенного приложения откройте экран *BPM -> Process models* и нажмите *Create*. Введите имя модели `Contract approval` и нажмите *OK*. Откроется новая вкладка браузера *Model editor*.
+
+[TIP]
+====
+При создании или копировании модели процесса появляется уведомление со ссылкой для перехода. При нажатии на кнопку *Edit* редактор модели процесса открывается в новой вкладке браузера.
+====
+
+В панели свойств модели выберите свойство *Process roles* - откроется окно редактирования процессных ролей.
+
+image::ProcessRolesProperty.png[align="center"]
+
+В процессе должно быть два типа участников: контролер и менеджер. Создайте 2 роли: `Controller` и `Manager`.
+
+image::ProcessRolesEditor.png[align="center"]
+
+Перетащите в рабочую область узел *Start event* из группы *Start events*. При старте процесса нам необходимо отображать форму выбора участников процесса. Для этого выделите узел *Start event*. В панели свойств выберите *Start form* - откроется окно выбора формы. В списке *Form name* выберите `Standard form`. После этого добавьте два параметра формы:
+
+* `procActorsVisible` со значением `true` говорит о том, что на форме будет показана таблица для выбора участников процесса;
+* `attachmentsVisible` со значением `true` говорит о том, что на форме будет показана таблица для добавления вложений к процессу.
+
+image::StartForm.png[align="center"]
+
+Добавьте в модель узел *User task* из группы *Activities*. Назовите его `Validation`.
+
+image::ModelValidationNode.png[align="center"]
+
+Выделите этот узел, и на панели свойств задайте свойству *Process role* значение `controller`. Так мы указали, что задача будет назначена на участника процесса с ролью `controller`.
+
+image::SelectProcRoleForValidation.png[align="center"]
+
+Далее выберите свойство *Task outcomes*. Откроется окно редактирования выходов из задачи. Выходы определяют возможные действия пользователя при получении задачи. Создайте два выхода: `Valid` и `Not valid`. Для каждого из них укажите форму `Standard form`. Для выхода `Not valid` добавьте параметр формы `commentRequired = true`. Это нужно, чтобы в случае некорректного договора пользователь обязательно добавил свой комментарий.
+
+image::OutcomesForValidation.png[align="center"]
+
+В зависимости от решения контролера нам необходимо либо отправить договор далее на утверждение группе менеджеров, либо завершить процесс, предварительно установив договору состояние `Not valid`. Для контроля над маршрутом процесса используется узел *Exclusive gateway* из группы *Gateways*. Добавьте его на рабочую область, а затем добавьте еще два элемента: *Script task* с именем `Set 'Not valid' state` и *User task* с именем `Approval`. Переход к *Script task* назовите `Not valid`, переход к узлу `Approval` назовите `Valid`.
+
+image::ModelValidationExclGateway.png[align="center"]
+
+Выделите переход `Not valid`. В панели свойств разверните выпадающий список *Flow outcome*. В нем представлены выходы из предыдущей задачи. Выберите `Not valid`.
+
+image::NotValidFlowOutcome.png[align="center"]
+
+Теперь в случае выбора пользователем решения `Not valid` будет осуществлен переход именно по этой ветке.
+
+Переход `Valid` сделаем переходом по умолчанию (если не выполнилось никакое из условий на других переходах узла). Для этого выделите переход `Valid` и поставьте галочку в его свойстве *Default flow*.
+
+[WARNING]
+====
+Для перехода, помеченного как *Default flow*, значение в выпадающем списке *Flow outcome* должно быть пустым.
+====
+
+
+Далее выделите Exclusive gateway и откройте редактор свойства *Flow order*. Убедитесь, что переход `Not valid` стоит первым в списке. Если это не так, измените порядок обработки переходов.
+
+image::ValidationFlowOrder.png[align="center"]
+
+Перейдем к узлу `Set 'Not valid' state`. Нам необходимо установить значение свойства `state` сущности `Contract` в `Not valid`. Выделите узел. В поле свойства *Script format* введите `groovy`, т.к. мы будем писать groovy-скрипт. Нажмите на поле свойства *Script* узла. Откроется окно редактирования скрипта. Скопируйте и вставьте туда следующий текст:
+
+[source,groovy]
+----
+import com.company.bpmdemo.entity.Contract
+
+def em = persistence.getEntityManager()
+def contract = em.find(Contract.class, entityId)
+contract.setState('Not valid')
+----
+
+В скрипте можно использовать процессные переменные, а также объекты платформы `persistence` и `metadata` (см. https://www.cuba-platform.ru/manual[Руководство по разработке приложений]). Переменная `entityId` создается при запуске процесса и хранит идентификатор связанной сущности.
+
+После того, как состояние договора изменено, процесс должен быть завершен - добавляем узел *End event* из группы *End Events* и соединяем его с узлом `Set 'Not valid' state`.
+
+Вернемся к задаче `Approval`. Как и в случае с первой задачей, укажите для нее процессную роль - в данном случае это будет роль `manager`. Так как предполагается, что эта задача должна быть назначена одновременно нескольким менеджерам, то установим её свойство *Multi-instance type* в значение `Parallel`.
+
+image::ApprovalMutlInstanceType.png[align="center"]
+
+Создайте для задачи два выхода: `Approve` и `Reject` (свойство *Task outcomes*). Задайте для обоих выходов форму `Standard form`, для перехода `Reject` установите параметр `commentRequired` в `true`.
+
+После того, как согласование завершится, договору должно установиться состояние `Approved` или `Not approved` в зависимости от результата согласования. Добавьте узел *Exclusive gateway* после задачи `Approval`. После `Exclusive gateway` добавьте две *Service task*: `Set 'Approved' state` и `Set 'Not approved' state`. Они будут делать то же самое, что и *Script task*, созданная ранее, но другим способом - вызывая метод Spring-бина. Переход к `Set 'Approved' state` назовите `Approved`, переход к `Set 'Not approved' state` назовите `Not approved`.
+
+image::ModelWithApproval.png[align="center"]
+
+Выделите переход `Not approved` и в списке *Flow outcome* выберите значение `Reject`. Теперь если хотя бы один из менеджеров выполнит действие `Reject`, то будет инициирован этот переход. Выделите переход `Approved` и установите флажок *Default flow* - если остальные переходы не сработали (не было выбора `Reject`), то будет инициирован переход `Approved`.
+
+По аналогии с предыдущим *Exclusive gateway* установите порядок обработки переходов для текущего. Выделите *Exclusive gateway* и откройте редактор свойства *Flow order*. Первым должен обрабатываться переход `Not approved`.
+
+image::ApprovalFlowOrder.png[align="center"]
+
+Вернемся к *Service task*. Выделите узел `Set 'Approved' state` и задайте свойству *Expression* значение:
+
+[source,groovy]
+----
+${demo_ApprovalHelper.updateState(entityId, 'Approved')}
+----
+
+Для `Set 'Not approved' state`:
+
+[source,groovy]
+----
+${demo_ApprovalHelper.updateState(entityId, 'Not approved')}
+----
+
+Activiti Engine интегрирован со Spring Framework, поэтому мы можем обращаться к объектам, управляемым Spring, по их имени. `entityId` - процессная переменная, хранящая идентификатор сущности связанного с процессом договора. Ее значение будет записано при старте процесса.
+
+Соедините с End event последние созданные задачи, нажмите кнопку сохранения модели - модель готова. Переходим к её развертыванию.
+
+image::ProcessFull.png[align="center"]
+

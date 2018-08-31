@@ -1,0 +1,64 @@
+:sourcesdir: ../../../../source
+
+[[template_jasper]]
+==== JasperReports Template
+
+JasperReports formatter allows you to use JasperReports templates to output the information extracted by CUBA reporting. The template will be processed by the report engine, providing an output of defined type, see <<template_to_output>>.
+
+You can create JRXML templates using JasperReports tools (for example, Jaspersoft Studio) or in a simple text editor. Each report band defined in the report structure must have a corresponding `band` element in the template which is, in turn, placed within one of the standard JasperReports report sections (which are also named as the bands in JasperReports terms): `title`, `pageHeader`, `columnHeader`, `detail`, etc.
+
+The report engine puts all report band data in one datasource: `JRBandDataDataSource`, which contains data as a tree with the `Root` band as the root, and passes the `CubaJRFunction` instance to the template as the main data source that can be addressed using the `REPORTING` parameter. Declaring this parameter in the report template is not mandatory, it will be added automatically if omitted, but if you want to compile the template in JasperReports IDE, you need to declare this parameter explicitly.
+
+The `REPORTING` parameter supports two functions:
+
+* `dataset` -  gets the sub-datasource from the main data source that can be used, for example, in tables or in subreports as subDataset. This method searches among the children of the root band for the band with specified name and creates a new data source with this band data as a new root. For example:
++
+[source, xml]
+----
+<subDataset name="Product">
+	<field name="name" class="java.lang.String"/>
+	<field name="price" class="java.lang.Long"/>
+</subDataset>
+...
+<dataSourceExpression><![CDATA[$P{REPORTING}.dataset("Product")]]></dataSourceExpression>
+----
+
+* `bitmap` - transforms the given byte array into `ByteArrayInputStream` and can be used for embedding images into the report. For example:
+
+[source, xml]
+----
+<field name="Main.image" class="java.lang.Object"/> //image from DB as byte array
+...
+<imageExpression><![CDATA[$P{REPORTING}.bitmap($F{Main.image})]]></imageExpression>
+----
+
+Each report band can be used in the template only once, so if you need to represent the same data in different forms within one report (for example, as a table and a chart), you need to create as many bands as the `band` elements in the template. Nested bands are not supported, all bands should be direct children of the *Root* band.
+
+The data can be retrieved from the datasource using the following syntax: `$F{<field name>}`. For example:
+
+[source, xml]
+----
+<textField>
+    <textFieldExpression><![CDATA[$F{library_department_name}]]></textFieldExpression>
+</textField>
+----
+
+You can find an example of a report with JasperReports template in the <<example_jasper,Sample Reports>> section.
+
+[[template_jasper_uberJar]]
+[TIP]
+====
+If your application uses the https://doc.cuba-platform.com/manual-latest/uberjar_deployment.html[UberJAR] deployment option, do the following to run JasperReports with the UberJAR:
+
+* Copy `jasperreports-.jar` and `yarg-.jar` to uber JAR directory,
+
+* Create a file `jasperreports.properties` in the uber JAR directory,
+
+* Add the `net.sf.jasperreports.compiler.classpath` property in this file with the names of the copied JARs as the property value, for example:
+
+[source, plain]
+----
+net.sf.jasperreports.compiler.classpath = jasperreports-6.4.1.jar;yarg-2.0-SNAPSHOT.jar
+----
+====
+

@@ -1,0 +1,196 @@
+:sourcesdir: ../../../source
+
+[[chart_configuration]]
+=== Конфигурация диаграмм
+
+Для отображения диаграмм используется компонент `Chart`, являющийся универсальным холстом. Вид диаграммы задается с помощью конкретного интерфейса <<chart_types,типа диаграммы>>, унаследованного от `Chart`.
+
+Диаграммы можно описывать как в XML-дескрипторе, так и в контроллере экрана. Для описания в дескрипторе необходимо подключить соответствующий `namespace`:
+
+[source, xml]
+----
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+        xmlns:chart="http://schemas.haulmont.com/charts/charts.xsd"
+        ...>
+----
+
+Соответствие элементов XML видам диаграмм:
+
+* `chart:xyChart` - <<xy_chart,XYChart>>
+* `chart:serialChart` - <<serial_chart,SerialChart>>
+* `chart:pieChart` - <<pie_chart,PieChart>>
+* `chart:funnelChart` - <<funnel_chart,FunnelChart>>
+* `chart:gaugeChart` - <<gauge_chart,AngularGaugeChart>>
+* `chart:radarChart` - <<radar_chart,RadarChart>>
+* `chart:ganttChart` - <<gantt_chart,GanttChart>>
+* `chart:stockChart` - <<stock_chart,StockChart>>
+
+Каждый вид диаграммы имеет свой набор атрибутов и методов, которые повторяют функционал соответствующих диаграмм библиотеки AmCharts. Документация по свойствам и методам диаграмм находится по адресу http://docs.amcharts.com/3/javascriptcharts[docs.amcharts.com/3/javascriptcharts^].
+
+Следующие элементы можно использовать для декларативной конфигурации всех типов диаграмм:
+
+[[chart_allLabels]]
+* `chart:allLabels` - содержит вложенные элементы `label`, в которых можно указать текст надписи и его свойства. Надписи можно размещать в любой месте на диаграмме, например:
++
+--
+
+image::chart/charts_allLabels.png[align="center"]
+
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_allLabels.xml[]
+----
+--
+
+[[chart_balloon]]
+* `chart:balloon` - задаёт настройки всплывающих пузырьковых подсказок, появляющихся при наведении курсора мыши на элемент данных диаграммы. Например:
++
+--
+image::chart/charts_balloon.png[align="center"]
+
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_balloon.xml[]
+----
+
+Текст подсказки указывается в атрибуте `balloonText` для каждого графа.
+
+[[chart_additionalFields]]
+** `additionalFields`
++
+Для подстановки данных можно использовать все поля, уже использованные в диаграмме, такие как `titleField`, `valueField`, `category`, `value`, `description`, `percents`, `open` и т.п., а также теги HTML.
++
+Кроме того, вы можете использовать и другие атрибуты сущности из источника данных диаграммы с помощью атрибута `additionalFields`. Этот атрибут позволяет добавить отдельные атрибуты сущности к запросу данных для диаграммы и передать их значения в UI, чтобы вы могли прямо использовать имена атрибутов сущностей в конфигурации диаграммы.
++
+В следующем примере `title` - это заголовок графа, `category` - значение по оси категорий, `value` значение по оси значений, а `optional` - атрибут сущности `IncomeExpenses`, загруженный для подстановки в `balloonText`:
++
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_additionalFields.xml[]
+----
++
+image::chart/charts_balloon_additiional.png[align="center"]
++
+Список дополнительных полей можно указать декларативно через запятую:
++
+[source, xml]
+----
+additionalFields="income,expense,vat"
+----
++
+или же передать список в контроллере экрана:
++
+[source, java]
+----
+include::{sourcesdir}/chart/chart_additionalFields.java[]
+----
+--
+
+[[chart_chartScrollbar]]
+* `chart:chartScrollbar` (для диаграмм с типом <<serial_chart>> и <<xy_chart>>) - полоса прокрутки диаграммы.
++
+--
+* Можно использовать скроллбар для прокрутки конкретного графа:
++
+image::chart/charts_zoom.png[align="center"]
++
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_chartScrollbar.xml[]
+----
+
+* Элемент `chart:chartScrollbarSettings` позволяет настроить конфигурацию полосы прокрутки:
++
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_chartScrollbar2.xml[]
+----
+
+* Кроме того, диаграммы с типом <<gantt_chart>> могут дополнительно иметь элемент `chart:valueScrollbar` для прокрутки оси значений, в то время как `chart:chartScrollbar` будет использоваться для зуммирования оси категорий:
++
+image::chart/charts_valueScrollBar.png[align="center"]
++
+[source, xml]
+----
+include::{sourcesdir}/chart/charts_valueScrollBar.xml[]
+----
+--
+
+[[chart_cursor]]
+* `chart:cursor` - необязательный элемент для добавления курсора к диаграмме. Курсор следует за указателем мыши и отображает пузырьковые подсказки с данными в соответствующей точке диаграммы.
++
+--
+image::chart/charts_cursor.png[align="center"]
+
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_cursor.xml[]
+----
+--
+
+* `chart:data` - необязательный элемент для <<chart_data,добавления данных>>, используется преимущественно для прототипирования диаграмм.
+
+* `chart:export` - необязательный элемент для подключения функциональности <<chart_export,экспорта диаграмм>>. Реализация экспорта по умолчанию представляет собой кнопку *download* в углу диаграммы:
++
+image::chart/charts_export.png[align="center"]
+
+[[chart_guides]]
+* `chart:guides` - горизонтальные/вертикальные направляющие.
++
+--
+image::chart/charts_guides.png[align="center"]
+
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_guides.xml[]
+----
+--
+
+[[chart_legend]]
+* `chart:legend` - элемент, описывающий легенду диаграммы, например:
++
+--
+image::chart/charts_legend.png[align="center"]
+
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_legend.xml[]
+----
+--
+
+* `chart:nativeJson` - <<custom_json,JSON-конфигурация>> диаграммы.
+
+[[chart_titles]]
+* `chart:titles` - заголовки осей, например:
++
+--
+image::chart/charts_titles.png[align="center"]
+[source, xml]
+----
+include::{sourcesdir}/chart/chart_titles.xml[]
+----
+--
+
+[[chart_responsive]]
+* `chart:responsive` - подключение плагина, позволяющего сделать диаграммы отзывчивыми.
++
+--
+Он позволяет на лету изменять внешний вид диаграммы, автоматически подстраивая её под изменения разрешения экрана. Больше информации о плагине `responsive` вы можете найти на https://www.amcharts.com/kbase/making-charts-responsive/[сайте AmCharts].
+
+Элемент `responsive` содержит вложенные элементы `rules`, в которых задаются правила отклика диаграмм. Вы можете настроить скрытие/отображение легенды, заголовков осей, разделителей, заголовков диаграмм, ползунков масштаба, перемещение подписей с осей внутрь графика и т.п.:
+
+[source,xml]
+----
+include::{sourcesdir}/chart/responsive.xml[]
+----
+--
+
+Все атрибуты конфигурации могут иметь значение `null`, вместо таких значений будут использоваться значения по умолчанию (кроме случаев, указанных в документации AmCharts).
+
+Таким же образом можно описывать диаграммы в контроллере экрана. Можно как указывать отдельные свойства, так и добавлять составные объекты:
+
+[source,java]
+----
+include::{sourcesdir}/chart/chart_configure.java[]
+----
+
