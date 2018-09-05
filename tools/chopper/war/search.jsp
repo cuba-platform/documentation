@@ -43,7 +43,6 @@ long start = System.currentTimeMillis();
         <div id="title">{{title}}</div>
         <div id="version">{{version}}</div>
     </div>
-    <div id="copyright">{{copyright}}</div>
     </div>
     <div id="toc" class="toc2">
     <div class="searchfield">
