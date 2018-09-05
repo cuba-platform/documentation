@@ -1,0 +1,28 @@
+:sourcesdir: ../../../../source
+
+[[app_start_recipe]]
+==== Запуск кода на старте приложения
+
+Иногда бывает необходимо выполнить некоторый код сразу после старта приложения в момент, когда все механизмы гарантированно работоспособны. Для этого можно воспользоваться <<app_lifecycle_events,слушателями событий жизненного цикла>>.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$Employee.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+В данном разделе мы рассмотрим, как динамически зарегистрировать для сущности <<entity_listeners,entity listener>> на старте приложения. Возьмем следующую задачу: в проекте имеется сущность `Employee` (сотрудник компании), которая связана один-к-одному с платформенной сущностью `User` (пользователь системы):
+
+image::app_start_recipe_1.png[align="center"]
+
+Если атрибут `name` сущности `User` изменяется, например через стандартный экран управления пользователями, необходимо, чтобы изменялся также и атрибут `name` связанной сущности `Employee`. Это обычная задача для "денормализованных" данных, и решается она, как правило, с использованием <<entity_listeners,entity listeners>>. В данном случае ситуация осложняется тем, что необходимо отслеживать изменения не проектной, а платформенной сущности `User`, и добавить entity listener с помощью аннотации <<listeners_annotation,@Listeners>> невозможно. Однако, можно добавить listener динамически через бин `EntityListenerManager`, и сделать это лучше всего на старте приложения.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/AppLifecycle.java[AppLifecycle.java] - бин среднего слоя, слушающий события типа `AppContextInitializedEvent`.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/listener/UserEntityListener.java[UserEntityListener.java] - entity listener для сущности `User`.
+
+В результате сразу после старта <<app_tiers,блока>> Middleware будет вызван метод `initEntityListeners()` класса `AppLifecycle`. В этом методе в качестве entity listener сущности `User` регистрируется бин `sample_UserEntityListener`.
+
+Метод `onBeforeUpdate()` класса `UserEntityListener` будет вызываться перед каждым сохранением изменений экземпляров `User` в базу данных. В методе проверяется, есть ли атрибут `name` среди измененных, и если да, загружается связанный экземпляр `Employee`, и в нем устанавливается это же значение `name`.
+
+

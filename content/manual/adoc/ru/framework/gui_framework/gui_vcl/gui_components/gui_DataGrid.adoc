@@ -1,0 +1,564 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_DataGrid]]
+====== DataGrid
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=datagrid-basic-settings" class="live-demo-btn" target="_blank">ДЕМОНСТРАЦИЯ</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/gui/components/DataGrid.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`DataGrid`, подобно компоненту <<gui_Table,Table>>, позволяет выводить информацию в виде таблицы, сортировать её, вызывать действия для выбранных строк, а также более эффективно управлять строками и колонками таблицы за счёт отложенной загрузки данных при прокрутке.
+
+image::gui_dataGrid_1.png[align="center"]
+
+XML-имя компонента: `dataGrid`.
+
+Компонент реализован для блока *Web Client*.
+
+Пример описания компонента в XML-дескрипторе экрана:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datagrid.xml[]
+----
+
+В данном примере атрибут `id` - это идентификатор колонки, а атрибут `property` содержит имя атрибута сущности, содержащейся в источнике данных, который следует использовать в качестве данных для колонки.
+
+*Элементы dataGrid:*
+
+[[gui_DataGrid_columns]]
+* `columns` - обязательный элемент, определяет набор колонок `DataGrid`. Каждая колонка описывается во вложенном элементе `column` со следующими атрибутами:
++
+--
+* `id` - необязательный атрибут, содержит строковый идентификатор колонки. Если не задан, в качестве идентификатора колонки будет использоваться строковое значение атрибута `property`. В этом случае проставление атрибута `property` является обязательным, в противном случае будет брошено исключение `GuiDevelopmentException`. Атрибут `id` по-прежнему является обязательным для колонки, создаваемой программно.
+
+[[gui_DataGrid_property]]
+* `property` - необязательный атрибут, содержит название атрибута сущности, выводимого в колонке. Может быть как непосредственным атрибутом сущности, находящейся в источнике данных, так и атрибутом связанной сущности; переход по графу объектов обозначается точкой. Например:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datagrid_dot.xml[]
+----
+
+* `caption` - необязательный атрибут, содержит заголовок колонки. Если не задан, будет отображено <<entity_localization,локализованное название атрибута>> сущности.
+
+[[gui_DataGrid_expandRatio]]
+* `expandRatio` - необязательный атрибут, устанавливает соотношение, с которым столбец расширяется. По умолчанию все колонки расширяются равномерно (словно все колонки имеют `expandRatio = 1`). Если хотя бы одной колонке установлено иное значение, все неявные значения удаляются и учитываются только проставленные.
+
+[[gui_DataGrid_collapsible]]
+* `collapsible` - необязательный атрибут, определяющий, может ли пользователь управлять отображением колонок с помощью меню (sidebar menu) в правой верхней части `DataGrid`. По умолчанию имеет значение `true`.
+
+[[gui_DataGrid_collapsed]]
+* `collapsed` -  необязательный атрибут, при указании `true` колонка будет изначально скрыта. По умолчанию имеет значение `false`.
+
+[[gui_DataGrid_collapsingToggleCaption]]
+* `collapsingToggleCaption` - необязательный атрибут, задает имя колонки в меню в правой верхней части `DataGrid`. По умолчанию имеет значение `null`, и в этом случае берется значение из заголовка колонки, доступного из свойства `caption`.
++
+image::gui_dataGrid_2.png[align="center"]
+
+[[gui_DataGrid_resizable]]
+* `resizable` - необязательный атрибут, определяет, может ли пользователь изменять размер колонки.
+
+[[gui_DataGrid_sortable,sortable]]
+* `sortable` - необязательный атрибут, позволяющий запретить сортировку колонки. Вступает в действие, если атрибут `sortable` всего `DataGrid` установлен в `true` (что имеет место по умолчанию).
+
+* `width` - необязательный атрибут, отвечает за изначальную ширину колонки. Может принимать только числовые значения в пикселах.
+
+[[gui_DataGrid_minimumWidth]]
+* `minimumWidth` - необязательный атрибут, отвечает за минимальную ширину колонки. Может принимать только числовые значения в пикселах.
+
+[[gui_DataGrid_maximumWidth]]
+* `maximumWidth` - необязательный атрибут, отвечает за максимальную ширину колонки. Может принимать только числовые значения в пикселах.
+
+Элемент `column` может содержать вложенный элемент <<gui_formatter,formatter>> для представления значения атрибута в виде, отличном от стандартного для данного <<datatype,DataType>>:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datagrid_formatter.xml[]
+----
+--
+
+[[gui_DataGrid_actions]]
+* `actions` - необязательный элемент для описания <<gui_Action,действий>>, связанных с `DataGrid`.  Кроме описания произвольных действий, поддерживаются следующие <<standard_actions,стандартные действия>>, определяемые перечислением `ListActionType`: create, edit, remove, refresh, add, exclude.
+
+[[gui_DataGrid_buttonsPanel]]
+* `buttonsPanel` - необязательный элемент, создающий над `DataGrid` контейнер `ButtonsPanel` для отображения кнопок действий.
+
+[[gui_DataGrid_rowsCount]]
+* `rowsCount` -  необязательный элемент, создающий для `DataGrid` компонент `RowsCount`, который позволяет загружать в `DataGrid` данные постранично. Размер страницы задается путем ограничения количества записей в источнике данных методом `CollectionDatasource.setMaxResults()` в контроллере экрана. Также можно управлять количеством записей. используя универсальный компонент `Filter`, связанный с источником данных `DataGrid`.
+
+Компонент `RowsCount` может также отобразить общее число записей, возвращаемых текущим запросом в источнике данных, без извлечения этих записей. Для этого при щелчке пользователя на знаке "*?*" он вызывает метод `AbstractCollectionDatasource.getCount()`, что приводит к выполнению в БД запроса с такими же, как у текущего запроса, условиями, но с агрегатной функцией `++COUNT(*)++` вместо результатов. Полученное число отображается вместо знака "*?*".
+
+*Атрибуты dataGrid:*
+
+[[gui_DataGrid_columnResizeMode]]
+* `columnResizeMode` - устанавливает режим изменения размера колонок пользователем. Поддерживаются следующие режимы (по умолчанию ANIMATED):
++
+--
+* `AMINATED` - размер колонки меняется сразу вслед за курсором.
+
+* `SIMPLE` - размер колонки меняется только после того как курсор будет отпущен.
+--
++
+[[gui_DataGrid_ColumnResizeListener]]
+Изменение размера колонок можно отслеживать с помощью слушателя `ColumnResizeListener`.
+
+[[gui_DataGrid_columnsCollapsingAllowed]]
+* `columnsCollapsingAllowed` - разрешает или запрещает пользователю скрывать колонки с помощью меню (sidebar menu) в правой части шапки `DataGrid`. Флажками в меню отмечаются отображаемые в данный момент колонки. В момент установки перезаписывает значение `collapsed` каждой отдельной колонки. Установка значения в `false` не позволяет атрибуту `collapsed` отдельной колонки принять значение `true`.
++
+[[gui_DataGrid_ColumnCollapsingChangeListener]]
+Скрытие и отображение колонок можно отслеживать с помощью слушателя `ColumnCollapsingChangeListener`.
+
+[[gui_DataGrid_contextMenuEnabled]]
+* `contextMenuEnabled` - включает или выключает контекстное меню в `DataGrid`. По умолчанию имеет значение `true`.
++
+[[gui_DataGrid_ContextClickListener]]
+Щелчки правой кнопкой мыши по области компонента `DataGrid` можно отслеживать с помощью слушателя `ContextClickListener`.
+
+[[gui_DataGrid_editorBuffered]]
+* `editorBuffered` - включает буферизацию в режиме внутристрочного редактирования. По умолчанию буферизация разрешена (`true`).
+
+[[gui_DataGrid_editorCancelCaption]]
+* `editorCancelCaption` - устанавливает заголовок кнопки отмены в режиме редактирования `DataGrid`.
+
+[[gui_DataGrid_editorEnabled]]
+* `editorEnabled` - включает отображение UI для внутристрочного редактирования ячеек. Если `dataGrid` привязан к источнику данных с типом <<value_datasources,ValueCollectionDatasource>>, предполагается, что он используется только для чтения, и использование атрибута `editorEnabled` в этом случае бессмысленно.
+
+[[gui_DataGrid_editorSaveCaption]]
+* `editorSaveCaption` - устанавливает заголовок кнопки сохранения изменений в режиме редактирования `DataGrid`.
+
+[[gui_DataGrid_frozenColumnCount]]
+* `frozenColumnCount` - устанавливает количество фиксированных колонок в `DataGrid`. Значение `0` означает, что фиксированных колонок не будет, кроме встроенной колонки с чекбоксами для множественного выбора, если она используется. Значение `-1` означает, что фиксированных колонок не будет вообще.
+
+[[gui_DataGrid_headerVisible]]
+* `headerVisible` - определяет видимость заголовка `DataGrid`. По умолчанию имеет значение `true`.
+
+[[gui_DataGrid_reorderingAllowed]]
+* `reorderingAllowed` - разрешает или запрещает пользователю менять местами колонки, перетаскивая их с помощью мыши. По умолчанию имеет значение `true`.
++
+[[gui_DataGrid_ColumnReorderListener]]
+Изменение расположения колонок можно отслеживать с помощью слушателя `ColumnReorderListener`.
+
+[[gui_DataGrid_selectionMode]]
+* `selectionMode` - определяет режим выделения строк. Поддерживаются следующие режимы:
++
+--
+* `SINGLE` - единичный выбор строки.
+* `MULTI` - множественный выбор строк как в таблице.
+* `MULTI_CHECK` - множественный выбор строк с использованием встроенной колонки с чекбоксами.
+* `NONE` - выбор строк отключен.
++
+[[gui_DataGrid_SelectionListener]]
+Выделение строк можно отслеживать с помощью слушателя `SelectionListener`.
++
+image::gui_dataGrid_3.png[align="center"]
+--
+
+[[gui_DataGrid_sortable]]
+* `sortable` - разрешает или запрещает сортировку в `DataGrid`. По умолчанию имеет значение `true`. Если сортировка разрешена, то при нажатии на название колонки справа от названия появляется соответствующий значок.  Сортировку некоторой отдельной колонки можно запретить с помощью атрибута `sortable` этой колонки.
++
+[[gui_DataGrid_SortListener]]
+События сортировки `DataGrid` можно отслеживать с помощью слушателя `SortListener`.
+
+[[gui_DataGrid_textSelectionEnabled]]
+* `textSelectionEnabled` - разрешает или запрещает выделение текста в ячейках `DataGrid`. По умолчанию имеет значение `false`.
+
+*Методы интерфейса DataGrid:*
+
+* `getColumns()` - возвращет текущий набор колонок `DataGrid` в порядке их текущего отображения.
+
+* `getSelected()`, `getSingleSelected()` - возвращают экземпляры сущностей, соответствующие выделенным в таблице строкам. Коллекцию можно получить вызовом метода `getSelected()`. Если ничего не выбрано, возвращается пустой набор. Если установлен `SelectionMode.SINGLE`, удобно пользоваться методом `getSingleSelected()`, возвращающим одну выбранную сущность или `null`, если ничего не выбрано.
+
+* `getVisibleColumns()` - возвращет набор видимых колонок `DataGrid` в порядке их текущего отображения.
+
+[[gui_DataGrid_scrollTo]]
+* `scrollTo()` - позволяет программно прокрутить `DataGrid` до нужной записи. Метод принимает экземпляр сущности, определяющий нужную строку в `DataGrid`. Перегруженный метод, помимо сущности, принимает `ScrollDestination`, имеющий следующие возможные значения:
++
+--
+* `ANY` - прокрутить как можно меньше, чтобы показать нужную запись.
+* `START` - прокрутить так, чтобы нужная запись оказалась в начале видимой области `DataGrid`.
+* `MIDDLE` - прокрутить так, чтобы нужная запись оказалась в центре видимой области `DataGrid`.
+* `END` - прокрутить так, чтобы нужная запись оказалась в конце видимой области `DataGrid`.
+--
+
+* `scrollToStart()` and `scrollToEnd()` - позволяют прокрутить `DataGrid` в начало и конец соответственно.
+
+[[gui_DataGrid_setCellStyleProvider]]
+* `setCellStyleProvider()` - позволяет задать стиль отображения ячеек `DataGrid`.
+
+[[gui_DataGrid_setRowStyleProvider]]
+* `setRowStyleProvider()` - позволяет задать стиль отображения строк `DataGrid`.
+
+[[gui_DataGrid_setEnterPressAction]]
+* `setEnterPressAction()` - позволяет задать <<gui_Action,действие>>, выполняемое при нажатии клавиши *Enter*. Если такое действие не задано, таблица пытается найти среди своих действий подходящее в следующем порядке:
++
+--
+* действие, назначенное методом `setItemClickAction()`.
+
+* действие, назначенное на клавишу *Enter* посредством свойства `shortcut`.
+
+* действие с именем `edit`.
+
+* действие с именем `view`.
+
+Если такое действие найдено и имеет свойство `enabled = true`, оно выполняется.
+
+--
+
+[[gui_DataGrid_setItemClickAction]]
+* `setItemClickAction()` -  позволяет задать <<gui_Action,действие>>, выполняемое при двойном клике на строке таблицы. Если такое действие не задано, при двойном клике таблица пытается найти среди своих действий подходящее в следующем порядке:
++
+--
+* действие, назначенное на клавишу *Enter* посредством свойства `shortcut`.
+
+* действие с именем `edit`.
+
+* действие с именем `view`.
+
+Если такое действие найдено и имеет свойство `enabled = true`, оно выполняется.
+
+[[gui_DataGrid_ItemClickListener]]
+События клика по элементу `DataGrid` можно отслеживать с помощью слушателя `ItemClickListener`.
+--
+
+[[gui_DataGrid_sort]]
+* `sort()` - сортирует данные в переданной колонке в направлении, заданном одним из двух доступных значений перечисления `SortDirection`:
++
+--
+* `ASCENDING` - сортировка по возрастанию (например, A-Z, 1..9).
+
+* `DESCENDING` - сортировка по убыванию (например, Z-A, 9..1).
+--
+
+*Использование всплывающих подсказок:*
+
+[[gui_DataGrid_setCellDescriptionProvider]]
+* `setCellDescriptionProvider()` - принимает экземпляр `CellDescriptionProvider`, который будет использоваться для генерации всплывающих подсказок для отдельных ячеек DataGrid. Строка описания может содержать HTML-разметку.
++
+--
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_rowDescription.java[]
+----
+
+image::gui_dataGrid_10.png[align="center"]
+--
+
+[[gui_DataGrid_setRowDescriptionProvider]]
+* `setRowDescriptionProvider()` - принимает экземпляр `RowDescriptionProvider`, который будет использоваться для генерации всплывающих подсказок для строк DataGrid. Если `CellDescriptionProvider` также установлен, подсказка, сгенерированная `RowDescriptionProvider`, будет использована только для тех ячеек, для которых не задана подсказка ячейки.
++
+--
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_cellDescription.java[]
+----
+image::gui_dataGrid_11.png[align="center"]
+--
+
+[[gui_DataGrid_setDetailsGenerator]]
+*Использование интерфейса DetailsGenerator:*
+
+Интерфейс `DetailsGenerator` позволяет задать свой компонент для отображения информации о выбранной строке `DataGrid` с помощью метода `setDetailsGenerator()`:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_detailsGenerator.java[]
+----
+
+Результат:
+
+image::gui_dataGrid_15.png[align="center"]
+
+[[gui_DataGrid_inline_editor]]
+*Использование режима внутристрочного редактирования:*
+
+У компонента `DataGrid` есть API, позволяющий напрямую редактировать записи в ячейках. Во время редактирования ячейки будет отображён UI с кнопками для сохранения и отмены изменений.
+
+Методы API встроенного редактора:
+
+* `getEditedItemId()` - возвращает `id` редактируемой записи.
+
+* `isEditorActive()` - возвращает `true`, если в момент вызова редактируется какая-либо запись.
+
+[[gui_DataGrid_editItem]]
+* `editItem()` - открывает интерфейс внутристрочного редактора для указанной записи. Пролистывает таблицу до нужной записи, если в момент вызова она не была видна на экране.
+
+Вы также можете добавить к встроенному редактору или удалить слушатели, использовав следующие методы:
+
+[[gui_DataGrid_EditorOpenListener]]
+* `addEditorOpenListener()`, `removeEditorCloseListener()` - слушатель открытия встроенного редактора `DataGrid`.
++
+--
+Данный слушатель обрабатывает событие открытия встроенного редактора `DataGrid` по двойному щелчку и позволяет получить доступ к полям редактируемой строки. Это даёт возможность обновлять значения в отдельных полях в зависимости от изменения значений в других полях, не закрывая встроенный редактор.
+
+Например:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_editor_open.java[]
+----
+--
+
+[[gui_DataGrid_EditorCloseListener]]
+* `addEditorCloseListener()`, `removeEditorCloseListener()` - слушатель закрытия встроенного редактора `DataGrid`.
+
+[[gui_DataGrid_EditorPreCommitListener]]
+* `addEditorPreCommitListener()`, `removeEditorPreCommitListener()` - слушатель редактора `DataGrid`, срабатывающий в процессе коммита изменений.
+
+[[gui_DataGrid_EditorPostCommitListener]]
+* `addEditorPostCommitListener()`, `removeEditorPostCommitListener()` - слушатель, срабатывающий на финальной стадии коммита изменений.
+
+Коммит изменений сохраняет их в источнике данных. Логику сохранения изменений в базу данных необходимо задать отдельно.
+
+Само поле редактирования также может быть изменено с помощью интерфейса `ColumnEditorFieldGenerator`. Используйте метод `setEditorFieldGenerator()` для определённой колонки таблицы, чтобы указать компонент для отображения в режиме редактирования этой колонки:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_editor.java[]
+----
+
+Результат:
+
+image::gui_dataGrid_14.png[align="center"]
+
+[[gui_DataGrid_addGeneratedColumn]]
+*Использование интерфейса ColumnGenerator:*
+
+`DataGrid` имеет возможность добавлять генерируемые, или высчитываемые, колонки. Для этого существует два метода:
+
+* `addGeneratedColumn(String columnId, ColumnGenerator generator)`
+
+* `addGeneratedColumn(String columnId, ColumnGenerator generator, int index)`
+
+`ColumnGenerator` - это специальный интерфейс, который описывает генерируемую колонку:
+
+* значение для каждой строки колонки,
+
+* тип значения - общий для всей колонки.
+
+Например, для добавления генерируемой колонки, которая будет отображать логин пользователя в верхнем регистре, можно использовать следующий код:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_generatedColumns.java[]
+----
+
+Результат:
+
+image::gui_dataGrid_7.png[align="center"]
+
+`ColumnGeneratorEvent`, который передается в `getValue`, хранит информацио о сущности, которая отображается в текущей строке `DataGrid`, и `propertyId` колонки.
+
+По умолчанию, генерируемая колонка добавляется в конец таблицы. Управлять расположением генерируемых колонок можно либо вставляя колонку по индексу, либо предварительно добавив колонку в XML с `id`, который потом передавать в метод `addGeneratedColumn`.
+
+[[gui_DataGrid_setRenderer]]
+*Использование рендереров:*
+
+[[gui_DataGrid_createRenderer]]
+Отображение данных в колонках может быть изменено с помощью рендереров. Предположим, что нам необходимо показывать изображение в строке. Тогда текстовое значение пути до изображения можно отобразить в виде изображения с помощью `ImageRenderer`:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_renderer.java[]
+----
+
+Результат:
+
+image::gui_dataGrid_8.png[align="center"]
+
+Интерфейс `WebComponentRenderer` позволяет настроить отображение веб-компонентов различных типов в ячейках `DataGrid`. Интерфейс реализован только для блока *Web Module*. Ниже приведён пример создания колонки для отображения компонента `LookupField`:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_webComponentRenderer.java[]
+----
+
+Результат:
+
+image::gui_dataGrid_13.png[align="center"]
+
+[[gui_DataGrid_setConverter]]
+Когда тип поля не совпадает с типом данных, принимаемых рендерером, удобно пользоваться конвертерами, которые обеспечивают конвертацию между типами данных модели и представления. К примеру, чтобы отобразить булево значение в виде значка, можно использовать `HtmlRenderer`, который умеет отображать HTML-разметку, и конвертер, который будет превращать булево значение в подходящую разметку для отображения значков.
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_converter.java[]
+----
+
+Результат:
+
+image::gui_dataGrid_9.png[align="center"]
+
+Создавать рендереры можно двумя способами:
+
+* через метод-фабрику интерфейса `DataGrid`, передавая в него интерфейс рендерера, для которого нужно создать имплементацию. Подходит для *GUI* и *Web* модулей.
+
+* непосредственно создавая имплементацию рендерера для соответствующего модуля:
++
+`dataGrid.createRenderer(DataGrid.ImageRenderer.class) → new WebImageRenderer()`
++
+На данный момент этот способ реализован только для модуля *Web*.
+
+Список рендереров, реализованных в платформе:
+
+* `TextRenderer` - рендерер для отображения простого текста.
+
+* `HtmlRenderer` - рендерер для отображения HTML-разметки.
+
+* `ProgressBarRenderer` - рендерер, который отображает `double`-значения от 0 до 1 в виде компонента `ProgressBar`.
+
+* `DateRenderer` - рендерер для отображения дат в заданном формате.
+
+* `NumberRenderer` - рендерер для отображения чисел в заданном формате.
+
+* `ButtonRenderer` - рендерер, который использует строковое значение в качестве заголовка кнопки.
+
+* `ImageRenderer` - рендерер, который использует строковое значение в качестве пути до изображения.
+
+* `CheckBoxRenderer` - рендерер, который отображает булево значение в виде значков чек-бокса.
+
+*Header и Footer:*
+
+Интерфейсы `HeaderRow` и `FooterRow` предназначены для отображения ячеек заголовков и строк с итогами таблицы соответственно. Эти ячейки могут быть объединёнными для нескольких колонок.
+
+Для создания и настройки заголовков и итогов используются следующие методы:
+
+* `appendHeaderRow()`, `appendFooterRow()` - добавляет новую строку внизу секции заголовков/итогов.
+
+* `prependHeaderRow()`, `prependFooterRow()` - добавляет новую строку наверху секции заголовков/итогов.
+
+* `addHeaderRowAt()`, `addFooterRowAt()` - вставляет новую строку на заданную позицию в секции. Текущая строка на этой позиции, а также все следующие ниже, сдвигаются вниз с увеличением их индекса на 1.
+
+* `removeHeaderRow()`, `removeFooterRow()` - удаляет указанную строку в секции.
+
+* `getHeaderRowCount()`, `getFooterRowCount()` - возвращает количество строк в секции.
+
+* `setDefaultHeaderRow()` - устанавливает заголовок таблицы по умолчанию. Интерфейс стандартного заголовка по умолчанию включает в себя элементы для сортировки колонок таблицы.
+
+Интерфейсы `HeaderCell` и `FooterCell` позволяют управлять статическими ячейками:
+
+* `setStyleName()` - устанавливает пользовательский стиль для данной ячейки.
+
+* `getCellType()` - возвращает тип содержимого данной ячейки. Перечисление `DataGridStaticCellType` содержит 3 стандартных типа статических ячеек:
++
+--
+* `TEXT`
+
+* `HTML`
+
+* `COMPONENT`
+--
+* `getComponent()`, `getHtml()`,  `getText()` - возвращает содержимое данной ячейки в зависимости от её типа.
+
+Ниже приведён пример таблицы `DataGrid` с заголовком, содержащим объединённые ячейки, и строкой итогов, в которой отображаются вычисляемые значения:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/datagrid_example_1.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/datagrid_example_2.java[]
+----
+
+image::gui_dataGrid_12.png[align="center"]
+
+'''
+
+Атрибуты dataGrid::
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_colspan,colspan>> -
+<<gui_DataGrid_columnResizeMode,columnResizeMode>> -
+<<gui_DataGrid_columnsCollapsingAllowed,columnsCollapsingAllowed>> -
+<<gui_DataGrid_contextMenuEnabled,contextMenuEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_description,description>> -
+<<gui_DataGrid_editorBuffered,editorBuffered>> -
+<<gui_DataGrid_editorCancelCaption,editorCancelCaption>> -
+<<gui_DataGrid_editorEnabled,editorEnabled>> -
+<<gui_DataGrid_editorSaveCaption,editorSaveCaption>> -
+<<gui_attr_enable,enable>> -
+<<gui_DataGrid_frozenColumnCount,frozenColumnCount>> -
+<<gui_DataGrid_headerVisible,headerVisible>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_DataGrid_reorderingAllowed,reorderingAllowed>> -
+<<gui_attr_responsive,responsive>> -
+<<gui_attr_rowspan,rowspan>> -
+<<gui_DataGrid_selectionMode,selectionMode>> -
+<<gui_attr_settingsEnabled,settingsEnabled>> -
+<<gui_DataGrid_sortable,sortable>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_DataGrid_textSelectionEnabled,textSelectionEnabled>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Элементы dataGrid::
+<<gui_DataGrid_actions,actions>> -
+<<gui_DataGrid_buttonsPanel,buttonsPanel>> -
+<<gui_DataGrid_columns,columns>> -
+<<gui_DataGrid_rowsCount,rowsCount>>
+
+Атрибуты column::
+<<gui_attr_caption,caption>> -
+<<gui_DataGrid_collapsed,collapsed>> -
+<<gui_DataGrid_collapsible,collapsible>> -
+<<gui_DataGrid_collapsingToggleCaption,collapsingToggleCaption>> -
+<<gui_attr_editable,editable>> -
+<<gui_DataGrid_expandRatio,expandRatio>> -
+<<gui_attr_id,id>> -
+<<gui_DataGrid_maximumWidth,maximumWidth>> -
+<<gui_DataGrid_minimumWidth,minimumWidth>> -
+<<gui_DataGrid_property,property>> -
+<<gui_DataGrid_resizable,resizable>> -
+<<gui_DataGrid_sortable,sortable>> -
+<<gui_attr_width,width>>
+
+Элементы column::
+<<gui_formatter,formatter>>
+
+API::
+<<gui_DataGrid_addGeneratedColumn,addGeneratedColumn>> -
+<<gui_api_settings,applySettings>> -
+<<gui_DataGrid_createRenderer,createRenderer>> -
+<<gui_DataGrid_editItem,editItem>> -
+<<gui_api_settings,saveSettings>> -
+<<gui_DataGrid_scrollTo,getColumns>> -
+<<gui_DataGrid_setCellDescriptionProvider,setCellDescriptionProvider>> -
+<<gui_DataGrid_setCellStyleProvider,setCellStyleProvider>> -
+<<gui_DataGrid_setConverter,setConverter>> -
+<<gui_DataGrid_setDetailsGenerator,setDetailsGenerator>> -
+<<gui_DataGrid_setEnterPressAction,setEnterPressAction>> -
+<<gui_DataGrid_setItemClickAction,setItemClickAction>> -
+<<gui_DataGrid_setRenderer,setRenderer>> -
+<<gui_DataGrid_setRowDescriptionProvider,setRowDescriptionProvider>> -
+<<gui_DataGrid_setRowStyleProvider,setRowStyleProvider>> -
+<<gui_DataGrid_sort,sort>>
+
+Слушатели dataGrid::
+<<gui_DataGrid_ColumnCollapsingChangeListener,ColumnCollapsingChangeListener>> -
+<<gui_DataGrid_ColumnReorderListener,ColumnReorderListener>> -
+<<gui_DataGrid_ColumnResizeListener,ColumnResizeListener>> -
+<<gui_DataGrid_ContextClickListener,ContextClickListener>> -
+<<gui_DataGrid_EditorCloseListener,EditorCloseListener>> -
+<<gui_DataGrid_EditorOpenListener,EditorOpenListener>> -
+<<gui_DataGrid_EditorPostCommitListener,EditorPostCommitListener>> -
+<<gui_DataGrid_EditorPreCommitListener,EditorPreCommitListener>> -
+<<gui_DataGrid_ItemClickListener,ItemClickListener>> -
+<<gui_DataGrid_SelectionListener,SelectionListener>> -
+<<gui_DataGrid_SortListener,SortListener>>
+
+'''
+

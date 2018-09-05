@@ -1,0 +1,193 @@
+:sourcesdir: ../../../../../source
+
+[[heroku_war_deployment]]
+===== Развертывание WAR-файла в Heroku
+
+Учетная запись Heroku::
++
+--
+Создайте учетную запись в Heroku с помощью веб-браузера, будет достаточно бесплатного аккаунта `hobby-dev`. Затем войдите в аккаунт и создайте новое приложение с помощью кнопки *New* в верхней части страницы.
+
+Задайте уникальное имя приложения (либо оставьте поле пустым, чтобы имя назначилось автоматически) и выберите подходящее геоположение сервера. Вы зарегистрировали приложение, например `morning-beach-4895`, это будет название приложения Heroku.
+
+Сначала вас переадресует на вкладку *Deploy*. Выберите там метод развертывания *Heroku Git*.
+--
+
+Командная строка Heroku (CLI)::
++
+--
+* Установите на компьютер программное обеспечение https://devcenter.heroku.com/articles/heroku-command-line[Heroku CLI].
+
+* Перейдите в папку проекта CUBA. В дальнейшем для этой папки будет использоваться переменная `$PROJECT_FOLDER`.
+
+* Откройте командную строку в `$PROJECT_FOLDER` и наберите команду:
++
+[source,plain]
+----
+heroku login
+----
+
+* По запросу введите логин и пароль для Heroku. Начиная с текущего момента от вас больше не потребуется вводить логин и пароль для команд heroku.
+
+* Установите плагин *Heroku CLI deployment plugin*:
++
+[source,plain]
+----
+heroku plugins:install heroku-cli-deploy
+----
+--
+
+База данных PostgreSQL::
++
+--
+С помощью браузера пройдите на страницу https://data.heroku.com/[Heroku data]
+
+Вы можете использовать существующую базу Postgres или создать новую. Далее описываются шаги по созданию новой БД.
+
+* Найдите на странице блок *Heroku Postgres* и нажмите кнопку *Create one*
+* На следующем экране нажмите кнопку *Install Heroku Postgr...*
+* Далее подключите базу к приложению Heroku, выбрав подходящую из выпадающего списка
+* Далее выберите тарифный план (например, бесплатный `hobby-dev`)
+
+Как вариант, вы можете установить PostgreSQL с помощью Heroku CLI:
+
+[source,plain]
+----
+heroku addons:create heroku-postgresql:hobby-dev --app morning-beach-4895
+----
+
+Здесь `morning-beach-4895` это название вашего приложения Heroku.
+
+Теперь вы можете увидеть новую БД на вкладке *Resources*. База соединена с приложением Heroku. Чтобы получить детали для подключения к сервису БД, перейдите на страницу *Datasource* вашей БД в Heroku, опуститесь вниз до секции *Administration* и нажмите кнопку *View credentials*.
+
+[source,plain]
+----
+Host compute.amazonaws.com
+Database d2tk
+User nmmd
+Port 5432
+Password 9c05
+URI postgres://nmmd:9c05@compute.amazonaws.com:5432/d2tk
+----
+--
+
+Настройки проекта перед развертыванием::
++
+--
+* Мы предполагаем, что в проекте CUBA вы используете базу данных Postgres.
+
+* Откройте проект CUBA в Студии, выполните действие *Deployment settings*, перейдите на вкладку *WAR* и затем отредактируйте настройки, как описано ниже.
++
+** Включите *Build WAR*
+** Задайте точку '.' в качестве домашнего каталога приложения в поле *Application home directory*
+** Включите *Include JDBC driver*
+** Включите *Include Tomcat's context.xml*
+** Нажмите кнопку *Generate*, находящуюся справа от поля *Custom context.xml path*. Во всплывающем окне заполните параметры подключения к БД
+** Откройте сгенерированный файл `modules/core/web/META-INF/war-context.xml` и проверьте детали подключения:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/war-context.xml[]
+----
++
+** Отметьте галочкой *Single WAR for Middleware and Web Client*
+** Нажмите кнопку *Generate* справа от поля *Custom web.xml path*
+** Скопируйте код, приведенный ниже, в поле *App properties*:
++
+[source, groovy]
+----
+[
+  'cuba.automaticDatabaseUpdate' : true
+]
+----
++
+** Сохраните настройки.
+--
+
+Сборка WAR-файла::
++
+--
+Соберите WAR-файл, выполнив команду `buildWar` в Gradle. Вы можете сделать это прямо в Студии, открыв диалог *Search*, или из командной строки:
+
+[source,plain]
+----
+gradlew buildWar
+----
+
+Проект CUBA использует Gradle wrapper (gradlew). Чтобы иметь возможность работать с командой `gradlew`, заранее создайте Gradle wrapper, использовав команду меню *Build > Create or update Gradle wrapper*.
+--
+
+Настройка приложения::
++
+--
+
+* Загрузите JAR-файл Tomcat Webapp Runner из репозитория https://mvnrepository.com/artifact/com.github.jsimone/webapp-runner. Версия Webapp Runner должна соответствовать используемой версии Tomcat. К примеру, Webapp Runner версии 8.5.11.3 подходит для Tomcat версии 8.5.11. Переименуйте JAR-файл в `webapp-runner.jar` и поместите его в корень проекта `$PROJECT_FOLDER`.
+
+* Загрузите JAR-файл Tomcat DBCP из репозитория https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-dbcp.
+  Используйте версию, соответствующую вашему Tomcat, например 8.5.11. Создайте папку `$PROJECT_FOLDER/libs`, переименуйте JAR-файл в `tomcat-dbcp.jar` и поместите его в папку `$PROJECT_FOLDER/libs`.
+
+* Создайте файл с названием `Procfile` в `$PROJECT_FOLDER`. Файл должен содержать следующий текст:
++
+[source,plain]
+----
+web: java $JAVA_OPTS -cp webapp-runner.jar:libs/* webapp.runner.launch.Main --enable-naming --port $PORT build/distributions/war/app.war
+----
+--
+
+Настройка Git::
++
+--
+Откройте командную строку в папке `$PROJECT_FOLDER` и запустите команды, указанные ниже:
+
+[source,plain]
+----
+git init
+heroku git:remote -a morning-beach-4895
+git add .
+git commit -am "Initial commit"
+----
+--
+
+Развертывание приложения::
++
+--
+Откройте командную строку в папке `$PROJECT_FOLDER` и запустите команды, указанные ниже:
+
+Для *nix:
+
+[source,plain]
+----
+heroku jar:deploy webapp-runner.jar --includes libs/tomcat-dbcp.jar:build/distributions/war/app.war --app morning-beach-4895
+----
+
+Для Windows:
+
+[source,plain]
+----
+heroku jar:deploy webapp-runner.jar --includes libs\tomcat-dbcp.jar;build\distributions\war\app.war --app morning-beach-4895
+----
+
+Откройте вкладку *Resources* в панели управления Heroku. Должна появиться новая запись Dyno с командой из вашего `Procfile`:
+
+image::heroku_dyno.png[align="center"]
+
+Приложение в данный момент разворачивается. Вы можете отслеживать процесс по логам.
+--
+
+Мониторинг логов::
++
+--
+Дождитесь сообщения в командной строке `++https://morning-beach-4895.herokuapp.com/  deployed to Heroku++`.
+
+Чтобы отслеживать данные в логах, запустите в командной строке из любой папки следующую команду:
+
+[source,plain]
+----
+heroku logs --tail --morning-beach-4895
+----
+--
+
+После завершения процесса развертывания ваше приложение будет доступно в браузере по ссылке `++https://morning-beach-4895.herokuapp.com++`
+
+Вы также можете открыть приложение с помощью кнопки *Open app*, расположенной на панели Heroku.
+

@@ -1,0 +1,29 @@
+:sourcesdir: ../../../../../source
+
+[[composition_deep_recipe]]
+===== One-to-Many: два уровня вложенности
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse1" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Композиция может быть более глубокой и состоять из двух уровней вложенности. Усложним приведенный <<composition_impl_recipe,выше>> пример, добавив сущность `MeetingPoint`, описывающую место встречи у терминала аэропорта:
+
+image::cookbook/composition_recipe_2.png[align="center"]
+
+Теперь сущность `Terminal` содержит атрибут `meetingPoints` - коллекцию экземпляров `MeetingPoint`. Для того, чтобы все три сущности представляли собой единую композицию и редактировались совместно, нужно в дополнение к описанному в предыдущем разделе выполнить следующее:
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Terminal.java[Terminal.java] - атрибут `meetingPoints` класса `Terminal` содержит аннотации `@Composition` и `@OnDelete` аналогично атрибуту `terminals` класса `Airport`.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - представление `terminal-meetingPoints-view` сущности `Terminal` содержит атрибут-коллекцию `meetingPoints`. Данное представление используется в представлении `airport-terminals-meetingPoints-view` сущности `Airport`.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_1/airport/airport-edit.xml[airport-edit.xml] - дескриптор экрана редактирования `Airport` содержит источники данных для экземпляра `Airport` и вложенных сущностей на всю глубину композиции (`airportDs` > `terminalsDs` > `meetingPointsDs`).
++
+Источник данных `meetingPointsDs` здесь не связан ни с какими визуальными компонентами, однако он необходим для корректной работы совместного редактирования композиции.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports_1/terminal/terminal-edit.xml[terminal-edit.xml] - XML-дескриптор экрана редактирования терминала в свою очередь определяет вложенный источник данных и соответствующую таблицу для коллекции `meetingPoints`.
+
+В результате измененные экземпляры `MeetingPoint`, так же как и экземпляры `Terminal`, будут сохраняться в базу данных только вместе с экземпляром `Airport` в одной транзакции.
+

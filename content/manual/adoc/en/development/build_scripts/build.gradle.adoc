@@ -1,0 +1,128 @@
+:sourcesdir: ../../../../source
+
+[[build.gradle]]
+==== Structure of build.gradle
+
+This section describes the structure and main elements of the `build.gradle` script.
+
+buildscript::
++
+--
+The `buildscript` section of the script defines the following:
+
+* A version of the platform.
+
+* A set of <<artifact_repository, repositories>> for loading project dependencies. See how to configure access to the repositories <<access_to_repo,below>>.
+
+* Dependencies used by the build system, including the CUBA Gradle plugin.
+
+Below the `buildscript` section, a few variables are defined. They are used in the script later.
+--
+
+cuba::
++
+--
+The CUBA-specific build logic is encapsulated in the `cuba` Gradle plugin. It is included in the root of the script and in the `configure` section of all modules by the following statement:
+
+[source, groovy]
+----
+apply(plugin: 'cuba')
+----
+
+The settings of the *cuba* plugin are defined in `cuba` section:
+
+[source, groovy]
+----
+include::{sourcesdir}/development/build_gradle_1.groovy[]
+----
+
+Let us consider the available options:
+
+* `artifact` - this section defines the group and version of the project <<artifact, artifacts>> being built. Artifact names are based on module names specified in `settings.gradle`.
+
+** `group` - artifact group.
+** `version` - artifact version.
+** `isSnapshot` - if `true`, artifact names will have the `SNAPSHOT` suffix.
++
+You can override the artifact version from the command line, for example:
++
+[source, plain]
+----
+gradle assemble -Pcuba.artifact.version=1.1.1
+----
+
+* `tomcat` - this section defines the settings of the Tomcat server which is used for <<fast_deployment, fast deployment>>.
+
+** `dir` - location of the Tomcat <<build.gradle_setupTomcat, installation>> directory.
+** `port` - listening port; 8080 by default.
+** `debugPort` - Java debug listening port; 8787 by default.
+** `shutdownPort` - port listening to the `SHUTDOWN` command; 8005 by default.
+** `ajpPort` - AJP connector port; 8009 by default.
+
+* `ide` - this section contains instructions for Studio and IDE.
+
+** `vcs` - a version control system for the project. Only `Git` and `svn` are currently supported.
+** `copyright` - copyright text to be inserted into beginning of each source file.
+** `classComment` - comment text to be placed above class declarations in Java source files.
+
+* `uploadRepository` - this section defines the settings of the <<artifact_repository, repository>> where assembled project artifacts will be uploaded to upon completion of the `uploadArchives` task.
++
+** `url` - the repository URL. If not specified, Haulmont's repository is used.
+** `user` - the repository user.
+** `password` - the repository password.
++
+You can pass the upload repository parameters from the command line with the following arguments:
++
+[source]
+----
+gradlew uploadArchives -PuploadUrl=http://myrepo.com/content/repositories/snapshots -PuploadUser=me -PuploadPassword=mypassword
+----
+--
+
+dependencies::
++
+--
+This section contains a set of <<app_components,application components>> used by the project. Components are specified by their *global* module artifact. In the following example, three components are used: `com.haulmont.cuba` (*cuba* component of the platform), `com.haulmont.reports` (*reports* premium add-on) and `com.company.base` (a custom component):
+
+[source, groovy]
+----
+dependencies {
+  appComponent("com.haulmont.cuba:cuba-global:$cubaVersion")
+  appComponent("com.haulmont.reports:reports-global:$cubaVersion")
+  appComponent("com.company.base:base-global:0.1-SNAPSHOT")
+}
+----
+--
+
+configure::
++
+--
+The `configure` sections contain configuration of <<app_modules,modules>>. The most important part of the configuration is the declaration of dependencies. For example:
+
+[source,groovy]
+----
+include::{sourcesdir}/development/build_gradle_2.groovy[]
+----
+
+Non-standard module dependencies can be specified in Studio on the *Project properties > Advanced* tab. See Studio context help for details.
+--
+
+[TIP]
+====
+In case of transitive dependencies and version conflicts, the Maven strategy of dependencies resolution will be used. According to it, the release versions have priority over the snapshot ones, and the more precise numeric qualifier is the newest. Other things being equal, the string qualifiers are prioritized in alphabetical order. For example:
+
+[source, plain]
+----
+1.0-beta1-SNAPSHOT         // the lowest priority
+1.0-beta1
+1.0-beta2-SNAPSHOT         |
+1.0-rc1-SNAPSHOT           |
+1.0-rc1                    |
+1.0-SNAPSHOT               |
+1.0                        |
+1.0-sp                     V
+1.0-whatever
+1.0.1                      // the highest priority
+----
+====
+

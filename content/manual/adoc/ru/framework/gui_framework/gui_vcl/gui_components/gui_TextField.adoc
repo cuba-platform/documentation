@@ -1,0 +1,230 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_TextField]]
+====== TextField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-textfield" class="live-demo-btn" target="_blank">ДЕМОНСТРАЦИЯ</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/gui/components/TextField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Поле для редактирования текста. Может использоваться как для работы с атрибутами сущностей, так и для ввода и отображения произвольной текстовой информации.
+
+XML-имя компонента: `textField`
+
+Компонент текстового поля реализован для блоков *Web Client* и *Desktop Client*.
+
+* Пример текстового поля с заголовком, взятым из <<message_packs,пакета локализованных сообщений>>:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_1.xml[]
+----
++
+На рисунке ниже показан вид простого текстового поля.
++
+image::gui_textField_data.png[align="center"]
+
+* В веб-клиенте с темой, основанной на Halo, к компоненту `TextField` можно применить предопределенные стили. Стили задаются в XML-дексрипторе или контроллере экрана с помощью атрибута `stylename`:
++
+--
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_7.xml[]
+----
+
+Чтобы применить стиль программно, выберите одну из констант класса `HaloTheme` с префиксом компонента `TEXTFIELD_`:
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_8.java[]
+----
+
+Стили компонента TextField:
+
+[[gui_textfield_align-center]]
+*  `align-center` - выравние текста по центру поля.
+
+[[gui_textfield_align-right]]
+* `align-right` - выравнивание текста по правому краю поля.
+
+[[gui_textfield_borderless]]
+* `borderless` - удаляет рамку и фон текстового поля.
+
+[[gui_textfield_inline-icon]]
+* `inline-icon` - расположение значка внутри текстового поля.
+
+[[gui_TextField_caseConversion]]
+Компонент TextField поддерживает автоматическую конвертацию регистра. Атрибут `caseConvertion` может принимать следующие значения:
+
+* `UPPER` - верхний регистр,
+
+* `LOWER` - нижний регистр,
+
+* `NONE` - конвертация отключена (значение по умолчанию). Используйте это значение для поддержки клавиатурного ввода с использованием IME, к примеру, для японского, корейского и китайского языков.
+--
+
+* Для создания текстового поля, связанного с данными, необходимо использовать атрибуты <<gui_attr_datasource,datasource>> и <<gui_attr_property,property>>.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_2.xml[]
+----
++
+Как видно из примера, в экране описывается <<datasources,источник данных>> `customerDs` для некоторой сущности `Покупатель (Customer)`, имеющей атрибут `name`. В компоненте текстового поля в атрибуте <<gui_attr_datasource,datasource>> указывается ссылка на источник данных, а в атрибуте <<gui_attr_property,property>> − название атрибута сущности, значение которого должно быть отображено в текстовом поле.
+
+[[gui_TextField_datatype]]
+* Если поле не связано с атрибутом сущности (то есть не указан источник данных и название атрибута), то можно указать тип данных с помощью атрибута `datatype`. Тип данных используется для форматирования значения поля. В качестве значения атрибута может быть указано любое имя типа данных, зарегистрированного в метаданных приложения - см. <<datatype,>>. Как правило, в `TextField` используются следующие типы данных:
+** `decimal`
+
+** `double`
+
+** `int`
+
+** `long`
++
+В качестве примера рассмотрим текстовое поле с типом данных `Integer`. 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_3.xml[]
+----
++
+Если в таком поле ввести значение, которое невозможно интерпретировать как целое число, то при потере фокуса полем будет выведено сообщение об ошибке и значение поля вернется на предыдущее.
+
+* Текстовому полю может быть назначен <<gui_validator,валидатор>> - класс, реализующий интерфейс `Field.Validator`. Валидатор позволяет дополнительно к `datatype` ограничить вводимую пользователем информацию. Например, для создания поля ввода положительных целых чисел нужно создать класс валидатора:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_4.java[]
+----
++
+и задать его для текстового поля с типом данных `int` в элементе <<gui_validator,validator>>:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_5.xml[]
+----
++
+В отличие от проверки вводимой строки на соответствие типу данных, валидация срабатывает не сразу при потере полем фокуса, а только при вызове у поля метода `validate()`. Это означает, что поле (и связанный с ним атрибут сущности) может некоторое время содержать значение, не удовлетворяющее условиям валидации (в приведенном примере неположительное число). Это не является проблемой, так как обычно поля редактирования с валидацией располагаются в <<screen_edit,экране редактирования>>, а он автоматически вызывает валидацию всех своих полей перед коммитом. Если же поле находится не в экране редактирования, то необходимо вызывать метод `validate()` поля в контроллере явно.
+
+[[gui_TextField_TextChangeListener]]
+* Компонент `TextField` поддерживает слушатель `TextChangeListener`, определённый в родительском интерфейсе `TextInputField`. События изменения текста обрабатываются асинхронно после ввода, не блокируя сам ввод.
++
+--
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_9.java[]
+----
+
+image::gui_textfield_2.png[align="center"]
+--
+* Параметром `TextChangeEventMode` задаётся режим передачи изменений на сервер для вызова события на серверной стороне. В платформе реализовано 3 режима передачи:
++
+--
+* `LAZY` (по умолчанию) - событие вызывается во время паузы в наборе текста. Продолжительность паузы можно задать с помощью метода `setInputEventTimeout()`. Событие изменения текста обрабатывается принудительно перед возможным событием `ValueChangeEvent`, даже если пользователь не выдержал паузу в наборе текста.
+
+* `TIMEOUT` - событие вызывается после периода ожидания. В случае ввода нескольких изменений за один период, на сервер отсылается событие со всеми изменениями, включая последнее. Продолжительность периода ожидания можно задать с помощью метода `setInputEventTimeout()`.
++
+В случае, если `ValueChangeEvent` может случиться до истечения периода ожидания, событие `TextChangeEvent` обрабатывается до его истечения, при условии, что набранный текст был изменён после предыдущего `TextChangeEvent`.
+
+* `EAGER` - событие вызывается незамедлительно после каждого изменения текста, то есть после каждого нажатия клавиш. Запросы отправляются по отдельности и обрабатываются последовательно один за другим. Тем не менее, асинхронная передача событий изменения на сервер позволяет не блокировать дальнейший ввод текста.
+--
+
+[[gui_TextField_EnterPressListener]]
+* `EnterPressListener` позволяет указать <<gui_Action,действие>>, которое должно быть выполнено по нажатию клавиши Enter:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/textfield_10.java[]
+----
+
+[[gui_TextField_ValueChangeListener]]
+* `ValueChangeListener` позволяет обрабатывать изменения значения в текстовом поле, когда пользователь уже закончил ввод, т.е. после нажатия клавиши Enter или при потере компонентом фокуса. В слушатель передается объект события типа `ValueChangeEvent`, который имеет следующие методы:
++
+** `getPrevValue()` возвращает значение компонента до изменения.
++
+** `getValue()` возвращает текущее значение компонента.
++
+[source, java]
+----
+textField.addValueChangeListener(e ->
+        showNotification("Before: " + e.getPrevValue() + ". After: " + e.getValue()));
+----
+
+* Если текстовое поле связано с атрибутом сущности (через `datasource` и `property`), и если для атрибута сущности в <<entity_attr_annotations,JPA-аннотации>> `@Column` указан параметр `length`, то `TextField` будет соответственно ограничивать максимальную длину вводимого текста.
++
+[[gui_TextField_maxLength]]
+Если текстовое поле не связано с атрибутом, либо для него не определено значение `length`, либо это значение нужно переопределить, то для ограничения максимальной длины вводимого текста можно использовать атрибут `maxLength`. Значение "-1" означает отсутствие ограничения. Например:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/textfield_6.xml[]
+----
+
+[[gui_TextField_trim]]
+* По умолчанию текстовое поле отсекает пробелы в начале и конце введенной строки. То есть если пользователь ввел строку " aaa bbb " то значением поля, возвращаемым методом `getValue()` и сохраняемым в связанный атрибут сущности, будет строка "aaa bbb". Для того, чтобы отключить отсечение пробелов, используйте атрибут `trim` со значением `false`.
++
+Следует иметь в виду, что отсечение пробелов работает только при вводе нового значения. Если в значении связанного атрибута уже присутствуют пробелы, они будут отображаться, пока пользователь не изменит значение поля.
+
+* Текстовое поле всегда вместо введенной пустой строки возвращает `null`. Соответственно, при включенном атрибуте `trim` строка, состоящая из одних пробелов также превратится в `null`.
+
+* Метод `setCursorPosition()` используется для установки позиции курсора в указанный индекс (начинается с 0). После вызова метода поле принимает фокус ввода.
+
+'''
+
+Атрибуты textField::
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_TextField_caseConversion,caseConversion>> -
+<<gui_attr_contextHelpText,contextHelpText>> -
+<<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_TextField_datatype,datatype>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_attr_inputPrompt,inputPrompt>> -
+<<gui_TextField_maxLength,maxLength>> -
+<<gui_attr_property,property>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_TextField_trim,trim>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Элементы textField::
+<<gui_validator,validator>>
+
+Предопределенные стили textField::
+<<gui_textfield_align-center,align-center>> -
+<<gui_textfield_align-right,align-right>> -
+<<gui_textfield_borderless,borderless>> -
+<<gui_attr_stylename_huge,huge>> -
+<<gui_textfield_inline-icon,inline-icon>> -
+<<gui_attr_stylename_large,large>> -
+<<gui_attr_stylename_small,small>> -
+<<gui_attr_stylename_tiny,tiny>>
+
+API::
+<<gui_TextField_EnterPressListener,addEnterPressListener>> -
+<<gui_TextField_TextChangeListener,addTextChangeListener>> -
+<<gui_api_addValueChangeListener,addValueChangeListener>> -
+<<gui_api_commit,commit>> -
+<<gui_api_discard,discard>> -
+<<gui_api_isModified,isModified>> -
+<<gui_api_contextHelp,setContextHelpIconClickHandler>>
+
+'''
+

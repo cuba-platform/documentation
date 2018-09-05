@@ -1,0 +1,93 @@
+:sourcesdir: ../../../../../source
+
+[[bean_validation_running]]
+===== Запуск валидации
+
+[[bean_validation_in_ui]]
+Валидация в UI::
++
+--
+Компоненты Generic UI, соединенные с источником данных, получают экземпляр `BeanValidator` для проверки значения. Валидатор вызывается из метода `Component.Validatable.validate()`, реализуемого компонентом, и может выбрасывать исключение `CompositeValidationException`, содержащее набор объектов нарушений.
+
+Стандартный валидатор может быть программно удален или проинициализирован другой <<bean_validation_constraint_groups,группой ограничений>>:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_12.java[]
+----
+
+По умолчанию, `BeanValidator` содержит две группы: `Default` и `UiComponentChecks`.
+
+Если атрибут сущности аннотирован `@NotNull` без группы ограничений, он будет помечен как обязательный в метаданных, и UI-компоненты работающие с данным атрибутом через источник данных, будут иметь свойство `required = true`.
+
+Компоненты <<gui_DateField,DateField>> и <<gui_DatePicker,DatePicker>> автоматически устанавливают свои свойства `rangeStart` и `rangeEnd` в соответствии с аннотациями `@Past` и `@Future`, не учитывая текущее время.
+
+Экраны <<abstractEditor,редактирования>> выполняют валидацию ограничений уровня класса при коммите, если ограничения включают группу `UiCrossFieldChecks` и все проверки ограничений уровня атрибутов прошли успешно. Валидацию данного типа можно отключить с помощью свойства экрана `crossFieldValidate` в XML-дескрипторе или в контроллере:
+
+[source, xml]
+----
+include::{sourcesdir}/common/bean_validation_13.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_14.java[]
+----
+--
+
+[[bean_validation_in_services]]
+Валидация сервисов Middleware::
++
+--
+<<services,Сервисы>> среднего слоя выполняют валидацию параметров и результатов методов, если метод имеет аннотацию `@Validated` в интерфейсе сервиса. Например:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_15.java[]
+----
+
+Аннотация `@Validated` может содержать указание <<bean_validation_constraint_groups,групп ограничений>> для применения подмножества имеющихся ограничений. Если группы не указаны, то по умолчанию используются следующие:
+
+* `Default` и `ServiceParametersChecks` - для параметров методов
+* `Default` и `ServiceResultChecks` - для возвращаемых результатов методов
+
+При возникновении ошибок валидации выбрасываются исключения `MethodParametersValidationException` и `MethodResultValidationException`.
+
+При выполнении некоторой специфической программной валидации в сервисе, можно использовать исключение `CustomValidationException` для того, чтобы клиенты получали информацию об ошибках в том же формате что и от стандартной валидации. Это может быть особенно актуально для клиентов REST API.
+--
+
+[[bean_validation_in_rest]]
+Валидация в REST API::
++
+--
+Универсальный <<rest_api_v2,REST API>> автоматически выполняет bean validation для действий создания и изменения сущностей. Ошибки валидации передаются клиенту следующим образом:
+
+* `MethodResultValidationException` и `ValidationException` порождают HTTP статус `500 Server error`
+
+* `MethodParametersValidationException`, `ConstraintViolationException` и `CustomValidationException` порождают HTTP статус `400 Bad request`
+
+* Тело ответа с `Content-Type: application/json` будет содержать список объектов со свойствами `message`, `messageTemplate`, `path` и `invalidValue`, например:
++
+[source, json]
+----
+include::{sourcesdir}/common/bean_validation_16.json[]
+----
+
+** `path` содержит путь к невалидному атрибуту в валидируемом графе объектов
+** `messageTemplate` содержит сторку, заданную в атрибуте `message` аннотации
+** `message` содержит сообщение ошибки валидации
+** `invalidValue` возвращается только если тип значения один из следующих: `String`, `Date`, `Number`, `Enum`, `UUID`.
+--
+
+[[bean_validation_programmatic]]
+Программная валидация::
++
+--
+Bean validation можно запустить программно используя интерфейс инфраструктуры `BeanValidation`, доступный и на middleware и на клиентском уровне. Через данный интерфейс необходимо получить реализацию `javax.validation.Validator`, которая и запускает валидацию. Результатом валидации является набор объектов типа `ConstraintViolation`. Например:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_17.java[]
+----
+--
+

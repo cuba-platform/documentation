@@ -1,0 +1,51 @@
+:sourcesdir: ../../../../source
+
+[[entity_statistics]]
+==== Entity Statistics
+
+The entity statistics mechanism provides the information on the current number of entity instances in the database. This data is used to automatically select the best lookup strategy for linked entities and to limit the size of search results displayed in UI screens.
+
+Statistics is stored in the `SYS_ENTITY_STATISTICS` table which is mapped to the `EntityStatistics` entity. It can be updated automatically using the `refreshStatistics()` method of the <<persistenceManagerMBean,PersistenceManagerMBean>> JMX bean. If you pass an entity name as a parameter, the statistics will be collected for the given entity, otherwise - for all entities. If you want to update the statistics regularly, create a <<scheduled_tasks_cuba,scheduled task>> invoking this method. Keep it mind that the collection process will execute `select count(*)` for each entity and can put significant load on the database.
+
+Programmatic access to entity statistics is available via `PersistenceManagerAPI` interface on the middle tier and `PersistenceManagerService` on the the client tier. Statistics is cached in memory, so any direct changes to statistics in the database will be applied only after the server restart or after calling the `PersistenceManagerMBean.flushStatisticsCache()` method.
+
+The `EntityStatistics` attributes are described below.
+
+* `name` (`NAME` column) – the name of the entity <<metaClass,meta-class>>, for example, `sales$Customer`.
+
+* `instanceCount` (`INSTANCE_COUNT` column) – the approximate number of entity instances.
+
+* `fetchUI` (`FETCH_UI` column) – the size of the data displayed on a page when extracting entity lists.
++
+For example, the <<gui_Filter,Filter>> component uses this number in the *Show N rows* field.
+
+* `maxFetchUI` (`MAX_FETCH_UI` column) – the maximum number of entity instances that can be extracted and passed to the client tier.
++
+This limit is applied when showing entity lists in such components as <<gui_LookupField,LookupField>> or <<gui_LookupPickerField,LookupPickerField>>, as well as tables without a <<gui_Filter,filter>>, when no limitations are applied to the connected <<datasources,datasource>> via `CollectionDatasource.setMaxResults()`. In this case the data source itself limits the number of extracted instances to `maxFetchUI`.
+
+* `lookupScreenThreshold` (`LOOKUP_SCREEN_THRESHOLD` column) – the threshold, measured in number of entities, which determines when <<screen_lookup,lookup screens>> should be used instead of dropdowns for entity lookup.
++
+The <<gui_Filter,Filter>> component takes this parameter into account when choosing filter parameters. Until the threshold is reached, the system uses the <<gui_LookupField,LookupField>> component, and once the threshold is exceeded, the <<gui_PickerField,PickerField>> component is used. Hence, if lookup screens should be used for a specific entity in a filter parameter, it is possible to set the value of `lookupScreenThreshold` to a value lower than `instanceCount`.
+
+`PersistenceManagerMBean` JMX bean enables setting default values for all of the parameters mentioned above via `DefaultFetchUI`, `DefaultMaxFetchUI`, `DefaultLookupScreenThreshold` attributes. The system will use the corresponding default values when an entity has no statistics, which is a common case.
+
+Besides, `PersistenceManagerMBean.enterStatistics()` method allows a user to enter statistics data for an entity. For example, the following parameters should be passed to the method to set a default page size to 1,000 and maximum number of loaded into <<gui_LookupField,LookupField>> instances to 30,000:
+
+[source, json]
+----
+entityName: sales$Customer
+fetchUI: 1000
+maxFetchUI: 30000
+----
+
+Another example: suppose that you have a filter condition by the Customer entity, and you want to use a lookup screen instead of dropdown list when selecting Customer in the condition parameter. Then invoke the `enterStatistics()` method with the following parameters:
+
+[source, json]
+----
+entityName: sales$Customer
+instanceCount: 2
+lookupScreenThreshold: 1
+----
+
+Here we ignore the actual number of Customer records in the database and manually specify that the threshold is always exceeded.
+

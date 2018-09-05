@@ -1,0 +1,172 @@
+:sourcesdir: ../../../../../source
+
+[[web_login]]
+===== Web Login
+
+This section describes how the web client authentication works and how to extend it in your project. For information about authentication on the middle tier, see <<login>>.
+
+Implementation of the login procedure of the Web Client block has the following mechanisms:
+
+- `Connection` implemented by `ConnectionImpl`.
+- `LoginProvider` implementations.
+- `HttpRequestFilter` implementations.
+
+.Login mechanisms of the Web Client
+image::WebLoginStructure.png[align="center"]
+
+The main interface of Web login subsystem is `Connection` which contains the following key methods:
+
+- *login()* - authenticates a user, starts a session and changes the state of the connection.
+- *logout()* - log out of the system.
+- *substituteUser()* - substitute a user in the current session with another user. This method creates a new *UserSession* instance, but with the same session ID.
+- *getSession()* - get the current user session.
+
+After successful login, *Connection* sets *UserSession* object to the attribute of `VaadinSession` and sets `SecurityContext`. The *Connection* object is bound to `VaadinSession` thus it cannot be used from non-UI threads, it throws *IllegalConcurrentAccessException* in case of `login/logout` call from a non UI thread.
+
+Usually, login is performed from the `AppLoginWindow` screen that supports login with login/password and "remember me" credentials.
+
+The default implementation of `Connection` is `ConnectionImpl`, which delegates login to a chain of `LoginProvider` instances. A `LoginProvider` is a login module that can process a specific `Credentials` implementation, also it has a special `supports()` method to allow the caller to query if it supports a given `Credentials` type.
+
+.Standard user login process
+image::WebLoginProcedure.png[align="center"]
+
+Standard user login process:
+
+* Users enter their username and password.
+
+* Web client block creates a `LoginPasswordCredentials` object passing the login and password to its constructor and invokes `Connection.login()` method with this credentials.
+
+* `Connection` uses chain of `LoginProvider` objects. There is `LoginPasswordLoginProvider` that works with `LoginPasswordCredentials` instances. It hashes the password using the `getPlainHash()` method of `PasswordEncryption` bean and invokes `AuthenticationService.login(Credentials)`.
+
+* If the authentication is successful, the created `AuthenticationDetails` instance with the active <<userSession,UserSession>> is passed back to `Connection`.
+
+* `Connection` creates a `ClientUserSession` wrapper and sets it to `VaadinSession`.
+
+* `Connection` creates a `SecurityContext` instance and sets it to `AppContext`.
+
+* `Connection` fires `StateChangeEvent` that triggers UI update and leads to the `AppMainWindow` initialization.
+
+All `LoginProvider` implementations must:
+
+* Authenticate user using `Credentials` object.
+* Start a new user session with `AuthenticationService` or return another active session (for instance, anonymous).
+* Return authentication details or null if it cannot login user with this `Credentials` object, for instance, if the login provider is disabled or is not properly configured.
+* Throw `LoginException` in case of incorrect `Credentials` or pass `LoginException` from the middleware to the caller.
+
+[[web_http_filter]]
+`HttpRequestFilter` - marker interface for beans that will be automatically added to the application filter chain as HTTP filter: https://docs.oracle.com/javaee/6/api/javax/servlet/Filter.html. You can use it to implement additional authentication, pre- and post-processing of request and response.
+
+You can expose additional `Filter` if you create Spring Framework component and implement `HttpRequestFilter` interface:
+[source, java]
+----
+include::{sourcesdir}/gui/web_customHttpFilter.java[]
+----
+
+Please note that the minimal implementation has to delegate execution to `FilterChain` otherwise your application will not work. By default, filters added as `HttpRequestFilter` beans will not receive requests to `VAADIN` directory and other paths specified in `cuba.web.cubaHttpFilterBypassUrls` app property.
+
+[[built_in_login_providers]]
+Built-in login providers::
++
+--
+The platform contains the following implementations of `LoginProvider` interface:
+
+- `AnonymousLoginProvider` - provides anonymous login for non-logged-in users.
+- `LoginPasswordLoginProvider` - delegates login to `AuthenticationService` with `LoginPasswordCredentials`.
+- `RememberMeLoginProvider`- delegates login to `AuthenticationService` with `RememberMeCredentials`.
+- `LdapLoginProvider` - performs authentication using LDAP and logs in users with `ExternalUserCredentials`.
+- `ExternalUserLoginProvider` - can be used from event handlers to perform login as provided user name.
+
+All the implementations create an active user session using `AuthenticationService.login()`.
+
+You can override any of them using Spring Framework mechanisms.
+--
+
+[[web_login_events]]
+Events::
++
+--
+Standard implementation of `Connection` - `ConnectionImpl` fires the following application <<events, events>> during login procedure:
+
+- `BeforeLoginEvent` / `AfterLoginEvent`
+- `LoginFailureEvent`
+- `UserConnectedEvent` / `UserDisconnectedEvent`
+- `UserSessionStartedEvent` / `UserSessionFinishedEvent`
+- `UserSessionSubstitutedEvent`
+
+Event handlers of `BeforeLoginEvent` and `LoginFailureEvent` may throw `LoginException` to cancel login process or override the original login failure exception.
+
+For instance, you can permit login to Web Client only for users with login that includes a company domain using `BeforeLoginEvent`.
+
+[source, java]
+----
+include::{sourcesdir}/gui/web_beforeLoginEventListener.java[]
+----
+
+Additionally, the standard application class - `DefaultApp` fires the following events:
+
+- `AppInitializedEvent` - fired after `App` initialization, performed once per HTTP session.
+- `AppStartedEvent` - fired on the first request processing of an `App` right before login as anonymous user. Event handlers may login the user using the `Connection` object bound to `App`.
+- `AppLoggedInEvent` - fired after UI initialization of `App` when a user is logged in.
+- `AppLoggedOutEvent` - fired after UI initialization of `App` when a user is logged out.
+- `SessionHeartbeatEvent` - fired on heartbeat requests from a client web browser.
+
+`AppStartedEvent` can be used to implement SSO login with third-party authentication system, for instance Jasig CAS. Usually, it is used together with a custom `HttpRequestFilter` bean that should collect and provide additional authentication data.
+
+Let's assume that we will automatically log in users if they have a special cookie value - `PROMO_USER`.
+
+[source, java]
+----
+include::{sourcesdir}/gui/web_appStartedEventListener.java[]
+----
+
+Thus if users have "PROMO_USER" cookie and open the application, they will be automatically logged in as `promoUserLogin`.
+
+If you want to perform additional actions after login and UI initialization you could use `AppLoggedInEvent`. Keep in mind that you have to check if a user is authenticated or not in event handlers, all the events are fired for `anonymous` user as well.
+
+--
+
+[[web_login_extension_points]]
+Extension points::
++
+--
+You can extend login mechanisms using the following types of extension points:
+
+- `Connection` - replace existing `ConnectionImpl`.
+- `HttpRequestFilter` - implement additional `HttpRequestFilter`.
+- `LoginProvider` implementations - implement additional or replace existing `LoginProvider`.
+- Events - implement event handler for one of the available <<web_login_events,events>>.
+
+You can replace existing beans using Spring Framework mechanisms, for instance by registering a new bean in Spring XML config of the *web* module.
+
+[source, xml]
+----
+<bean id="cuba_LoginPasswordLoginProvider"
+      class="com.company.demo.web.CustomLoginProvider"/>
+----
+
+--
+
+[[web_login_obsolete]]
+Obsolete/Deprecated::
++
+--
+
+Custom implementation of the `CubaAuthProvider` interface can be enabled by setting the following application properties:
+
+[source, properties]
+----
+cuba.web.externalAuthentication = true
+cuba.web.externalAuthenticationProviderClass = com.company.sample.web.MyAuthProvider
+----
+
+The following components are now deprecated:
+
+- `CubaAuthProvider` and its implementations are available in compatibility mode. Use events, `LoginProvider` and `HttpRequestFilter` instead.
+- `LdapAuthProvider` has been replaced with `LdapLoginProvider` that can be enabled as described here: <<ldap_basic,LDAP integration>>
+- `IdpAuthProvider` has been replaced with `IdpLoginProvider` that can be enabled as described here: <<sso,IDP SSO>>
+
+Do not use these components. They will be removed in the next major version of the platform.
+
+Use <<web_login_extension_points,Web login extension points>> instead.
+--
+

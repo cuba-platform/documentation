@@ -1,0 +1,128 @@
+:sourcesdir: ../../../../source
+
+[[uberjar_deployment]]
+==== UberJAR Deployment
+
+This is the simplest way to run your CUBA application in a production environment. You need to build an all-in-one JAR file using the <<build.gradle_buildUberJar>> Gradle task (see also the *Deployment settings > Uber JAR* page in Studio) and then you can run the application from the command line using the `java` executable:
+
+[source,plain]
+----
+java -jar app.jar
+----
+
+All parameters of the application are defined at the build time, but can be overridden when running (see below). The default port of the web application is `8080` and it is available at `++http://host:8080/app++`. If your project has Polymer UI, by default it will be available at `++http://host:8080/app-front++`.
+
+If you build separate JAR files for Middleware and Web Client, you can run them in the same way:
+
+[source,plain]
+----
+java -jar app-core.jar
+
+java -jar app.jar
+----
+
+The default port of the web client is `8080` and it will try to connect to the middleware running on `localhost:8079`. So after running the above commands in two separate terminal windows, you will be able to connect to the web client at `++http://localhost:8080/app++`.
+
+You can change the parameters defined at the build time by providing application properties via Java system properties. Besides, ports, context names and paths to Jetty configuration files can be provided as command line arguments.
+
+Command line arguments::
++
+--
+* `port` - defines the port on which the embedded HTTP server will run. For example:
++
+[source,plain]
+----
+java -jar app.jar -port 9090
+----
++
+Please note that if you build separate JARs and specify a port for the core block, you need to provide the <<cuba.connectionUrlList,cuba.connectionUrlList>> application property with the corresponding address to the client blocks, for example:
++
+[source,plain]
+----
+java -jar app-core.jar -port 7070
+
+java -Dcuba.connectionUrlList=http://localhost:7070/app-core -jar app.jar
+----
+
+* `contextName` - a web context name for this application block. For example, in order to access your web client at `++http://localhost:8080/sales++`, run the following command:
++
+[source,plain]
+----
+java -jar app.jar -contextName sales
+----
+
+* `frontContextName` - a web context name for the Polymer UI (makes sense for single, web or portal JARs).
+
+* `portalContextName` - a web context name for the portal module running in the single JAR.
+
+* `jettyEnvPath` - a path to the Jetty environment file which will override build time settings specified in the `coreJettyEnvPath` parameter. It can be an absolute path or a path relative to the working directory.
+
+* `jettyConfPath` - a path to the Jetty server configuration file which will override build time settings specified in the `webJettyConfPath/coreJettyConfPath/portalJettyConfPath` parameter. It can be an absolute path or a path relative to the working directory.
+--
+
+Application Home::
++
+--
+By default, the <<app_home,application home>> is the working directory. It means that <<app_dirs,application directories>> will be created in the folder where you have run the application. It can be redefined by the `app.home` Java system property. So for example, in order to have the home in `/opt/app_home`, specify the following on the command line:
+
+[source,plain]
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
+--
+
+Logging::
++
+--
+If you want to modify built-in logging settings, provide the `logback.configurationFile` Java system property with an URL to load your configuration file, for example:
+
+[source,plain]
+----
+java -Dlogback.configurationFile=file:./logback.xml -jar app.jar
+----
+
+Here it is assumed that the `logback.xml` file is located in the folder where you start the application from.
+
+In order to set the <<log_dir,log output directory>> correctly, make sure the `logDir` property in the `logback.xml` points to the `logs` subdirectory of the application home:
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/log_dir_1.xml[]
+----
+--
+
+Stopping an application::
++
+--
+You can gracefully stop the application in the following ways:
+
+* Pressing *Ctrl+C* in the terminal window where the application is running.
+
+* Executing `kill <PID>` on Unix-like systems.
+
+* Sending a stop key (i.e. a character sequence) on a port specified in the command line of the running application. There are the following command line arguments:
+
+** `stopPort` - a port to listen for a stop key or to send the key to.
+** `stopKey` - a stop key. If not specified, `SHUTDOWN` is used.
+** `stop` - to stop another process by sending the key.
+
+For example:
+
+[source,plain]
+----
+# Start application 1 and listen to SHUTDOWN key on port 9090
+java -jar app.jar -stopPort 9090
+
+# Start application 2 and listen to MYKEY key on port 9090
+java -jar app.jar -stopPort 9090 -stopKey MYKEY
+
+# Shutdown application 1
+java -jar app.jar -stop -stopPort 9090
+
+# Shutdown application 2
+java -jar app.jar -stop -stopPort 9090 -stopKey MYKEY
+----
+--
+
+include::uberjar_deployment/uberjar_https.adoc[]
+

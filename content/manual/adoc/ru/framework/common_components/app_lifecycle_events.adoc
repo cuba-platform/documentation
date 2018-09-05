@@ -1,0 +1,74 @@
+:sourcesdir: ../../../../source
+
+[[app_lifecycle_events]]
+==== События жизненного цикла
+
+В приложении на CUBA существуют следующие типы <<events,событий>> жизненного цикла:
+
+AppContextInitializedEvent::
++
+--
+Посылается сразу после инициализации <<appContext, AppContext>>.
+В этот момент:
+
+** Полностью инициализированы все <<managed_beans,бины>>, в том числе выполнены их методы `@PostConstruct`.
+** Можно использовать статические методы получения бинов `AppBeans.get()`.
+** Метод `AppContext.isStarted()` возвращает `false`.
+** Метод `AppContext.isReady()` возвращает `false`.
+--
+
+AppContextStartedEvent::
++
+--
+Посылается после `AppContextInitializedEvent` и после запуска всех `AppContext.Listener.applicationStarted()`. В этот момент:
+
+** Метод `AppContext.isStarted()` возвращает `true`.
+** Метод `AppContext.isReady()` возвращает `false`.
+** В блоке Middleware: если свойство приложения <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> включено, все скрипты обновления БД успешно выполнены.
+--
+
+AppContextStoppedEvent::
++
+--
+Посылается перед остановкой приложения и после запуска всех `AppContext.Listener.applicationStopped()`.
+В этот момент:
+
+** Все бины работоспособны и доступны через статические методы `AppBeans.get()`.
+** Метод `AppContext.isStarted()` возвращает `false`.
+** Метод `AppContext.isReady()` возвращает `false`.
+--
+
+Порядком исполнения слушателей можно управлять с помощью аннотации `@Order`. Константы `Events.HIGHEST_PLATFORM_PRECEDENCE` и `Events.LOWEST_PLATFORM_PRECEDENCE` определяют диапазон значений, используемый слушателями платформы.
+
+Пример:
+
+[source, java]
+----
+include::{sourcesdir}/common/appLifecycleEvents_1.java[]
+----
+
+[[ServletContextInitializedEvent]]
+ServletContextInitializedEvent::
++
+--
+Посылается сразу после инициализации контекстов `ServletContext` и <<appContext, AppContext>>. В этот момент:
+
+* Можно использовать статические методы получения бинов `AppBeans.get()`.
+
+* Событие содержит в себе контексты, позволяющие зарегистрировать собственные сервлеты, фильтры и слушатели, см. раздел <<servlet_registration>>.
+--
+
+[[ServletContextDestroyedEvent]]
+ServletContextDestroyedEvent::
++
+--
+Посылается перед уничтожением контекстов `ServletContext` и `AppContext` и позволяет вручную освободить ресурсы.
+
+Пример использования:
+
+[source, java]
+----
+include::{sourcesdir}/common/events_servlet_context.java[]
+----
+--
+

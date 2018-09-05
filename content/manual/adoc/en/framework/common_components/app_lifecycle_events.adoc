@@ -1,0 +1,77 @@
+:sourcesdir: ../../../../source
+
+[[app_lifecycle_events]]
+==== Application Lifecycle Events
+
+There are the following types of lifecycle <<events,events>> in a CUBA application:
+
+[[AppContextInitializedEvent]]
+AppContextInitializedEvent::
++
+--
+It is sent right after <<appContext, AppContext>> is initialized.
+At this moment:
+
+* All the <<managed_beans,beans>> are fully initialized and their `@PostConstruct` methods are executed.
+* Static `AppBeans.get()` methods can be used for obtaining beans.
+* The `AppContext.isStarted()` method returns `false`.
+* The `AppContext.isReady()` method returns `false`.
+--
+
+[[AppContextInitializedEvent]]
+AppContextStartedEvent::
++
+--
+It is sent after `AppContextInitializedEvent` and after running all `AppContext.Listener.applicationStarted()`. At this moment:
+
+* The `AppContext.isStarted()` method returns `true`.
+* The `AppContext.isReady()` method returns `false`.
+* On the middleware, if <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property is enabled, all database update scripts are successfully executed.
+--
+
+[[AppContextInitializedEvent]]
+AppContextStoppedEvent::
++
+--
+It is sent before the application shutdown and after running all `AppContext.Listener.applicationStopped()`.
+At this moment:
+
+** All the beans are operational and can be obtained via `AppBeans.get()` methods.
+** `AppContext.isStarted()` method returns `false`.
+** The `AppContext.isReady()` method returns `false`.
+--
+
+You can affect the order of listeners invocation by specifying the `@Order` annotation. The `Events.HIGHEST_PLATFORM_PRECEDENCE` and `Events.LOWEST_PLATFORM_PRECEDENCE` constants define the range which is used by listeners defined in the platform.
+
+For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/appLifecycleEvents_1.java[]
+----
+
+[[ServletContextInitializedEvent]]
+ServletContextInitializedEvent::
++
+--
+It is published right after initialization of Servlet and Application contexts. At this moment:
+
+* Static `AppBeans.get()` methods can be used for obtaining beans.
+
+* This event contains application and servlet contexts, thus enabling to register custom Servlets, Filters and Listeners, see <<servlet_registration>>.
+--
+
+[[ServletContextDestroyedEvent]]
+ServletContextDestroyedEvent::
++
+--
+It is published when Servlet and Application are about to be shut down and enables to free resources manually.
+
+For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/events_servlet_context.java[]
+----
+--
+

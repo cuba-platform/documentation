@@ -1,0 +1,113 @@
+:sourcesdir: ../../../../source
+
+[[structure_groovy]]
+==== Набор данных Groovy
+
+*Groovy* - набор данных формируется выполнением Groovy-скрипта. Скрипт должен возвращать объект типа `List<Map<String, Object>>`. Элемент этого списка, то есть объект типа `Map<String, Object>` соответствует одной записи набора данных.
+
+В скрипт передаются следующие объекты:
+
+* `dataManager` - объект типа `com.haulmont.cuba.core.global.DataManager`, предоставляющий CRUD-функциональность для работы с персистентными хранилищами данных. Например:
++
+[source, groovy]
+----
+def book = dataManager.load(Book.class).id(bookId).view("book.edit").one;
+----
+
+* `metadata` - объект типа `com.haulmont.cuba.core.global.Metadata`, позволяющий обращаться к метаданным приложения, например:
++
+[source, groovy]
+----
+def metaClass = metadata.getClassNN('sec$User')
+----
+
+* `params` - мэп внешних параметров отчета. Пример получения значения параметра:
++
+[source, groovy]
+----
+def active = params['active']
+----
+
+* `parentBand` - родительская полоса в виде объекта типа `com.haulmont.yarg.structure.BandData`. Через этот объект методом `getParameterValue()` можно получить значение поля родительской полосы, например:
++
+[source, groovy]
+----
+def groupId = parentBand.getParameterValue('groupId')
+----
+
+* `persistence` - объект типа `com.haulmont.cuba.core.Persistence`, позволяющий получать источники данных (datasources).
++
+По умолчанию используется основное хранилище данных. Для работы с дополнительным хранилищем данных, его имя нужно указать в параметре метода `getDataSource()`:
++
+[source, groovy]
+----
+def sql = new Sql(persistence.getDataSource('myStore'))
+def rows = sql.rows('select e.name from SEC_GROUP e')
+----
+
+* `security` -  объект типа `com.haulmont.cuba.core.global.Security`, используемый для проверки прав пользователя на доступ к различным объектам системы. Пример использования:
++
+[source, groovy]
+----
+if (security.isEntityOpPermitted(Book.class, EntityOp.READ) {
+    ...
+}
+----
+
+* `timeSource` - объект типа `com.haulmont.cuba.core.global.TimeSource`, используемый для получения текущего времени, например:
++
+[source, groovy]
+----
+def currentDate = timeSource.currentTimestamp()
+----
+
+* `transactional` - метод, принимающий на вход замыкание, которое нужно выполнить в новой транзакции. Параметром замыкания становится текущий `EntityManager`. Пример использования:
++
+[source, groovy]
+----
+transactional { em ->
+    def query = em.createQuery('select g from sec$Group g')
+    ...
+}
+----
++
+Пример Groovy-скрипта извлечения пользователей по группе, выводимой в родительской полосе и по внешнему параметру `active`:
++
+[source, groovy]
+----
+def result = []
+transactional { em ->
+    def query = em.createQuery('select u from sec$User u where u.group.id = ?1 and u.active = ?2')
+    query.setParameter(1, parentBand.getParameterValue('groupId'))
+    query.setParameter(2, params['active'])
+    query.resultList.each { user ->
+        result.add(['userLogin': user.login, 'userName': user.name])
+    }
+}
+return result
+----
+
+* `userSession` - объект типа `com.haulmont.cuba.security.global.UserSession`, связанный с текущим пользователем системы, например:
++
+[source, groovy]
+----
+def user = userSession.currentOrSubstitutedUser
+----
+
+* `userSessionSource` - объект типа `com.haulmont.cuba.core.global.UserSessionSource`, используемый для получения текущей сессии пользователя. Пример использования:
++
+[source, groovy]
+----
+def locale = userSessionSource.locale
+----
+
+[TIP]
+====
+Для обращения к любым бинам Spring среднего слоя можно использовать статические методы класса `AppBeans`, например:
+
+[source, groovy]
+----
+def myService = com.haulmont.cuba.core.global.AppBeans.get('sample_MyService')
+----
+====
+

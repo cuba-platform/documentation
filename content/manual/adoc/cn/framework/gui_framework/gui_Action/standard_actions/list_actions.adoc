@@ -1,0 +1,266 @@
+:sourcesdir: ../../../../../../source
+
+[[list_actions]]
+====== Standard Actions over Collection
+
+For inheritors of `ListComponent` (<<gui_Table,Table>>, <<gui_GroupTable,GroupTable>>, <<gui_TreeTable,TreeTable>> and <<gui_Tree,Tree>>) the set of standard actions is defined in `ListActionType` enumeration; their implementation classes are located in `com.haulmont.cuba.gui.components.actions` package. 
+
+The example of using standard actions in a table: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui/listActions_1.xml[]
+----
+
+These actions are described in details below.
+
+[[createAction]]
+*CreateAction*
+
+`CreateAction` – action with *create* identifier. It is intended to create new entity instance and open its edit screen. If the edit screen successfully commits a new instance to the database, `CreateAction` adds this new instance to the table data source and makes it selected.
+
+The following specific methods are defined in the `CreateAction` class: 
+
+* `setOpenType()` allows you to specify new entity edit screen open mode. `++THIS_TAB++` by default. 
++
+Since it is quite often required to open edit screens in another mode (typically, `DIALOG`), you can specify an `openType` attribute with desired value in the `action` element when using declarative creation of the `create` action. This eliminates the need to obtain action reference in the controller and set this property programmatically. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui/createAction_1.xml[]
+----
+
+* `setWindowId()` allows you to specify the identifier of the entity edit screen. By default, `++{entity_name}.edit++` is used, for example `sales$Customer.edit`.
+
+* `setWindowParams()` allows you to set edit screen parameters passed into its `init()` method. The parameters can be further used directly in the <<datasource_query_params_param,datasource query>> via the `param$` prefix or <<screen_controller_injection,injected>> into the screen controller using the `@WindowParam` annotation.
+
+* `setWindowParamsSupplier()` is different from `setWindowParams()` in that it allows you to get parameter values right before the action is invoked. Supplied parameters are merged with ones set by the `setWindowParams()` method and can override them. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/createAction_5.java[]
+----
+
+* `setInitialValues()` allows you to set initial values of attributes of the entity being created. It takes a `Map` object, where keys are attribute names, and values are attribute values. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/createAction_2.java[]
+----
++
+An example of `setInitialValues()` usage is also provided in the section of <<init_values_in_CreateAction,development recipes>>.
+
+* `setInitialValuesSupplier()` is different from `setInitialValues()` in that it allows you to get values right before the action is invoked. Supplied values are merged with ones set by the `setInitialValues()` method and can override them. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/createAction_4.java[]
+----
+
+* `setBeforeActionPerformedHandler()` allows you to provide a handler which will be invoked by the action before its execution. The method should return `true` to proceed with the execution and `false` to abort. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/createAction_6.java[]
+----
+
+* `afterCommit()` is invoked by the action after the new entity has been successfully committed and the edit screen has been closed. This method does not have implementation and can be overridden in inheritors to handle this event.
+
+* `setAfterCommitHandler()` allows you to provide a handler which will be called after the new entity has been successfully committed and the edit screen has been closed. This handler can be used instead of overriding `afterCommit()` to avoid creating the action subclass. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/createAction_3.java[]
+---- 
+
+* `afterWindowClosed()` is the last method invoked by the action after closing the edit screen regardless of whether the new entity has been committed or not. This method does not have implementation and can be overridden in inheritors to handle this event.
+
+* `setAfterWindowClosedHandler()` allows you to provide a handler which will be called after closing the edit screen regardless of whether the new entity has been committed or not. This handler can be used instead of overriding `afterWindowClosed()` to avoid creating the action subclass. 
+
+[[editAction]]
+*EditAction*
+
+`EditAction` is an action with *edit* identifier, intended to open an edit screen for a selected entity instance. If the edit screen successfully commits the instance to the database, then `EditAction` updates this instance in the table datasource.
+
+The following specific methods are defined in the `EditAction` class: 
+
+* `setOpenType()` allows you to specify entity edit screen open mode. `++THIS_TAB++` by default. 
++
+Since it is quite often required to open edit screens in another mode (typically `DIALOG`), you can specify `openType` attribute with desired value in the `action` element when creating the action declaratively. This eliminates the need to obtain action reference in the controller and set this property programmatically. For example: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui/editAction_1.xml[]
+---- 
+
+* `setWindowId()` allows you to specify entity edit screen identifier. `++{entity_name}.edit++` is used by default, for example, `sales$Customer.edit`.
+
+* `setWindowParams()` allows you to set edit screen parameters, passed to its `init()` method. The parameters can be further used directly in the <<datasource_query_params_param,datasource query>> via the `param$` prefix or <<screen_controller_injection,injected>> into the screen controller using the `@WindowParam` annotation.
+
+* `setWindowParamsSupplier()` is different from `setWindowParams()` in that it allows you to get parameter values right before the action is invoked. Supplied parameters are merged with ones set by the `setWindowParams()` method and can override them. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/editAction_4.java[]
+----
+
+* `setBeforeActionPerformedHandler()` allows you to provide a handler which will be invoked by the action before its execution. The method should return `true` to proceed with the execution and `false` to abort. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/editAction_5.java[]
+----
+
+*  `afterCommit()` is invoked by the action after the entity has been successfully committed and the edit screen has been closed. This method does not have implementation and can be overridden in inheritors to handle this event. 
+
+* `setAfterCommitHandler()` allows you to provide a handler which will be called after the new entity has been successfully committed and the edit screen has been closed. This handler can be used instead of overriding `afterCommit()` to avoid creating the action subclass. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/editAction_2.java[]
+---- 
+
+* `afterWindowClosed()` is the last method invoked by the action after closing the edit screen regardless of whether the edited entity has been committed or not. This method does not have implementation and can be overridden in inheritors to handle this event.
+
+* `setAfterWindowClosedHandler()` allows you to provide a handler which will be called after closing the edit screen regardless of whether the new entity has been committed or not. This handler can be used instead of overriding `afterWindowClosed()` to avoid creating the action subclass. 
+
+* `getBulkEditorIntegration()` provides a possibility of bulk editing for the table records. The table should have the `multiselect` attribute enabled. The <<gui_BulkEditor,BulkEditor>> component will be opened, if multiple table lines are selected when the `EditAction` is called.
++
+--
+The returned `BulkEditorIntegration` instance can be further modified by the following methods:
+
+* `setOpenType()`,
+
+* `setExcludePropertiesRegex()`,
+
+* `setFieldValidators()`,
+
+* `setModelValidators()`,
+
+* `setAfterEditCloseHandler()`.
+--
++
+[source, java]
+----
+include::{sourcesdir}/gui/editAction_3.java[]
+----
+
+[[removeAction]]
+*RemoveAction*
+
+`RemoveAction` - action with *remove* identifier, intended to remove a selected entity instance.
+
+The following specific methods are defined in the `RemoveAction` class: 
+
+* `setAutocommit()` allows you to control the moment of entity removal from the database. By default `commit()` method is invoked after triggering the action and removing the entity from the datasource. As result, the entity is removed from the database. You can set `autocommit` property into false using `setAutocommit()` method or corresponding parameter of the constructor. In this case you will need to explicitly invoke the datasource `commit()` method to confirm the removal after removing the entity from the datasource.
++
+The value of `autocommit` does not affect datasources in the `Datasource.CommitMode.PARENT` mode, i.e. the datasources that provide <<composition_annotation,composite>> entities editing.
+
+* `setConfirmationMessage()` allows you to set message text for the removal confirmation dialog.
+
+* `setConfirmationTitle()` allows you to set removal confirmation dialog title.
+
+* `setBeforeActionPerformedHandler()` allows you to provide a handler which will be invoked by the action before its execution. The method should return `true` to proceed with the execution and `false` to abort. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/removeAction_2.java[]
+----
+
+*  `afterRemove()` is invoked by the action after the entity has been successfully removed. This method does not have implementation and can be overridden. 
+
+* `setAfterRemoveHandler()` allows you to provide a handler which will be called after the new entity has been successfully removed. This handler can be used instead of overriding `afterRemove()` to avoid creating the action subclass. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/removeAction_1.java[]
+----  
+
+[[refreshAction]]
+*RefreshAction*
+
+`RefreshAction` - an action with *refresh* identifier. It is intended to update (reload) entities collection. When triggered, it invokes `refresh()` method of a <<datasources,datasource>> associated with the corresponding component.
+
+The following specific methods are defined in the `RefreshAction` class:
+
+* `setRefreshParams()` allows you to set parameters passed into the `CollectionDatasource.refresh()` method to be used in the <<datasource_query,query>>. By default, no parameters are passed.
+
+* `setRefreshParamsSupplier()` is different from `setRefreshParams()` in that it allows you to get parameter values right before the action is invoked. Supplied parameters are merged with ones set by the `setRefreshParams()` method and can override them. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/refreshAction_1.java[]
+----
+
+[[addAction]]
+*AddAction*
+
+`AddAction` – action with *add* identifier, intended for selecting an existing entity instance and adding it to the collection. When triggered, opens entities <<screen_lookup,lookup screen>>.
+
+The following specific methods are defined in the `AddAction` class:
+
+* `setOpenType()` allows you to specify entity selection screen open mode. `++THIS_TAB++` by default.
++
+Since it is often required to open the lookup screens in a different mode (usually `DIALOG`), the `openType` attribute can be specified in the action element, when creating the `add` action declaratively. This eliminates the need to get a reference to the action in the controller and set this property programmatically. For example:
++
+[source, xml]
+----
+include::{sourcesdir}/gui/addaction_1.xml[]
+----
+
+* `setWindowId()` allows you to specify entity selection screen identifier. `++{entity_name}.lookup++` by default, for example, `sales$Customer.lookup`. If such screen does not exist, attempts to open `++{entity_name}.browse++` screen, for example, `sales$Customer.browse`.
+
+* `setWindowParams()` allows you to set selection screen parameters, passed into its `init()` method. The parameters can be further used directly in the <<datasource_query_params_param,datasource query>> via the `param$` prefix or <<screen_controller_injection,injected>> into the screen controller using the `@WindowParam` annotation.
+
+* `setWindowParamsSupplier()` is different from `setWindowParams()` in that it allows you to get parameter values right before the action is invoked. Supplied parameters are merged with ones set by the `setWindowParams()` method and can override them. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/addaction_2.java[]
+----
+
+* `setHandler()` allows you to set an object implementing `Window.Lookup.Handler` interface which will be passed to the selection screen. By default, `AddAction.DefaultHandler` object is used.
+
+* `setBeforeActionPerformedHandler()` allows you to provide a handler which will be invoked by the action before its execution. The method should return `true` to proceed with the execution and `false` to abort. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/addaction_3.java[]
+----
+
+[[excludeAction]]
+*ExcludeAction*
+
+`ExcludeAction` - an action with *exclude* identifier. It allows a user to exclude entity instances from a collection without removing them from the database. The class of this action is an inheritor of `RemoveAction`, however, when triggered it invokes `excludeItem()` of `CollectionDatasource` instead of `removeItem()`. In addition, for an entity in a nested datasource, the `ExcludeAction` disconnects the link with the parent entity. Therefore this action can be used for editing one-to-many associations.
+
+The following specific methods are defined in the `ExcludeAction` class in addition to `RemoveAction`:
+
+* `setConfirm()` – flag to show the removal confirmation dialog. You can also set this property via the action constructor. By default it is set to `false`.
+
+* `setBeforeActionPerformedHandler()` allows you to provide a handler which will be invoked by the action before its execution. The method should return `true` to proceed with the execution and `false` to abort. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/excludeAction.java[]
+----
+
+[[excelAction]]
+*ExcelAction*
+
+`ExcelAction` - an action with *excel* identifier, intended to export table data into XLS and download the resulting file. You can add this action only to <<gui_Table,Table>>, <<gui_GroupTable,GroupTable>> and <<gui_TreeTable,TreeTable>> components.
+
+When creating the action programmatically, you can set the `display` parameter with an `ExportDisplay` interface implementation for file download. Standard implementation is used by default.
+
+The following specific methods are defined in the `ExcelAction` class:
+
+* `setFileName()`  - sets the Excel file name without extension.
+
+* `getFileName()` - returns the Excel file name without extension.
+
+* `setBeforeActionPerformedHandler()` allows you to provide a handler which will be invoked by the action before its execution. The method should return `true` to proceed with the execution and `false` to abort. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/excelAction.java[]
+----
+

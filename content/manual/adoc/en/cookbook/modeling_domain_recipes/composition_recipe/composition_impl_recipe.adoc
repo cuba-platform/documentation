@@ -1,0 +1,39 @@
+:sourcesdir: ../../../../../source
+
+[[composition_impl_recipe]]
+===== One-to-Many: One Level of Nesting
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Let's implement a one-to-many composition using the `Airport` and the `Terminal` entities as an example:
+
+image::cookbook/composition_recipe_1.png[align="center"]
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Terminal.java[Terminal.java] - the `Terminal` entity contains a mandatory link to the `Airport`.
++
+In the Studio entity designer, set for the `airport` attribute: *Attribute type* - ASSOCIATION, *Cardinality* - MANY_TO_ONE, *Mandatory* - on.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - the `Airport` entity contains a one-to-many collection of terminals. The corresponding field is annotated with <<composition_annotation,@Composition>> in order to implement composition, and <<onDelete_annotation,@OnDelete>> for cascaded soft delete.
++
+In the Studio entity designer, set for the `terminals` attribute: *Attribute type* - COMPOSITION, *Cardinality* - ONE_TO_MANY, *On delete* - CASCADE.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - the `airport-terminals` <<views,view>> of the airport editing screen contains the `terminals` collection attribute. We are using the `_local` view for this attribute, because the `airport` attribute of the `Terminal` entity is set only at the creation of a new `Terminal` instance and never changes after that, so we do not need to load it.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[airport-edit.xml] - the XML descriptor of the airport editor defines a datasource for the `Airport` instance and a nested one for its terminals. It also contains a table displaying terminals.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports/terminal/terminal-edit.xml[terminal-edit.xml] - a standard editor for the `Terminal` entity.
+
+As a result, editing of an airport instance works as follows:
+
+* The airport edit screen shows a list of terminals.
+
+* A user can pick a terminal and open its editor. When *OK* is clicked in the terminal editor, the updated instance of the terminal is not saved to the database, but to the `terminalsDs` datasource of the airport editor.
+
+* The user can create new terminals and delete existing ones. All changes will be saved to the `terminalsDs` datasource.
+
+* When a user clicks *OK* in the airport edit screen, the updated `Airport` instance together with all the updated `Terminal` instances is submitted to the <<dataManager,DataManager>>.commit() method on the middleware and saved to the database within a single transaction.
+

@@ -1,0 +1,37 @@
+:sourcesdir: ../../../../source
+
+[[queryRunner]]
+==== Running SQL Using QueryRunner
+
+`QueryRunner` is a class designed to run SQL. It should be used instead of JDBC in all cases where using plain SQL is necessary and working with the <<nativeQuery,ORM tools>> of the same purpose is not desired.
+
+The platform's QueryRunner is a variant of link:$$http://commons.apache.org/dbutils/apidocs/org/apache/commons/dbutils/QueryRunner.html$$[Apache DbUtils QueryRunner] with the added ability to use Java Generics.
+
+Usage example:
+
+[source, java]
+----
+QueryRunner runner = new QueryRunner(persistence.getDataSource());
+try {
+  Set<String> scripts = runner.query("select SCRIPT_NAME from SYS_DB_CHANGELOG",
+          new ResultSetHandler<Set<String>>() {
+              public Set<String> handle(ResultSet rs) throws SQLException {
+                  Set<String> rows = new HashSet<String>();
+                  while (rs.next()) {
+                      rows.add(rs.getString(1));
+                  }
+                  return rows;
+              }
+          });
+  return scripts;
+} catch (SQLException e) {
+  throw new RuntimeException(e);
+}
+----
+
+There are two ways of using `QueryRunner`: current transaction or separate transaction in autocommit mode.
+
+* To run a query in current transaction `QueryRunner` must be instantiated using a parameterless constructor. Then, `query()` or `update()` methods should be called with a `Connection` parameter retrieved via `EntityManager.getConnection()`. There is no need to close the `Connection` after the query, as it will be closed when the transaction is committed.
+
+* To run a query in a separate transaction, `QueryRunner` instance must be created using a constructor with the `DataSource` parameter retrieved using `Persistence.getDataSource()`. Then, `query()` or `update()` methods should be called without the `Connection` parameter. Connection will be created from the specified `DataSource` and immediately closed afterwards.
+

@@ -1,0 +1,93 @@
+:sourcesdir: ../../../../../source
+
+[[bean_validation_running]]
+===== Running Validation
+
+[[bean_validation_in_ui]]
+Validation in UI::
++
+--
+Generic UI components connected to a datasource get an instance of `BeanValidator` to check the field value. The validator is invoked from the `Component.Validatable.validate()` method implemented by the visual component and can throw the `CompositeValidationException` exception that contains the set of violations.
+
+The standard validator can be removed or initialized with a different <<bean_validation_constraint_groups,constraint group>>:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_12.java[]
+----
+
+By default, `BeanValidator` has both `Default` and `UiComponentChecks` groups.
+
+If an entity attribute is annotated with `@NotNull` without constraint groups, it will be marked as mandatory in metadata and UI components working with this attribute through a datasource will have `required = true`.
+
+The <<gui_DateField,DateField>> and <<gui_DatePicker,DatePicker>> components automatically set their `rangeStart` and `rangeEnd` properties by the `@Past` and `@Future` annotations, but without considering time.
+
+<<abstractEditor,Editor>> screens perform validation against class-level constraints on commit if the constraint includes the `UiCrossFieldChecks` group and if all attribute-level checks are passed. You can turn off the validation of this kind using the `crossFieldValidate` property of the screen in the screen XML descriptor or in the controller:
+
+[source, xml]
+----
+include::{sourcesdir}/common/bean_validation_13.xml[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_14.java[]
+----
+--
+
+[[bean_validation_in_services]]
+Validation in Middleware Services::
++
+--
+Middleware <<services,services>> perform validation of parameters and results if a method has annotation `@Validated` in the service interface. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_15.java[]
+----
+
+The `@Validated` annotation can specify <<bean_validation_constraint_groups,constraint groups>> to apply a certain set of constraints. If no groups are specified, the following are used by default:
+
+* `Default` and `ServiceParametersChecks` - for method parameters
+* `Default` and `ServiceResultChecks` - for method return value
+
+The `MethodParametersValidationException` and `MethodResultValidationException` exceptions are thrown on validation errors.
+
+If you perform some custom programmatic validation in a service, use `CustomValidationException` to inform clients about validation errors in the same format as the standard bean validation does. It can be particularly relevant for REST API clients.
+--
+
+[[bean_validation_in_rest]]
+Validation in REST API::
++
+--
+Universal <<rest_api_v2,REST API>> automatically performs bean validation for create and update actions. Validation errors are returned to the client in the following way:
+
+* `MethodResultValidationException` and `ValidationException` cause `500 Server error` HTTP status
+
+* `MethodParametersValidationException`, `ConstraintViolationException` and `CustomValidationException` cause `400 Bad request` HTTP status
+
+* Response body with `Content-Type: application/json` will contain a list of objects with `message`, `messageTemplate`, `path` and `invalidValue` properties, for example:
++
+[source, json]
+----
+include::{sourcesdir}/common/bean_validation_16.json[]
+----
+
+** `path` indicates a path to the invalid attribute in the validated object graph
+** `messageTemplate` contains a string which is defined in the `message` annotation attribute
+** `message` contains an actual value of the validation message
+** `invalidValue` is returned only if its type is one of the following: `String`, `Date`, `Number`, `Enum`, `UUID`.
+--
+
+[[bean_validation_programmatic]]
+Programmatic Validation::
++
+--
+You can perform bean validation programmatically using the `BeanValidation` infrastructure interface, available on both middleware and client tier. It is used to obtain a `javax.validation.Validator` implementation which runs validation. The result of validation is a set of `ConstraintViolation` objects. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_17.java[]
+----
+--
+

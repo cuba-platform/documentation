@@ -1,0 +1,75 @@
+:sourcesdir: ../../../../source
+
+[[bean_extension]]
+==== Extending Business Logic
+
+The main part of platform business logic is contained in *Spring* beans. This enables to easily extend or override it in the application.
+
+To substitute a bean implementation, you should create your own class that implements the interface or extends the base platform class and register it in <<spring.xml,spring.xml>> of the application. You cannot apply the `@Component` annotation to the extending class; overriding beans is possible only in the XML configuration.
+
+Below is an example of adding a method to the <<persistenceTools,PersistenceTools>> bean.
+
+First, create a class with the necessary method:
+
+[source, java]
+----
+public class ExtPersistenceTools extends PersistenceTools {
+
+  public Entity reloadInSeparateTransaction(final Entity entity, final String... viewNames) {
+      Entity result = persistence.createTransaction().execute(new Transaction.Callable<Entity>() {
+          @Override
+          public Entity call(EntityManager em) {
+              return em.reload(entity, viewNames);
+          }
+      });
+      return result;
+  }
+}
+----
+
+Register the class in `spring.xml` of the project *core* module with the same identifier as the platform bean:
+
+[source, xml]
+----
+<bean id="cuba_PersistenceTools" class="com.sample.sales.core.ExtPersistenceTools"/>
+----
+
+After that, the *Spring* context will always return `ExtPersistenceTools` instead of the base `PersistenceTools` instance. A checking code example:
+
+[source, java]
+----
+Persistence persistence;
+PersistenceTools tools;
+
+persistence = AppBeans.get(Persistence.class);
+tools = persistence.getTools();
+assertTrue(tools instanceof ExtPersistenceTools);
+
+tools = AppBeans.get(PersistenceTools.class);
+assertTrue(tools instanceof ExtPersistenceTools);
+
+tools = AppBeans.get(PersistenceTools.NAME);
+assertTrue(tools instanceof ExtPersistenceTools);
+----
+
+The same logic can be used for overriding services, for example, from <<app_components_sample,application components>>: to substitute a bean implementation, you should create a class that extends the base service functionality. In the example below the `NewOrderServiceBean` class is created to override the method from the base `OrderServiceBean`:
+
+[source, java]
+----
+public class NewOrderServiceBean extends OrderServiceBean {
+    @Override
+    public BigDecimal calculateOrderAmount(Order order) {
+        BigDecimal total = super.calculateOrderAmount(order);
+        BigDecimal vatPercent = new BigDecimal(0.18);
+        return total.multiply(BigDecimal.ONE.add(vatPercent));
+    }
+}
+----
+
+Then, if you register the new class in `spring.xml`, the new implementation will be used instead of the one from `OrderServiceBean`. Note that the base service `id` from the application component is used with the fully qualified name of the new class:
+
+[source, xml]
+----
+<bean id="workshop_OrderService" class="com.company.retail.service.NewOrderServiceBean"/>
+----
+

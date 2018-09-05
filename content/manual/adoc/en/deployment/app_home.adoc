@@ -1,0 +1,67 @@
+:sourcesdir: ../../../source
+
+[[app_home]]
+=== Application Home
+
+Application home is a file system directory where <<app_dirs>> described below can be placed together. It is used in all <<deployment_variants,deployment scenarios>> except <<fast_deployment>>. In the latter case, the application directories are located in specific Tomcat folders.
+
+The application home is formed simply by specifying a common root for the application directories. It is normally done in the `/WEB-INF/local.app.properties` file inside of a WAR or UberJAR file.
+
+* If you build a WAR file, you have to define the path to the application home in the <<build.gradle_buildWar,buildWar>> Gradle task. You can specify an absolute path or a path relative to the server working directory if you know in advance where the WAR will be deployed. If not, you can specify a placeholder for a Java system property and provide the real path at runtime.
++
+--
+Example of an application home set at runtime:
+
+** Task configuration:
++
+[source,groovy]
+----
+task buildWar(type: CubaWarBuilding) {
+    appHome = '${app.home}'
+    // ...
+}
+----
+
+** Content of `/WEB-INF/local.app.properties` after building the WAR:
++
+[source,plain]
+----
+cuba.logDir = ${app.home}/logs
+cuba.confDir = ${app.home}/${cuba.webContextName}/conf
+cuba.tempDir = ${app.home}/${cuba.webContextName}/temp
+cuba.dataDir = ${app.home}/${cuba.webContextName}/work
+...
+----
+
+** Command line providing `app.home` system property:
++
+[source,plain]
+----
+java -Dapp.home=/opt/app_home ...
+----
++
+The way to set the Java system property depends on your application server. For Tomcat, it is recommended to set it in the `bin/setenv.sh` (or `bin/setenv.bat`) file.
+
+** Resulting directory structure:
++
+[source,plain]
+----
+/opt/app_home/
+  app/
+    conf/
+    temp/
+    work/
+  app-core/
+    conf/
+    temp/
+    work/
+  logs/
+----
+--
+
+* In case of UberJAR, the home is set to the working directory by default, but can be redefined by the `app.home` Java system property. So in order to have the home in the same directory as described above for WAR example, it is enough to specify it in the command line as follows:
++
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
+

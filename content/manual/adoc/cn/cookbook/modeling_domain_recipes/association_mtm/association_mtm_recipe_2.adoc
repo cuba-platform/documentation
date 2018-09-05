@@ -1,0 +1,75 @@
+:sourcesdir: ../../../../../source
+
+[[association_mtm_recipe_2]]
+===== Many-to-Many Association with Link Entity
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$DutyFree.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+The many-to-many association is always implemented using a joining table, but creating an entity to reflect this table is optional. The joining entity can be created in case you want to store some additional fields in the joining table.
+
+Let's demonstrate this approach using the `Airport` and the `DutyFree` entities as an example. Many different duty-free shops can be located in one airport, and one duty-free shop can be represented in many different airports. Suppose that we want to store the link airport-shop and the currency used in this shop and this airport:
+
+image::cookbook/association_recipe_2.png[align="center"]
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - the `Airport` entity contains a one-to-many composition of `AirportDutyFree` instances.
++
+In the Studio entity designer, set for the `dutyFreeShops` attribute: *Attribute type* - `COMPOSITION`, *Cardinality* - `ONE_TO_MANY`.
++
+[source, java]
+----
+@Composition
+@OnDelete(DeletePolicy.CASCADE)
+@OneToMany(mappedBy = "airport")
+protected List<AirportDutyFree> dutyFreeShops;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/DutyFree.java[DutyFree.java] - the `DutyFree` entity contains a one-to-many composition of `AirportDutyFree` instances, too.
++
+In the Studio entity designer, set for the `airports` attribute: Attribute type - `COMPOSITION`, Cardinality - `ONE_TO_MANY`.
++
+[source, java]
+----
+@Composition
+@OnDelete(DeletePolicy.CASCADE)
+@OneToMany(mappedBy = "dutyFree")
+protected List<AirportDutyFree> airports;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/AirportDutyFree.java[AirportDutyFree.java] - thus, the `AirportDutyFree` entity contains two many-to-one references: `airport` and `dutyFree`.
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "AIRPORT_ID")
+protected Airport airport;
+
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "DUTY_FREE_ID")
+protected DutyFree dutyFree;
+
+@Column(name = "CURRENCY")
+protected Integer currency;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - the `airport-duty-free` view of the airport editing screen contains the composition of `dutyFreeShops` (referencing the `AirportDutyFree` joining entity) with `dutyFree` and `currency` attributes.
++
+The `dutyFree-airport` view follows the same logic: it includes the composition of `airports` (referencing the `AirportDutyFree` joining entity) with `airport` and `currency` attributes.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/duty-free-edit.xml[duty-free-edit.xml] - the XML descriptor of the duty-free shop editor defines a datasource for the `DutyFree` instance and a nested one for its airports. It also contains a table displaying airports and the custom action to pick an airport directly, bypassing the `AirportDutyFree` editor.
+
+As a result, editing of a `DutyFree` instance works as follows:
+
+The `DutyFree` edit screen shows a list of airports and the currency drop-down.
+
+A user can click *Add airport*, the `Airport` lookup will be opened, and the user can either select an airport to add or open its editor. When the user selects an airport, the new `AirportDutyFree` instance https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/DutyFreeEdit.java#L29[is created] with the default currency. This instance it is not saved to the database, but added to the `airportsDs` datasource of the `DutyFree` editor.
+
+When OK is clicked in the https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[`Airport` editor], the updated instance of the airport is saved both to the database and to the https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/dutyfree/duty-free-edit.xml#L12[`airportsDs` datasource] of the `DutyFree` editor, as the `Airport` entity is fully independent.
+
+The user can create new airports and delete existing ones, and all changes will be saved to the database in separate transactions and to the `airportsDs` datasource as well.
+
+When a user clicks OK in the duty-free edit screen, the updated `DutyFree` instance together with all the updated `AirportDutyFree` instances is submitted to the <<dataManager,DataManager>>.commit() method on the middleware and saved to the database within a single transaction.
+

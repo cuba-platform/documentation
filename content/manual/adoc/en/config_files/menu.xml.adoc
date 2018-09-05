@@ -1,0 +1,177 @@
+:sourcesdir: ../../../source
+
+[[menu.xml]]
+=== menu.xml
+
+The files of this type are used in the application <<app_tiers,blocks>> implementing the <<gui_framework,generic user interface>>, such as the Web Client and the Desktop Client. These files define the main menu structure of the application.
+
+XML schema is available at {xsd_url}/menu.xsd
+
+The file location is specified in the <<cuba.menuConfig,cuba.menuConfig>> application property. When you create a new project in Studio, it creates the `web-menu.xml` file in the root package of the *web* module, for example `modules/web/src/com/company/sample/web-menu.xml`.
+
+The file has the following structure:
+
+`menu-config` – the root element.
+
+Elements of `menu-config` form a tree structure:
+
+* `menu` – a folding menu containing menu items and other folding menus.
++
+--
+`menu` attributes:
+
+** `id` – identifier of an element, used for name localization (see below).
+
+** `description` - a text shown as a tooltip on mouse hover. You can use localized messages from the main message pack.
+
+** `icon` - icon of the menu element. See <<gui_attr_icon,icon>> for details.
+
+** `insertBefore`, `insertAfter` – determines whether the item should be inserted before or after a particular element or a menu item with the specified identifier. This attribute is used to insert an element to an appropriate place in the menu defined in files of <<app_components,application components>>. Before and after elements cannot be used at the same time.
+
+** `stylename` - defines a style name for the menu item. See <<gui_themes>> for details.
+
+`menu` elements:
+
+** `menu`
+
+** `item` – menu item (see below).
+
+** `separator` – separator.
+--
+
+* `item` – menu item.
++
+--
+`item` attributes:
+
+** `id` – unique identifier of an element, used for caption localization (see <<menu.xml_localized,below>>). Can be used as screen `id` for linking to one of the UI screen elements registered in <<screens.xml,screens.xml>> file, if no actions declared. When a user clicks on a menu item, the corresponding screen will be opened in the main application window.
+
+** `bean` - the name of bean which can be obtained by `AppBeans` (e.g. `cuba_Messages`).
+
+** `beanMethod` - the name of method from bean (should be used together with the `bean` attribute).
++
+[source, xml]
+----
+<item bean="cuba_Messages"
+      beanMethod="getMainMessagePack"/>
+----
+
+** `class` - fully qualified name of class which extends `Runnable`.
++
+[source, xml]
+----
+<item class="com.haulmont.cuba.core.sys.SecurityContextAwareRunnable"/>
+----
+
+** `description` - a text which is shown as a tooltip on mouse hover. You can also use localized messages from the main message pack.
++
+[source, xml]
+----
+<item id="ref$Colour.browse"
+      description="mainMsg://carsColours"/>
+----
+
+** `screen` - non-unique screen identifier (e.g. `sec$User.browse`). Can be used as item's `id` if it wasn't defined.
++
+[source, xml]
+----
+<item screen="sec$User.browse"/>
+----
+
+** `shortcut` – a keyboard shortcut for this menu item. Possible modifiers – `ALT`, `CTRL`, `SHIFT` – are separated with "`-`". For example:
++
+[source, properties]
+----
+shortcut="ALT-C"
+shortcut="ALT-CTRL-C"
+shortcut="ALT-CTRL-SHIFT-C"
+----
++
+Shortcuts can also be configured in <<app_properties,application properties>> and then used in `menu.xml` file in the following way:
++
+[source, properties]
+----
+shortcut="${sales.menu.customer}"
+----
+
+** `openType` – screen open mode. The following modes are available: `WindowManager.OpenType`: `++NEW_TAB++`, `++THIS_TAB++`, `DIALOG`, `++NEW_WINDOW++`.
++
+Default value – `++NEW_TAB++`.
++
+`++NEW_WINDOW++` mode is only supported in the Desktop Client. For the Web Client it is equivalent to `++NEW_TAB++` mode.
+
+** `icon` - icon of the menu element. See <<gui_attr_icon,icon>> for details.
+
+** `insertBefore`, `insertAfter` – determines whether the item should be inserted before or after a particular element or a menu item with the specified identifier.
+
+** `resizable` – only relevant to `DIALOG` screen open mode. Controls window resizing ability. Possible values − `true`, `false`.
++
+By default, the main menu does not affect the ability to resize dialog windows.
+
+** `stylename` - defines a style name for the menu item. See <<gui_themes,Themes>> for details.
+
+`item` elements:
+
+** `param` – screen parameters passed to the <<screen_controller,controller's>> `init()` method. The properties configured in `menu.xml` override the parameters set in <<screen_xml,screens.xml>> with the same name.
++
+`param` attributes:
+
+*** `name` – parameter name.
+
+*** `value` – parameter value. String value, may be converted to an arbitrary object according to the following rules:
+
+**** If a string is an entity identifier, specified according to the rules of the `EntityLoadInfo` class, the system loads the specified entity instance.
+
+**** If a string has the format `++${some_name}++`, the value of the parameter will be set to the `some_name` application property.
+
+**** Strings `true` and `false` are converted to the corresponding `Boolean` values.
+
+**** Otherwise, the string itself becomes the parameter value.
+
+** `permissions` – an element defining a set of permissions required to make the menu item available to the current user. This mechanism should only be used when item availability should be tied to a specific permission, or to more than one arbitrary permissions. In most cases, the standard capabilities of the security subsystem should be sufficient to manage the menu item availability based on screen identifiers.
++
+The element should contain nested `permission` elements, each describing a single required permission. The menu item will only be accessible if all permissions are granted.
++
+`permission` attributes:
+
+*** `type` – permission type. The following types are available for `PermissionType`: `SCREEN`, `++ENTITY_OP++`, `++ENTITY_ATTR++`, `SPECIFIC`, `UI`.
+
+*** `target` – an object checked for permission. Depends on permission type:
+
+**** `SCREEN` – screen identifier, for example `sales$Customer.lookup`.
+
+**** `++ENTITY_OP++` – a string formatted as `++{entity_name}:{op}++`, where `{op}` – `read`, `create`, `update`, `delete`. For example: `sales$Customer:create`.
+
+**** `++ENTITY_ATTR++` – a string formatted as `++{entity_name}:{attribute}++`, for example `sales$Customer:name`.
+
+**** `SPECIFIC` – specific permission identifier, for example `sales.runInvoicing`.
+
+**** `UI` – path to a visual component of a screen.
+--
+
+Example of a menu file:
+
+[source, xml]
+----
+<menu-config xmlns="http://schemas.haulmont.com/cuba/menu.xsd">
+
+  <menu id="sales" insertBefore="administration">
+      <item id="sales$Customer.lookup"/>
+      <separator/>
+      <item id="sales$Order.lookup"/>
+  </menu>
+
+</menu-config>
+----
+
+[[menu.xml_localized]]
+A localized name of a menu element is defined the following way: the `menu-config` prefix with a dot at the end is added to the element identifier; the resulting string is used as a key for the <<main_message_pack,main message pack>>. For example:
+
+[source, properties]
+----
+menu-config.sales=Sales
+menu-config.sales$Customer.lookup=Customers
+----
+
+If the `id` is not set, the name of the menu element will be generated from the class name (if the `class` attribute is set) or the bean name and the bean method name (if the `bean` attribute is set), therefore setting the `id` attribute is recommended.
+

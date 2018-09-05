@@ -1,0 +1,95 @@
+:sourcesdir: ../../../../source
+
+[[integration_tests_mw]]
+==== Middleware Integration Tests
+
+In the middle tier, you can create integration tests which run in a fully functional Spring container connected to the database. In such tests you can run code from any layer of the Middleware, from services to ORM.
+
+First, create the `test` directory in your *core* module next to the `src` directory. Re-create IDE project files to be able to run tests from the IDE.
+
+The platform contains the `TestContainer` class which can be used as a base class for the test container in the application project. Create a subclass in the `test` directory of your *core* module and, in its constructor, redefine parameters for loading <<app_components, components>> and <<app_properties_files, application properties>> and test database connection parameters. For example:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_3.java[]
+----
+
+An example of the custom `test-app.properties` file:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_11.java[]
+----
+
+We recommend using a separate test database, which can be created, for example, by the following Gradle <<build.gradle_createDb, task>> defined in `build.gradle`:
+
+[source, groovy]
+----
+include::{sourcesdir}/development/testing_4.java[]
+----
+
+The test container should be used in test classes as a JUnit rule specified by the `@ClassRule` annotation:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_5.java[]
+----
+
+In the example above, the test container is initialized once for all test methods of this class, and disposed after all of them finished.
+
+As the container startup takes some time, you may want to initialize the container once for all tests contained in several test classes. In this case, create a common singleton instance of your test container:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_6.java[]
+----
+
+And use it in your test classes:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_7.java[]
+----
+
+Useful container methods::
++
+--
+The `TestContainer` class contains the following methods that can be used in the test code (see the `CustomerLoadTest` example above):
+
+* `persistence()` – returns the reference to the <<persistence,Persistence>> interface.
+
+* `metadata()` – returns the reference to the <<metadata,Metadata>> interface.
+
+* `deleteRecord()` – this set of overloaded methods is aimed to be used in `@After` methods to clean up the database after tests.
+--
+
+Logging::
++
+--
+The test container sets up logging according to the `test-logback.xml` file provided by the platform. It is contained in the root of the `cuba-core-tests` artifact.
+
+If you want to configure logging levels for your tests, do the following:
+
+* Copy `test-logback.xml` from the platform artifact to the root of the `test` folder of your project's `core` module, e.g. as `my-test-logback.xml`.
+
+* Configure appenders and loggers in `my-test-logback.xml`.
+
+* Add a static initializer to your test container to specify the location of your logback configuration file in the `logback.configurationFile` system property:
++
+[source, java]
+----
+include::{sourcesdir}/development/testing_9.java[]
+----
+--
+
+Additional Data Stores::
++
+--
+If your project uses <<data_store,additional data stores>>, you should create corresponding JDBC data sources in your test container. For example, if you have `mydb` datastore which is a PostgreSQL database, add the following method to the test container class:
+
+[source, java]
+----
+include::{sourcesdir}/development/testing_10.java[]
+----
+--
+

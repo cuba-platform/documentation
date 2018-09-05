@@ -1,0 +1,133 @@
+:sourcesdir: ../../../../source
+
+[[app_components_dev]]
+==== Creating Application Components
+
+This section contains some recommendations useful if you are developing a reusable application component.
+
+[[app_components_dev_naming]]
+Naming rules::
++
+--
+. Choose the root package using the standard reverse-DNS notation, e.g. `com.jupiter.amazingsearch`.
++
+Root package should not begin with a root package of any other component or application. For example, if you have an application with `com.jupiter.tickets` root package, you cannot use `com.jupiter.tickets.amazingsearch` package for a component. The reason is that Spring scans the classpath for the beans starting from the specified root package, and this scanning space must be unique for each component.
+
+. Namespace is used as a prefix for the database tables, so for a public component it should be composite, like `jptams`, not just `search`. It will minimize the risk of name collisions in the target application. You cannot use underscores and dashes in namespace, only letters and digits.
+
+. Module prefix should repeat namespace, but can contain dashes, like `jpt-amsearch`.
+
+. Use namespace as a prefix for bean names and application properties, for example:
++
+[source, java]
+----
+@Component("jptams_Finder")
+@Property("jptams.ignoreCase")
+----
+--
+
+[[app_components_dev_install_local]]
+Installing into the local Maven repository::
++
+--
+In order to make the component available to the projects located on your computer, install it into the local Maven repository by executing the *Run > Install app component* menu command. This command just runs the `install` Gradle task after stopping Gradle daemons.
+--
+
+[[app_components_dev_upload]]
+Uploading to a remote Maven repository::
++
+--
+. Set up a repository as explained in <<private_repo>>.
+
+. Specify your repository and credentials for the project instead of the standard CUBA repository.
+
+. Open `build.gradle` of the component project in a text editor and add `uploadRepository` to the `cuba` section:
++
+[source,groovy]
+----
+include::{sourcesdir}/cookbook/app_comp_upload_1.groovy[]
+----
+
+. Open the component project in Studio.
+
+. In the *Search* dialog (Alt-/), find the `uploadArchives` Gradle task and run it. You can also run this task from the command line. The component's artifacts will be uploaded to your repository.
+
+. Remove the component artifacts from your local Maven repository to ensure that they will be downloaded from the remote repository during the next assembling of the application project: just delete the `.m2/repository/com/company` folder located in your user home directory.
+
+. Now, when you assemble and run the application that uses this component, it will be downloaded from the remote repository.
+--
+
+[[app_components_dev_upload_bintray]]
+Uploading to Bintray::
++
+--
+. Register at https://bintray.com/signup/oss
++
+[TIP]
+====
+You can use social login (GitHub, Gmail, Twitter) on Bintray, but later you will have to reset your password, as this account's password is required for getting an API-key (see below).
+====
+
+. Get the Bintray user name. It can be found in the URL you see after login to Bintray. For example, in `\https://bintray.com/vividphoenix` the `vividphoenix` is the user name.
+
+. Get the API-key. It can be found in Bintray interface if you edit your profile. In the API-key section, you will be asked to input your account password to obtain the key. Then you will be able to use this key and the username for plugin authentication:
++
+** The Bintray credentials can be added as environment variables:
++
+[source, plain]
+----
+BINTRAY_USER=your_bintray_user
+BINTRAY_API_KEY=9696c1cb90752357ded8fdf20eb3fa921bf9dbbb
+----
++
+** Instead of environment variables, you can explicitly define these parameters in the `build.gradle` file of the project:
++
+[source, plain]
+----
+bintray {
+    user = 'bintray_user'
+    key = 'bintray_api_key'
+    ...
+}
+----
++
+** Alternatively, you can provide Bintray credentials in the command line:
++
+[source, plain]
+----
+./gradlew clean assemble bintrayUpload -Pcuba.artifact.version=1.0.0 -PbintrayUser=your_bintray_user -PbintrayApiKey=9696c1cb90752357ded8fdf20eb3fa921bf9dbbb
+----
+
+. Create a public repository of _Maven_ type. Setting a license type is mandatory for open source (OSS) repositories.
++
+Bintray structure implies using packages inside the repositories. At this stage, creating a package is not mandatory, as it will be automatically created while running the `gradle bintrayUpload` task.
+
+. In your `build.gradle`, add the Bintray upload plugin dependency as follows:
++
+[source, groovy]
+----
+include::{sourcesdir}/cookbook/bintray_plugin.groovy[]
+----
+
+. At the end of `build.gradle`, add the Bintray plugin settings:
++
+[source, groovy]
+----
+include::{sourcesdir}/cookbook/bintray_plugin_settings.groovy[]
+----
++
+** here, `pkg:repo` is your repository (use `main`),
+** `pkg:name` is the package name (use your unique name, as `amazingsearch`),
+** `pkg:desc` is the optional package description that will be shown on Bintray interface,
+** and `pkg:userOrg` - is the name of an organization the repo belongs to (if not set, the `BINTRAY_USER` will be used as the organization name by default).
+
+. Now you can build and upload the project with the following command:
++
+[source, plain]
+----
+./gradlew clean assemble bintrayUpload -Pcuba.artifact.version=1.0.0
+----
+
+. If you publish the add-on on the CUBA Marketplace, its repository will be linked to the standard CUBA repositories and users won’t have to specify your repository in their projects.
+--
+

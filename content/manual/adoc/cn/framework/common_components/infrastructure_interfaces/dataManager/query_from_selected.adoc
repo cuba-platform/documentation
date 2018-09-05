@@ -1,0 +1,17 @@
+:sourcesdir: ../../../../../../source
+
+[[query_from_selected]]
+====== Sequential Queries
+
+`DataManager` can select data from the results of previous requests. This capability is used by the <<gui_Filter,generic filter>> for sequential application of filters.
+
+The mechanism works as follows:
+
+* If a `LoadContext` with defined attributes `prevQueries` and `queryKey` is provided, `DataManager` executes the previous query and saves identifiers of retrieved entities in the `SYS_QUERY_RESULT` table (corresponding to `sys$QueryResult` entity), separating the sets of records by user sessions and the query session key `queryKey`.
+
+* The current query is modified to be combined with the results of the previous one, so that the resulting data complies with the conditions of both queries combined by AND.
+
+* The process may be further repeated. In this case the gradually reduced set of previous results is deleted from the `SYS_QUERY_RESULT` table and refilled again.
+
+The `SYS_QUERY_RESULT` table is periodically cleaned of old query results left by terminated user sessions. This is done by the `deleteForInactiveSessions()` method of the `QueryResultsManagerAPI` bean which is invoked by a Spring scheduler defined in `cuba-spring.xml`. By default, it is done once in 10 minutes, but you can set a desired interval in milliseconds using the `cuba.deleteOldQueryResultsInterval` application property of the *core* module.
+

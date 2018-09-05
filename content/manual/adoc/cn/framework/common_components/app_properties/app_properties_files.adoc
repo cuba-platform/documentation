@@ -1,0 +1,52 @@
+:sourcesdir: ../../../../../source
+
+[[app_properties_files]]
+===== Storing Properties in Files
+
+Properties that determine configuration and deployment parameters are specified in special property files named according to the `++*app.properties++` pattern. Each application <<app_tiers,block>> contains a set of such files which is defined as follows:
+
+* For web application blocks (Middleware, Web Client, Web Portal) the set of property files is specified in the `appPropertiesConfig` parameter of <<web.xml,web.xml>>.
+
+* For the Desktop Client block the standard way to specify the set of property files is to override the `getDefaultAppPropertiesConfig()` method in an application class inherited from `com.haulmont.cuba.desktop.App`.
+
+For example, the set of property files of the Middleware block is specified in the `web/WEB-INF/web.xml` file of the *core* module and looks as follows:
+
+[source, xml]
+----
+<context-param>
+    <param-name>appPropertiesConfig</param-name>
+    <param-value>
+        classpath:com/company/sample/app.properties
+        /WEB-INF/local.app.properties
+        "file:${catalina.base}/conf/app-core/local.app.properties"
+    </param-value>
+</context-param>
+----
+
+The `classpath:` prefix means that the corresponding file can be found in the Java classpath, while `file:` prefix means that it should be loaded from the file system. A path without such prefix means the path inside the web application relative to its root. Java system properties can be used: in this example, `catalina.home` is the Tomcat installation path.
+
+An order in which files are declared is important because the values, specified in each subsequent file override the values of the properties with the same name, specified in the preceding files.
+
+The last file in the above set is `local.app.properties`. It can be used to override application properties upon deployment. If the file does not exist, it is silently ignored. You can create this file on the application server and define all properties specific to the environment in it. As a result, the settings will be separated from the application, and you will be able to update the application without fear of losing the specific configuration information. The <<tomcat_in_prod>> section contains an example of using the `local.app.properties` file.
+
+For Desktop Client, JVM command line arguments serve as an equivalent of `local.app.properties`. In this block, the properties loader treats all the arguments containing "=" sign as a key/value pair and uses them to replace corresponding application properties specified in `app.properties` files.
+
+[TIP]
+====
+Use the following rules when create `*.properties` files:
+
+* File encoding – `UTF-8`.
+
+* The key can contain Latin letters, numbers, periods and underscores.
+
+* The value is entered after (`=`) sign.
+
+* Do not quote values using " or ' brackets.
+
+* Set file paths either in UNIX (`/opt/haulmont/`) or Windows (`c:\\haulmont\\`) format.
+
+* You can use `\n \t \r` codes. The `\` sign is a reserved code, use `\\` to insert it in a value. See more at: link:$$http://docs.oracle.com/javase/tutorial/java/data/characters.html$$[http://docs.oracle.com/javase/tutorial/java/data/characters.html].
+
+* To enter a multi-line value, use `\` sign at the end of each line .
+====
+

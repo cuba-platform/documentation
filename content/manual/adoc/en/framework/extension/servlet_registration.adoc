@@ -1,0 +1,51 @@
+:sourcesdir: ../../../../source
+
+[[servlet_registration]]
+==== Registration of Servlets and Filters
+
+To use servlets and security filters, defined in the <<app_components,application component>>, in the owning application you need to register them in this component. The servlets are normally registered in the <<web.xml,web.xml>> configuration file, however, this configuration is not propagated in the application where this app component is used.
+
+The `ServletRegistrationManager` bean enables to register servlets and filters dynamically with correct ClassLoader and enables using such static classes as <<appContext,AppContext>>. It also guarantees the correct work for all <<deployment_variants,deployment options>>.
+
+`ServletRegistrationManager` has two methods:
+
+. `createServlet()` - creates a servlet of the given servlet class. It loads the servlet class with the correct `ClassLoader` that is obtained from the application context object. It means that a new servlet will be able to use static classes, for example, `AppContext` or <<messages,Messages>> bean.
+
+. `createFilter()` - create filters in the same way.
+
+In order to use this bean, we recommend creating a managed initializer bean in the application component. This bean should be annotated with the `@Component` annotation and contain event listeners that are subscribed to the application context initialization and destroy: <<ServletContextInitializedEvent,ServletContextInitializedEvent>> and `ServletContextDestroyedEvent`.
+
+An example of such bean:
+
+[source, java]
+----
+include::{sourcesdir}/extension/WebInitializer.java[]
+----
+
+Here, the `WebInitializer` class has only one event listener which is used to register an HTTP servlet from an application component in the owning application.
+
+The `createServlet()` method takes the application context obtained from `ServletContextInitializedEvent` and the HTTP servlet FQN. Then we register the servlet by its name (`my_servlet`) and define HTTP-mapping (`/myservlet/`). Now, if you add this app component to you application, `MyHttpServlet` will be registered right after the initialization of servlet and application contexts.
+
+For more complex example, see the <<servlet_registration_sample,Registering DispatcherServlet from Application Component>> section.
+
+[[servlet_registration_single_war]]
+Registration of Servlets for single WAR deployment::
++
+--
+For correct class loading of custom filters and servlets in <<build.gradle_buildWar_single,single WAR deployment>>, follow the steps below:
+
+. Create a class that extends `javax.servlet.ServletContextListener`. This class will be in charge of servlets/filters creation:
++
+[source, java]
+----
+include::{sourcesdir}/extension/CustomWebListener.java[]
+----
+
+. Add a new parameter `context-param` in the `single-war-web.xml` file with the reference to the created class:
++
+[source, xml]
+----
+include::{sourcesdir}/extension/servlet_registration_single_war.xml[]
+----
+--
+

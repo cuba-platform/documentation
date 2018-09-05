@@ -1,0 +1,79 @@
+:sourcesdir: ../../../../source
+
+[[war_deployment]]
+==== Развертывание WAR в Jetty
+
+Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Jetty*. Предполагается, что приложение использует СУБД PostgreSQL.
+
+. Используйте страницу *Deployment settings > WAR* в Studio или вручную добавьте в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_1.groovy[]
+----
++
+В данном случае собирается два WAR-файла, отдельно для блоков Middleware и Web Client.
+
+. Запустите сборку, выбрав `buildWar` в диалоге *Search* в Studio, или через командную строку (подразумевается что Gradle wrapper создан заранее):
++
+[source, plain]
+----
+gradlew buildWar
+----
++
+В результате в подкаталоге `build\distributions\war` проекта будут созданы файлы `app-core.war` и `app.war`.
+
+. Создайте домашний каталог приложения на сервере, например, `c:\work\app_home`.
+
+. Загрузите и установите сервер Jetty, например в каталог `c:\work\jetty-home`. Данный пример тестировался на версии `jetty-distribution-9.3.6.v20151106.zip`.
+
+. Создайте каталог `c:\work\jetty-base`, откройте в нем командную строку и выполните:
++
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar --add-to-start=http,jndi,deploy,plus,ext,resources
+----
+
+. Создайте файл `c:\work\jetty-base\app-jetty.xml` следующего содержания (для БД PostgreSQL с именем `test`):
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/warDeployment_2.xml[]
+----
++
+Файл `app-jetty.xml` для MS SQL должен соответствовать следующему шаблону:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/warDeployment_5.xml[]
+----
+
+. Дополнительно (в частности, для MS SQL) может потребоваться скачать следующие JAR-файлы и добавить их в папку `c:\work\jetty-base\lib\ext`:
++
+[source, plain]
+----
+commons-pool2-2.4.2.jar
+commons-dbcp2-2.1.1.jar
+commons-logging-1.2.jar
+----
+
+. Добавьте следующий текст в начало файла `c:\work\jetty-base\start.ini`:
++
+[source, plain]
+----
+include::{sourcesdir}/deployment/warDeployment_3.ini[]
+----
+
+. Скопируйте JDBC-драйвер используемой базы данных в каталог `c:\work\jetty-base\lib\ext`. Файл драйвера можно взять из каталога `lib` CUBA Studio, либо из каталога `build\tomcat\lib` проекта. В случае PostgreSQL это файл `postgresql-9.1-901.jdbc4.jar`.
+
+. Скопируйте файлы WAR в каталог `c:\work\jetty-base\webapps`.
+
+. Откройте командную строку в каталоге `c:\work\jetty-base` и выполните:
++
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar
+----
+
+. Откройте `++http://localhost:8080/app++` в веб-браузере.
+

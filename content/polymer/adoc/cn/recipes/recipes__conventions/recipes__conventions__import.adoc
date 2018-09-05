@@ -1,0 +1,110 @@
+:sourcesdir: ../../../../source
+
+[[recipes__conventions__import]]
+==== Managing Imports
+
+In this section, we consider the problem of correct usage of HTML imports.
+
+Let's look at the next example.
+There are 2 components.
+The first one contains a paper button and a 2nd component.
+The 2nd component also contains a paper button.
+The buttons do nothing, but the example demonstrates some interesting details about imports.
+
+[subs="none"]
+++++
+
+<link rel="import" href="html/src/recipes/convention/import/parent-button-component.html">
+
+<div class="polymer-demo-container">
+    <parent-button-component></parent-button-component>
+</div>
+
+++++
+
+*Source code:*
+
+.index.html
+[source, html]
+----
+<html>
+<head>
+	<link rel="import" href="src/recipes/convention/import/parent-button-component.html">
+	<script src="bower_components/webcomponentsjs/webcomponents-loader.js"></script>
+</head>
+<body>
+    <parent-button-component></parent-button-component>
+</body>
+</html>
+----
+
+.src/recipes/convention/import/parent-button-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/import/parent-button-component.html[]
+----
+
+.src/recipes/convention/import/child-button-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/import/child-button-component.html[]
+----
+
+As you can see, we forgot to import the button component into the child component but the example application still works.
+
+What will happen if we later refactor our `parent-button-component` and decide that
+the simple HTML `<button/>` will suffice and remove `paper-button`?
+See below.
+
+.src/recipes/convention/import/parent-simple-button-component.html
+[source, html]
+----
+include::{sourcesdir}/polymer-build/src/recipes/convention/import/parent-simple-button-component.html[]
+----
+
+*Result*
+
+[subs="none"]
+++++
+    <iframe
+        height="50"
+        class="polymer-iframe-container"
+        src="html/src/recipes/convention/import/iframe/parent-simple-button-component-app.html">
+
+    </iframe>
+++++
+
+So, we have broken the child component involuntary.
+
+It's a simple case to present a matter.
+In real applications, there are dozens of components that import each other.
+So, `paper-button` could be used not in a direct child but in one of the great-great-great-grandchild components.
+After a complex refactoring, it's possible to not notice that something broke.
+And when you finally discover that something doesn't work, it can be difficult to find a cause.
+
+But there can be even more complicated cases.
+In our example, we imported `paper-button` into the parent component and didn't import it into the child component.
+But we could do the opposite thing: import it into the child component and do not import it into the parent one.
+And it would work! Apparently, in this case it can be broken even easier.
+
+The point of all this is that we should use imports carefully.
+We recommend importing all required components in each custom component,
+and if you remove some HTML code later, check and remove redundant imports.
+In this case, all your components are guaranteed to work when other components are removed or refactored.
+
+There is an ability to check imports automatically by running `polymer lint` command. In order to use it, you must install
+ https://www.polymer-project.org/2.0/docs/tools/polymer-cli[polymer-cli].
+
+There are other conventions that can be used.
+For example, you can import all paper and iron elements in a root component and use them afterwards everywhere
+without import statements.
+Or you can even import all components in your root component, so you won't need to use imports elsewhere in the code.
+The choice should be made by each team based on their preferences.
+In this case any convention, good or bad, is better than no convention at all.
+
+[TIP]
+====
+If you bundle your client code before production, the problem is entirely in the area of development environment.
+Production and test code has no import statements because there is a single HTML file containing all code.
+====
+

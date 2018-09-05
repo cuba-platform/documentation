@@ -1,0 +1,145 @@
+:sourcesdir: ../../../../source
+
+[[rest_api_v2_ex_json_transformations]]
+==== Data Model Versioning Example
+
+Entity attribute was renamed::
++
+--
+Let's suppose that the `oldNumber` attribute of the `sales$Order` entity was renamed to `newNumber` and `date` was renamed to `deliveryDate`. In this case transformation config will be like this:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-attr-renamed-config.xml[]
+----
+
+If the client app needs to work with the old version of the `sales$Order` entity then it must pass the `modelVersion` value in the URL parameter:
+
+`\http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.0`
+
+The following result will be returned:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-attr-renamed-response.json[]
+----
+
+The response JSON contains an `oldNumber` and `date` attributes although the entity in the CUBA application has `newNumber` and `deliveryDate` attributes.
+--
+
+Entity name was changed::
++
+--
+Next, let's imagine, that in some next release of the application a name of the `sales$Order` entity was also changed. The new name is `sales$NewOrder`.
+
+Transformation config for version `1.1` will be like this:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-entity-name-changed-config.xml[]
+----
+
+In addition to the config from the previous example an `oldEntityName` attribute is added here. It specifies the entity name that was valid for model version `1.1`. The `currentEntityName` attribute specifies the current entity name.
+
+Although an entity with a name `sales$Order` doesn't exist anymore, the following request will work:
+
+`\http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1`
+
+The REST API controller will understand that it must search among `sales$NewOrder` entities and after the entity with given id is found names of the entity and of the `newNumber` attribute will be replaced in the result JSON:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-entity-name-changed-response.json[]
+----
+
+The client app can also use the old version of data model for entity update and creation.
+
+This *POST* request that uses old entity name and has old JSON in the request body will work:
+
+`\http://localhost:8080/app/rest/v2/entities/sales$Order`
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-entity-name-changed-response.json[]
+----
+--
+
+Entity attribute must be removed from JSON::
++
+--
+If some attribute was added to the entity, but the client that works with the old version of data model doesn't expect this new attribute, then the new attribute can be removed from the result JSON.
+
+Transformation configuration for this case will look like this:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-attr-removed-config.xml[]
+----
+
+Transformation in this config file contains a `toVersion` tag with a nested `removeAttribute` command. This means that when the transformation from the current state to specific version is performed (i.e. when you request a list of entities) then a `discount` attribute must be removed from the result JSON.
+
+In this case if you perform the request without the `modelVersion` attribute, the discount attribute will be returned:
+
+`\http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93`
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-attr-removed-response-2.json[]
+----
+
+If you specify the `modelVersion` then `discount` attribute will be removed
+
+`\http://localhost:8080/app/rest/v2/entities/sales$Order/c838be0a-96d0-4ef4-a7c0-dff348347f93?modelVersion=1.1`
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-transform-attr-removed-response.json[]
+----
+--
+
+Using custom transformer::
++
+--
+You can also create and register a custom JSON transformer. As an example let's examine the following situation: there was an entity `sales$OldOrder` that was renamed to `sales$NewOrder`. This entity has an `orderDate` field. In the previous version, this date field contained a time part, but in the latest version of the entity, the time part is removed. REST API client that request the entity with an old model version `1.0` expects the date field to have the time part, so the transformer must modify the value in the JSON.
+
+First, that's how the transformer configuration must look like:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-custom-config.xml[]
+----
+
+There are a `custom` element and nested `toVersion` and `fromVersion` elements. These elements have a reference to the transformer bean. This means that custom transformer must be registered as a Spring bean. There is one important thing here: a custom transformer may use the `RestTransformations` platform bean (this bean gives an access to other entities transformers if it is required). But the `RestTransformations` bean is registered in the Spring context of the REST API servlet, not in the main context of the web application. This means that custom transformer beans must be registered in the REST API Spring context as well.
+
+That's how we can do that.
+
+First, create a `rest-dispatcher-spring.xml` in the *web* or *portal* module (e.g. in package `com.company.test`).
+
+Next, register this file in the `app.properties` of the web or portal module:
+
+[source, properties]
+----
+cuba.restSpringContextConfig = +com/company/test/rest-dispatcher-spring.xml
+----
+
+The `rest-dispatcher-spring.xml` must contain custom transformer bean definitions:
+
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-transform-dispatcher-spring.xml[]
+----
+
+The content of the `sales_OrderJsonTransformerToVersion` transformer is as follows:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderJsonTransformerToVersion.java[]
+----
+
+This transformer finds the `orderDate` node in the JSON object and modifies its value by adding the time part to the value.
+
+When the `sales$OldOrder` entity with a data model version `1.0` is requested, the result JSON will contain entities with `orderDate` fields that contain time part, although it is not stored in the database anymore.
+
+A couple more words about custom transformers. They must implement the `EntityJsonTransformer` interface. You can also extend the `AbstractEntityJsonTransformer` class and override its `doCustomTransformations` method. The `AbstractEntityJsonTransformer` contains all functionality of the standard transformer.
+--
+

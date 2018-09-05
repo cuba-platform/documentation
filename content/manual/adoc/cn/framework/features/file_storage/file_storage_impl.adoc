@@ -1,0 +1,42 @@
+:sourcesdir: ../../../../../source
+
+[[file_storage_impl]]
+===== Standard File Storage Implementation
+
+The standard implementation stores files in a dedicated folder structure within one or several file locations.
+
+The roots of the structure can be defined in the <<cuba.fileStorageDir,cuba.fileStorageDir>> application property in the format of comma-separated paths list. For example:
+
+[source, properties]
+----
+cuba.fileStorageDir=/work/sales/filestorage,/mnt/backup/filestorage
+----
+
+If the property is not defined, the storage will be located in the `filestorage` sub-folder of the Middleware's <<work_dir,work directory>>. This folder is `tomcat/work/app-core/filestorage` in standard Tomcat deployment.
+
+With several locations defined, the storage behaves as follows:
+
+* First folder in the list is considered as _primary_, others – as _backup_.
+
+* Stored files are first placed in the primary folder, and then copied to all of the backup directories.
++
+The system checks that each folder is accessible before storing a file. If the primary directory is not accessible, the system throws an exception without storing the file. If any of the backup directories are not accessible, the file gets stored in available ones and the corresponding error is logged.
+
+* The files are read from the primary directory.
++
+If the primary directory is not accessible, the system reads files from the first available backup directory containing the required files. A corresponding error is logged.
+
+The storage folder structure is organized in the following way:
+
+* There are three levels of subdirectories representing the files upload date – year, month, and day.
+
+* The actual files are saved in the `day` directory. The file names match the identifiers of the corresponding `FileDescriptor` objects. The file extension matches that of the source file.
+
+* The root folder of the structure contains a `storage.log` file with the information on each stored file, including the user and upload time. This log is not required for operation of the storage mechanism, but it could be useful for troubleshooting.
+
+The `app-core.cuba:type=FileStorage` JMX bean displays the current set of storage roots and offers the following methods for troubleshooting:
+
+* `findOrphanDescriptors()` – finds all instances of `FileDescriptor` in the database that do not have a matching file in the storage.
+
+* `findOrphanFiles()` – finds all files in the storage that do not have a corresponding `FileDescriptor` instance in the database.
+

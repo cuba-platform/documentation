@@ -1,0 +1,65 @@
+:sourcesdir: ../../../../../../source
+
+[[config_interface_property_types]]
+====== Типы свойств
+
+"Из коробки" платформой поддерживаются следующие типы свойств:
+
+* `String`, простые типы и их объектные обертки (`boolean`, `Boolean`, `int`, `Integer`, etc.).
+
+* Перечисления (`enum`). Значение свойства сохраняется в файле или БД в виде имени значения перечисления.
++
+Если перечисление реализует интерфейс `EnumClass` и имеет статический метод `fromId()` для получения значения по идентификатору, с помощью аннотации `@EnumStore` можно задать хранение значения в виде идентификатора. Например:
++
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_8.java[]
+----
+
+* Классы персистентных <<data_model,сущностей>>. При обращении к свойству типа сущности происходит загрузка из БД экземпляра, заданного значением свойства.
+
+Для поддержки произвольного типа необходимо реализовать классы `TypeStringify` и `TypeFactory` для преобразования значения в строку и из нее, и указать эти классы для свойства с помощью аннотаций `@Stringify` и `@Factory`.
+
+Рассмотрим этот процесс на примере типа `UUID`.
+
+* Создаем класс `com.haulmont.cuba.core.config.type.UuidTypeFactory` унаследованный от `com.haulmont.cuba.core.config.type.TypeFactory` и реализуем в нем метод:
++
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_4.java[]
+----
+
+* `TypeStringify` создавать не нужно, т.к. по умолчанию будет использован метод `toString()` − в данном случае он нам подходит.
+
+* Аннотируем свойство в конфигурационном интерфейсе:
++
+[source, java]
+----
+include::{sourcesdir}/common/configinterface_5.java[]
+----
+
+В платформе определены реализации `TypeFactory` для следующих типов:
+
+* `UUID` - `UuidTypeFactory`, описано выше.
+
+* `java.util.Date` - `DateFactory`. Значение даты должно быть указано в формате `yyyy-MM-dd HH:mm:ss.SSS`, например:
++
+[source, properties]
+----
+cuba.test.dateProp = 2013-12-12 00:00:00.000
+----
+
+* `List<Integer>` (список целых чисел) - `IntegerListTypeFactory`. Значение свойства должно быть указано в виде списка чисел, разделенных пробелами, например:
++
+[source, properties]
+----
+cuba.test.integerListProp = 1 2 3
+----
+
+* `List<String>` (список строк) - `StringListTypeFactory`. Значение свойства должно быть указано в виде списка строк, разделенных символом "|", например:
++
+[source, properties]
+----
+cuba.test.stringListProp = aaa|bbb|ccc
+----
+

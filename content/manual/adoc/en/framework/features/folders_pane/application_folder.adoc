@@ -1,0 +1,71 @@
+:sourcesdir: ../../../../../source
+
+[[application_folder]]
+===== Application Folders
+
+Creating application folders requires special <<permissions,permissions>> to create/edit application folders (`cuba.gui.appFolder.global`).
+
+A simple application folder can be created via the folder panel context menu. Such folder will not be connected to the system screens and can be only used to group other folders within a folder tree.
+
+A folder that opens a screen with a filter can be created as follows:
+
+* Open a screen and filter the records as necessary.
+
+* Select *Save as application folder* option in the *Filter...* button menu.
+
+* Fill in the folder attributes in the *Add* dialog:
+
+** *Folder name*.
+
+** *Window title* – a string to be added to the window title when opening it from the folder.
+
+** *Parent folder* – determines the location of the new folder in the folder tree.
+
+** *Visibility script* – a Groovy script defining folder visibility, executed at the start of user session.
++
+The script should return a `Boolean`. The folder is visible, if the script is not defined or returns `true` or `null`. Example of a Groovy script:
++
+[source, groovy]
+----
+userSession.currentOrSubstitutedUser.login == 'admin'
+----
+
+** *Count script* – a Groovy script defining the record count and display style for a folder. Executed at the start of the user session and on timer.
++
+The script should return a numeric value, the integer part of which will be used as the record count value. If the script is not defined or returns `null`, the counter will not be displayed. In addition to the returned value, the script can also set the `style` variable, which will be used as folder display style. Example of a Groovy script:
++
+[source, java]
+----
+def em = persistence.getEntityManager()
+def q = em.createQuery('select count(o) from sales$Order o')
+def count = q.getSingleResult()
+
+style = count > 0 ? 'emphasized' : null
+return count
+----
++
+In order for the style to be displayed, the application theme should contain this style for the `v-tree-node` element in `cuba-folders-pane`, for example:
++
+[source, css]
+----
+.c-folders-pane .v-tree-node.emphasized {
+  font-weight: bold;
+}
+----
+
+Scripts can use the following variables defined in the `groovy.lang.Binding` context:
+
+* `folder` – an instance of `AppFolder` entity for which the script is executed.
+
+* `userSession` – instance of <<userSession,UserSession>> for current user session.
+
+* `persistence` – implementation of the <<persistence,Persistence>> interface.
+
+* `metadata` – implementation of the <<metadata,Metadata>> interface.
+
+The platform uses the same instance of `groovy.lang.Binding` for all scripts when the folders are being updated. So it is possible to pass variables between them in order to eliminate duplicate requests and increase performance.
+
+Script sources can be stored within the attributes of the `AppFolder` entity or in separate files. In the latter case, the attribute should include a file path with a mandatory ".groovy" extension, as required by the <<resources,Resources>> interface. If an attribute contains a string ending with ".groovy", the script will be loaded from the corresponding file; otherwise, the attribute content itself will be used as a script.
+
+Application folders are instances of the `AppFolder` entity and are stored in the related *SYS_FOLDER* and *SYS_APP_FOLDER* tables.
+

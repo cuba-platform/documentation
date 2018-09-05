@@ -1,0 +1,57 @@
+:sourcesdir: ../../../../../source
+
+[[message_packs]]
+===== Message Packs
+
+A message pack is a set of property files with the names in `++messages{_XX}.properties++` format located in a single Java package. `XX` suffix indicates the language of the messages in this file and corresponds to the language code in `Locale.getLanguage()`. It is also possible to use other `Locale` attributes, for example, `country`. In this case the message pack file will look like `++messages{_XX_YY}.properties++`. One of the files in the pack can have no language suffix – it is the _default file_. The name of the message pack corresponds to the name of the Java package, which contains the pack files.
+
+Let us consider the following example:
+[source, properties]
+----
+/com/abc/sales/gui/customer/messages.properties
+/com/abc/sales/gui/customer/messages_fr.properties
+/com/abc/sales/gui/customer/messages_ru.properties
+/com/abc/sales/gui/customer/messages_en_US.properties
+----
+
+This pack consists of 4 files – one for Russian, one for French, one for American English (with US country code), and a default file. The name of the pack is `com.abc.sales.gui.customer`.
+
+Message files contain key/value pairs, where the key is the message identifier referenced by the application code, and the value is the message itself in the language of the file. The rules for matching pairs are similar to those of `java.util.Properties` property files with the following specifics:
+
+* File encoding – `UTF-8` only.
+
+* Including other message packs is supported using `@include` key. Several packs can be included using comma-separated list. In this case, if some message key is found in both the current and the included pack, the message from the current pack will be used. Example of including packs:
++
+[source, properties]
+----
+@include=com.haulmont.cuba.web, com.abc.sales.web
+
+someMessage=Some Message
+...
+----
+
+Messages are retrieved from the packs using <<messages,Messages>> interface methods according to the following rules: 
+
+* At first step the search is performed in the application <<conf_dir,configuration directory>>.
+
+** `++messages_XX.properties++` file is searched in the directory specified by the message pack name, where `XX` is the code of the required language.
+
+** If there is no such file, default `messages.properties` file is searched in the same directory.
+
+** If either the required language file or the default file is found, it is loaded together with all `@include` files, and the key message is searched in it.
+
+** If the file is not found or it does not contain the proper key, the directory is changed to the parent one and the search procedure is repeated. The search continues until the root of the configuration directory is reached.
+
+* If the message is not found in the configuration directory, the search is performed in classpath according to the same algorithm.
+
+* If the message is found, it is cached and returned. If not, the fact that the message is not present is cached as well and the key which was passed for search is returned. Thus, the complex search procedure is only performed once and further on the result is loaded from the local cache of the application block.
+
+[TIP]
+====
+It is recommended to organize message packs as follows:
+
+* If the application is not intended for internationalization, you can include message strings directly into the application code instead of using packs or use `messages.properties` default files to separate resources from code.
+
+* If the application is international, it is reasonable to use default files for the language of the application primary audience or for the English language, so that the messages from these default files are displayed to the user if the messages in the required language are not found.
+====
+

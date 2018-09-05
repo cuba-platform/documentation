@@ -1,0 +1,115 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_validator]]
+====== Validator
+
+Validator is designed to check values entered into visual components.
+
+[WARNING]
+====
+Validation and input type checking should be differentiated. If a given component (e.g. <<gui_TextField,TextField>>) data type is set to anything different than string (this can happen when binding to an entity attribute or setting `datatype`), then the component will not allow the user to enter a value that does not comply with this data type.  When the component loses focus or when the user presses Enter, the component will show the previous correct value.
+
+On the other hand, validation does not act immediately on data entry or focus loss, but rather when the component's `validate()` method is invoked. It means that the component (and the entity attribute that it is linked to) may temporarily contain a value, which does not comply with the conditions of validation. It should not be a problem because the validated fields are typically located in <<screen_edit,edit screens>>, which automatically invoke validation for all their fields before commit. If the component is located not in an edit screen, its `validate()` method should be invoked explicitly in the screen controller.
+====
+
+In a screen XML-descriptor, a component validator can be defined in a nested `validator` elements. The `validator` element can have the following attributes:
+
+* `script` − path to a Groovy script performing validation.
+
+* `class` − name of a Java class implementing the `Field.Validator` interface.
+
+Groovy validator scripts and standard classes of Java validators, located in the `com.haulmont.cuba.gui.components.validators` package support `message` attribute − a message displayed to a user when validation fails. The attribute value should contain either a message or a message key from the <<message_packs,messages pack>> of the current screen. For example:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validator_1.xml[]
+----
+
+[source, properties]
+----
+include::{sourcesdir}/gui_vcl/validator_1.properties[]
+---- 
+
+Validator can be added using CUBA Studio interface. Below is an example of adding a validator to the `fieldGroup` field:
+
+image::gui_validator.png[align="center"]
+
+The validation mechanism is selected as follows:
+
+* If the value of the `script` attribute is not set and the `validator` element itself does not contain text with a Groovy expression, then the system will use a class defined in the `class` attribute as a validator.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validator_6.xml[]
+----
+
+* If the `validator` element contains text, it will be used as a Groovy expression and executed using <<scripting,Scripting>>.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validator_5.xml[]
+----
+
+* Otherwise, the system will use <<scripting,Scripting>> to run a Groovy script defined in the `script` attribute.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validator_7.xml[]
+----
+
+The `value` variable will be passed to a Groovy expression or script. It contains the value entered into a visual component. The expression or the script should return a `boolean` value: `true` − valid, `false` − not valid.
+
+If a Java class is being used as a validator, it should have a default constructor without parameters or a constructor with the following set of parameters: 
+
+* `org.dom4j.Element`, `String` – this constructor will receive the validator XML-element and the message pack name of the screen.
+
+* `org.dom4j.Element` – this constructor will receive the validator XML-element.
+
+[TIP]
+====
+If the validator is implemented as an internal class, it should be declared with a `static` modifier and its name should be separated by "$", for example:
+
+`<validator class="com.sample.sales.gui.AddressEdit$ZipValidator"/>`
+====
+
+The platform contains the set of implementations for the most frequently used validators (see `com.haulmont.cuba.gui.components.validators` package), which can be used in your project:
+
+* `DateValidator`
+
+* `DoubleValidator`
+
+* `EmailValidator`
+
+* `IntegerValidator`
+
+* `LongValidator`
+
+* `PatternValidator`
+
+* `ScriptValidator`
+
+* `StringValidator`
+
+A validator class can be assigned to a component not only using a screen XML-descriptor, but also programmatically – by submitting a validator instance into the component's `addValidator()` method.
+
+Example of creating a validator class for zip codes:
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validator_2.java[]
+---- 
+
+Example of using a zip code validator and a standard pattern validator for fields of a <<gui_FieldGroup,FieldGroup>> component:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validator_3.xml[]
+---- 
+
+Example of setting a validator programmatically in a screen controller: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validator_4.java[]
+---- 
+

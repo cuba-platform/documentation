@@ -1,0 +1,497 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_Table]]
+====== Table
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-table" class="live-demo-btn" target="_blank">ДЕМОНСТРАЦИЯ</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/gui/components/Table.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Компонент `Table` позволяет выводить информацию в табличном виде, сортировать данные, управлять колонками и заголовками таблицы, вызывать действия для выбранных строк.
+
+image::gui_table.png[align="center"]
+
+XML-имя компонента: `table`
+
+Компонент реализован для блоков *Web Client* и *Desktop Client*. 
+
+Пример описания таблицы в XML-дескрипторе экрана: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/table_1.xml[]
+----
+
+Здесь в элементе `dsContext` определен <<datasources,источник данных>> `collectionDatasource`, который выбирает сущности `Order` с помощью <<jpql,JPQL>> запроса `select o from sales$Order o order by o.date`. Для компонента `table` в элементе `rows` указывается используемый источник данных, а в элементе `columns` - какие атрибуты сущности, содержащейся в источнике данных, использовать в качестве колонок.
+
+Элементы `table`:
+
+[[gui_Table_rows]]
+* `rows` - обязательный элемент, в атрибуте `datasource` которого необходимо объявить используемый таблицей <<datasources,источник данных>>.
++
+Для строк можно настроить отображение заголовков - задать каждой строке свой значок в дополнительной колонке слева. Для этого в контроллере экрана необходимо реализовать интерфейс `ListComponent.IconProvider` и установить его таблице:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableIconProvider_1.java[]
+---- 
+
+[[gui_Table_columns]]
+* `columns` - обязательный элемент, определяет набор колонок таблицы.
++
+Каждая колонка описывается во вложенном элементе `column` со следующими атрибутами:
++
+--
+[[gui_Table_column_id]]
+** `id` − обязательный атрибут, содержит название атрибута сущности, выводимого в колонке. Может быть как непосредственным атрибутом сущности, находящейся в источнике данных, так и атрибутом связанной сущности - переход по графу объектов обозначается точкой. Например: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableId_1.xml[]
+---- 
+
+[[gui_Table_column_caption]]
+** `caption` − необязательный атрибут, содержит заголовок колонки. Если не задан, будет отображено <<entity_localization,локализованное название атрибута>> сущности.
+
+[[gui_Table_column_collapsed]]
+** `collapsed` − необязательный атрибут, при указании `true` колонка будет изначально скрыта. Пользователь может управлять отображением колонок с помощью меню, доступного по кнопке image:gui_table_columnControl.png[] в правой верхней части таблицы, если атрибут `columnControlVisible` таблицы не `false`. По умолчанию `collapsed` имеет значение `false`.
+
+[[gui_Table_column_width]]
+** `width` − необязательный атрибут, отвечает за изначальную ширину колонки. Может принимать только числовые значения в пикселах.
+
+[[gui_Table_column_align]]
+** `align` - необязательный атрибут, устанавливает выравнивание текста в ячейках данной колонки. Возможные значения: `LEFT`, `RIGHT`, `CENTER`. По умолчанию `LEFT`.
+
+[[gui_Table_column_editable]]
+** `editable` − необязательный атрибут, разрешает/запрещает редактирование данной колонки в редактируемой таблице. Чтобы колонка была редактируемой, атрибут <<gui_Table_editable,editable>> всей таблицы также должен быть установлен в `true`. Динамическое изменение значения этого атрибута не поддерживается.
+
+[[gui_Table_column_sortable]]
+** `sortable` − необязательный атрибут, позволяющий запретить сортировку колонки. Вступает в действие, если атрибут <<gui_Table_sortable,sortable>> всей таблицы установлен в `true` (что имеет место по умолчанию).
+
+[[gui_Table_column_maxTextLength]]
+** `maxTextLength` - необязательный атрибут, позволяет ограничивать количество символов в ячейке. При этом если разница между фактическим и допустимым количеством символов не превышает порог в 10 символов, "лишние" символы не скрываются. Для просмотра полной записи надо кликнуть на ее видимую часть. Пример колонки с ограничением в 5 символов:
++
+image::gui_table_column_maxTextLength.png[align="center"]
+
+[[gui_Table_column_link]]
+** `link` - установка атрибута в `true` позволяет отобразить в ячейке таблицы ссылку на экран просмотра экземпляра сущности (поддерживается только для *Web Client*). Атрибут `link="true"`) может указываться и для колонок примитивных типов: в этом случае, при нажатии на ссылку будет открываться редактор основной сущности таблицы. Такой подход может применяться для упрощения навигации - пользователи смогут открывать редактор одним кликом по некоторому ключевому атрибуту.
+
+[[gui_Table_column_linkScreen]]
+** `linkScreen` - позволяет указать идентификатор экрана, который будет открыт по нажатию на ссылку, включенную свойством `link`.
+
+[[gui_Table_column_linkScreenOpenType]]
+** `linkScreenOpenType` - задает режим открытия экрана (`++THIS_TAB++`, `++NEW_TAB++` или `DIALOG`).
+
+[[gui_Table_column_linkInvoke]]
+** `linkInvoke` - позволяет заменить открытие окна на вызов метода контроллера.
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_4.java[]
+----
+
+[[gui_Table_column_captionProperty]]
+** `captionProperty` - имя атрибута сущности, который должен быть отображен в колонке вместо указанного в <<gui_Table_column_id,id>>. Например, если имеется связанная сущность `Priority` с атрибутами `name` и `orderNo`, можно определить следующую колонку:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableColumnCaptionProperty_1.xml[]
+----
++
+В этом случае в колонке будет отображаться название приоритета, а сортировка колонки будет осуществляться по атрибуту `orderNo`.
+
+[[gui_Table_column_generator]]
+** необязательный атрибут `generator` содержит ссылку на метод в контроллере экрана, который создает визуальный компонент для отображения содержимого ячейки:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/table_generator.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_generator.java[]
+----
++
+Он может быть использован вместо передачи реализации `Table.ColumnGenerator` в метод <<gui_Table_addGeneratedColumn,addGeneratedColumn()>>.
+
+** Элемент `column` может содержать вложенный элемент <<gui_formatter,formatter>> для представления значения атрибута в виде, отличном от стандартного для данного <<datatype,Datatype>>: 
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableFormatter_1.xml[]
+----
+--
+
+[[gui_Table_rowsCount]]
+* `rowsCount` − необязательный элемент, создающий для таблицы компонент `RowsCount`, который позволяет загружать в таблицу данные постранично. Размер страницы задается путем ограничения количества записей в источнике данных методом `CollectionDatasource.setMaxResults()`. Как правило, это делает связанный с источником данных таблицы компонент <<gui_Filter,Filter>>, однако при отсутствии универсального фильтра можно вызвать этот метод и напрямую из контроллера экрана.
++
+Компонент `RowsCount` может также отобразить общее число записей, возвращаемых текущим запросом в источнике данных, без извлечения этих записей. Для этого при щелчке пользователя на знаке "?" он вызывает метод `AbstractCollectionDatasource.getCount()`, что приводит к выполнению в БД запроса с такими же, как у текущего запроса условиями, но с агрегатной функцией `++COUNT(*)++` вместо результатов. Полученное число отображается вместо знака "?".
+
+[[gui_Table_actions]]
+* `actions` − необязательный элемент для описания <<gui_Action,действий>>, связанных с таблицей. Кроме описания произвольных действий, поддерживаются следующие <<standard_actions, стандартные действия>>, определяемые перечислением `ListActionType`: `create`, `edit`, `remove`, `refresh`, `add`, `exclude`, `excel`.
+
+[[gui_Table_buttonsPanel]]
+* `buttonsPanel` - необязательный элемент, создающий над таблицей контейнер <<gui_ButtonsPanel,ButtonsPanel>> для отображения кнопок действий.
+
+Атрибуты `table`:
+
+[[gui_Table_multiselect]]
+* Атрибут `multiselect` позволяет задать режим множественного выделения строк в таблице. Если `multiselect` равен `true`, то пользователь может выделить несколько строк с помощью клавиатуры или мыши, удерживая клавиши *Ctrl* или *Shift*. По умолчанию режим множественного выделения отключен.
+
+[[gui_Table_sortable]]
+* Атрибут `sortable` разрешает или запрещает сортировку в таблице. По умолчанию имеет значение `true`. Если сортировка разрешена, то при нажатии на название колонки справа от названия появляется значок image:gui_sortable_down.png[]/image:gui_sortable_up.png[]. Сортировку некоторой отдельной колонки можно запретить с помощью атрибута <<gui_Table_column_sortable, sortable>> этой колонки.
++
+При включенной с помощью элемента `rowsCount` (см. выше) страничной загрузке таблицы сортировка производится разными способами в зависимости от того, умещаются ли все записи на одной странице. Если умещаются, то сортировка производится в памяти, без обращений к БД. Если же страниц больше одной, то сортировка производится на базе данных путем отправки нового запроса с соответствующим `ORDER BY`.
++
+Колонка таблицы может ссылаться на локальный атрибут или на связанную сущность. Например:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableSortable_1.xml[]
+----
++
+В последнем случае, сортировка на базе данных производится по атрибутам, указанным в аннотации `@NamePattern` связанной сущности. Если у связанной сущности нет такой аннотации, то сортировка производится в памяти только в пределах текущей страницы.
++
+Если колонка таблицы ссылается на неперсистентный атрибут, то сортировка на базе данных производится по атрибутам, указанным в параметре `related()` аннотации `@MetaProperty`. Если такой параметр не указан, то сортировка производится в памяти только в пределах текущей страницы.
++
+Если таблица соединена со вложенным <<datasources,источником данных>>, который содержит коллекцию связанных сущностей, то для того, чтобы таблицу можно было сортировать, атрибут-коллекция должен быть упорядоченного типа (`List` или `LinkedHashSet`). Если атрибут имеет тип `Set`, то атрибут `sortable` не оказывает влияния и пользователи не смогут сортировать таблицу.
+
+[[gui_Table_presentations]]
+* Атрибут `presentations` управляет механизмом <<gui_presentations,представлений>>. Значение по умолчанию равно `false`. Когда значение атрибута равно `true`, то в верхнем правом углу таблицы появляется значок image:gui_presentation.png[]. Механизм представлений реализован только для блока *Web Client*.
+
+[[gui_Table_columnControlVisible]]
+* Установка атрибута `columnControlVisible` в `false` запрещает пользователю скрывать колонки с помощью меню, выпадающего при нажатия на кнопку image:gui_table_columnControl.png[] в правой части шапки таблицы. Флажками в меню отмечаются отображаемые в данный момент колонки.
++
+image::gui_table_columnControl_all.png[align="center"]
+
+[[gui_Table_reorderingAllowed]]
+* Установка атрибута `reorderingAllowed` в `false` запрещает пользователю менять местами колонки, перетаскивая их с помощью мыши.
+
+[[gui_Table_columnHeaderVisible]]
+* Установка атрибута `columnHeaderVisible` в `false` скрывает заголовок таблицы.
+
+[[gui_Table_showSelection]]
+* При установленном в `false` атрибуте `showSelection` текущая строка не имеет выделения.
+
+[[gui_Table_allowPopupMenu]]
+* Атрибут `contextMenuEnabled` разрешает или запрещает показывать контекстное меню. По умолчанию атрибут имеет значение `true`. В контекстном меню отображаются действия таблицы (если они есть), и пункт *Системная информация*, содержащий информацию о выбранной сущности (если у пользователя есть <<permissions,разрешение>> `cuba.gui.showInfo`).
+
+[[gui_Table_multiLineCells]]
+* Если атрибуту `multiLineCells` таблицы присвоить значение `true`, то ячейки, содержащие текст с переносами строк, будут отображать его в несколько строк. В таком режиме в веб-клиенте для правильной работы полосы прокрутки все строки текущей страницы таблицы будут загружены веб-браузером сразу, без ленивой загрузки видимой части таблицы. По умолчанию атрибут имеет значение `false`.
+
+[[gui_Table_aggregatable]]
+* Атрибут `aggregatable` включает режим агрегации строк таблицы. Поддерживаются следующие операции:
++
+--
+
+** `SUM` - сумма
+
+** `AVG` - среднее значение
+
+** `COUNT` - количество
+
+** `MIN` - минимальное значение
+
+** `MAX` - максимальное значение
+
+[[gui_Table_column_aggregation]]
+Для агрегируемых колонок необходимо указать элемент `aggregation` с атрибутом `type`, задающим функцию агрегации. По умолчанию в агрегируемых колонках поддерживаются только числовые типы данных, такие как `Integer, Double, Long` и `BigDecimal`. Агрегированные значения столбцов выводятся в дополнительной строке вверху таблицы. Пример описания таблицы с агрегацией:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableAggregatable_1.xml[]
+---- 
+
+[[gui_Table_column_aggregation_strategyClass]]
+Элемент `aggregation` может также содержать атрибут `strategyClass`, указывающий класс, реализующий интерфейс `AggregationStrategy` interface (см. ниже пример установки стратегии агрегации программно).
+
+Для отображения агрегированного значения в виде, отличном от стандартного для данного <<datatype,Datatype>>, для него можно указать <<gui_formatter,Formatter>>: 
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/tableAggregatable_2.xml[]
+---- 
+
+[[gui_Table_aggregationStyle]]
+Атрибут `aggregationStyle` позволяет задать положение строки агрегации: `TOP` или `BOTTOM`. По умолчанию используется `TOP`.
+
+В дополнение к операциям, перечисленным выше, можно задать собственную стратегию агрегации путем создания класса, реализующего интерфейс `AggregationStrategy`, и передачи его методу `setAggregation()` класса `Table.Column` в составе экземпляра `AggregationInfo`. Например: 
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableAggregationStrategy_1.java[]
+----
+
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableAggregationStrategy_2.java[]
+----
+--
+
+[[gui_Table_editable]]
+* Атрибут `editable` позволяет перевести таблицу в режим in-place редактирования ячеек. В этом режиме в колонках, имеющих атрибут `editable = true`, отображаются компоненты для редактирования значений атрибутов сущности, находящейся в источнике данных.
++
+Тип компонента для каждой редактируемой колонки выбирается автоматически на основании типа атрибута сущности. Например, для строковых и числовых атрибутов используется <<gui_TextField,TextField>>, для `Date` - <<gui_DateField,DateField>>, для перечислений - <<gui_LookupField,LookupField>>, для ссылок на другие сущности - <<gui_PickerField,PickerField>>. 
++
+Для редактируемой колонки типа `Date` можно дополнительно указать атрибуты `dateFormat` или `resolution` аналогично описанным для <<gui_DateField,DateField>>.
++
+Для редактируемой колонки, отображающей связанную сущность, можно дополнительно указать атрибуты <<gui_attr_optionsDatasource,optionsDatasource>> и <<gui_attr_captionProperty,captionProperty>>. При указании `optionsDatasource` вместо <<gui_PickerField,PickerField>> используется компонент <<gui_LookupField,LookupField>>.
++
+Произвольно настроить отображение ячеек, в том числе для редактирования содержимого, можно с помощью метода `Table.addGeneratedColumn()` - см. ниже.
+
+[[gui_Table_stylename]]
+* В веб-клиенте с темой, основанной на Halo, атрибут `stylename` позволяет применять к таблице предопределенные стили `Table`. Стили задаются в XML-дексрипторе или контроллере экрана с помощью атрибута `stylename`:
++
+--
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/table_2.xml[]
+----
+
+Чтобы применить стиль программно, выберите одну из констант класса `HaloTheme` с префиксом компонента `TABLE_`:
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_3.java[]
+----
+
+Стили компонента Table:
+
+[[gui_table_borderless]]
+* `borderless` - удаляет внешнюю рамку таблицы.
+
+[[gui_table_compact]]
+* `compact` - уменьшает отступы внутри ячеек таблицы.
+
+[[gui_table_no-header]]
+* `no-header` - скрывает заголовки таблицы.
+
+[[gui_table_no-horizontal-lines]]
+* `no-horizontal-lines` - удаляет горизонтальные строковые разделители.
+
+[[gui_table_no-stripes]]
+* `no-stripes` - отключает чередование цветов строк таблицы.
+
+[[gui_table_no-vertical-lines]]
+* `no-vertical-lines` - удаляет вертикальные разделители столбцов.
+
+[[gui_table_small]]
+* `small` - уменьшает размер шрифта и отступы внутри ячеек таблицы.
+--
+
+Методы интерфейса `Table`:
+
+[[gui_Table_ColumnCollapseListener]]
+* метод `addColumnCollapsedListener`() позволяет отслеживать видимость колонок таблицы с помощью интерфейса слушателя `ColumnCollapsedListener`.
+
+[[gui_Table_getSelected]]
+* `getSelected()`, `getSingleSelected()` - возвращают экземпляры сущностей, соответствующие выделенным в таблице строкам. Коллекцию можно получить вызовом метода `getSelected()`. Если ничего не выбрано, возвращается пустой набор. Если `multiselect` отключен, удобно пользоваться методом `getSingleSelected()`, возвращающим одну выбранную сущность или `null`, если ничего не выбрано.
+
+[[gui_Table_addGeneratedColumn]]
+* Метод `addGeneratedColumn()` позволяет задать собственное представление данных в колонке. Он принимает два параметра: идентификатор колонки и реализацию интерфейса `Table.ColumnGenerator`. Идентификатор может совпадать с одним из идентификаторов, указанных для колонок таблицы в XML-дескрипторе - в этом случае новая колонка вставляется вместо заданной в XML. Если идентификатор не совпадает ни с одной колонкой, создается новая справа.
++
+[[gui_Table_generateCell]]
+Метод `generateCell()` интерфейса `Table.ColumnGenerator` вызывается таблицей для каждой строки, и в него передается экземпляр сущности, отображаемой в данной строке. Метод `generateCell()` должен вернуть визуальный компонент, который и будет отображаться в ячейке. 
++
+Пример использования: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/tableColumnGenerator_1.java[]
+---- 
++
+В данном случае в ячейках колонки `colour` таблицы отображается компонент <<gui_LookupPickerField,LookupPickerField>>. Компонент должен сохранять свое значение в атрибут `colour` сущности, экземпляр которой отображается в данной строке. Для этого у таблицы методом `getItemDatasource()` запрашивается источник данных для текущего экземпляра сущности, и передается компоненту `LookupPickerField`. 
++
+Если в ячейке необходимо отобразить просто динамически сформированный текст, вместо компонента <<gui_Label,Label>> используйте класс `Table.PlainTextCell`. Это упростит отрисовку и сделает таблицу быстрее.
++
+Если в метод `addGeneratedColumn()` передан идентификатор колонки, не объявленной в XML-дескрипторе, то может понадобиться установить заголовок новой колонки следующим образом: 
++
+[source, java]
+----
+carsTable.getColumn("colour").setCaption("Colour");
+---- 
++
+Существует также более декларативный подход, использующий XML-атрибут <<gui_Table_column_generator,generator>>.
+
+[[gui_Table_requestFocus]]
+* Метод `requestFocus()` позволяет установить фокус на определенное поле конкретной записи. Принимает два параметра: экземпляр сущности, определяющий строку и идентификатор колонки. Пример программной установки фокуса:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_requestFocus_1.java[]
+----
+
+[[gui_Table_scrollTo]]
+* Метод `scrollTo()` позволяет программно прокрутить таблицу до нужной записи. Метод принимает экземпляр сущности, определяющий нужную строку в таблице.
++
+Пример использования метода:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_scrollTo_1.java[]
+----
+
+[[gui_Table_CellClickListener]]
+* Метод `setClickListener()` может избавить от необходимости добавлять генерируемые колонки с компонентами, если нужно нарисовать что-либо в ячейках и получать оповещения когда пользователь кликает на эти ячейки. Имплементация класса `CellClickListener`, передаваемая в данный метод, получает текущий экземпляр сущности и идентификатор колонки. Содержимое ячеек будет завернуто в элемент `span` со стилем `cuba-table-clickable-cell`, который можно использовать для задания отображения ячеек.
+
+[[gui_Table_setStyleProvider]]
+* Метод `setStyleProvider()` позволяет задать стиль отображения ячеек таблицы. Параметром метода должна быть реализация интерфейса `Table.StyleProvider`. Метод `getStyleName()` этого интерфейса вызывается таблицей отдельно для каждой строки и для каждой ячейки. Если метод вызван для строки, то первый параметр содержит экземпляр сущности, отображаемый этой строкой, а второй параметр `null`. Если же метод вызван для ячейки, то второй параметр содержит имя атрибута, отображаемого этой ячейкой.
++
+Пример задания стилей: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_setStyleProvider_1.java[]
+----
++
+Далее нужно определить заданные для строк и ячеек стили в теме приложения. Подробная информация о создании темы находится в <<gui_themes,Создание темы приложения>>. Для веб-клиента новые стили определяются в файле `styles.scss`. Имена стилей, заданные в контроллере, совместно с префиксами, обозначающими строку или колонку таблицы, образуют CSS-селекторы. Например:
++
+[source, css]
+----
+include::{sourcesdir}/gui_vcl/table_setStyleProvider_2.css[]
+----
+
+[[gui_Table_addPrintable]]
+* Метод `addPrintable()` позволяет задать специфическое представление данных колонки при выводе в XLS-файл, осуществляемом <<standard_actions,стандартным действием>> `excel` или напрямую с помощью класса `ExcelExporter`. Метод принимает идентификатор колонки и реализацию интерфейса `Table.Printable` для нее. Например: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_addPrintable_1.java[]
+---- 
++
+Метод `getValue()` интерфейса `Table.Printable` должен возвращать данные, которые будут находиться в ячейке таблицы. Это может быть не только строка - метод может возвращать значения других типов, например, числовые данные или даты, и они будут представлены в XLS-файле соответствующим образом. 
++
+Если форматированный вывод в XLS необходим для генерируемой колонки, нужно использовать реализацию интерфейса `Table.PrintableColumnGenerator`, передавая ее методу `addGeneratedColumn()`. Значение для вывода в ячейку XLS-документа задается в методе `getValue()` этого интерфейса: 
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/table_addPrintable_2.java[]
+---- 
++
+Если генерируемой колонке тем или иным способом не задано представления `Printable`, то в случае, если колонке соответствует атрибут сущности, будет выведено его значение, в противном случае не будет выведено ничего.
+
+[[gui_Table_setItemClickAction]]
+
+* Метод `setItemClickAction()` позволяет задать <<gui_Action,действие>>, выполняемое при двойном клике на строке таблицы. Если такое действие не задано, при двойном клике таблица пытается найти среди своих действий подходящее в следующем порядке:
+
+** Действие, назначенное на клавишу *Enter* посредством свойства `shortcut`.
+
+** Действие с именем `edit`.
+
+** Действие с именем `view`.
++
+Если такое действие найдено и имеет свойство `enabled = true`, оно выполняется.
+
+[[gui_Table_setEnterPressAction]]
+* Метод `setEnterPressAction()` позволяет задать <<gui_Action,действие>>, выполняемое при нажатии клавиши *Enter*. Если такое действие не задано, таблица пытается найти среди своих действий подходящее в следующем порядке:
++
+--
+** Действие, назначенное методом `setItemClickAction()`.
+
+** Действие, назначенное на клавишу *Enter* посредством свойства `shortcut`.
+
+** Действие с именем `edit`.
+
+** Действие с именем `view`.
+
+Если такое действие найдено и имеет свойство `enabled = true`, оно выполняется.
+--
+
+'''
+
+Атрибуты table::
+<<gui_attr_align,align>> -
+<<gui_Table_aggregatable,aggregatable>> -
+<<gui_Table_aggregationStyle,aggregationStyle>> -
+<<gui_Table_columnControlVisible,columnControlVisible>> -
+<<gui_Table_columnHeaderVisible,columnHeaderVisible>> -
+<<gui_Table_allowPopupMenu,contextMenuEnabled>> -
+<<gui_Table_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_id,id>> -
+<<gui_Table_multiLineCells,multiLineCells>> -
+<<gui_Table_multiselect,multiselect>> -
+<<gui_Table_presentations,presentations>> -
+<<gui_Table_reorderingAllowed,reorderingAllowed>> -
+<<gui_attr_settingsEnabled,settingsEnabled>> -
+<<gui_Table_showSelection,showSelection>> -
+<<gui_Table_sortable,sortable>> -
+<<gui_Table_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_attr_textSelectionEnabled,textSelectionEnabled>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Элементы table::
+<<gui_Table_actions,actions>> -
+<<gui_Table_buttonsPanel,buttonsPanel>> -
+<<gui_Table_columns,columns>> -
+<<gui_Table_rows,rows>> -
+<<gui_Table_rowsCount,rowsCount>>
+
+Атрибуты <<gui_Table_columns,column>>::
+<<gui_Table_column_align,align>> -
+<<gui_Table_column_caption,caption>> -
+<<gui_Table_column_captionProperty,captionProperty>> -
+<<gui_Table_column_collapsed,collapsed>> -
+<<gui_DateField_dateFormat,dateFormat>> -
+<<gui_Table_column_editable,editable>> -
+<<gui_Table_column_generator,generator>> -
+<<gui_Table_column_id,id>> -
+<<gui_Table_column_link,link>> -
+<<gui_Table_column_linkInvoke,linkInvoke>> -
+<<gui_Table_column_linkScreen,linkScreen>> -
+<<gui_Table_column_linkScreenOpenType,linkScreenOpenType>> -
+<<gui_Table_column_maxTextLength,maxTextLength>> -
+<<gui_attr_optionsDatasource,optionsDatasource>> -
+<<gui_DateField_resolution,resolution>> -
+<<gui_Table_column_sortable,sortable>> -
+<<gui_attr_visible,visible>> -
+<<gui_Table_column_width,width>>
+
+Элементы <<gui_Table_columns,column>>::
+<<gui_Table_column_aggregation,aggregation>> -
+<<gui_formatter,formatter>>
+
+Атрибуты <<gui_Table_column_aggregation,aggregation>>::
+<<gui_Table_column_aggregation,type>> -
+<<gui_Table_column_aggregation_strategyClass,strategyClass>>
+
+Атрибуты <<gui_Table_rows,rows>>::
+<<gui_attr_datasource,datasource>>
+
+Предопределенные стили table::
+<<gui_table_borderless,borderless>> -
+<<gui_table_compact,compact>> -
+<<gui_table_no-header,no-header>> -
+<<gui_table_no-horizontal-lines,no-horizontal-lines>> -
+<<gui_table_no-stripes,no-stripes>> -
+<<gui_table_no-vertical-lines,no-vertical-lines>> -
+<<gui_table_small,small>>
+
+API::
+<<gui_Table_addGeneratedColumn,addGeneratedColumn>> -
+<<gui_Table_addPrintable,addPrintable>> -
+<<gui_Table_ColumnCollapseListener,addColumnCollapseListener>> -
+<<gui_api_settings,applySettings>> -
+<<gui_Table_generateCell,generateCell>> -
+<<gui_Table_getSelected,getSelected>> -
+<<gui_Table_requestFocus,requestFocus>> -
+<<gui_api_settings,saveSettings>> -
+<<gui_Table_scrollTo,scrollTo>> -
+<<gui_Table_CellClickListener,setClickListener>> -
+<<gui_Table_setEnterPressAction,setEnterPressAction>> -
+<<gui_Table_setItemClickAction,setItemClickAction>> -
+<<gui_Table_setStyleProvider,setStyleProvider>>
+
+'''
+

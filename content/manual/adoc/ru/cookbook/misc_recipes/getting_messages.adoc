@@ -1,0 +1,87 @@
+:sourcesdir: ../../../../source
+
+[[getting_messages]]
+==== Получение локализованных сообщений
+
+В данном разделе рассмотрены способы получения <<localization,локализованных сообщений>> в различных компонентах приложения.
+
+* В <<screen_xml,XML-дескрипторах>> экранов атрибуты компонентов, отображающие статичный текст (например <<gui_attr_caption,caption>>), могут обращаться к локализованным сообщениям по правилам метода <<messageTools.loadString,MessageTools.loadString()>>. Например:
+
+** `caption="msg://roleName"` - получить сообщение, заданное ключом `roleName` в пакете сообщений текущего экрана. Пакет сообщений экрана задается в атрибуте `messagesPack` корневого элемента `window`.
+
+** `caption="msg://com.company.sample.entity/Role.name"` - получить сообщение, заданное ключом `Role.name` в пакете сообщений `com.company.sample.entity`.
+
+* В <<screen_controller,контроллерах экранов>> локализованные сообщения можно получать следующими способами:
+
+** Из пакета сообщений текущего экрана:
+
+*** Методом `getMessage()`, унаследованным от базового класса <<abstractFrame,AbstractFrame>>. Например:
++
+[source, java]
+----
+String msg = getMessage("warningMessage");
+----
+
+*** Методом `formatMessage()`, унаследованным от базового класса `AbstractFrame`. В этом случае сообщение используется для форматирования переданных параметров по правилам метода `String.format()`. Например:
++
+messages.properties:
++
+[source, plain]
+----
+warningMessage = Invalid email address: '%s'
+----
++
+Java-контроллер:
++
+[source, java]
+----
+String msg = formatMessage("warningMessage", email);
+----
+
+** Из произвольного пакета сообщений путем инжекции интерфейса инфраструктуры <<messages,Messages>>. Например:
++
+[source, java]
+----
+@Inject
+private Messages messages;
+
+@Override
+public void init(Map<String, Object> params) {
+    String msg = messages.getMessage(getClass(), "warningMessage");
+    ...
+}
+----
+
+* В компонентах, управляемых контейнером Spring (<<managed_beans,управляемых бинах>>, <<services,сервисах>>, <<jmx_beans,JMX-бинах>>, контроллерах Spring MVC модуля *portal*) локализованные сообщения можно получать путем инжекции интерфейса инфраструктуры <<messages,Messages>>:
++
+[source, java]
+----
+@Inject
+protected Messages messages;
+...
+String msg = messages.getMessage(getClass(), "warningMessage");
+----
++
+Локализованные сообщения для шаблонов https://www.thymeleaf.org/[Thymeleaf] в модуле *portal* также доступны по ключу:
++
+.template
+[source, xml]
+----
+<h1 th:text="#{messageKey}"></h1>
+----
++
+.portal main message pack
+[source, plain]
+----
+messageKey = Localized message
+----
+
+* В любом коде приложения, где невозможна инжекция, интерфейс `Messages` может быть получен с помощью статического метода `get()` класса `AppBeans`:
++
+[source, java]
+----
+protected Messages messages = AppBeans.get(Messages.class);
+...
+String msg = messages.getMessage(getClass(), "warningMessage");
+----
+

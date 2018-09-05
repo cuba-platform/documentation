@@ -1,0 +1,117 @@
+:sourcesdir: ../../../../source
+
+[[qs_process_model_creation]]
+==== Creating the Process model
+
+The final version of the process model will look like this:
+
+image::ProcessFull.png[align="center"]
+
+Let's take a look at the steps needed to create the model.
+
+In the web interface of the running application, open the *BPM -> Process Models* screen and click *Create*. Enter `Contract approval` for the model name and click *OK*. *Model Editor* will be opened in a new browser tab.
+
+[TIP]
+====
+A notification with a clickable link is shown in case of creating or copying the process model. In case of clicking the *Edit* button, the process model editor is shown in the new tab.
+====
+
+Select the *Process roles* property in the model properties panel. The Process roles edit window will be opened.
+
+image::ProcessRolesProperty.png[align="center"]
+
+Two types of actors participate in the process: a manager and a controller. Create two roles: `Controller` and `Manager`.
+
+image::ProcessRolesEditor.png[align="center"]
+
+Drag and drop the *Start event* node from the *Start Events* group to the workspace.
+
+We need to display a form to select process actors when the process starts. Select the start event node. Select the *Start form* in its properties panel - a form selection window will appear. Select `Standard form` in the *Form name* field. Then add two form parameters:
+
+* `procActorsVisible` with `true` value indicates that a table for process actors selection will be displayed on the form.
+* `attachmentsVisible` with `true` value indicates that a table for uploading attachments will be displayed on the form.
+
+image::StartForm.png[align="center"]
+
+Add the *User task* node from the *Activities* group to the model. Name it `Validation`.
+
+image::ModelValidationNode.png[align="center"]
+
+Select this node and assign the `controller` value to the *Process role* property at the properties panel. This way we define that the task will be assigned to a process actor with the `controller` role.
+
+image::SelectProcRoleForValidation.png[align="center"]
+
+Next, select the *Task outcomes* property. The window for task outcomes edit will be opened. Outcomes define possible user actions when users receive tasks. Create two outcomes: `Valid` and `Not valid`. Define the `Standard form` for both outcomes. Add form parameter `commentRequired=true` for the `Not valid` outcome, because we want to make a user add a comment in case of invalid contract.
+
+image::OutcomesForValidation.png[align="center"]
+
+Depending on the controller's decision we have to send the contract to managers approval or to finish the process with the `Not valid` state. The *Exclusive gateway* node from the *Gateways* group is used to control the process flow. Add it to the workspace and then add two more elements: *Script task* with `Set 'Not valid' state` name and *User task* with `Approval` name. Name the flow to the *Script task* as `Not valid` and the flow to the *User task* as `Valid`.
+
+image::ModelValidationExclGateway.png[align="center"]
+
+Select the `Not valid` flow. Expand the *Flow outcome* dropdown list from the properties panel. It shows outcomes from the tasks before the gateway. Select the `Not valid` value.
+
+image::NotValidFlowOutcome.png[align="center"]
+
+Now, if the `Not valid` outcome is selected, a transition to this flow will be performed.
+
+The `Valid` flow should be marked as the default flow (if no other flows condition is true). Select the `Valid` flow and tick the *Default flow* property.
+
+[WARNING]
+====
+There must be no value selected in the *Flow outcome* dropdown list for the flow marked as default.
+====
+
+Next, select the *Exclusive gateway* and open its *Flow order* property editor. Make sure that the `Not valid` flow is on the first place in the list. Change the flows sequence if necessary.
+
+image::ValidationFlowOrder.png[align="center"]
+
+Let's move on to the `Set 'Not valid' state` node. We need to set the `state` property of the Contract entity to the `Not valid` value. Select the node. Set the *Script format* property value to `groovy`. Click on the *Script* property field - the script editor will be opened. Copy and paste the following code there:
+
+[source,groovy]
+----
+def em = persistence.getEntityManager()
+def contract = em.find(com.company.bpmdemo.entity.Contract.class, entityId)
+contract.setState('Not valid')
+----
+
+You can use process variables and `persistence` and `metadata` platform objects (see Developer's Manual) in scripts. The `entityId` variable is created on process start and stores an identifier of the linked entity.
+
+After the contract state is changed, the process should be finished. Let's add the *End event* node from the *End events* group to the workspace and connect the node with the `Set 'Not valid' state`.
+
+Let's go back to the `Approval` task. Define the `manager` process role for it like we did for the first task. In order for the task to be assigned to many managers simultaneously, set its *Multi-instance type* property to `Parallel`.
+
+image::ApprovalMutlInstanceType.png[align="center"]
+
+Create two task outcomes: `Approve` and `Reject` (*Task outcomes* property). For both outcomes, set the `Standard form` form and set `commentRequired` parameter to `true` for the `Reject` outcome.
+
+After the approval is completed, either `Approved` or `Not approved` status should be assigned to the contract depending on the approval result. Add an *Exclusive gateway* node after the `Approval task`. Add two *Service task* after the exclusive gateway: `Set 'Approved' state` and `Set 'Not approved' state`. They will do the same thing as the *Script task* we have added earlier, but in a different way: by invoking a Spring bean method. Name the flow to the `Set 'Approved' state` as `Approved`, and the flow to the `Set 'Not approved' state` as `Not approved`.
+
+image::ModelWithApproval.png[align="center"]
+
+Select the `Not approved` flow node and select the `Reject` value in the *Flow outcome* list. Now if at least one of the managers performs the `Reject` action then this outcome will be initiated. Select the `Approved` flow node and check the *Default flow* checkbox. This means that if no other flow is initiated then this flow will be used.
+
+Set the flow order for *Exclusive gateway* like we did for the previous one. Select *Exclusive gateway* and open the *Flow order* property editor. `Not approved` should be processed first.
+
+image::ApprovalFlowOrder.png[align="center"]
+
+Let's go back to the Service task. Select the `Set 'Approved' state` node and set its *Expression* property to the following value:
+
+[source,groovy]
+----
+${demo_ApprovalHelper.updateState(entityId, 'Approved')}
+----
+
+Apply the following script for the `Set 'Not approved' state`:
+
+[source,groovy]
+----
+${demo_ApprovalHelper.updateState(entityId, 'Not approved')}
+----
+
+The Activiti engine is integrated with the Spring framework, so we can access Spring managed beans by their names. `entityId` is a process variable that stores an identifier of the contract which is linked to the process. Its value is set on the process start.
+
+Connect both service tasks with the *End event* and click the save button. The model is ready and we can move on to the model deployment.
+
+image::ProcessFull.png[align="center"]
+

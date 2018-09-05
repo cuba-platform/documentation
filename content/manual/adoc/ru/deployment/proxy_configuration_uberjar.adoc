@@ -1,0 +1,99 @@
+:sourcesdir: ../../../source
+
+[[proxy_configuration_uberjar]]
+=== Конфигурация прокси для Uber JAR
+
+В этой части рассказывается, как настроить HTTP-сервер Nginx в качестве прокси для приложения CUBA Uber JAR.
+
+NGINX::
+--
+Для Nginx предлагается 2 конфигурации проксирования, описанных ниже. Все примеры подготовлены и проверены на Ubuntu 16.04.
+
+. Прямое проксирование
+. Проксирование с перенаправлением
+
+К примеру, ваше веб-приложение работает по ссылке `++http://localhost:8080/app++`.
+
+[TIP]
+====
+Приложение Uber JAR использует сервер Jetty версии 9.2. Jetty внутри <<proxy_for_jetty,JAR>> следует сконфигурировать таким образом, чтобы он обрабатывал заголовки Nginx.
+====
+--
+
+[[proxy_for_jetty]]
+Настройка Jetty::
++
+--
+* *Настройка внутри JAR*
++
+Сначала создайте конфигурационный файл `jetty.xml` в корне проекта и вставьте в него следующий код:
++
+[source,xml]
+----
+include::{sourcesdir}/deployment/jetty.xml[]
+----
++
+Добавьте свойство `webJettyConfPath` в задачу `buildUberJar` вашего файла `build.gradle`:
++
+[source,groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    singleJar = true
+    coreJettyEnvPath = 'modules/core/web/META-INF/jetty-env.xml'
+    appProperties = ['cuba.automaticDatabaseUpdate' : true]
+    webJettyConfPath = 'jetty.xml'
+}
+----
++
+Вы можете использовать Studio, чтобы сгенерировать `jetty-env.xml`, для этого пройдите в *Project Properties > Deployment Settings* > далее на вкладку *Uber Jar*. Или используйте пример ниже:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/jetty-env.xml[]
+----
++
+Соберите Uber JAR, используя следующую команду:
++
+[source,plain]
+----
+gradlew buildUberJar
+----
++
+Ваше приложение будет расположено в папке `build/distributions/uberJar`, имя по-умолчанию: `app.jar`.
++
+Запустите приложение:
++
+[source,plain]
+----
+java -jar app.jar
+----
++
+Затем установите и настройте Nginx, как описано в <<install_nginx,секции Tomcat>>.
++
+В зависимости от выбранной схемы проксирования, ваш сайт будет доступен по одной из ссылок: `++http://localhost/app++` или `++http://localhost++`.
+
+* *Настройка с помощью внешнего файла*
++
+Используйте тот же самый конфигурационный файл `jetty.xml` в корне проекта, как описано выше, но не изменяйте `build.gradle`.
++
+Соберите Uber JAR, используя следующую команду:
++
+[source,plain]
+----
+gradlew buildUberJar
+----
++
+Ваше приложение будет расположено в папке `build/distributions/uberJar`, имя по-умолчанию: `app.jar`.
++
+Запустите приложение с параметром `-jettyConfPath`:
++
+[source,plain]
+----
+java -jar app.jar -jettyConfPath jetty.xml
+----
++
+Затем установите и настройте Nginx, как описано в <<install_nginx,секции Tomcat>>.
++
+В зависимости от выбранной схемы проксирования и настроек в `jetty.xml`, ваш сайт будет доступен по одной из ссылок: `++http://localhost/app++` или `++http://localhost++`.
+--
+

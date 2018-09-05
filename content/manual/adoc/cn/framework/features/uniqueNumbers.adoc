@@ -1,0 +1,41 @@
+:sourcesdir: ../../../../source
+
+[[uniqueNumbers]]
+==== Sequence Generation
+
+This mechanism enables generating unique numerical sequences via a single API, independent of the DBMS type.
+
+The main part of this mechanism is the `UniqueNumbers` <<managed_beans,bean>> with the `UniqueNumbersAPI` interface. The bean is available in the Middleware <<app_tiers,block>>. The interface has the following methods:
+
+* `getNextNumber()` – get the next value in a sequence. The mechanism enables simultaneous management of several sequences, identified by arbitrary strings. The name of the sequence from which you want to retrieve the value is passed in the `domain` parameter.
++
+Sequences do not require initialization. When `getNextNumber()` is called for the first time, the corresponding sequence will be created and 1 will be returned.
+
+* `getCurrentNumber()` – obtain the current, i.e. the last generated value of the sequence. The `domain` parameter sets the sequence name.
+
+* `setCurrentNumber()` – set the current value of the sequence. This value incremented by 1 will be returned by the next call to `getNextNumber()`.
+
+Below is an example of getting the next value in a sequence in a Middleware bean:
+
+[source, java]
+----
+@Inject
+private UniqueNumbersAPI uniqueNumbers;
+
+private long getNextValue() {
+  return uniqueNumbers.getNextNumber("mySequence");
+}
+----
+
+The `getNextNumber()` method of the `UniqueNumbersService` <<services,service>> is used to get sequence values in client blocks. 
+
+The `app-core.cuba:type=UniqueNumbers` <<jmx_beans,JMX bean>> with methods duplicating the methods of the `UniqueNumbersAPI` is used for sequence management.
+
+The implementation of the sequence generation mechanism depends on the DBMS type. Sequence parameters can also be managed directly in the database, but in different ways.
+
+* For HSQL, Microsoft SQL Server 2012+, PostgreSQL and Oracle each `UniqueNumbersAPI` sequence corresponds to a `++SEC_UN_{domain}++` sequence in the database.
+
+* For Microsoft SQL Server before 2012 each sequence corresponds to a `++SEC_UN_{domain}++` table with a primary key of IDENTITY type.
+
+* For MySQL sequences correspond to records in the `SYS_SEQUENCE` table.
+

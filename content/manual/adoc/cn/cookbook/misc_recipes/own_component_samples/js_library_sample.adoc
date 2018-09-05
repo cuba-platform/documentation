@@ -1,0 +1,104 @@
+:sourcesdir: ../../../../../source
+
+[[js_library_sample]]
+===== Using a JavaScript library
+
+In this example, we will use the https://jqueryui.com/slider/#range[Slider] component from the *jQuery UI* library. The slider will have two drag handlers that define a values range.
+
+Create a new project in CUBA Studio and name it `jscomponent`.
+
+Click the *New UI component* button on the *Project properties* navigator section. The *UI component generation* will open. Select the `JavaScript component` value in the `Component type` section.
+
+image::ui_component/studio_js_component_wizard.png[align="center"]
+
+Enter `SliderServerComponent` in the *Vaadin component class name* field.
+
+Deselect the *Integrate into Generic UI* flag. The process of integration into the Generic UI is the same as described at <<vaadin_addon_sample_gui>>, so we won't repeat it here.
+
+After clicking the *OK* button Studio will generate the following files:
+
+* `SliderServerComponent` - a Vaadin component integrated with JavaScript.
+
+* `SliderState` - a state class of the Vaadin component.
+
+* `slider-connector.js` - a JavaScript connector for the Vaadin component.
+
+Let's examine the generated files and make necessary changes in the source code.
+
+* `SlideState` state class defines what data is transferred between the server and the client. In our case it is a minimal possible value, maximum possible value and selected values.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/SliderState.java[]
+----
+
+* Vaadin server-side component `SliderServerComponent`.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/SliderServerComponent.java[]
+----
++
+The server component defines getters and setters to work with the slider state and an interface of value change listeners. The class extends `AbstractJavaScriptComponent`.
++
+The `addFunction()` method invocation in the class constructor defines a handler for an RPC-call of the `valueChanged()` function from the client.
++
+The `@JavaScript` and `@StyleSheet` annotations point to files that must be loaded on the web page. In our example, these are JavaScript files of the jquery-ui library, the connector and the stylesheet for jquery-ui. You should place these files to the Java package of the Vaadin server component.
+
+Download an archive with jQuery UI from http://jqueryui.com/download and put files `jquery-ui.js` and `jquery-ui.css` from the archive to the Java package of the `SliderServerComponent` class. At the jQuery UI download page, you can select which components should be put into the archive. For this demo, it is enough to select only the `Slider` item of the `Widgets` group.
+
+image::ui_component/js_project_structure.png[align="center"]
+
+* JavaScript connector `slider-connector.js`.
++
+[source, javascript]
+----
+include::{sourcesdir}/ui_component/js/slider-connector.js[]
+----
++
+Connector is a function that initializes a JavaScript component when the web page is loaded. The function name must correspond to the server component class name where dots in package name are replaced with underscore characters.
++
+Vaadin adds several useful methods to the connector function. `this.getElement()` returns an HTML DOM element of the component, `this.getState()` returns a state object.
++
+Our connector does the following:
++
+--
+* Initializes the `slider` component of the jQuery UI library. The `slide()` function is invoked when the position of any drag handler changes. This function in turn invokes the `valueChanged()` connector method. `valuedChanged()` is the method that we defined on the server side in the `SliderServerComponent` class.
+
+* Defines the `onStateChange()` function. It is called when the state object is changed on the server side.
+--
+
+To demonstrate how the component works, let's create the `Product` entity with three attributes:
+
+* `name` of type String
+* `minDiscount` of type Double
+* `maxDiscount` of type Double
+
+Generate standard screens for the entity. Ensure that the value of the *In module* field is `Web Module`.
+
+The `slider` component will set minimal and maximum discount values of a product.
+
+Open the `product-edit.xml` file. Make `minDiscount` and `maxDiscount` fields not editable by adding the `editable="false"` attribute to the corresponding elements. Then add the new custom `slider` field to the `fieldGroup`.
+
+As a result, the XML descriptor of the editor screen should look as follows:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/js/product-edit.xml[]
+----
+
+Open the `ProductEit.java` file. Replace its content with the following code:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/js/ProductEdit.java[]
+----
+
+The `initNewItem()` method sets initial values for discounts of a new product.
+
+Method `init()` initializes the `slider` custom field. It sets current, minimal and maximum values of the `slider` and defines the value change listener. When the drag handler moves, a new value will be set to the corresponding field of the editable entity.
+
+Start the application server and open the product editor screen. Changing the drop handler position must change the value of the text fields.
+
+image::ui_component/product_edit.png[align="center"]
+

@@ -1,0 +1,86 @@
+:sourcesdir: ../../../source
+
+[[sso]]
+=== Single-Sign-On for CUBA Applications
+
+Single-sign-on (SSO) for CUBA applications allows a user to log in to the multiple running applications by entering a single login name and password once in a browser session.
+
+When using SSO, there are two types of applications:
+
+* Identity Provider (IDP) is an application that provides user authentication. It contains a login form for entering user credentials and checks the credentials against the list of registered users. Only one Identity Provider is allowed in an SSO environment.
+
+* Service Provider (SP) is a regular application that redirects to IDP for user authentication. SP should contain the same list of users as IDP (passwords do not matter though). SP provides authorization using CUBA security roles and access groups. There may be any number of Service Providers in an SSO environment.
+
+An application can be an Identity Provider and a Service Provider at the same time, so you don't have to setup a dedicated IDP. The SSO functionality is provided by the *cuba-idp* module which is a part of the Web Client <<app_tiers,block>>. You can develop your applications as usual and setup SSO just on deployment stage if needed.
+
+[WARNING]
+====
+CUBA SSO uses custom HTTP-based protocol and currently does not provide integration with systems using standard authentication protocols like SAML or OIDC.
+====
+
+In SSO environment, when a user enters a Service Provider URL, the SP redirects to the IDP page for entering login name and password. After successful authentication, IDP redirects back to the SP application and the user transparently logs in to SP.
+
+In order to set up SSO, do the following:
+
+* On Identity Provider:
+
+** Add the following settings to the `web.xml` file of the *web* module (if you do it on the deployment stage, this file is located by the following path: `tomcat/webapps/app/WEB-INF/web.xml`):
++
+[source, xml]
+----
+include::{sourcesdir}/security/sso_1.xml[]
+----
+
+** Set the application properties:
+
+*** <<cuba.idp.serviceProviderUrls,cuba.idp.serviceProviderUrls>> - a comma-separated list of service provider URLs (trailing `/` are required). For example:
++
+[source]
+----
+cuba.idp.serviceProviderUrls = http://fish:8081/app/,http://chips:8082/app/
+----
+
+*** <<cuba.idp.serviceProviderUrlMasks,cuba.idp.serviceProviderUrlMasks>> - a comma-separated list of Java Regex masks for permitted service URLs (trailing `/` are required). For example:
++
+[source]
+----
+cuba.idp.serviceProviderUrlMasks = http://your-fish.com/.*,http://your-chips.com/.*
+----
+
+*** <<cuba.idp.serviceProviderLogoutUrls,cuba.idp.serviceProviderLogoutUrls>> - a comma-separated list of URLs that are used to notify service providers about user logout or session expiration. Standard CUBA applications accept logout requests on the `/dispatch/idpc/logout` path. For example:
++
+[source]
+----
+cuba.idp.serviceProviderLogoutUrls = http://fish:8081/app/dispatch/idpc/logout,http://chips:8082/app/dispatch/idpc/logout
+----
+
+*** <<cuba.idp.trustedServicePassword,cuba.idp.trustedServicePassword>> - a password which is used in server-to-server communication between SP and IDP.
+
+*** There is also a number of optional properties: <<cuba.idp.sessionExpirationTimeoutSec,cuba.idp.sessionExpirationTimeoutSec>>, <<cuba.idp.ticketExpirationTimeoutSec,cuba.idp.ticketExpirationTimeoutSec>>, <<cuba.idp.sessionExpirationCheckIntervalMs,cuba.idp.sessionExpirationCheckIntervalMs>>, <<cuba.idp.cookieMaxAgeSec,cuba.idp.cookieMaxAgeSec>>, <<cuba.idp.cookieHttpOnly,cuba.idp.cookieHttpOnly>>.
+
+* On Service Providers:
+
+** Set the application properties:
+
+*** <<cuba.webAppUrl,cuba.webAppUrl>> - an URL of the application (with the required trailing `/`). This URL should also be among the URLs defined in the <<cuba.idp.serviceProviderUrls,cuba.idp.serviceProviderUrls>> property of IDP. For example:
++
+[source]
+----
+cuba.webAppUrl = http://fish:8081/app/
+----
+
+*** <<cuba.web.idp.enabled,cuba.web.idp.enabled>> should be set to `true` to indicate that the application uses IDP authentication.
+
+*** <<cuba.web.idp.baseUrl,cuba.web.idp.baseUrl>> - on this URL the IDP accepts authentication requests. Standard CUBA IDP uses the `idp/` path (the trailing `/` is required). For example:
++
+[source]
+----
+cuba.web.idp.baseUrl = http://main:8080/app/idp/
+----
+
+*** <<cuba.web.idp.trustedServicePassword,cuba.web.idp.trustedServicePassword>> - the same as defined for IDP in its <<cuba.idp.trustedServicePassword,cuba.idp.trustedServicePassword>> property.
+
+include::sso/sso_customization.adoc[]
+
+include::sso/sso_example.adoc[]
+

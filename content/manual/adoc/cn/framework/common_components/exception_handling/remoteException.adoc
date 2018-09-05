@@ -1,0 +1,33 @@
+:sourcesdir: ../../../../../source
+
+[[remoteException]]
+===== Passing Middleware Exceptions
+
+If an exception is thrown on Middleware as a result of handling a client request, the execution terminates and the exception object is returned to the client. The object usually includes the chain of underlying exceptions. This chain can contain classes which are inaccessible for the client tier (for example, JDBC driver exceptions). For this reason, instead of sending this chain to the client we send its representation inside a specially created `RemoteException` object.
+
+The information about the causing exceptions is stored as a list of `RemoteException.Cause` objects. Each `Cause` object always contains an exception class name and its message. Moreover, if the exception class is "supported by client", `Cause` stores the exception object as well. This enables passing information to the client in the exception fields.
+
+Exception class should be annotated by `@SupportedByClient` if its objects should be passed to the client tier as Java objects. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/mwexception_1.java[]
+----
+
+Thus, when an exception is thrown on Middleware and it is not annotated by `@SupportedByClient` the calling client code will receive `RemoteException` containing original exception information in a string form. If the source exception is annotated by `@SupportedByClient`, the caller will receive it directly. This enables handling the exceptions declared by Middleware <<services,services>> in the application code in the traditional way – using try/catch blocks.
+
+Bear in mind that if you need the exception supported by client to be passed on the client as an object, it should not contain any unsupported exceptions in its `getCause()` chain. Therefore, if you create an exception instance on Middleware and want to pass it to the client, specify cause parameter only if you are sure that it contains the exceptions known to the client. 
+
+`ServiceInterceptor` class is a <<services,service>> interceptor which packs the exception objects before passing them to the client tier. Besides, it performs exceptions logging. All information about the exception including full stack trace is logged by default. If it is not desirable, add `@Logging` annotation to the exception class and specify the logging level:
+
+* `FULL` – full information, including stacktrace (default).
+* `BRIEF` – exception class name and message only.
+* `NONE` – no output.
+
+For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/mwexception_2.java[]
+----
+

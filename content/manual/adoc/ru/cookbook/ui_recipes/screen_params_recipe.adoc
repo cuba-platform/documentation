@@ -1,0 +1,88 @@
+:sourcesdir: ../../../../source
+
+[[screen_params_recipe]]
+==== Передача параметров в экран
+
+Передача параметров из одного экрана в другой является одной из самых частых задач в разработке UI. Рассмотрим типовые решения этой задачи на примере демо-приложения "управление заказами".
+
+[[screen_params_recipe_open]]
+При открытии экрана методом openWindow::
++
+--
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Order.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Параметры могут быть переданы в мэп, являющейся опциональным параметром методов `openWindow()`, `openLookup()` и `openEditor()`. Они будут доступны в открываемом экране в виде мэп, передаваемой в метод <<abstractFrame_init,init()>>, а также индивидуально, если они инжектируются с помощью аннотации <<screen_controller_injection_params,@WindowParam>>.
+
+Предположим, что мы хотим отфильтровать список продуктов в экране просмотра сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product], передав в него некоторые параметры из экрана редактирования сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Order.java[Order].
+
+* Экран редактирования https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/OrderEdit.java[OrderEdit] содержит метод `addOrderLine()`, вызываемый действием `addOrderLine`. Этот метод <<abstractFrame_openWindow,открывает>> экран выбора продукта, передавая в него два параметра:
++
+** текущий выбранный покупатель,
++
+** список уже добавленных продуктов.
++
+Когда пользователь выбирает продукт, открывается экран https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/order/QuantityDialog.java[QuantityDialog], где пользователь вводит количество единиц выбранного продукта. После закрытия этого экрана создаётся новый экземпляр сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/OrderLine.java[OrderLine] и затем добавляется в таблицу строк заказа.
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params.java[]
+----
+
+* Экран просмотра https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/product/ProductBrowse.java[ProductBrowse] изменяет свой <<datasource_query_params,источник данных>> в зависимости от переданного покупателя. Если покупатель передан, в таблице отображаются только продукты, имеющие ссылку на этого покупателя либо не связанные ни с одним покупателем. Параметры инжектируются в контроллер экрана с помощью аннотации <<screen_controller_injection_params,@WindowParam>>:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_2.java[]
+----
++
+Также, когда экран выбора продукта открывается для создания строк заказа, в нём программно создаётся и применяется фильтр, который отображает только те продукты, которые ещё не были использованы в этом заказе.
++
+[TIP]
+====
+<<gui_Filter,Фильтры>> нужно создавать в методе <<abstractWindow_ready,ready()>>, так как на момент вызова метода <<abstractFrame_init,init()>> фильтры ещё не инициализированы.
+====
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_3.java[]
+----
++
+Содержимое атрибута `FilterEntity.xml` может быть взято из фильтра, созданного при работе приложения: откройте *Entity Inspector*, найдите созданный фильтр, сохраненный как экземпляр сущности `sec$Filter`, и скопируйте его XML.
+--
+
+[[screen_params_recipe_picker]]
+При открытие экранов из PickerField::
++
+--
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo3.cuba-platform.com/generic-ui/open?screen=sample$Product.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Компонент <<gui_PickerField,PickerField>> и компоненты, его расширяющие, также могут передавать параметры в открываемые экраны. Параметры задаются для <<picker_actions,действий PickerField>>: `LookupAction` и `OpenAction`.
+
+Допустим, мы хотим изменять заголовок экрана выбора сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Customer.java[Customer], если он был открыт из компонента `PickerField` в экране редактирования сущности https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/global/src/com/company/sample/entity/Product.java[Product].
+
+ * В экране https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/product/ProductEdit.java[ProductEdit] мы указываем параметры для действия `PickerField` <<lookupAction,LookupAction>>, используя метод `setLookupScreenParams()`:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_6.java[]
+----
+
+* Затем мы инжектируем переданные параметры в экране https://github.com/cuba-platform/sample-generic-ui/blob/master/modules/web/src/com/company/sample/web/customer/CustomerBrowse.java[CustomerBrowse]:
++
+[source, java]
+----
+include::{sourcesdir}/cookbook/window_params_7.java[]
+----
+
+Теперь, если экран выбора покупателя открывается из редактора продукта, мы сразу можем увидеть, что это за продукт.
+--
+

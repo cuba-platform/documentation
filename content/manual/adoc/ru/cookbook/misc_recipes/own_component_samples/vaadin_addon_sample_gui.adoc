@@ -1,0 +1,145 @@
+:sourcesdir: ../../../../../source
+
+[[vaadin_addon_sample_gui]]
+===== Подключение аддона Vaadin с интеграцией в Generic UI
+
+В <<vaadin_addon_sample,предыдущем разделе>> мы подключили в проект сторонний компонент Stepper. В данном разделе мы интегрируем его в универсальный пользовательский интерфейс CUBA, что даст разработчикам возможность использовать компонент декларативно в XML-дескрипторах экранов и связывать его с сущностями через <<datasources,источники данных>>.
+
+Создадим новый проект в CUBA Studio и назовем его `addon-gui-demo`.
+
+Создадим модуль *web-toolkit*, нажав на кнопку *Create web toolkit module* секции *Project properties* навигатора Studio.
+
+Далее нажимаем на кнопку *New UI component*. Откроется окно создания визуального компонента *UI component generation*. В секции *Component type* выбираем значение `Vaadin add-on`.
+
+image::ui_component/studio_vaadin_addon_wizard_gui.png[align="center"]
+
+Заполним поля *Add-on Maven dependency* и *Inherited widgetset* как описано в <<vaadin_addon_sample,предыдущем разделе>>.
+
+Далее заполним поля в нижней секции:
+
+* *Integrate into Generic UI* указывает на необходимости интеграции компонента в универсальный пользовательский интерфейс платформы.
+
+* *Component XML element* -  имя элемента компонента в XML-дескрипторе экрана. Введите значение `stepper`.
+
+* *Component interface name* - имя интерфейса компонента для универсального UI платформы. Введите `Stepper`.
+
+* *FQN of Vaadin component from add-on* - полное имя класса компонента Vaadin из аддона. В нашем случае это `org.vaadin.risto.stepper.IntStepper`.
+
+После нажатия кнопки *OK* Studio сделает следующее:
+
+* Добавит аддон Vaadin в зависимости модуля *web* в файле `build.gradle`.
+
+* Подключит виджетсет аддона в файле `AppWidgetSet.gwt.xml` модуля *web-toolkit*.
+
+* Сгенерирует заготовки для следующих файлов:
+
+** `Stepper` - интерфейс компонента в подкаталоге *gui* модуля *web*.
+
+** `WebStepper` - реализация компонента в подкаталоге *gui* модуля *web*.
+
+** `StepperLoader` - XML-загрузчик компонента в модуле *web*.
+
+** `ui-component.xsd` - описатель схемы XML для нового компонента. Если файл уже существовал на момент генерации компонента, то информация о новом компоненте будет добавлена в существующий файл.
+
+** `cuba-ui-component.xml` - файл регистрации загрузчика нового компонента в модуле *web*. Если файл существовал, то информация о новом компоненте будет добавлена в существующий файл.
+
+Откройте проект в IDE.
+
+Последовательно пройдемся по сгенерированным Studio заготовкам файлов и внесем в них необходимые изменения.
+
+* Перейдите к интерфейсу `Stepper` в подкаталоге *gui* модуля *web*. Замените его содержимое на следующий код:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/Stepper.java[]
+----
++
+В качестве базового для нашего компонента выбран интерфейс `Field`. Это позволяет осуществить связь с данными (data binding), то есть отображать и редактировать значение некоторого атрибута сущности.
+
+* Далее перейдите к классу `WebStepper` - реализации компонента в подкаталоге *gui* модуля *web*. Замените содержимое класса следующим кодом:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/WebStepper.java[]
+----
++
+В качестве базового класса выбран `WebAbstractField`, который реализует логику интерфейса `Field`.
+
+* `StepperLoader` в модуле *web* загружает компонент из его представления в XML.
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/StepperLoader.java[]
+----
++
+Логика загрузки базовых свойств компонента `Field` сосредоточена в классе `AbstractFieldLoader`. Нам достаточно загрузить только специфические свойства `Stepper`.
+
+* В файле `cuba-ui-component.xml`, расположенном в корне модуля *web*, регистрируется новый компонент и его загрузчик. Оставляем файл без изменений.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/cuba-ui-component.xml[]
+----
+
+* Файл `ui-component.xsd`, расположенный в корне модуля *web*, это описатель XML схемы новых компонентов проекта. Добавим к элементу `stepper` описание его атрибутов.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/ui-component.xsd[]
+----
+
+Далее рассмотрим, как добавить новый компонент на экран.
+
+* Создадим новую сущность `Customer` с двумя полями:
+
+** `name` типа String
+** `score` типа Integer
+
+* Сгенерируем для новой сущности стандартные экраны.
+
+* Далее добавим компонент `stepper` на экран. Вы можете поместить его как в <<gui_FieldGroup,FieldGroup>>, так и в отдельный контейнер. Рассмотрим оба способа.
+
+. Использование компонента в экране внутри произвольного контейнера.
++
+--
+* Откройте файл `customer-edit.xml`.
+
+* Объявите новое пространство имен `xmlns:app="http://schemas.company.com/agd/0.1/ui-component.xsd"`
+
+* Удалите поле `score` из `fieldGroup`.
+
+* Добавьте компонент `stepper` на экран.
+
+В результате XML-дескриптор редактора должен выглядеть так:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-container.xml[]
+----
+
+В данном примере компонент `stepper` подсоединен к атрибуту `score` сущности `Customer`, экземпляр которой находится в источнике данных `customerDs`.
+--
+
+. Использование компонента в поле <<gui_FieldGroup>>:
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/customer-edit-gui-custom-field.xml[]
+----
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/CustomerEditGuiCustomField.java[]
+----
+
+* Для адаптации внешнего вида компонента создадим в проекте расширение темы. Для этого в Studio выполним команду *Create theme extension* секции *Project properties* навигатора. В списке тем для расширения выберем `halo` и нажмем кнопку *Create*. Затем откроем файл `themes/halo/com.company.application/halo-ext.scss` модуля *web*, и добавим в него следующий код:
++
+[source, css]
+----
+include::{sourcesdir}/ui_component/vaadin_gui/halo-ext.scss[]
+----
+
+* Запускаем сервер приложения. Экран редактирования должен выглядеть следующим образом:
+
+image::ui_component/customer_edit_result.png[align="center"]
+

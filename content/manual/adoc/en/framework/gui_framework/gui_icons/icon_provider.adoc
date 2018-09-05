@@ -1,0 +1,146 @@
+:sourcesdir: ../../../../../source
+
+[[icon_provider]]
+===== Using Icons from Other Font Libraries
+
+To enhance the theme extension, you may need to create icons and embed them into fonts, as well as use any external icons library.
+
+. In the *web* module create the `enum` class implementing `com.vaadin.server.FontIcon` interface for the new icons:
++
+[source, java]
+----
+include::{sourcesdir}/gui/add_icons_enum.java[]
+----
+
+. Add new styles to the theme extension. We recommend creating a special subfolder `fonts` in the main folder of theme extension, for example, `modules/web/themes/halo/com.company.demo/fonts`. Put the styles and font files in their own subfolders, for example, `fonts/icomoon`.
++
+Files of fonts are represented by the following extensions:
++
+** `.eot`,
++
+** `.svg`,
++
+** `.ttf`,
++
+** `.woff`.
++
+The set of fonts `icomoon` from an open library, used in this example, consists of 4 joint used files: `icomoon.eot`, `icomoon.svg`, `icomoon.ttf`, `icomoon.woff`.
+
+. Create a file with styles that includes `@font-face` and a CSS class with the icon style. Below is an example of the `icomoon.scss` file, where `IcoMoon` class name corresponds to the value returned by `FontIcon#getFontFamily` method:
++
+[source, css]
+----
+include::{sourcesdir}/gui/add_icons_icomoon.scss[]
+----
+
+. Create a reference to the file with font styles in `halo-ext.scss` or other file of theme extension:
++
+[source, css]
+----
+include::{sourcesdir}/gui/add_icons_halo-ext.scss[]
+----
+
+. Then create new <<icon_set,icon set>> which is an enumeration implementing the `Icons.Icon` interface:
++
+[source, java]
+----
+include::{sourcesdir}/gui/IcoMoonIcon.java[]
+----
+
+. Create new `IconProvider`.
++
+--
+For managing custom icon sets CUBA platform provides the mechanism that consists of `IconProvider` and `IconResolver`.
+
+`IconProvider` is a marker interface that exists only in the *web* module and can provide resources (`com.vaadin.server.Resource`) by the icon path.
+
+The `IconResolver` bean obtains all beans that implement `IconProvider` interface and iterates over them to find the one that can provide a resource for the icon.
+
+There are two `IconResolver` interfaces and two corresponding implementations for *desktop* and *web* modules. They both are facade beans designed for resolving module-specific icon objects by the icon paths:
+
+* `com.vaadin.server.Resource` in the *web* module,
+* `javax.swing.Icon` for the *desktop* module.
+
+In order to use this mechanism, you should create your implementation of `IconProvider`:
+
+[source, java]
+----
+include::{sourcesdir}/gui/IcoMoonIconProvider.java[]
+----
+
+Here we explicitly assign order for this bean with `@Order annotation`.
+--
+
+. Register you icon set in the application properties file:
++
+[source, plain]
+----
+cuba.iconsConfig = +com.company.demo.gui.icons.IcoMoonIcon
+----
+
+Now you can use new icons by direct reference to their class and `enum` element in XML-descriptor of the screen:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/add_icons_usage.xml[]
+----
+
+or in the Java controller:
+
+[source, java]
+----
+include::{sourcesdir}/gui/add_icons_usage.java[]
+----
+
+As a result, new icons are added to the buttons:
+
+image::add_icons.png[align="center"]
+
+Overriding icons with icon sets::
++
+--
+The mechanism of icon sets enables you to override icons from other sets. In order to do this, you should create and register a new icon set (enumeration) with the same icons (options) but with different icon paths (`source`). In the following example the new `MyIcon` enum is created to override the standard icons from `CubaIcon` set.
+
+. The default icon set:
++
+[source, java]
+----
+include::{sourcesdir}/gui/CubaIcon.java[]
+----
+
+. The new icon set:
++
+[source, java]
+----
+include::{sourcesdir}/gui/MyIcon.java[]
+----
+
+. Register the new icon set in `web-app.properties`:
++
+[source, plain]
+----
+cuba.iconsConfig = +com.company.demo.gui.icons.MyIcon
+----
+
+Now, the new *OK* icon will be used instead of the standard one:
+
+[source, java]
+----
+include::{sourcesdir}/gui/overridden_icon.java[]
+----
+
+In case you need to ignore redefinitions, you still can use the standard icons by using the path to an icon instead of the option name:
+
+[source, xml]
+----
+<button caption="Created" icon="icons/create.png"/>
+----
+
+or
+
+[source, java]
+----
+button.setIcon(CubaIcon.CREATE_ACTION.source());
+----
+--
+

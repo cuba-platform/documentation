@@ -1,0 +1,133 @@
+:sourcesdir: ../../../../../../source
+
+[[abstractEditor]]
+====== AbstractEditor
+
+`AbstractEditor` is the base class for <<screen_edit,edit screen>> controller. It is a subclass of <<abstractWindow,AbstractWindow>>.
+
+When creating a controller class, it is recommended to parameterize `AbstractEditor` with the edited entity class. This enables `getItem()` and `initNewItem()` methods work with the specified entity type and application code does not need to do additional type conversion. For example:
+
+[source, java]
+----
+include::{sourcesdir}/gui/abstracteditor_1.java[]
+---- 
+
+`AbstractEditor` defines the following own methods:
+
+[[abstractEditor_getItem]]
+* `getItem()` – returns an instance of the entity being edited, which is set in the main <<datasources,datasource>> of the screen (i.e. specified in the `datasource` attribute of the root element of the XML-descriptor).
++
+If the instance being edited is not a new one, screen opening procedure will reload the instance from the database with the required <<views,view>> as set for the main datasource.
++
+Changes made to the instance returned by `getItem()`, are reflected in the state of the datasource and will be sent to the Middleware at commit.
++
+[WARNING]
+====
+It should be considered that `getItem()` returns a value only after screen is initialized with `setItem()` method. Until this moment, this method returns `null`, for instance when calling from inside `init()` or `initNewItem()`.
+
+However, in the `init()` method, an instance of an entity passed to `openEditor()` can be retrieved from parameters using the following approach: 
+
+[source, java]
+----
+include::{sourcesdir}/gui/abstracteditor_2.java[]
+---- 
+
+The `initNewItem()` method receives an instance as a parameter of the appropriate type.
+
+In both cases the obtained entity instance will be reloaded afterwards unless it is a new one. Therefore you should not change it or save it in a field for future use.
+====
+
+[[abstractEditor_setItem]]
+* `setItem()` – invoked by the framework when a window is opened using `openEditor()` to set the instance being edited to the main datasource. By the moment of invocation all screen components and datasources will have been created and the controller's `init()` method will have been executed.
++
+It is recommended to use template methods `initNewItem()` and `postInit()`, instead of overriding `setItem()` in order to initialize a screen. 
+
+[[initNewItem]]
+* `initNewItem()` – a template method invoked by the framework before setting the edited entity instance into the main datasource.
++
+The `initNewItem()` method is called for newly created entity instances only. The method is not called for <<entity_states,detached>> instances. This method can be implemented in the controller, if new entity instances must be initialized before setting them in the datasource. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstracteditor_3.java[]
+---- 
++
+A more complex example of using the `initNewItem()` method can be found in the <<init_values_in_initNewItem,cookbook>>.
+
+[[abstractEditor_postInit]]
+* `postInit()` – a template method invoked by the framework immediately after the edited entity instance is set to the main datasource. In this method, `getItem()` can be called to return a new entity instance or an instance re-loaded during screen initialization.
++
+This method can be implemented in controller for final screen initialization, for example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstracteditor_4.java[]
+---- 
+
+[[abstractEditor_commit]]
+* `commit()` – validates the screen and submits changes to the Middleware via <<dataSupplier,DataSupplier>>.
++
+If a method is used with `validate = false`, commit does not perform a validation.
++
+It is recommended to use specialized template methods – `postValidate()`, `preCommit()` and `postCommit()` instead of overriding this method.
+
+[[abstractEditor_commitAndClose]]
+* `commitAndClose()` – validates the screen, submits changes to the Middleware and closes the screen. The value of the `++Window.COMMIT_ACTION_ID++` will be passed to the `preClose()` method and registered `CloseListener` listeners. 
++
+It is recommended to use specialized template methods – `postValidate()`, `preCommit()` and `postCommit()` instead of overriding this method.
+
+[[abstractEditor_preCommit]]
+* `preCommit()` – a template method invoked by the framework during the commit process, after a successful validation, but before the data is submitted to the Middleware.
++
+This method can be implemented in controller. If the method returns `false`, commit process gets interrupted, as well as window closing process (if `commitAndClose()` was invoked). For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstracteditor_5.java[]
+---- 
+
+[[abstractEditor_postCommit]]
+* `postCommit()` – a template method invoked by the framework at the final stage of committing changes. Method parameters are:
+
+** `committed` – set to `true`, if the screen had changes and they have been submitted to Middleware.
+
+** `close` – set to `true`, if the screen should be closed after the changes are committed.
++
+If the screen does not close the default implementation of this method displays a message about successful commit and invokes `postInit()`.
++
+This method can be overridden in controller in order to perform additional actions after successful commit, for example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstracteditor_6.java[]
+----
+
+The diagrams below show initialization sequence and different ways to commit changes for an edit screen.
+
+.Edit Screen Initialization
+image::EditorInit.png[align="center"]
+
+.Committing And Closing a Window With an editWindowActions Frame
+image::EditorCommit.png[align="center"]
+
+.Committing a Screen With an extendedEditWindowActions Frame
+image::ExtendedEditorCommit.png[align="center"]
+
+.Committing a Screen With an extendedEditWindowActions Frame
+image::ExtendedEditorCommitAndClose.png[align="center"]
+
+'''
+
+API::
+
+<<abstractEditor_commit,commit()>> -
+<<abstractEditor_commitAndClose,commitAndClose()>> -
+<<abstractEditor_getItem,getItem()>> -
+<<initNewItem,initNewItem()>> -
+<<abstractEditor_postCommit,postCommit()>> -
+<<abstractEditor_postInit,postInit()>> -
+<<abstractEditor_preCommit,preCommit()>> -
+<<abstractEditor_setItem,setItem()>>
+
+'''
+

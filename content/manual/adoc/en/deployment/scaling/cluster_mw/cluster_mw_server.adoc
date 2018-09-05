@@ -1,0 +1,28 @@
+:sourcesdir: ../../../../../source
+
+[[cluster_mw_server]]
+===== Configuring Interaction between Middleware Servers
+
+Middleware servers can maintain shared lists of <<userSession,user sessions>> and other objects and coordinate invalidation of caches. <<cuba.cluster.enabled,cuba.cluster.enabled>> property should be enabled on each server to achieve this. Example of the `tomcat/conf/app-core/local.app.properties` file is shown below:
+
+[source,plain]
+----
+cuba.cluster.enabled = true
+
+cuba.webHostName = host3
+cuba.webPort = 8080
+cuba.webContextName = app-core
+----
+
+For the Middleware servers, correct values of the <<cuba.webHostName,cuba.webHostName>>, <<cuba.webPort,cuba.webPort>> and <<cuba.webContextName,cuba.webContextName>> properties should be specified to form a unique <<serverId,Server ID>>.
+
+Interaction mechanism is based on link:http://www.jgroups.org[JGroups]. The platform provides two configuration files for JGroups:
+
+* `jgroups.xml` -  a UDP-based stack of protocols which is suitable for local network with enabled broadcast communication. This configuration is used by default when the cluster is turned on.
+
+* `jgroups_tcp.xml` - TCP-based stack of protocols which is suitable for any network. It requires explicit setting of cluster members addresses in `TCP.bind_addr` and `TCPPING.initial_hosts` parameters. In order to use this configuration, set <<cuba.cluster.jgroupsConfig,cuba.cluster.jgroupsConfig>> application property.
+
+In order to set up JGroups parameters for your environment, copy the appropriate `jgroups.xml` file from the root of `cuba-core-<version>.jar` to your project *core* module or to `tomcat/conf/app-core` and modify it.
+
+`ClusterManagerAPI` bean provides the program interface for interaction between servers in the Middleware cluster. It can be used in the application – see JavaDocs and usages in the platform code.
+

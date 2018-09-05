@@ -1,0 +1,63 @@
+:sourcesdir: ../../../../../source
+
+[[association_mtm_recipe_1]]
+===== Прямая ассоциация Many-to-Many
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airline.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Рассмотрим реализацию ассоциации many-to-many на примере сущностей `Airport` и `Airline`. Один аэропорт может принимать множество авиакомпаний, и одна авиакомпания-перевозчик, в свою очередь, может осуществлять рейсы во множество аэропортов.
+
+image::cookbook/association_recipe_1.png[align="center"]
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - сущность `Airport` содержит many-to-many список авиакомпаний.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `airlines`: *Attribute type* - `ASSOCIATION`, *Cardinality* - `MANY_TO_MANY`.
++
+Сущность `Airport` будет отмечена ведущей стороной ассоциации, и Studio предложит создать соответствующий атрибут `airports` в сущности `Airline` на противоположной стороне отношений.
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_AIRLINE_AIRPORT_LINK",
+    joinColumns = @JoinColumn(name = "AIRPORT_ID"),
+    inverseJoinColumns = @JoinColumn(name = "AIRLINE_ID"))
+@ManyToMany
+protected List<Airline> airlines;
+----
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/entity/airports/Airline.java[Airline.java] - сущность `Airline` теперь содержит many-to-many список аэропортов: *Attribute type* - `ASSOCIATION`, *Cardinality* - `MANY_TO_MANY`.
++
+[source, java]
+----
+@JoinTable(name = "SAMPLE_AIRLINE_AIRPORT_LINK",
+    joinColumns = @JoinColumn(name = "AIRLINE_ID"),
+    inverseJoinColumns = @JoinColumn(name = "AIRPORT_ID"))
+@ManyToMany
+protected List<Airport> airports;
+----
++
+Сущность `Airline` также будет отмечена как ведущая сторона отношений, что позволяет редактировать коллекции с обеих сторон.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - представление `airport-airlines` экрана редактирования аэропорта содержит ссылки на авиакомпании с представлением `_minimal`. Представление `airline-airports`, в свою очередь, также содержит ссылки на аэропорты.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[airport-edit.xml] - XML-дескриптор экрана редактирования аэропорта определяет источник данных для экземпляра аэропорта и вложенный источник для его авиакомпаний. Кроме того, экран содержит таблицу, отображающую авиакомпании, и действия https://doc.cuba-platform.com/manual-latest/list_actions.html#addAction[add] и https://doc.cuba-platform.com/manual-latest/list_actions.html#removeAction[remove] для неё.
+
+* https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airline/airline-edit.xml[airline-edit.xml] - XML-дескриптор экрана редактирования авиакомпании определяет источник данных для экземпляра авиакомпании и вложенный источник данных для её аэропортов. Кроме того, экран содержит таблицу, отображающую аэропорты, и действия *add* и *remove*.
++
+Таким образом, экраны редактирования сущностей `Airport` и `Airline` полностью симметричны.
+
+В результате редактирование экземпляра авиакомпании работает следующим образом:
+
+В экране редактирования авиакомпании отображается список аэропортов.
+
+Пользователь может нажать *Add* и в открывшемся https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-browse.xml[экране выбора] сущности `Airport` либо выбрать аэропорт, который нужно добавить, либо открыть экран его редактирования. При нажатии *OK* в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[экране редактирования] аэропорта изменённый экземпляр аэропорта сохраняется как в базу данных, так и в https://github.com/cuba-platform/sample-model/blob/master/modules/web/src/com/company/sample/web/airline/airline-edit.xml#L12[источник данных] `airportsDs` экрана редактирования авиакомпании, так как сущность `Airport` является полностью независимой.
+
+Пользователь может создавать новые аэропорты или удалять их, и все изменения будут сохраняться и в базу данных в отдельных транзакциях, и в источник данных `airportsDs`.
+
+Пользователь нажимает *OK* в экране редактирования авиакомпании, и изменённый экземпляр `Airline` вместе со всеми ссылками на экземпляры `Airport` отправляется на middleware в метод <<dataManager,DataManager>>.commit(), чтобы быть сохранённым в базе данных.
+
+На другой стороне отношений в экране редактирования сущности `Aiport` работает ровно тот же принцип.
+

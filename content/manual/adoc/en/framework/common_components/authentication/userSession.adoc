@@ -1,0 +1,20 @@
+:sourcesdir: ../../../../../source
+
+[[userSession]]
+===== UserSession
+
+User session is the main element of access control mechanism of CUBA applications. It is represented by the `UserSession` object, which is associated with the currently authenticated user and contains information about user rights. The `UserSession` object can be obtained in any application <<app_tiers,block>> using the <<userSessionSource,UserSessionSource>> infrastructure interface.
+
+The `UserSession` object is created on Middleware during `AuthenticationManager.login()` method execution after the user is authenticated using a name and a password. The object is then cached in the Middleware block and returned to the client tier. When running in cluster, the session object is replicated to all cluster members. The client tier also stores the session object after receiving it, associating it with the active user in one way or another (for example, storing it in HTTP session). Further on, all Middleware invocations on behalf of this user are accompanied by passing the session identifier (of `UUID` type). This process does not need any special support in the application code, as the session identifier is passed automatically, regardless of the signature of invoked methods. Processing of client invocations in the Middleware starts from retrieving session from the cache using the obtained identifier. Then the session is associated with the request execution thread. The session object is deleted from the cache when the `AuthenticationManager.logout()` method is called or when the timeout defined by <<cuba.userSessionExpirationTimeoutSec,cuba.userSessionExpirationTimeoutSec>> application property expires.
+
+Thus the session identifier created when the user logs into the system is used for user authentication during each Middleware invocation.
+
+The `UserSession` object also contains methods for current user _authorization_ – validation of the rights to system objects: `isScreenPermitted()`, `isEntityOpPermitted()`, `isEntityAttrPermitted()`, `isSpecificPermitted()`. However, it is recommended to use the <<security,Security>> infrastructure interface for programmatic authorization.
+
+The `UserSession` object can contain named attributes of arbitrary serializable type. The attributes are set by `setAttribute()` method and returned by `getAttribute()` method. The latter is also able to return the following session parameters, as if they were attributes:
+
+* `userId` – ID of the currently registered or substituted user;
+* `userLogin` – login of the currently registered or substituted user in lowercase.
+
+The session attributes are replicated in the Middleware cluster, same as the other user session data.
+

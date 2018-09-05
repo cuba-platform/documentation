@@ -1,0 +1,90 @@
+:sourcesdir: ../../../../../source
+
+[[icon_set]]
+===== Наборы значков
+
+Наборы значков (icon sets) позволяют отвязать использование значков в визуальных компонентах от конкретных путей к изображениям в теме или констант элементов шрифтов. Кроме того, они упрощают переопределение значков, используемых в UI, унаследованном от компонентов приложения.
+
+Наборы значков - это перечисления (enumerations), каждый элемент которых соответствует некоторому значку. Класс перечисления должен реализовывать интерфейс `Icons.Icon` с единственным параметром - строкой, задающей источник получения значка, например, `font-icon:CHECK` или `icons/myawesomeicon.png`. Для получения источника значка следует использовать бин платформы `Icons`.
+
+Чтобы наборы значков были доступны из модулей *desktop* и *web*, их следует создавать в модуле *gui* приложения. В случае, если вы планируете использовать только модуль *web*, наборы значков можно создавать в веб-модуле. Имена элементов перечисления в наборе должны соответствовать регулярному выражению `[A-Z]_`, то есть содержать только заглавные буквы и нижнее подчёркивание.
+
+Пример набора значков:
+
+[source, java]
+----
+public enum MyIcon implements Icons.Icon {
+
+    // adding new icon
+    COOL_ICON("icons/cool-icon.png"),
+
+    // overriding a CUBA default icon
+    OK("icons/my-ok.png");
+
+    protected String source;
+
+    MyIcon(String source) {
+        this.source = source;
+    }
+
+    @Override
+    public String source() {
+        return source;
+    }
+}
+----
+
+Наборы значков необходимо зарегистрировать в свойстве приложения <<cuba.iconsConfig,cuba.iconsConfig>>, например:
+
+.web-app.properties
+[source, plain]
+----
+cuba.iconsConfig = +com.company.demo.gui.icons.MyIcon
+----
+
+[TIP]
+====
+Чтобы наборы значков из компонента приложения были доступны в проекте, необходимо добавить данное свойство приложения в <<app-component.xml,дескриптор компонента>>.
+====
+
+Теперь вы можете использовать значки из созданного набора, декларативно указывая имя соответствующего элемента enum в XML-дескрипторе:
+
+[source, xml]
+----
+<button icon="COOL_ICON"/>
+----
+
+или программно в контроллере экрана:
+
+[source, java]
+----
+button.setIconFromSet(MyIcon.COOL_ICON);
+----
+
+Используя специальные префиксы, вы можете декларативно использовать значки из разных источников:
+
+* `theme` - значок из <<web_theme,темы>> приложения, например, `web/themes/halo/awesomeFolder/superIcon.png`:
++
+[source, xml]
+----
+<button icon="theme:awesomeFolder/superIcon.png"/>
+----
+
+* `file` - файл с изображением:
++
+[source, xml]
+----
+<button icon="file:D:/superIcon.png"/>
+----
+
+* `classpath` - значок, расположенный в classpath, например, `com/company/demo/web/superIcon.png`
++
+[source, xml]
+----
+<button icon="classpath:/com/company/demo/web/superIcon.png"/>
+----
+
+В платформе доступен уже готовый набор значков - `CubaIcon`. Он включает в себя практически все значки из библиотеки `FontAwesome`, а также собственные значки CUBA. Значки из этого набора по умолчанию можно выбрать в редакторе Studio:
+
+image::icon_set.png[align="center"]
+

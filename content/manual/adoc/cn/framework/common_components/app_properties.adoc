@@ -1,0 +1,78 @@
+:sourcesdir: ../../../../source
+
+[[app_properties]]
+==== Application Properties
+
+Application properties represent named values of different types, which determine various aspects of application configuration and functionality. The platform uses application properties extensively, and you can also employ them to configure application-specific features.
+
+Platform application properties can be classified by intended purpose as follows:
+
+* _Configuration parameters_ – specify sets of configuration files and certain user interface parameters, i.e. determine the application functionality. Values of configuration parameters are usually defined for the application project at development time.
++
+For example: <<cuba.springContextConfig,cuba.springContextConfig>>.
+
+* _Deployment parameters_ – describe various URLs to connect application <<app_tiers,blocks>>, DBMS type, security settings etc. Values of deployment parameters are usually depend on the environment where the application instance is installed.
++
+For example: <<cuba.connectionUrlList,cuba.connectionUrlList>>, <<cuba.dbmsType,cuba.dbmsType>>, <<cuba.userSessionExpirationTimeoutSec,cuba.userSessionExpirationTimeoutSec>>.
+
+* _Runtime parameters_ – audit settings, email sending parameters etc. Values of these properties can be changed when needed at the application run time even without restart.
++
+For example: <<cuba.entityLog.enabled,cuba.entityLog.enabled>>, <<cuba.email._,cuba.email.smtpHost>>.
+
+[[setting_app_properties]]
+Setting Application Properties::
++
+--
+Values of application properties can be set in the <<app_properties_db,database>>, in the <<app_properties_files,property files>>, or via Java system properties. Besides, a value set in a file overrides the value with the same name from the database. A value set as a Java system property overrides both values from files and from the database.
+
+Some properties do not support setting values in the database for the following reason: their values are needed when the database is not accessible to the application code yet. These are configuration and deployment parameters mentioned above. So you can only define them in property files or via Java system properties. Runtime parameters can always be set in the database (and possibly be overridden by values in files or system properties).
+
+Typically, an application property is used in one or several application <<app_tiers,blocks>>. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> is used only in Middleware, <<cuba.web.appWindowMode,cuba.web.appWindowMode>> is used in Web Client, while <<cuba.springContextConfig,cuba.springContextConfig>> is used in all blocks. It means that if you need to set some value to a property, you should do it __in all blocks__ that use this property. Properties stored in the database are automatically available to all blocks, so you set them just in one place (in the database table) regardless of what blocks use them. Moreover, there is a standard UI screen to manage properties of this type: see *Administration > Application Properties*. Properties stored in files should be set separately in the respective files of the blocks.
+
+[TIP]
+====
+When you need to set a value to a platform property, find this property in the <<app_properties_reference,documentation>>. If the documentation states that the property is stored in the database, use the *Administration > Application Properties* screen to set its value. Otherwise, find out what blocks use the property and define it in the `app.properties` files of these blocks. For example, if the documentation states that the property is used in all blocks, and your application consists of Middleware and Web Client, you should define the property in the `app.properties` file of the *core* module and in the `web-app.properties` file of the *web* module. Deployment parameters can also be set outside of project files in the <<conf_dir,configuration>> directory. See <<app_properties_files>> for details.
+====
+--
+
+[[component_app_properties]]
+Properties From Application Components::
++
+--
+An <<app_components,application component>> can expose properties by defining them in its  <<app-component.xml,app-component.xml>> file.
+Then if an application which uses the component does not define its own value for the property, the value will be obtained from the component. If the application uses multiple components defining the same property, the actual value in the application will be obtained from the component which is the closest ancestor by the hierarchy of dependencies between components. If there are several components on the same level of the hierarchy, the value is unpredictable.
+--
+
+[[additive_app_properties]]
+Additive Properties::
++
+--
+Sometimes it is needed to get a combined property value from all application components used in the project. This is especially true for configuration parameters that allow platform mechanisms to configure your application based on the parameters provided by components.
+
+Such properties should be made _additive_ by specifying the plus sign in the beginning of their values. This sign indicates that the property value will be assembled from application components at runtime. For example, <<cuba.persistenceConfig,cuba.persistenceConfig>> should be an additive property. In your project, it specifies a `persistence.xml` file defining your project's data model. But due to the fact that the real property value will include also `persistence.xml` files of the application components, the whole data model of your application will include also entities defined in the components.
+
+If you omit `+` for a property, its value will be obtained only from the current project. It can be useful if you don't want to inherit some configuration from components, for example, when you define a menu structure.
+
+An additive property value obtained at runtime is formed by elements concatenated with a _space_ symbol.
+--
+
+[[app_properties_access]]
+Programmatic Access to Application Properties::
++
+--
+You can access application properties in your code using the following mechanisms:
+
+* <<config_interfaces,Configuration interfaces>>. If you define application properties as annotated methods of a configuration interface, the application code will have typed access to the properties. Configuration interfaces allow you to define and access properties of all types of storage: database, files and system properties.
+
+* The `getProperty()` method of the <<appContext,AppContext>> class. If you set a property in a file or as a Java system property, you can read its value using this method. This approach has the following drawbacks:
+** Properties stored in the database are not supported.
+** Unlike invoking an interface method, you have to provide the property name as String.
+** Unlike getting a result of a specific type, you can only get the property value as String.
+--
+
+include::app_properties/app_properties_files.adoc[]
+
+include::app_properties/app_properties_db.adoc[]
+
+include::app_properties/config_interfaces.adoc[]
+

@@ -1,0 +1,59 @@
+:sourcesdir: ../../../../source
+
+[[rest_api_v2_custom_auth]]
+==== Custom Authentication
+
+Authentication mechanisms can provide access tokens by key, link, LDAP login and password, etc. REST API uses its own authentication mechanism that cannot be modified. In order to use custom authentication process, you need to create a REST controller and use its URL.
+
+Let's consider the custom authentication mechanism that enables getting an OAuth token by a promo code. In the following example we will use a sample application that contains the `Coupon` entity with `code` attribute. We will send this attribute's value as an authentication parameter in GET request.
+
+. Create a `Coupon` entity with the `code` attribute:
++
+[source, java]
+----
+@Column(name = "CODE", unique = true, length = 4)
+protected String code;
+----
+
+. Create a <<users,user>> with *promo-user* login on behalf of which the authentication will be performed.
+
+. Create a new Spring configuration file with name `rest-dispatcher-spring.xml` under the root package (`com.company.demo`) of *web* module. The content of the file must be as follows:
++
+[source, xml]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring-ex.xml[]
+----
+
+. Include the file into the `cuba.restSpringContextConfig` application property in the `modules/web/src/web-app.properties` file:
++
+[source, properties]
+----
+include::{sourcesdir}/rest/rest-dispatcher-spring.properties[]
+----
+
+. Create the `rest` package under the root package of *web* module and implement the custom Spring MVC controller in it. Use the `OAuthTokenIssuer` bean to generate and issue the REST API token for a user after the custom authentication:
++
+[source, java]
+----
+include::{sourcesdir}/rest/customRestController.java[]
+----
+
+. Exclude the `rest` package from scanning in *web/core* modules: the `OAuthTokenIssuer` bean is available only in REST API context, and scanning for it in the application context will cause an error.
++
+[source, xml]
+----
+include::{sourcesdir}/rest/web-spring-ex.xml[]
+----
+
+. Now users will be able to obtain OAuth2 access code using GET HTTP request with the `code` parameter to
++
+`\http://localhost:8080/app/rest/auth-code?code=A325`
++
+The result will be:
++
+  {"access_token":"74202587-6c2b-4d74-bcf2-0d687ea85dca","token_type":"bearer","expires_in":43199,"scope":"rest-api"}
++
+The obtained access token should then be passed to REST API, as described in the documentation.
+
+include::rest_api_v2_custom_auth/rest_api_v2_social_login.adoc[]
+

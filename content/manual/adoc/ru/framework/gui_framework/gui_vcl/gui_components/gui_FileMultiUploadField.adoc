@@ -1,0 +1,117 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_FileMultiUploadField]]
+====== FileMultiUploadField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/gui/components/FileMultiUploadField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Компонент `FileMultiUploadField` позволяет пользователю загружать файлы на сервер. Компонент представляет собой кнопку, при нажатии на которую на экране отображается стандартное для операционной системы окно выбора файлов, в котором можно выбрать сразу несколько файлов для загрузки.
+
+image::gui_multipleUpload.png[align="center"]
+
+XML-имя компонента: `multiUpload`.
+
+Компонент реализован для блоков *Web Client* и *Desktop Client*.
+
+Рассмотрим пример использования компонента.
+
+* Объявляем компонент в XML-дескрипторе экрана:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/multiupload_1.xml[]
+----
+
+[[gui_FileMultiUploadField_QueueUploadCompleteListener]]
+* В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в методе `init()` добавляем слушателей, которые будут реагировать на события успешной загрузки или ошибки:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/multiupload_2.java[]
+----
++
+Компонент загружает выбранные файлы во временное хранилище клиентского <<app_tiers,уровня>> и вызывает слушатель, добавленный методом `addQueueUploadCompleteListener()`. В данном слушателе вызовом метода `getUploadsMap()` у компонента можно получить мэп идентификаторов файлов во временном хранилище на имена файлов. Далее для каждого элемента мэп создается соответствующий объект `FileDescriptor` путем вызова `FileUploadingAPI.getFileDescriptor()`. Объект `com.haulmont.cuba.core.entity.FileDescriptor` (не путать с `java.io.FileDescriptor`) является персистентной сущностью, которая однозначно идентифицирует загруженный файл и впоследствии используется для выгрузки файла из системы.
++
+--
+Ниже приведён список доступных слушателей для отслеживания процесса загрузки:
+
+[[gui_FileMultiUploadField_FileUploadErrorListener]]
+* `FileUploadErrorListener`,
+
+[[gui_FileMultiUploadField_FileUploadStartListener]]
+* `FileUploadStartListener`,
+
+[[gui_FileMultiUploadField_FileUploadFinishListener]]
+* `FileUploadFinishListener`,
+
+* `QueueUploadCompleteListener`.
+
+Метод `FileUploadingAPI.putFileIntoStorage()` используется для перемещения загружаемого файла из временного хранилища клиентского уровня в <<file_storage,FileStorage>>. Параметрами этого метода являются идентификатор файла во временном хранилище и объект `FileDescriptor`. 
+
+После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто сохраняется в базе данных. Соответствующий файл будет доступен через экран *Administration* → *External Files*.
+
+После обработки файлов необходимо очистить список файлов вызовом `clearUploads()` на случай повторной загрузки.
+--
+
+* Максимальный размер загружаемого файла определяется свойством приложения <<cuba.maxUploadSizeMb,cuba.maxUploadSizeMb>> и по умолчанию равен 20MB. При выборе пользователем файла большего размера выдается соответствующее сообщение и загрузка прерывается.
+
+[[gui_FileMultiUploadField_accept]]
+* XML-атрибут `accept` (и соответствующий метод `setAccept()`) может быть использован для установки маски расширений файлов в диалоге выбора файла. Пользователи будут иметь возможность выбрать "All files" и загрузить произвольные файлы.
++
+Значением атрибута должен быть список масок, разделенных запятыми. Например: `++*.jpg,*.png++`.
+
+[[gui_FileMultiUploadField_fileSizeLimit]]
+* XML-атрибут `fileSizeLimit` (и соответствующий метод `setFileSizeLimit()`) может быть использован для установки максимально допустимого размера файла. Значением атрибута должно быть целое число для указания количества байт. Данный лимит устанавливает ограничение для каждого файла.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/multiupload_3.xml[]
+----
+
+[[gui_FileMultiUploadField_permittedExtensions]]
+* XML-атрибут `permittedExtensions` (и соответствующий метод `setPermittedExtensions()`) может быть использован для установки "белого списка" допустимых расширений загружаемых файлов.
++
+Значением атрибута должен быть набор строк, в котором каждая строка - это допустимое расширение с лидирующей точкой. Например:
++
+[source,java]
+----
+uploadField.setPermittedExtensions(Sets.newHashSet(".png", ".jpg"));
+----
+
+[[gui_FileMultiUploadField_dropZone]]
+* XML-атрибут `dropZone` используется для указания <<gui_BoxLayout,BoxLayout>>, который будет использован в качестве целевой площадки для перетаскивания файлов извне браузера. Если стиль контейнера <<gui_FileUploadField_dropZone,не переопределён>>, выбранный контейнер будет подсвечиваться, когда пользователь переносит над ним файлы, без наведения файла контейнер не отображается.
+
+В разделе <<images_recipe>> приведен более сложный пример работы с загруженными файлами.
+
+'''
+
+Атрибуты multiUpload::
+<<gui_FileMultiUploadField_accept,accept>> -
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_description,description>> -
+<<gui_FileMultiUploadField_dropZone,dropZone>> -
+<<gui_FileMultiUploadField_fileSizeLimit,fileSizeLimit>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_FileUploadField_pasteZone,pasteZone>> -
+<<gui_FileMultiUploadField_permittedExtensions,permittedExtensions>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Слушатели multiUpload::
+<<gui_FileMultiUploadField_FileUploadErrorListener,FileUploadErrorListener>> -
+<<gui_FileMultiUploadField_FileUploadFinishListener,FileUploadFinishListener>> -
+<<gui_FileMultiUploadField_FileUploadStartListener,FileUploadStartListener>> -
+<<gui_FileMultiUploadField_QueueUploadCompleteListener,QueueUploadCompleteListener>>
+
+'''
+

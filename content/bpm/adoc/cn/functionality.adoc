@@ -1,287 +1,31 @@
+:sourcesdir: ../../source
+
 [[functionality]]
 == Functionality
 
 The BPM subsystem employs the Activiti Engine for execution of business processes. The modified editor from Activiti Explorer is used to model processes using BPMN 2.0 notation. In addition to Activiti framework capabilities, the BPM subsystem provides additional functionality which is described in this section. The description of the Activiti framework is out of scope of this manual and can be found at https://www.activiti.org/userguide/.
 
-[[bpm_activiti_listener]]
-=== BpmActivitiListener
+include::functionality/bpm_activiti_listener.adoc[]
 
-The `BpmActivitiListener` event listener is automatically added to the process when a model is created. `BpmActivitiListener` implements the `ActivitiEventListener` interface (see http://www.activiti.org/userguide/#eventDispatcher). The listener is responsible for creating and modifying BPM entities when some process events occur (e.g. a user task entering, process cancellation, task completion, etc). This is the listener that creates <<ProcTask,ProcTask>> objects and sets the `endDate` value for a <<ProcInstance,ProcInstance>>.
+include::functionality/process_roles.adoc[]
 
-[[process_roles]]
-=== Process Roles
+include::functionality/start_process_form.adoc[]
 
-Process roles define process actor types, e.g. "operator" or "manager". To open the process roles editor, select the *Process roles* property in the model properties panel. Information about the roles will be written to the process XML (`extensionElements` section of the `process` element) during the model deployment.
+include::functionality/user_task.adoc[]
 
-Process roles definition:
+include::functionality/task_outcomes.adoc[]
 
-[source, xml]
-----
-<process id="testProcess" name="Test process">
-    <extensionElements>
-         <cuba:procRoles>
-            <cuba:procRole name="Manager" code="manager"/>
-            <cuba:procRole name="Operator" code="operator"/>
-        </cuba:procRoles>
-    </extensionElements>
-</process>
-----
+include::functionality/transitions.adoc[]
 
-[[start_process_form]]
-=== Start Process Form
+include::functionality/script_execution.adoc[]
 
-To define a form that will be displayed on the process start, use the *Start form* property of the *Start event* node. Read more about forms at the  <<ui.adoc#process_forms>> section.
+include::functionality/service_invocation.adoc[]
 
-Process start form definition:
+include::functionality/timer.adoc[]
 
-[source, xml]
-----
-<startEvent id="startEvent">
-  <extensionElements>
-    <cuba:form name="standardProcForm">
-      <cuba:param name="procActorsVisible" value="true"></cuba:param>
-    </cuba:form>
-  </extensionElements>
-</startEvent>
-----
+include::functionality/localization.adoc[]
 
-[[user_task]]
-=== User Task
+include::functionality/submodels.adoc[]
 
-To define the task assignee, select one of the process roles in the *Process role* property of the *User task* node. When a process reaches the User task, process actors with the given role will be found among all the process actors, and the task will be assigned to them.
+include::functionality/custom_stencils.adoc[]
 
-Process role from a task:
-
-[source, xml]
-----
-<userTask id="managerApproval" name="Manager approval">
-    <extensionElements>
-        <cuba:procRole>manager</cuba:procRole> 
-    </extensionElements>
-</process>
-----
-
-If you want the task to be assigned to multiple users, then set `Parallel` or `Sequential` value to the *Multi-instance type* property of the *User task* node.
-
-Setting a User Task assignee::
-+
-There is also an ability to specify the task assignee in the *assignee* property of the User Task node. The property value may contain a string with an identifier of CUBA user: `da8159cc-757f-7f59-6579-7f629ac02f72`, a variable that contains a string with a user id: `${variableName}`, or an expression that invokes the service that returns a user id: `${someService.getSomeUserId()}`. Keep in mind, that the *procRole* property still must be defined. When the process reaches such User Task, a `ProcActor` instance for the specified user and process role is searched. If it doesn't exist a new `ProcActor` object is created. To specify the assignee in the model designer, select the User Task, click the *Show advanced properties* link and click into the *Assignments* property editor. A new dialog will appear, fill the *Assignee* property there.
-
-Set the *Claim allowed* property if you don't want the task to be immediately assigned to the particular user, but to appear in the list of available tasks for the group of users. Then, one of the candidates will be able to claim the task. Task candidates are defined amongst process actors with the corresponding *Process role* property.
-
-A task without an explicit executor:
-
-[source,xml]
-----
-<userTask id="managerApproval" name="Manager approval">
-    <extensionElements>
-        <cuba:claimAllowed>true</cuba:claimAllowed>
-    </extensionElements>
-</process>
-----
-
-[[task_outcomes]]
-=== Task Outcomes
-
-Commonly, a user is expected to make a decision on the task, e.g. to approve or to reject the contract. The next route through the process depends on this decision. The *Task outcomes* property of the *User task* node is used to define the list of outcomes. The name and form that should be displayed when an outcome is selected can be defined for each outcome separately. Parameters that should be passed to the form can be defined as well (see <<ui.adoc#process_forms>>).
-
-Task outcomes:
-
-[source, xml]
-----
-<userTask id="managerApproval" name="Manager approval">
-    <extensionElements>
-        <cuba:outcomes>
-            <cuba:outcome name="approve">
-                <cuba:form name="standardProcessForm">
-                    <cuba:param name="commentRequired">true</cuba:param>
-                    <cuba:param name="attachmentsVisible">true</cuba:param>
-                </cuba:form>
-            </cuba:outcome>
-            <cuba:outcome name="reject">
-                <cuba:form name="someOtherProcessForm">
-                </cuba:form>
-            </cuba:outcome>
-        </cuba:outcomes>
-    </extensionElements>
-</process>
-----
-
-[[transitions]]
-=== Transitions Depending on Task Outcomes
-
-BPMN 2.0 notation doesn't provide a way to define multiple outcomes for a User task. To make a process to continue in a required direction, the *Exclusive gateway* is used. Its outgoing flows have conditions that operate with the results of the preceding task. When a user completes the task, its result is written to the process variable with the name generated as `[taskId]_result`. The variable type is `ProcTaskResult`.
-
-Methods of the `ProcTaskResult` class:
-
-* `count(String outcomeName): int` - returns the number of users who completed the task with the given outcome.
-* `exists(String outcomeName): boolean` - returns `true` if there are users who completed the task with the given outcome.
-
-The result object of the task completion is used in the *Flow condition* expression of gateway outgoing flows.
-
-*Example*
-
-image::TaskOutcomesExample.png[align="center"]
-
-Suppose that the `approval` task was assigned to multiple users in parallel. There are two outcomes defined for the task: `approve` and `reject`. When all users have completed the task, the process goes to the exclusive gateway. We want to implement the following behavior: if anyone chooses the `reject` option then go to the `Rejected` flow; if everyone approved the task then go to the `Approved` flow.
-
-Defining a Condition in a Flow Outcome Field::
-+
-The simplest way to define the flow condition is to select the name of the previous task outcome in the *Flow outcome* property of the flow node. The flow will be activated if there was at least one task completion with the selected outcome.
-
-Defining a Complex Condition for the Flow Node::
-+
-If you need to implement more complex condition for the outcome, you can define it in the *Flow condition* field. For example, "More than 5 users selected the Reject option" condition looks as follows:
-+
-[source,groovy]
-----
-${approval_result.count('reject') > 5}
-----
-
-[[flow_order]]
-==== Flow Order
-
-Please notice that the flow order must be defined. Otherwise, Activiti could process the default flow before the flows with explicit conditions. To define the flow order use the *Flow order* property of the *Exclusive gateway* node. 
-
-[[script_execution]]
-=== Script Evaluation
-
-The *Script task* node is used to evaluate a script. The system analyzes the content of the *Script* property value. If the value is a valid file path and the file exists, then the script from the file will be executed, otherwise the *Script* field will be evaluated.
-
-Note that you can use `persistence` and `metadata` objects in scripts.
-
-[[service_invocation]]
-=== Middleware Beans Methods Invocation
-
-The *Service task* node is used to invoke a service method. Activiti engine is integrated with the Spring framework, so you can access middleware beans by their names. To invoke a method of a managed bean use the following expression to the *Expression* field:
-
-[source,groovy]
-----
-${beanName.methodName(processVarName, 'someStringParam')}
-----
-
-You can use process variables as method arguments, including the variables automatically created on process start (`entityId`, `bpmProcInstanceId`, etc. as described in <<services.adoc#process_runtime_service>>).
-
-[[timer]]
-=== Completing a Task by Timer
-
-To complete a task after a certain time interval, you should:
-
-* Add the *Boundary timer event* node to the task node.
-* Draw the flow from the timer node to another required node.
-* Define an expression for the time interval in the *Time duration* property of the timer node. For example `PT15M` is an expression for 15 minutes interval.
-* Set the *Cancel activity* property to true. It will cancel the current task when the timer is fired.
-* In the *Timer outcome* property, define the task outcome that should be used when the task is completed by the timer.
-
-image::TimerEdit.png[align="center"]
-
-Defining an outcome for the timer:
-
-[source, xml]
-----
-<boundaryEvent id="managerApprovalTimer" cancelActivity="true" attachedToRef="managerApproval">
-    <extensionElements>
-        <cuba:outcome>approve</cuba:outcome>
-    </extensionElements>
-</boundaryEvent>
-----
-
-By default, the Job executor for processing timers is disabled. To enable it, set the application property `bpm.activiti.asyncExecutorEnabled = true`.
-
-[[localization]]
-=== Localization
-
-A process may contain localized messages that are used to display task or outcomes in the user interface.
-
-To open the localized messages editor, select the *Localization property* in the model properties panel.
-
-To localize the task name, create a record with the task id as a key.
-
-To localize the task outcome name, create a record with an expression like `TASK_ID.OUTCOME_NAME` as a key.
-
-To localize the process role name, create a record with the role code as a key.
-
-Localized messages:
-
-[source,xml]
-----
-<process id="testProcess" name="Test process">
-    <extensionElements>
-        <cuba:localizations>
-            <cuba:localization lang="en">
-                <cuba:msg key="key1" value="value1"/>
-                <cuba:msg key="key2" value="value2"/>
-            </cuba:localization>
-            <cuba:localization lang="ru">
-                <cuba:msg key="key1" value="value1"/>
-                <cuba:msg key="key2" value="value2"/>
-            </cuba:localization>
-      </cuba:localizations>
-    </extensionElements>
-</process>
-----
-
-[[submodels]]
-=== Submodels
-
-A *Sub model* node of the *Structural group* allows using an existing model as a part of a new model without creating a separate process instance. While deploying the process, submodel elements are being inserted into the current model, and the process XML is produced from the result of this concatenation.
-
-[[custom_stencils]]
-=== Custom Elements in Model Designer
-
-BPM subsystem enables creating custom elements for process model designer. Basically, a custom element is a `ServiceTask` that eliminates the need to type long expressions for method invocation, like `${app_MyBean.someMethod(argument1, 'argument2')}`. Below is an example of custom element creation.
-
-Suppose, there is a middleware bean with the `app_DiscountManager` name. There is a `makeDiscount(BigDecimal discountPercent, UUID entityId)` method in the bean. The method updates the contract amount by subtracting the discount.
-
-In this example, we will create a custom model element that will invoke the method. The discount percent will be defined as a parameter of the model element.
-
-Open the model elements editor with the menu item *BPM -> Model Elements Editor*.
-
-Click the *Add group* button and enter the group name - *Discounts*.
-
-image::StencilSetAddGroup.png[align="center"]
-
-Select the created group and click the *Add element* button.
-
-image::StencilSetAddStencil.png[align="center"]
-
-Enter the following values for element properties:
-
-* Title: *Contract discount*
-
-* Element ID: *contractDiscount*
-
-* Icon: click the *Upload* button and select the icon file (optional)
-
-* Bean name: select the *app_DiscountManager*
-
-* Method name: select the *makeDiscount*
-
-[WARNING]
-====
-The *Bean name* lookup contains only beans that implement an interface. The *Method name* lookup contains methods of implemented interfaces.
-====
-
-The *Method arguments* table will contain method arguments. You can change a caption and an argument default value.
-
-Save the elements set by clicking the *Save* button.
-
-Open the process model editor (*BPM -> Process Models*). There are the *Discounts* group and the *Contract discount* element in the elements list. Drag and drop the new element to the model and select it. You'll see that fields for discount percent and process variable name for entity identifier appeared.
-
-image::StencilSetModel.png[align="center"]
-
-[TIP]
-====
-`entityId` is a name of the process variable. This process variable is added automatically to each process that is linked to an entity. The variable stores an entity identifier, you can use it in any method calls.
-====
-
-During the process deployment, a custom element will be transformed to a `serviceTask`:
-
-[source,xml]
-----
-<serviceTask id="sid-5C184F22-6071-45CD-AEA9-1792512BBDCE" name="Make discount" activiti:expression="${app_DiscountManager.makeDiscount(10,entityId)}"></serviceTask>
-----
-
-The elements can be exported to a ZIP archive and then restored from the archive. It may be useful when new elements are created on a developer's machine and then imported to the production server. Import and export are performed with the corresponding buttons on the elements editor screen.
-
-The *Reset* button removes all custom groups and elements and reverts the elements set to its initial state.

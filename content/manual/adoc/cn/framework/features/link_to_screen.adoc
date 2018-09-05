@@ -1,0 +1,53 @@
+:sourcesdir: ../../../../source
+
+[[link_to_screen]]
+==== Screen Links
+
+The Web Client <<app_tiers,block>> enables opening application screens by commands provided in the URL. If the browser does not have an active session with a logged in user, the application will show the login screen first, and then, after successful authentication, proceed to the main application window with the requested screen.
+
+The list of supported commands is defined by the <<cuba.web.linkHandlerActions,cuba.web.linkHandlerActions>> application property. By default, these are `open` and `o`. When the HTTP request is being processed, the last part of the URL is analyzed, and if it matches a registered command, control is passed to an appropriate processor, which is a bean implementing the `LinkHandlerProcessor` interface.
+
+The platform provides a processor that accepts the following request parameters:
+
+* `screen` – name of the screen defined in <<screens.xml,screens.xml>>, for example:
++
+[source, url]
+----
+http://localhost:8080/app/open?screen=sec$User.browse
+----
+
+* `item` – an entity instance to be passed to the <<screen_edit,edit screen>>, encoded according to conventions of the `EntityLoadInfo` class, i.e. `entityName-instanceId` or `entityName-instanceId-viewName`. Examples:
++
+[source, url]
+----
+http://localhost:8080/app/open?screen=sec$User.edit&item=sec$User-60885987-1b61-4247-94c7-dff348347f93
+
+http://localhost:8080/app/open?screen=sec$User.edit&item=sec$User-60885987-1b61-4247-94c7-dff348347f93-user.edit
+----
++
+In order to create a new entity instance directly in the opened editor screen, add the `NEW-` prefix before the entity class name, for example:
++
+[source, plain]
+----
+http://localhost:8080/app/open?screen=sec$User.edit&item=NEW-sec$User
+----
+
+* `params` – parameters passed to the screen <<screen_controller,controller's>> `init()` method. Parameters are encoded as `name1:value1,name2:value2`. Parameter values may include entity instances encoded according to the conventions of the `EntityLoadInfo` class. Examples:
++
+[source, url]
+----
+http://localhost:8080/app/open?screen=sales$Customer.lookup&params=p1:v1,p2:v2
+
+http://localhost:8080/app/open?screen=sales$Customer.lookup&params=p1:sales$Customer-01e37691-1a9b-11de-b900-da881aea47a6
+----
+
+If you want to provide additional URL commands, do the following:
+
+* Create a <<managed_beans,bean>> implementing the `LinkHandlerProcessor` interface in the *web* module of your project.
+
+* The `canHandle()` method of your bean must return true if the current URL, which parameters are passed in the `ExternalLinkContext` object, should be processed by your bean.
+
+* In the `handle()` method, perform required actions.
+
+Your bean can optionally implement Spring's `Ordered` interface or contain the `Order` annotation. Then you can specify the order of your bean in the chain of processors. Use the `HIGHEST_PLATFORM_PRECEDENCE` and `LOWEST_PLATFORM_PRECEDENCE` constants of the `LinkHandlerProcessor` interface to put your bean before or after processors defined in the platform. So if you specify the order lesser than `HIGHEST_PLATFORM_PRECEDENCE`, your bean will be requested earlier and you can override actions defined by a platform processor if needed.
+

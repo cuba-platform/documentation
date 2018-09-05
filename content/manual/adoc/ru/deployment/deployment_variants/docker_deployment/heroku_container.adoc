@@ -1,0 +1,89 @@
+:sourcesdir: ../../../../../source
+
+[[heroku_container]]
+===== Развертывание контейнера в Heroku
+
+Настройте и соберите монолитный Uber JAR как показано в разделе <<single_jar_deployment>>. Создайте аккаунт в  Heroku и установите Heroku CLI. Более детально эти действия описаны в разделе <<heroku_war_deployment>>.
+
+Создайте приложение с уникальным именем и подключите к нему базу данных (в примере подключается PostgreSQL с бесплатным тарифным планом  hobby-dev) с помощью Heroku CLI:
+
+[source, plain]
+----
+heroku create cuba-sales-docker --addons heroku-postgresql:hobby-dev
+----
+
+После создания базы данных нужно указать детали для подключения к сервису БД в файле `jetty-env.xml`.
+
+. Откройте https://dashboard.heroku.com.
+. Выберите проект, откройте вкладку *Resources* и выберите базу данных.
+. В новом окне перейдите на вкладку *Settings* и нажмите на кнопку *View Credentials*.
+
+image::heroku-db.png[Db,1200,1000]
+
+[[jetty-env]]
+Откройте проект в IDE, откройте файл `jetty-env.xml`. Необходимо поменять URL (имя хоста и базы данных), имя пользователя и пароль. Для этого нужно скопировать данные, указанные на сайте, в файл.
+
+[source, xml]
+----
+include::{sourcesdir}/deployment/jetty-env.xml[]
+----
+
+Соберите монолитный Uber JAR-файл с помощью команды Gradle:
+
+[source, plain]
+----
+gradle buldUberJar
+----
+
+Также необходимо внести изменения в `Dockerfile`. Прежде всего нужно ограничить объем памяти, потребляемой приложением. Затем нужно получить порт приложения из Heroku и добавить его к образу.
+
+Файл `Dockerfile` будет выглядеть следующим образом:
+
+[source, plain]
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Xmx512m -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar -port $PORT
+----
+
+Откройте командную строку в папке `$PROJECT_FOLDER` и запустите команды, указанные ниже:
+
+[source, plain]
+----
+git init
+heroku git:remote -a cuba-sales-docker
+git add .
+git commit -am "Initial commit"
+----
+
+После этого нужно зайти в репозиторий контейнеров, это место для хранения образов в Heroku.
+
+[source, plain]
+----
+heroku container:login
+----
+
+Теперь можно создать образ и загрузить его в репозиторий контейнеров.
+
+[source, plain]
+----
+heroku container:push web
+----
+
+Здесь `web` -- тип процесса приложения. При запуске этой команды Heroku по умолчанию создает образ с помощью `Dockerfile` в текущем каталоге, а затем загружает его в Heroku.
+
+После завершения процесса развертывания ваше приложение будет доступно в браузере по ссылке https://cuba-sales-docker.herokuapp.com/app
+
+Вы также можете открыть приложение с помощью кнопки *Open app*, расположенной на панели Heroku.
+
+Третий способ открыть запущенное приложение -- использовать следующую команду (необходимо добавить `app` контекст к ссылке, т.е. https://cuba-sales-docker.herokuapp.com/app):
+
+[source, plain]
+----
+heroku open
+----
+

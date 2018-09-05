@@ -1,0 +1,38 @@
+:sourcesdir: ../../../../source
+
+[[system_authentication]]
+==== System Authentication
+
+When executing user requests, the Middleware program code always has access to the information on the current user via the <<userSessionSource,UserSessionSource>> interface. This is possible because the corresponding <<securityContext,SecurityContext>> object is automatically set for the current thread when a request is received from the client tier.
+
+However, there are situations when the current thread is not associated with any system user, for example, when calling a bean's method from the <<scheduled_tasks_spring,scheduler>>, or via the JMX interface. In case the bean modifies entities in the database, it will require information on who is making changes, i.e., authentication.
+
+This kind of authentication is called "system authentication" as it requires no user participation – the application middle layer simply creates or uses an existing user session and sets the corresponding `SecurityContext` object for the current thread.
+
+The following methods can be used to provide the system authentication for a code block:
+
+* Make use of the `com.haulmont.cuba.security.app.Authentication` bean:
++
+[source, java]
+----
+include::{sourcesdir}/middleware/auth_1.java[]
+----
+
+* Add the `@Authenticated` annotation to the bean method:
++
+[source, java]
+----
+include::{sourcesdir}/middleware/auth_2.java[]
+----
+
+The second case uses the `Authentication` bean implicitly, via the `AuthenticationInterceptor` object, which intercepts calls of all bean methods with the `@Authenticated` annotation.
+
+In the examples above, the user session will be created on behalf of the user, whose login is specified in the <<cuba.jmxUserLogin,cuba.jmxUserLogin>> application property. If authentication on behalf of another user is required, pass the login of the desired user to the `begin()` method of the first variant.
+
+[WARNING]
+====
+If current thread has an active user session assigned at the time of `Authentication.begin()` execution, it will not be replaced. Therefore the code will be executed with the existing session and the subsequent call to the `end()` method will not clear the thread.
+
+For example, if a bean is in the same JVM as the Web Client block, to which the user is currently connected, the call of the JMX bean method from the Web Client built-in <<jmx_console,JMX console>> will be executed on behalf of the currently logged in user, regardless of the system authentication.
+====
+

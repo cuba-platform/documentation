@@ -1,0 +1,103 @@
+:sourcesdir: ../../../../../../source
+
+[[delete_policy]]
+====== Related Entities Processing Policy
+
+For <<soft_deletion,soft deleted>> entities, the platform offers a mechanism for managing related entities when deleting, which is largely similar to *ON DELETE* rules for database foreign keys. This mechanism works on the middle <<app_tiers,tier>> and uses <<onDelete_annotation,@OnDelete>>, <<onDeleteInverse_annotation,@OnDeleteInverse>> annotations on entity attributes.
+
+`@OnDelete` annotation is processed when the entity in which this annotation is found is deleted, but not the one pointed to by this annotation (this is the main difference from cascade deletion at the database level).
+
+`@OnDeleteInverse` annotation is processed when the entity which it points to is deleted (which is similar to cascade deletion at foreign key level in the database). This annotation is useful when the object being deleted has no attribute that can be checked before deletion. Typically, the object being checked has a reference to the object being deleted, and this is the attribute that should be annotated with `@OnDeleteInverse`.
+
+Annotation value can be: 
+
+* `DeletePolicy.DENY` – prohibits entity deletion, if the annotated attribute is not `null` or not an empty collection.
+
+* `DeletePolicy.CASCADE` – cascade deletion of the annotated attribute. 
+
+* `DeletePolicy.UNLINK` – disconnect the link with the annotated attribute. It is reasonable to disconnect the link only in the owner side of the association – the one with `@JoinColumn` annotation in the entity class.
+
+Examples:
+
+. Prohibit deletion of entity with references: `DeletePolicyException` will be thrown if you try to delete `Customer` instance, which is referred to by at least one `Order`.
++
+`Order.java`
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "CUSTOMER_ID")
+@OnDeleteInverse(DeletePolicy.DENY)
+protected Customer customer;
+----
++
+`Customer.java`
++
+[source, java]
+----
+@OneToMany(mappedBy = "customer")
+protected List<Order> orders;
+----
++
+--
+Messages in the exception window can be localized in the <<main_message_pack,main message pack>>. Use the following keys:
+
+* `deletePolicy.caption` - notification caption.
+
+* `deletePolicy.references.message` - notification message.
+
+* `deletePolicy.caption.sales$Customer` - notification caption for concrete entity.
+
+* `deletePolicy.references.message.sales$Customer` - notification message for concrete entity.
+--
+
+. Cascade deletion of related collection elements: deletion of `Role` instance causes all `Permission` instances to be deleted as well.
++
+`Role.java`
++
+[source, java]
+----
+@OneToMany(mappedBy = "role")
+@OnDelete(DeletePolicy.CASCADE)
+protected Set<Permission> permissions;
+----
++
+`Permission.java`
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "ROLE_ID")
+protected Role role;
+----
+
+. Disconnect the links with related collection elements: deletion of `Role` instance leads to setting to null references to this `Role` for all `Permission` instances included in the collection.
++
+`Role.java`
++
+[source, java]
+----
+@OneToMany(mappedBy = "role")
+protected Set<Permission> permissions;
+----
++
+`Permission.java`
++
+[source, java]
+----
+@ManyToOne(fetch = FetchType.LAZY)
+@JoinColumn(name = "ROLE_ID")
+@OnDeleteInverse(DeletePolicy.UNLINK)
+protected Role role;
+----
+
+Implementation notes:
+
+. Related entities policy is processed on Middleware when saving entities implementing `SoftDelete` to the database.
+
+. Be careful when using `@OnDeleteInverse` together with `CASCADE` and `UNLINK` policies. During this process, all instances of the related objects are fetched from the database, modified and then saved.
++
+For example, if `@OnDeleteInverse(CASCADE)` policy is set on `Job.customer` attribute in a `Customer` – `Job` association with many jobs to one customer, if you set `@OnDeleteInverse(CASCADE)` policy on `Job.customer` attribute, all jobs will be retrieved and modified when deleting a Customer instance. This may overload the application server or the database.
++
+On the other hand, using `@OnDeleteInverse(DENY)` is safe, as it only involves counting the number of the related objects. If there are more than `0`, an exception is thrown. This makes use of `@OnDeleteInverse(DENY)` suitable for `Job.customer` attribute.
+

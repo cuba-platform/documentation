@@ -1,0 +1,77 @@
+:sourcesdir: ../../../../source
+
+[[data_store]]
+==== Data Stores
+
+A usual way of working with data in CUBA applications is manipulating entities - either declaratively through <<datasources,datasources>> and data-aware visual components, or programmatically via <<dataManager,DataManager>> or <<entityManager,EntityManager>>. The entities are mapped to data in a data store, which is usually a relational database. An application can connect to multiple data stores so its <<data_model,data model>> will contain entities mapped to data located in different databases.
+
+An entity can belong only to a single data store. You can display entities from different data stores on a single UI screen, and `DataManager` will ensure they will be dispatched to appropriate data stores on save. Depending on the entity type, `DataManager` selects a registered data store represented by an implementation of the `DataStore` interface and delegates loading and saving entities to it. When you control transactions in your code and work with entities via `EntityManager`, you have to specify explicitly what data store to use. See the <<persistence,Persistence>> interface methods and <<transactions_decl,@Transactional>> annotation parameters for details.
+
+The platform contains a single implementation of the `DataStore` interface called `RdbmsStore`. It is designed to work with relational databases through the <<orm,ORM>> layer. You can implement `DataStore` in your project to provide integration, for example, with a non-relational database or an external system having REST interface.
+
+In any CUBA application, there is always the main data store which contains system and security entities and where the users log in. When we mention a database in this manual, we always mean the main data store if not explicitly stated otherwise. The main data store must be a relational database connected through a JDBC data source. The main data source is located in JNDI and should have a name specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property, which is `jdbc/CubaDS` by default.
+
+Additional data store names should be specified in the <<cuba.additionalStores,cuba.additionalStores>> application property. If the additional store is `RdbmsStore`, you should provide the following properties for it:
+
+* `cuba.dataSourceJndiName_{store_name}` - JNDI name of the corresponding JDBC data source.
+* `cuba.dbmsType_{store_name}` - type of the data store DBMS.
+* `cuba.persistenceConfig_{store_name}` - location of the data store `persistence.xml` file.
+
+If you implement the `DataStore` interface in your project, specify the name of the implementation bean in the `cuba.storeImpl_{store_name}` application property.
+
+For example, if you need to work with two additional data stores: `db1` (a PostgreSQL database) and `mem1` (an in-memory storage implemented by some project bean), specify the following application properties in the `app.properties` file of your *core* module:
+
+[source,properties]
+----
+cuba.additionalStores = db1, mem1
+cuba.dataSourceJndiName_db1 = jdbc/db1
+cuba.dbmsType_db1 = postgres
+cuba.persistenceConfig_db1 = com/company/sample/db1-persistence.xml
+cuba.storeImpl_mem1 = sample_InMemoryStore
+----
+
+The `cuba.additionalStores` and `cuba.persistenceConfig_db1` properties should also be specified in the property files of all used application blocks (`web-app.properties`, `portal-app.properties`, etc.).
+
+[TIP]
+====
+CUBA Studio allows you to set up additional data stores on the *Project properties > Advanced* tab. It automatically creates all required application properties and JDBC data sources, as well as maintains additional `persistence.xml` files. After that, you can select a data store for an entity in the *Data store* field of the entity designer. You will also be able to select a data store when using the *Generate model* wizard for creation of new entities mapped to an existing database schema.
+====
+
+[[cross_datastore_ref]]
+References between entities from different data stores::
++
+--
+<<dataManager,DataManager>> can automatically maintain TO-ONE references between entities from different data stores, if they are properly defined. For example, consider the case when you have `Order` entity in the main data store and `Customer` entity in an additional data store, and you want to have a reference from `Order` to `Customer`. Then do the following:
+
+* In the `Order` entity, define an attribute with the type of the `Customer` identifier. The attribute should be annotated with `@SystemLevel` to exclude it from various lists available to users, like attributes in <<gui_Filter,Filter>>:
++
+[source,java]
+----
+@SystemLevel
+@Column(name = "CUSTOMER_ID")
+private Long customerId;
+----
+
+* In the `Order` entity, define a non-persistent reference to `Customer` and specify the `customerId` attribute as "related":
++
+[source,java]
+----
+@Transient
+@MetaProperty(related = "customerId")
+private Customer customer;
+----
+
+* Include non-persistent `customer` attribute to appropriate <<views,views>>.
+
+After that, when you load `Order` with a view including `customer` attribute, `DataManager` automatically loads related `Customer` from the additional data store. The loading of collections is optimized for performance: after loading a list of orders, the loading of references from the additional data store is done in batches. The size of the batch is defined by the <<cuba.crossDataStoreReferenceLoadingBatchSize,cuba.crossDataStoreReferenceLoadingBatchSize>> application property.
+
+When you commit an entity graph which includes `Order` with `Customer`, `DataManager` saves the instances via corresponding `DataStore` implementations, and then saves the identifier of the customer in the order's `customerId` attribute.
+
+Cross-datastore references are also supported by the <<gui_Filter,Filter>> component.
+
+[TIP]
+====
+CUBA Studio automatically maintains the set of attributes for cross-datastore references when you select an entity from a different data store as an association.
+====
+--
+

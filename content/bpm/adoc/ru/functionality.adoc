@@ -1,286 +1,31 @@
+:sourcesdir: ../../source
+
 [[functionality]]
 == Функциональность
 
 Для исполнения бизнес-процессов подсистема BPM использует Activiti Engine, для моделирования процессов в нотации BPMN используется доработанный редактор из веб-приложения Activiti Explorer. В дополнение к возможностям фреймворка Activiti подсистема BPM предоставляет дополнительную функциональность, которая описана далее в этом разделе. Перечисление возможностей фреймворка Activiti не входит в задачу данного руководства. Вы можете ознакомиться с ними на сайте Activiti: https://www.activiti.org/userguide/.
 
-[[bpm_activiti_listener]]
-=== BpmActivitiListener
+include::functionality/bpm_activiti_listener.adoc[]
 
-При создании модели процесса, в процесс автоматически добавляется слушатель событий `BpmActivitiListener`. `BpmActivitiListener` является реализацией интерфейса `ActivitiEventListener` (см. http://www.activiti.org/userguide/#eventDispatcher). Слушатель отвечает за создание и изменение сущностей подсистемы BPM при наступлении определенных событий процесса (вход в пользовательскую задачу, отмена процесса, завершение задачи, и т.д.). Именно он создает объекты <<ProcTask,ProcTask>> и проставляет значение `endDate` для <<ProcInstance,ProcInstance>>.
+include::functionality/process_roles.adoc[]
 
-[[process_roles]]
-=== Процессные роли (Process Roles)
+include::functionality/start_process_form.adoc[]
 
-Процессные роли определяют типы участников процесса, например, оператор или менеджер. Чтобы открыть экран редактирования процессных ролей в дизайнере процессов, выберите свойство *Process roles* в панели свойств процесса. При развертывании модели информация о ролях будет записана в XML процесса в секцию `extensionElements` элемента `process`, а затем будут созданы соответствующие объекты <<ProcRole,ProcRole>>.
+include::functionality/user_task.adoc[]
 
-.Описание процессных ролей
+include::functionality/task_outcomes.adoc[]
 
-[source, xml]
-----
-<process id="testProcess" name="Test process">
-    <extensionElements>
-         <cuba:procRoles>
-            <cuba:procRole name="Manager" code="manager"/>
-            <cuba:procRole name="Operator" code="operator"/>
-        </cuba:procRoles>
-    </extensionElements>
-</process>
-----
+include::functionality/transitions.adoc[]
 
-[[start_process_form]]
-=== Форма запуска процесса (Process Form)
+include::functionality/script_execution.adoc[]
 
-Для задания формы, которая будет отображаться при запуске процесса, используется свойство *Start form* элемента *Start event*. Подробнее о формах см. <<ui.adoc#process_forms>>.
+include::functionality/service_invocation.adoc[]
 
-.Форма запуска процесса
-[source, xml]
-----
-<startEvent id="startEvent">
-  <extensionElements>
-    <cuba:form name="standardProcForm">
-      <cuba:param name="procActorsVisible" value="true"></cuba:param>
-    </cuba:form>
-  </extensionElements>
-</startEvent>
-----
+include::functionality/timer.adoc[]
 
-[[user_task]]
-=== Пользовательская задача (User Task)
+include::functionality/localization.adoc[]
 
-Для определения пользователя, на которого будет назначена задача, необходимо в свойстве *Process role* элемента *User task* выбрать одну из процессных ролей, определенных в модели. При достижении процессом задачи среди участников процесса (<<ProcActor,ProcActor>>) будут найдены участники с указанной процессной ролью, и задача будет назначена на них.
+include::functionality/submodels.adoc[]
 
-.Задание процессной роли для задачи
+include::functionality/custom_stencils.adoc[]
 
-[source, xml]
-----
-<userTask id="managerApproval" name="Manager approval">
-    <extensionElements>
-        <cuba:procRole>manager</cuba:procRole> 
-    </extensionElements>
-</process>
-----
-
-Если необходимо, чтобы задача была назначена одновременно нескольким пользователям, то в свойстве *Multi-instance type* элемента *User task* необходимо выбрать значение `Parallel` или `Sequential`.
-
-Назначение задачи на пользователя::
-+
-Задать участника возможно и не указывая его заранее в объекте ProcActor, а задав в свойстве *assignee* элемента User Task. Свойство может содержать строку с идентификатором пользователя CUBA: `da8159cc-757f-7f59-6579-7f629ac02f72`, переменную процесса, которая содержит строку с идентификатором пользователя: `${variableName}`, или выражение вызова сервиса, который возвращает строку с идентификатором пользователя: `${someService.getSomeUserId()}`. При этом свойство *procRole* элемета UserTask должно быть заполнено. Когда процесс достигает подобной задачи, сначала ищется объект `ProcActor` с указанным пользователем и процессной ролью. Если `ProcActor` не найден, будет создан новый экземпляр `ProcActor`. Для задания свойства *assignee* в редакторе моделей выделите элемент User Task, кликните на ссылку *Show advanced properties*, откройте редактор свойства *Assignments* и в появившемся диалоге заполните поле *Assignee*.
-
-Также возможен вариант, когда задача не должна быть сразу назначена на пользователя, а должна появиться в списке доступных, и один из пользователей должен забрать задачу себе. Для определения такой задачи необходимо установить флажок *Claim allowed*. В этом случае задача появится в списке доступных у всех участников процесса с ролью, заданной в свойстве *Process role*.
-
-Задача без конкретного участника:
-
-[source, xml]
-----
-<userTask id="managerApproval" name="Manager approval">
-    <extensionElements>
-        <cuba:claimAllowed>true</cuba:claimAllowed>
-    </extensionElements>
-</process>
-----
-
-[[task_outcomes]]
-=== Выходы задачи (Outcomes)
-
-Обычно задача требует от пользователя принятия решения (например, согласовать или отклонить). Дальнейший маршрут по процессу зависит от принятого решения. Для задания списка выходов из задачи используется свойство *Task outcomes* узла *User Task*. Для каждого выхода задается имя и выбирается форма, которая должна отображаться при выборе этого выхода, а также список параметров формы (подробнее о формах см. <<ui.adoc#process_forms>>).
-
-.Описание выходов из задачи
-[source, xml]
-----
-<userTask id="managerApproval" name="Manager approval">
-    <extensionElements>
-        <cuba:outcomes>
-            <cuba:outcome name="approve">
-                <cuba:form name="standardProcessForm">
-                    <cuba:param name="commentRequired">true</cuba:param>
-                    <cuba:param name="attachmentsVisible">true</cuba:param>
-                </cuba:form>
-            </cuba:outcome>
-            <cuba:outcome name="reject">
-                <cuba:form name="someOtherProcessForm">
-                </cuba:form>
-            </cuba:outcome>
-        </cuba:outcomes>
-    </extensionElements>
-</process>
-----
-
-[[transitions]]
-=== Переходы в зависимости от выхода задачи
-
-В отличие от jBPM, в нотации BPMN отсутствует возможность указать несколько выходов из одной задачи. Чтобы направить процесс по нужной ветке в зависимости от результата используется узел *Exclusive Gateway*, переходы из которого имеют условия, оперирующие результатом выполнения задачи, расположенной перед этим Gateway. При завершении пользователем задачи, результат его действия записывается в процессную переменную с именем `[taskId]_result`. Тип этой переменной - `ProcTaskResult`.
-
-Методы класса `ProcTaskResult`:
-
-* `int count(String outcomeName)` - возвращает количество пользователей, завершивших задачу с данным выходом
-* `boolean exists(String outcomeName)` - возвращает `true`, если есть хотя бы один пользователь, завершивший задачу с указанным выходом.
-
-Далее объект с результатом используется в выражении *Flow condition* для переходов, выходящих из Gateway.
-
-Пример:
-
-image::TaskOutcomesExample.png[align="center"]
-
-Предположим, что задача `approval` была параллельно назначена нескольким пользователям. Для задачи были определены два возможных выхода: `approve` и `reject`. После того, как все пользователи завершат задачу, процесс перейдет к *Exclusive gateway*. Нам нужно следующее поведение: если хоть кто-либо выбрал вариант `reject`, то переходим по переходу `Rejected`, если все согласились (`approve`), то по `Approved`.
-
-*Задание условия в поле Flow outcome*
-
-Самым удобным вариантом задания условия, который подойдет для большинства случаев, является выбор имени outcome предыдущей задачи в свойстве *Flow outcome* стрелки перехода. Данный переход сработает, если было хотя бы одно завершение задачи с указанным outcome.
-
-*Задание сложных условий для перехода*
-
-Если необходимо иметь более сложные условия для перехода, то их можно задать в поле *Flow condition*. Например условие "Более 5 пользователей выбрали вариант `Reject` " будет выглядеть следующим образом:
-
-[source,groovy]
-----
-${approval_result.count('reject') > 5}
-----
-
-[[flow_order]]
-==== Порядок обработки переходов
-
-Обратите внимание, что необходимо задать порядок обработки переходов. Иначе Activiti может, например, обработать переход по умолчанию до переходов с явно заданными условиями. Для задания порядка вычисления условий установите свойство *Flow order* у узла *Exclusive gateway*.
-
-[[script_execution]]
-=== Вызов скрипта
-
-Для выполнения скрипта используется элемент *Script task*. При достижении элемента, система анализирует содержимое поля *Script*. Если содержимое является путем к файлу и данный файл существует, то система исполнит указанный файл. Если файла по указанному пути нет, то содержимое поля *Script* будет исполнено.
-
-Внутри скрипта можно использовать объекты `persistence` и `metadata`.
-
-[[service_invocation]]
-=== Вызов методов бинов среднего слоя
-
-Для вызова метода сервиса используется элемент *Service task*. Activiti Engine интегрирован со Spring Framework, т.е. возможно обращение к бинам среднего слоя по имени. Для вызова метода управляемого бина в поле *Expression* пишется выражение вида:
-
-[source,groovy]
-----
-${beanName.methodName(processVarName, 'someStringParam')}
-----
-
-В качестве параметров вызова метода можно использовать процессные переменные, в том числе автоматически созданные при старте процесса (`entityId`, `bpmProcInstanceId` и т.д., как описано в <<services.adoc#process_runtime_service>>).
-
-[[timer]]
-=== Завершение задачи по таймеру
-
-Для того, чтобы завершить задачу после истечения периода времени, необходимо:
-
-* Добавить к элементу задачи элемент *Boundary timer event*.
-* От элемента таймера нарисовать переход к нужному этапу процесса.
-* В свойстве таймера *Time duration* написать выражение для периода времени. Например, `PT15M` (15 минут).
-* Установить флажок *Cancel activity*, чтобы по срабатыванию таймера текущая задача завершилась.
-* В свойстве *Timer outcome* указать имя выхода задачи, которое должно быть использовано при завершении по таймеру.
-
-image::TimerEdit.png[align="center"]
-
-.Задание выхода для таймера
-[source, xml]
-----
-<boundaryEvent id="managerApprovalTimer" cancelActivity="true" attachedToRef="managerApproval">
-    <extensionElements>
-        <cuba:outcome>approve</cuba:outcome>
-    </extensionElements>
-</boundaryEvent>
-----
-
-[TIP]
-====
-По умолчанию Job executor для обработки заданий таймеров отключен. Для его включения установите свойство приложения `bpm.activiti.asyncExecutorEnabled = true`.
-====
-
-[[localization]]
-=== Локализация
-
-Процесс может содержать локализованные сообщения, которые будут использованы при отображении в пользовательском интерфейсе имен задач, выходов из задач и т.д.
-
-Для открытия экрана задания локализованных значений выберите свойство *Localization* модели.
-
-Для локализации имени задачи необходимо создать запись, ключом которой является id задачи.
-
-Для локализации имени выхода из задачи необходимо создать запись, ключом которой является выражение вида `TASK_ID.OUTCOME_NAME`.
-
-Для локализации имени процессной роли необходимо создать запись, ключом которой является код роли.
-
-.Локализованные сообщения
-[source,xml]
-----
-<process id="testProcess" name="Test process">
-    <extensionElements>
-        <cuba:localizations>
-            <cuba:localization lang="en">
-                <cuba:msg key="key1" value="value1"/>
-                <cuba:msg key="key2" value="value2"/>
-            </cuba:localization>
-            <cuba:localization lang="ru">
-                <cuba:msg key="key1" value="value1"/>
-                <cuba:msg key="key2" value="value2"/>
-            </cuba:localization>
-      </cuba:localizations>
-    </extensionElements>
-</process>
-----
-
-[[submodels]]
-=== Подмодели
-
-Узел *Sub model* группы *Structural* позволяет использовать существующую модель в качестве части новой модели без создания нового экземпляра процесса. При развертывании процесса из модели элементы подмодели вставляются в текущую модель, и из результата этой операции формируется XML с процессом.
-
-[[custom_stencils]]
-=== Создание элементов для дизайнера модели
-
-Подсистема BPM позволяет создавать собственные элементы для дизайнера моделей процесса. Новый элемент - это, по сути, `ServiceTask`, избавляющий разработчика модели от необходимости вводить длинные выражения для вызова метода, такие как `${app_MyBean.someMethod(argument1, 'argument2')}`. Ниже приведен пример создания элемента.
-
-Предположим, в системе имеется бин среднего слоя с именем `app_DiscountManager`. В бине имеется метод `makeDiscount(BigDecimal discountPercent, UUID entityId)`. Метод обновляет стоимость договора, вычитая из нее указанную скидку.
-
-В этом примере мы создадим кастомный элемент, который будет вызывать указанный выше метод, а процент скидки будет задаваться в редакторе модели как параметр элемента.
-
-Откройте редактор элементов с помощью пункта меню *BPM -> Model Elements Editor*.
-
-Нажмите на кнопку *Add group*. Введите имя группы - *Discounts*.
-
-image::StencilSetAddGroup.png[align="center"]
-
-Выделите созданную группу *Discounts* и нажмите кнопку *Add element*.
-
-image::StencilSetAddStencil.png[align="center"]
-
-Введите следующие значения в поля редактирования свойств элемента:
-
-* Title: *Contract discount*
-
-* Element ID: *contractDiscount*
-
-* Icon: нажмите на кнопку *Upload* и выберите файл со значком (опционально)
-
-* Bean name: выберите *app_DiscountManager*
-
-* Method name: выберите *makeDiscount*
-
-[WARNING]
-====
-Выпадающий список *Bean name* содержит только бины, реализующие какой-либо интерфейс. В списке *Method name* отображаются методы реализуемых интерфейсов.
-====
-
-В таблице *Method arguments* отображаются аргументы метода. Вы можете изменить заголовок и значение по умолчанию для каждого из аргументов.
-
-Сохраните набор элементов, нажав на кнопку *Save*.
-
-Откройте редактор модели (*BPM -> Process Models*). В списке элементов появилась группа *Discounts* и элемент *Contract discount*. Перетащите новый элемент на экран и выделите его. Видим, что в панели свойств появились поля для ввода значений процента скидки и имени процессной переменной с идентификатором сущности.
-
-image::StencilSetModel.png[align="center"]
-
-[TIP]
-====
-`entityId` - это имя процессной переменной, которая автоматически добавляется во все процессы, связанные с сущностью. Она хранит идентификатор связанной сущности, вы можете использовать ее в вызовах любых методов.
-====
-
-При развертывании процесса, кастомный элемент будет преобразован в serviceTask:
-
-[source,xml]
-----
-<serviceTask id="sid-5C184F22-6071-45CD-AEA9-1792512BBDCE" name="Make discount" activiti:expression="${app_DiscountManager.makeDiscount(10,entityId)}"></serviceTask>
-----
-
-Набор элементов модели может быть экспортирован в ZIP-архив и, соответственно, восстановлен из архива. Это полезно при разработке, когда элементы создаются на машине разработчика, а затем импортируются на продакшн-сервер. Импорт и экспорт осуществляются с помощью соответствующих кнопок в редакторе элементов модели.
-
-Нажатие на кнопку *Reset* удаляет все группы и элементы, созданные разработчиком, и возвращает набор элементов в исходное состояние.

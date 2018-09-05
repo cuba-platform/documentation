@@ -1,0 +1,205 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_FileUploadField]]
+====== FileUploadField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/gui/components/FileUploadField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+Компонент `FileUploadField` позволяет пользователю загружать файлы на сервер. Компонент может содержать заголовок, ссылку на загруженный файл и две кнопки: для загрузки файла и для очистки. При нажатии на кнопку загрузки на экране отображается стандартное для операционной системы окно, в котором можно выбрать один файл. Чтобы дать пользователю возможность загружать сразу несколько файлов, используйте компонент <<gui_FileMultiUploadField,FileMultiUploadField>>.
+
+image::gui_upload.png[align="center"]
+
+XML-имя компонента: `upload`.
+
+Компонент реализован для блоков *Web Client* и *Desktop Client*.
+
+* `FileUploadField` автоматически используется внутри <<gui_FieldGroup,FieldGroup>> для атрибутов типа `FileDescriptor`. В этом случае компонент выглядит как на приведенном выше скриншоте и не требует никакого конфигурирования. Загруженный файл сразу же сохраняется в <<file_storage,file storage>>, а соответствующий `FileDescriptor` - в базу данных.
+
+* Компонент можно использовать вне `FieldGroup` и подключить к источнику данных. В примере ниже предполагается, что источник данных `personDs` содержит сущность с атрибутом `photo`, который является ссылкой на `FileDescriptor`:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/upload_0.xml[]
+----
+
+* Сохранением файла и `FileDescriptor` можно также управлять программно.
+
+** Объявляем компонент в XML-дескрипторе экрана:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/upload_1.xml[]
+----
+
+[[gui_FileUploadField_FileUploadSucceedListener]]
+** В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в методе `init()` добавляем слушатели, которые будут реагировать на события успешной загрузки или ошибки:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/upload_2.java[]
+----
++
+--
+Компонент загружает файл во временное хранилище клиентского <<app_tiers,уровня>> и вызывает слушатель, добавленный методом `addFileUploadSucceedListener()`. В этом слушателе у компонента запрашивается объект `FileDescriptor`, соответствующий загруженному файлу. Объект `com.haulmont.cuba.core.entity.FileDescriptor` является персистентной сущностью, которая однозначно идентифицирует загруженный файл и впоследствии используется для выгрузки файла из системы.
+
+Метод `FileUploadingAPI.putFileIntoStorage()` используется для перемещения загружаемого файла из временного хранилища клиентского уровня в <<file_storage,FileStorage>>. Параметрами этого метода являются идентификатор файла во временном хранилище и объект `FileDescriptor`. Оба эти параметра предоставляет `FileUploadField`.
+
+После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто сохраняется в базе данных. Соответствующий файл будет доступен через экран *Administration* → *External Files*.
+
+Слушатель, добавленный методом `addFileUploadErrorListener()`, вызывается в случае ошибки загрузки файла во временное хранилище клиентского уровня.
+
+Ниже приведён полный список доступных слушателей для отслеживания процесса загрузки:
+
+[[gui_FileUploadField_AfterValueClearListener]]
+* `AfterValueClearListener`,
+
+[[gui_FileUploadField_BeforeValueClearListener]]
+* `BeforeValueClearListener`,
+
+[[gui_FileUploadField_FileUploadErrorListener]]
+* `FileUploadErrorListener`,
+
+[[gui_FileUploadField_FileUploadFinishListener]]
+* `FileUploadFinishListener`
+
+[[gui_FileUploadField_FileUploadStartListener]]
+* `FileUploadStartListener`,
+
+[[gui_FileUploadField_FileUploadSucceedListener]]
+* `FileUploadSucceedListener`,
+
+* `ValueChangeListener`.
+--
+
+Атрибуты `fileUploadField`:
+
+[[gui_FileUploadField_fileStoragePutMode]]
+* `fileStoragePutMode` - задает режим сохранения файла и соответствующего `FileDescriptor`.
++
+** В режиме `IMMEDIATE` это делается автоматически сразу после загрузки файла во временное хранилище клиентского уровня.
++
+** В режиме `MANUAL` необходимо сделать это в листенере `FileUploadSucceedListener`.
++
+Режим `IMMEDIATE` выбирается по умолчанию, когда `FileUploadField` используется внутри `FieldGroup`. В противном случае, по умолчанию выбирается `MANUAL`.
+
+[[gui_FileUploadField_uploadButtonCaption]]
+* XML-атрибуты `uploadButtonCaption`, `uploadButtonIcon` и `uploadButtonDescription` позволяют задать параметры кнопки загрузки.
+
+[[gui_FileUploadField_showFileName]]
+* `showFileName` - управляет отображением имени загруженного файла рядом с кнопкой загрузки. По умолчанию `false`.
+
+[[gui_FileUploadField_showClearButton]]
+* `showClearButton` - управляет видимостью кнопки очистки. По умолчанию `false`.
+
+[[gui_FileUploadField_clearButtonCaption]]
+* XML-атрибуты `clearButtonCaption`, `clearButtonIcon` и `clearButtonDescription` позволяют задать параметры кнопки очистки, если она видима.
+
+[[gui_FileUploadField_accept]]
+* XML-атрибут `accept` (и соответствующий метод `setAccept()`) может быть использован для установки маски расширений файлов в диалоге выбора файла. Пользователи будут иметь возможность выбрать "All files" и загрузить произвольные файлы.
++
+Значением атрибута должен быть список масок, разделенных запятыми. Например: `++*.jpg,*.png++`.
+
+* Максимальный размер загружаемого файла определяется свойством приложения <<cuba.maxUploadSizeMb,cuba.maxUploadSizeMb>> и по умолчанию равен 20MB. При выборе пользователем файла большего размера выдается соответствующее сообщение и загрузка прерывается.
+
+[[gui_FileUploadField_fileSizeLimit]]
+* XML-атрибут `fileSizeLimit` (и соответствующий метод `setFileSizeLimit()`) может быть использован для установки максимально допустимого размера файла. Значением атрибута должно быть целое число для указания количества байт.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/upload_3.xml[]
+----
+
+[[gui_FileUploadField_permittedExtensions]]
+* XML-атрибут `permittedExtensions` (и соответствующий метод `setPermittedExtensions()`) может быть использован для установки "белого списка" допустимых расширений загружаемых файлов.
++
+Значением атрибута должен быть набор расширений с лидирующими точками, разделенных запятыми. Например:
++
+[source,java]
+----
+uploadField.setPermittedExtensions(Sets.newHashSet(".png", ".jpg"));
+----
+
+[[gui_FileUploadField_dropZone]]
+* `dropZone` - используется для указания <<gui_BoxLayout,BoxLayout>>, который будет использован в качестве целевой площадки для перетаскивания файлов извне браузера. Зона перетаскивания может занимать всю площадь диалогового окна. Выбранный контейнер будет подсвечиваться, когда пользователь переносит над ним файлы, без наведения файла контейнер не отображается.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/dropZone.xml[]
+----
++
+image::gui_dropZone.png[align="center"]
++
+Чтобы сделать область dropZone статической и отображать её постоянно, необходимо назначить её контейнеру готовый стиль `dropzone-container`. В этом случае контейнер необходимо оставить пустым, поместив в него только текстовый компонент `label`:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/dropzone_static.xml[]
+----
++
+image::gui_dropZone_static.png[align="center"]
+
+[[gui_FileUploadField_pasteZone]]
+* `pasteZone` - используется для указания <<gui_layouts,контейнера>>, который будет использован для обработки нажатий горячих клавиш вставки, когда текстовое поле внутри этого контейнера находится в фокусе. Это свойство поддерживается семейством браузеров на базе Chromium.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pasteZone.xml[]
+----
+
+В разделе <<images_recipe>> приведен более сложный пример работы с загруженными файлами.
+
+'''
+
+Атрибуты upload::
+<<gui_FileUploadField_accept,accept>> -
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_FileUploadField_clearButtonCaption,clearButtonCaption>> -
+<<gui_FileUploadField_clearButtonCaption,clearButtonDescription>> -
+<<gui_FileUploadField_clearButtonCaption,clearButtonIcon>> -
+<<gui_attr_contextHelpText,contextHelpText>> -
+<<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_description,description>> -
+<<gui_FileUploadField_dropZone,dropZone>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_FileUploadField_fileSizeLimit,fileSizeLimit>> -
+<<gui_FileUploadField_fileStoragePutMode,fileStoragePutMode>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_FileUploadField_pasteZone,pasteZone>> -
+<<gui_FileUploadField_permittedExtensions,permittedExtensions>> -
+<<gui_attr_property,property>> -
+<<gui_FileUploadField_showClearButton,showClearButton>> -
+<<gui_FileUploadField_showFileName,showFileName>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_FileUploadField_uploadButtonCaption,uploadButtonCaption>> -
+<<gui_FileUploadField_uploadButtonCaption,uploadButtonDescription>> -
+<<gui_FileUploadField_uploadButtonCaption,uploadButtonIcon>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+API::
+<<gui_api_addValueChangeListener,addValueChangeListener>> -
+<<gui_api_commit,commit>> -
+<<gui_api_discard,discard>> -
+<<gui_api_isModified,isModified>> -
+<<gui_api_contextHelp,setContextHelpIconClickHandler>>
+
+Слушатели upload::
+<<gui_FileUploadField_AfterValueClearListener,AfterValueClearListener>> -
+<<gui_FileUploadField_BeforeValueClearListener,BeforeValueClearListener>> -
+<<gui_FileUploadField_FileUploadErrorListener,FileUploadErrorListener>> -
+<<gui_FileUploadField_FileUploadFinishListener,FileUploadFinishListener>> -
+<<gui_FileUploadField_FileUploadStartListener,FileUploadStartListener>> -
+<<gui_FileUploadField_FileUploadSucceedListener,FileUploadSucceedListener>>
+
+'''
+

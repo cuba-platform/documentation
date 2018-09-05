@@ -1,0 +1,73 @@
+:sourcesdir: ../../../../../source
+
+[[entity_listeners]]
+===== Entity Listeners
+
+_Entity Listeners_ are designed to react to the entity instances lifecycle events on the <<app_tiers,middle tier>>. See an example in the <<using_entity_listeners_recipe, cookbook>>.
+
+A listener is a class implementing one or several interfaces from the `com.haulmont.cuba.core.listener` package. The listener will react to events corresponding to the implemented interfaces.
+
+BeforeDetachEntityListener::
++
+--
+`onBeforeDetach()` method is called before the object is detached from <<entityManager,EntityManager>> on transaction commit. 
+
+This listener can be used for populating non-persistent entity attributes before sending it to the client tier.
+--
+
+BeforeAttachEntityListener::
++
+--
+`onBeforeAttach()` method is called before the object is attached to the persistence context as a result of `EntityManager.merge()` operation.
+
+This listener can be used, for example, to populate persistent entity attributes before saving it to the database.
+--
+
+BeforeInsertEntityListener::
+`onBeforeInsert()` method is called before a record is inserted into the database. All kinds of operations can be performed with the current `EntityManager` available within this method.
+
+AfterInsertEntityListener::
+`onAfterInsert()` is called after a record is inserted into database, but before transaction commit. This method does not allow modifications of the current persistence context, however, database modifications can be done using <<queryRunner,QueryRunner>>.
+
+BeforeUpdateEntityListener::
+`onBeforeUpdate()` method is called before a record is updated in the database. All kinds of operations can be performed with the current `EntityManager` available within this method.
+
+AfterUpdateEntityListener::
+`onAfterUpdate()` method is called after a record was updated in the database, but before transaction commit. This method does not allow modifications of the current persistence context, however, database modifications can be done using `QueryRunner`.
+
+BeforeDeleteEntityListener::
+`onBeforeDelete()` method is called before a record is deleted from the database (in the case of <<soft_deletion,soft deletion>> – before updating a record). All kinds of operations can be performed with the current `EntityManager` available within this method.
+
+AfterDeleteEntityListener::
+`onAfterDelete()` method is called after a record is deleted from the database (in the case of soft_deletion – before updating a record), but before transaction commit. This method does not allow modifications of the current persistence context, however, database modifications can be done using `QueryRunner`.
+
+An entity listener should be a <<managed_beans, managed bean>>, so you can use injection. For example:
+
+[source, java]
+----
+include::{sourcesdir}/middleware/entitylisteners_1.java[]
+----
+
+An entity listener can be specified for an entity in two ways:
+
+* Statically – the bean names of listeners are listed in <<listeners_annotation,@Listeners>> annotation on the entity class.
++
+[source, java]
+----
+include::{sourcesdir}/middleware/entitylisteners_2.java[]
+----
+
+* Dynamically – the bean name of the listener is passed to the `addListener()` method of the `EntityListenerManager` bean. See an example in this section: <<app_start_recipe>>.
+
+Only one listener instance of a certain type is created for all instances of a particular entity class, therefore listener must not have a state.
+
+If several listeners of the same type (for example from annotations of entity class and its parents and also added dynamically) were declared for an entity, they will be invoked in the following order:
+
+. For each ancestor, starting from the most distant one, dynamically added listeners are invoked first, followed by statically assigned listeners.
+. Once parent classes are processed, dynamically added listeners for the given class are invoked first, followed by statically assigned.
+
+[TIP]
+====
+If you need to do some calculations and update attributes of _multiple_ entity instances at once on transaction commit, consider using a <<transaction_listeners,transaction listener>>.
+====
+

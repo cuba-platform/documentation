@@ -1,0 +1,38 @@
+:sourcesdir: ../../../../source
+
+[[rest_api_v2_ex_create_entity]]
+==== New Entity Instance Creation
+
+New `sales$Order` entity instance can be created with the *POST* request on the address:
+
+`\http://localhost:8080/app/rest/v2/entities/sales$Order`
+
+An OAuth token must be put in the `Authorization` header with the `Bearer` type.
+
+The request body must contain a JSON object that describes a new entity instance, e.g.:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-create-order-request.json[]
+----
+
+A collection of order items (`items`) and a `customer` reference are passed in the request body. Let's examine how these attributes will be processed.
+
+First, let's have a quick look to the `Order` class:
+
+[source, java]
+----
+include::{sourcesdir}/features/Order.java[]
+----
+
+The `items` collection property is annotated with the <<composition_annotation, @Composition>>. REST API methods for entity creation and update will create a new entity instances for all members of such collections. In our case, two instances of `OrderItem` entity will be created with the `Order` entity.
+
+The `customer` reference doesn't have a `@Composition` annotation, that's why the REST API will try to find a client with the given id and set it to the `customer` field. If the client is not found then an order won't be created and the method will return an error.
+
+In case of successful method execution a full object graph of the created entity is returned:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-create-order-response.json[]
+----
+

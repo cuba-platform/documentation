@@ -1,0 +1,53 @@
+:sourcesdir: ../../../../source
+
+[[rest_api_v2_ex_file_upload]]
+==== Files Uploading
+
+In order to upload a file, you should get an <<rest_api_v2_ex_get_token,access token>> which will be used in the subsequent requests.
+
+Suppose we have the following form for the file input:
+
+[source, html]
+----
+<form id="fileForm">
+    <h2>Select a file:</h2>
+    <input type="file" name="file" id="fileUpload"/>
+    <br/>
+    <button type="submit">Upload</button>
+</form>
+
+<h2>Result:</h2>
+<img id="uploadedFile" src="" style="display: none"/>
+----
+
+We will use jQuery for the upload and get a JSON with {rest_swagger_url}/#!/Files/post_files[data] which is the newly created `FileDescriptor` instance. We can access the uploaded file by its `FileDescriptor` id with the access token as a parameter:
+
+[source, js]
+----
+$('#fileForm').submit(function (e) {
+    e.preventDefault();
+
+    var file = $('#fileUpload')[0].files[0];
+    var url = 'http://localhost:8080/app/rest/v2/files?name=' + file.name; // send file name as parameter
+
+    $.ajax({
+        type: 'POST',
+        url: url,
+        headers: {
+            'Authorization': 'Bearer ' + oauthToken // add header with access token
+        },
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        data: file,
+        success: function (data) {
+            alert('Upload successful');
+
+            $('#uploadedFile').attr('src',
+                'http://localhost:8080/app/rest/v2/files/' + data.id + '?access_token=' + oauthToken); // update image url
+            $('#uploadedFile').show();
+        }
+    });
+});
+----
+

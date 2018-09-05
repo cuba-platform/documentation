@@ -1,0 +1,35 @@
+:sourcesdir: ../../../source
+
+[[portal]]
+=== Portal Components
+
+In this manual, a _portal_ is a client <<app_tiers,block>>, which is designed to:
+
+* provide an alternative web-interface, which is usually intended for users outside of the organization;
+
+* provide an interface for integration with mobile applications and third-party systems.
+
+A specific application may contain several portal modules intended for different purposes; for example, in an application, which automates business tasks, it can be a public web site for customers, an integration module for a mobile application for ordering a taxi, an integration module for a mobile application for drivers, etc.
+
+The *cuba* <<app_components,application component>> includes the *portal* module, which is a template to create portals in projects. It provides basic functionality of the client block to work with Middleware. Besides, the universal <<rest_api_v2,REST API>>, included to the *portal* module as a dependency, is turned on by default.
+
+Below is an overview of the main components provided by the platform in the *portal* module.
+
+* `PortalAppContextLoader` – the <<appContext,AppContext>> loader; must be registered in the `listener` element of the `web.xml` file.
+
+* `PortalDispatcherServlet` – the central servlet that distributes requests to Spring MVC controllers, for both the web interface and REST API. The set of Spring context configuration files is defined by the <<cuba.dispatcherSpringContextConfig,cuba.dispatcherSpringContextConfig>> application property. This servlet must be registered in `web.xml` and mapped to the root URL of the web application.
+
+* `App` – the object that contains information on the current HTTP request and the reference to `Connection` object. The `App` instance can be obtained in the application code by calling the `App.getInstance()` static method.
+
+* `Connection` – allows a user to log in/out of the Middleware.
+
+* `PortalSession` – the object of a <<userSession,user session>> that is specific for the portal. It is returned by the <<userSessionSource,UserSessionSource>> infrastructure interface and by the `PortalSessionProvider.getUserSession()` static method.
++
+It has an additional `isAuthenticated()` method, which returns `true` if this session belongs to a non-anonymous user, i.e. a user explicitly registered with the login and password.
++
+When a user first accesses the portal, the `SecurityContextHandlerInterceptor` creates an anonymous session for him (or ties to an already existing one) by registering at Middleware with a user name specified in the <<cuba.portal.anonymousUserLogin,cuba.portal.anonymousUserLogin>> application property. The registration is made by <<login, loginTrusted()>> method, so it is necessary to set the <<cuba.trustedClientPassword,cuba.trustedClientPassword>> property in the portal block as well. Thus, any anonymous user of the portal can work with Middleware with `cuba.portal.anonymousUserLogin` user rights.
++
+If the portal contains user registration page with name and password `SecurityContextHandlerInterceptor` assigns the session of the explicitly registered user to the execution thread after `Connection.login()` is executed, and the work with Middleware is performed on this user's behalf.
+
+* `PortalLogoutHandler` – handles the navigation to the logout page. It must be registered in the `portal-security-spring.xml` project file.
+

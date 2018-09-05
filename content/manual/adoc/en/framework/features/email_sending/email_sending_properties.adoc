@@ -1,0 +1,124 @@
+:sourcesdir: ../../../../../source
+
+[[email_sending_properties]]
+===== Configuring Email Sending Parameters
+
+Email sending parameters can be configured using the <<app_properties,application properties>> listed below. All of them are runtime parameters and are stored in the database, but can be overridden for a specific *Middleware* block in its `app.properties` file.
+
+All email sending parameters are available via the `EmailerConfig` configuration interface.
+
+[[cuba.email.fromAddress]]
+* `cuba.email.fromAddress` – the default sender's address. It is used if the `EmailInfo.from` attribute is not specified.
++
+Default value: `DoNotReply@localhost`
+
+[[cuba.email.smtpHost]]
+* `cuba.email.smtpHost` – the address of the SMTP server.
++
+Default value: `test.host`
+
+[[cuba.email.smtpPort]]
+* `cuba.email.smtpPort` – the port of the SMTP server.
++
+Default value: `25`
+
+[[cuba.email.smtpAuthRequired]]
+* `cuba.email.smtpAuthRequired` flags whether the SMTP server requires authentication. It corresponds to the `mail.smtp.auth` parameter, which is passed at the creation of the `javax.mail.Session` object.
++
+Default value: `false`
+
+[[cuba.email.smtpSslEnabled]]
+* `cuba.email.smtpSslEnabled` flags whether `SSL` protocol is enabled. It corresponds to the `mail.transport.protocol` parameter with the `smtps` value, which is passed at the creation of the `javax.mail.Session` object.
++
+Default value: `false`
+
+[[cuba.email.smtpStarttlsEnable]]
+* `cuba.email.smtpStarttlsEnable` – flags the use of the `STARTTLS` command when authenticating on the SMTP server. It corresponds to the `mail.smtp.starttls.enable` parameter, which is passed at the creation of the `javax.mail.Session` object.
++
+Default value: `false`
+
+[[cuba.email.smtpUser]]
+* `cuba.email.smtpUser` – the user name for SMTP server authentication.
+
+[[cuba.email.smtpPassword]]
+* `cuba.email.smtpPassword` – the user password for SMTP server authentication.
+
+[[cuba.email.delayCallCount]]
+* `cuba.email.delayCallCount` – is used in asynchronous sending of emails to skip first few calls of `EmailManager.queueEmailsToSend()` after server startup to reduce the load during application initialization. Email sending will start with the next call.
++
+Default value: `2`
+
+[[cuba.email.messageQueueCapacity]]
+* `cuba.email.messageQueueCapacity` – for asynchronous sending, the maximum number of messages read from the queue and sent in one call of `EmailManager.queueEmailsToSend()`.
++
+Default value: `100`
+
+[[cuba.email.defaultSendingAttemptsCount]]
+* `cuba.email.defaultSendingAttemptsCount` for asynchronous sending, the default number of attempts to send an email. It is used if the `attemptsCount` parameter is not specified when calling `Emailer.sendEmailAsync()`.
++
+Default value: `10`
+
+[[cuba.email.maxSendingTimeSec]]
+* `cuba.email.maxSendingTimeSec` – the maximum expected time in seconds, which is required to send an email to the SMTP server. It is used for asynchronous sending to optimize the selection of `SendingMessage` objects from the DB queue.
++
+Default value: 120
+
+[[cuba.email.sendAllToAdmin]]
+* `cuba.email.sendAllToAdmin` – indicates that all messages should be sent to the cuba.email.adminAddress address, regardless of the specified recipient's address. It is recommended to use this parameter during system development and debugging.
++
+Default value: `false`
+
+[[cuba.email.adminAddress]]
+* `cuba.email.adminAddress` – the address, to which all messages are sent if the `cuba.email.sendAllToAdmin` property is switched on.
++
+Default value: `admin@localhost`
+
+[[cuba.emailerUserLogin]]
+* `cuba.emailerUserLogin` – the login of system user, used by asynchronous email sending code to be able to persist the information to the database. It is recommended to create a separate user (for example, `emailer`) without a password, so that it will be impossible to log in under their name via user interface. This is also convenient to search for messages related to email sending in the server log.
++
+Default value: `admin`
+
+[[cuba.email.exceptionReportEmailTemplateBody]]
+* `cuba.email.exceptionReportEmailTemplateBody` - path to the exception report email body `*.gsp`-template location.
++
+--
+The templates are based on Groovy `SimpleTemplateEngine` syntax, thus you can use Groovy blocks inside of the template content:
+
+** `toHtml()` method converts the string to HTML string by escaping and replacing special symbols,
+
+** `timestamp` - last attempt date to send the email,
+
+** `errorMessage` - the message of error,
+
+** `stacktrace` - stack trace of the error.
+
+Example of a template file:
+
+[source, html]
+----
+<html>
+<body>
+<p>${timestamp}</p>
+<p>${toHtml(errorMessage)}</p>
+<p>${toHtml(stacktrace)}</p>
+</body>
+</html>
+----
+--
+
+[[cuba.email.exceptionReportEmailTemplateSubject]]
+* `cuba.email.exceptionReportEmailTemplateSubject` - path to the exception report email subject `*.gsp` template location.
++
+--
+Example of a template file:
+
+[source, groovy]
+----
+[${systemId}] [${userLogin}] Exception Report
+----
+--
+
+You can also use properties from JavaMail API, adding them to the `app.properties` file of the *core* module. The `mail.*` properties are passed at the creation of the `javax.mail.Session` object.
+
+You can view the current parameter values and send a test message using the `app-core.cuba:type=Emailer` JMX bean.
+

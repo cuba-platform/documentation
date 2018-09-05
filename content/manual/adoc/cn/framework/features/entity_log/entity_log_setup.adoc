@@ -1,0 +1,37 @@
+:sourcesdir: ../../../../../source
+
+[[entity_log_setup]]
+===== Setting Up Entity Log
+
+The simplest way to set up the entity log is using the *Administration > Entity Log > Setup* application screen.
+
+You can also set up Entity Log by entering some records in the database, if you want to include the configuration to the <<db_scripts,database initialization scripts>>.
+
+Logging is configured using the `LoggedEntity` and `LoggedAttribute` entities corresponding to *SEC_LOGGED_ENTITY* and *SEC_LOGGED_ATTR* tables.
+
+`LoggedEntity` defines the types of entities that should be logged. `LoggedEntity` has the following attributes:
+
+* `name` (*NAME* column) – the name of the entity <<metaClass,meta-class>>, for example, `sales$Customer`.
+
+* `auto` (*AUTO* column) – defines if the system should log the changes when EntityLogAPI is called with `auto = true` parameter (i.e. called by <<entity_listeners,entity listeners>>).
+
+* `manual` (*MANUAL* column) – defines if the system should log the changes when `EntityLogAPI` is called with `auto = false` parameter.
+
+`LoggedAttribute` defines the entity attribute to be logged and contains a link to the `LoggedEntity` and the attribute name.
+
+To set up logging for a certain entity, the corresponding entries should be added into the *SEC_LOGGED_ENTITY* and *SEC_LOGGED_ATTR* tables. For example, logging the changes to `name` and `grade` attributes of the `Customer` entity can be enabled using:
+
+[source, sql]
+----
+insert into SEC_LOGGED_ENTITY (ID, CREATE_TS, CREATED_BY, NAME, AUTO, MANUAL)
+values ('25eeb644-e609-11e1-9ada-3860770d7eaf', now(), 'admin', 'sales$Customer', true, true);
+
+insert into SEC_LOGGED_ATTR (ID, CREATE_TS, CREATED_BY, ENTITY_ID, NAME)
+values (newid(), now(), 'admin', '25eeb644-e609-11e1-9ada-3860770d7eaf', 'name');
+
+insert into SEC_LOGGED_ATTR (ID, CREATE_TS, CREATED_BY, ENTITY_ID, NAME)
+values (newid(), now(), 'admin', '25eeb644-e609-11e1-9ada-3860770d7eaf', 'grade');
+----
+
+The logging mechanism is activated by default. If you want to stop it, set the `Enabled` attribute of the `app-core.cuba:type=EntityLog` JMX bean `false` and then invoke the its `invalidateCache()` operation. Alternatively, set the <<cuba.entityLog.enabled,cuba.entityLog.enabled>> application property to `false` and restart the server.
+

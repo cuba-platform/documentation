@@ -1,0 +1,103 @@
+:sourcesdir: ../../../../../source
+
+[[single_jar_deployment]]
+===== Single Uber JAR Deployment
+
+Open your project in CUBA Studio, navigate to *Deployment settings*, go to *Uber JAR* tab and then configure options as described below.
+
+. Select *Build Uber JAR*
+. Select *Single Uber JAR* if it is not selected.
+. Click *Generate* button next to the *Logback configuration file* field.
+. Click *Generate* button next to the *Custom Jetty environment file* field. Fill your database connection details in modal window.
+To use standard PostgreSQL container in application, change the `localhost` to `postgres` in the Database URL field.
+
+Studio adds the <<build.gradle_buildUberJar>> task to the `build.gradle` file. Run this task to create the JAR file:
+
+[source, plain]
+----
+gradle buildUberJar
+----
+
+A Docker image with the CUBA app should be based on OpenJDK. We recommend to use a `Dockerfile` to specify the information that Docker needs to know to run the app — a base Docker image to run from, the location of your project code, any dependencies it has, and what commands to run at startup.
+
+. Create the `docker-image` folder in the project.
+. Copy the JAR file into this folder.
+. Create a `Dockerfile` with the simple instructions:
+
+[source, plain]
+----
+### Dockerfile
+
+FROM openjdk:8
+
+COPY . /usr/src/cuba-sales
+
+CMD java -Dapp.home=/usr/src/cuba-sales/home -jar /usr/src/cuba-sales/app.jar
+----
+
+* The `FROM` instruction initializes a new build stage and sets the *Base Image* for subsequent instructions.
+* The `COPY` instruction copies new files or directories from `<src>` and adds them to the filesystem of the container at the path `<dest>`.
+  Multiple `<src>` resources may be specified but they must be relative to the source directory that is being built (the context of the build).
+* The main purpose of a `CMD` is to provide defaults for an executing container. These defaults can include an executable, or they can omit the executable, in which case you must specify an `ENTRYPOINT` instruction as well.
+
+To get more information about Dockerfile instructions see the https://docs.docker.com/engine/reference/builder/[Dockerfile reference].
+
+Now build the image:
+
+. Open the Terminal from the `docker-image` folder.
+. Run the build command. The docker `build` command is quite simple - it takes an optional tag name with the `-t` flag
+and the location of the directory containing the Dockerfile, the `.` indicates the current directory.
+
+[source, plain]
+----
+docker build -t cuba-sample-sales .
+----
+
+If you don't have the `openjdk:8` image the client will first pull the base image and then create the image.
+
+To define and run multi-container Docker application use the https://docs.docker.com/compose/overview/[Docker Compose tool]. With Compose, you use a YAML file to configure your application’s services, so they can be run together in an isolated environment.
+
+A `docker-compose.yml` file looks like this:
+
+[source, plain]
+----
+version: '2'
+
+services:
+  postgres:
+    image: postgres:9.6.6
+    environment:
+      - POSTGRES_PASSWORD=cuba
+      - POSTGRES_USER=cuba
+      - POSTGRES_DB=sales
+    ports:
+     - "5433:5432"
+    networks:
+     - sales-network
+  web:
+    image: cuba-sample-sales
+    ports:
+     - "8080:8080"
+    networks:
+     - sales-network
+
+networks:
+  sales-network:
+----
+
+This compose file defines two services, `web` and `postgres`. The web service:
+
+* uses an image that’s built from the Dockerfile in the current directory.
+* forwards the exposed port 8080 on the container to port 8080 on the host machine.
+
+The `postgres` service uses a public Postgres image pulled from the Docker Hub registry.
+
+To start the application, go to the directory of the `docker-compose.yml` file and run:
+
+[source, plain]
+----
+docker-compose up
+----
+
+After the task is completed you will be able to open the application at `++http://localhost:8080/app++`
+

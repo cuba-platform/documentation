@@ -1,0 +1,150 @@
+:sourcesdir: ../../../../../source
+
+[[bean_validation_constraints]]
+===== Defining Constraints
+
+You can define constraints using annotations of the `javax.validation.constraints` package or custom annotations. The annotations can be set on an entity or POJO class declaration, field or getter, and on a middleware <<services,service>> method.
+
+Example of using standard validation annotations on entity fields:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_1.java[]
+----
+
+Example of using a custom class-level annotation (see <<bean_validation_custom_constraints,below>>):
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_2.java[]
+----
+
+Example of validation of a service method parameters and return value:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_3.java[]
+----
+
+The `@Valid` annotation can be used if you need the cascaded validation of method parameters. In the example above, the constraints declared on the `Task` object will be validated as well.
+
+[[bean_validation_constraint_groups]]
+Constraint Groups::
++
+--
+Constraint groups enable applying only a subset of all defined constraints depending on the application logic. For example, you may want to force a user to enter a value for an entity attribute, but at the same time to have an ability to set this attribute to null by some internal mechanism. In order to do it, you should specify the `groups` attribute on the constraint annotation. Then the constraint will take effect only when the same group is passed to the validation mechanism.
+
+The platform passes to the validation mechanism the following constraint groups:
+
+* `RestApiChecks` - when validating in <<rest_api_v2,REST API>>.
+* `ServiceParametersChecks` - when validating service parameters.
+* `ServiceResultChecks` - when validating service return values.
+* `UiComponentChecks` - when validating individual UI fields.
+* `UiCrossFieldChecks` - when validating class-level constraints on entity editor commit.
+* `javax.validation.groups.Default` - this group is always passed except on the UI editor commit.
+--
+
+[[bean_validation_messages]]
+Validation Messages::
++
+--
+Constraints can have messages to be displayed to users.
+
+Messages can be set directly in the validation annotations, for example:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_4.java[]
+----
+
+You can also place the message in a <<message_packs,localized messages pack>> and use the following format to specify the message in an annotation: `{msg://message_pack/message_key}` or simply `{msg://message_key}` (for entities only). For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_5.java[]
+----
+
+or, if the constraint is defined for an entity and the message is in the entity's message pack:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_19.java[]
+----
+
+Messages can contain parameters and expressions. Parameters are enclosed in `{}` and represent either localized messages or annotation parameters, e.g. `{min}`, `{max}`, `{value}`. Expressions are enclosed in `${}` and can include the validated value variable `validatedValue`, annotation parameters like `value` or `min`, and JSR-341 (EL 3.0) expressions. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_6.java[]
+----
+
+Localized message values can also contain parameters and expressions.
+--
+
+[[bean_validation_custom_constraints]]
+Custom Constraints::
++
+--
+You can create you own domain-specific constraints with programmatic or declarative validation.
+
+In order to create a constraint with programmatic validation, do the following:
+
+. Create an annotation in the *global* module of your project and annotate it with `@Constraint`. The annotation must contain `message`, `groups` and `payload` attributes:
++
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_7.java[]
+----
+
+. Create a validator class in the *global* module of your project:
++
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_8.java[]
+----
+
+. Use the annotation:
++
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_9.java[]
+----
+
+You can also create custom constraints using a composition of existing ones, for example:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_10.java[]
+----
+
+When using a composite constraint, the resulting set of constraint violations will contain separate entries for each enclosed constraint. If you want to return a single violation, annotate the annotation class with `@ReportAsSingleViolation`.
+--
+
+[[bean_validation_related_objects]]
+Validation of Related Objects::
++
+--
+For cascade validation of related objects, mark the reference fields with `@Valid`:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_11.java[]
+----
+
+In the example above, when an instance of `Cart` is validated, the list of products will be checked for the fact that it contains at least one instance, and all instances of `Product` in the list will also be validated.
+--
+
+[[bean_validation_cuba_annotations]]
+Validation Annotations Defined by CUBA::
++
+--
+Apart from the standard annotations from the `javax.validation.constraints` package, you can use the following annotation defined in the CUBA platform:
+
+* `@RequiredView` - can be added to service method definitions to ensure that entity instances are loaded with all the attributes specified in a <<views,view>>. If the annotation is assigned to a method, then the return value is checked. If the annotation is assigned to a parameter, then this parameter is checked. If the return value or the parameter is a collection, all elements of the collection are checked. For example:
+
+[source, java]
+----
+include::{sourcesdir}/common/bean_validation_18.java[]
+----
+--
+

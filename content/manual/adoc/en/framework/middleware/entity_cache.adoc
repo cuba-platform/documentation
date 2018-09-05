@@ -1,0 +1,67 @@
+:sourcesdir: ../../../../source
+
+[[entity_cache]]
+==== Entity and Query Cache
+
+Entity Cache::
++
+--
+Entity cache is provided by EclipseLink <<orm,ORM>> framework. It stores recently read or written entity instance in memory, which minimizes database access and improves the application performance.
+
+Entity cache is used only when you retrieve entities by ID, so queries by other attributes still run on the database. However, these queries can be simpler and faster if related entities are in cache. For example, if you query for Orders together with related Customers and do not use cache, the SQL query will contain a JOIN for customers table. If Customer entities are cached, the SQL query will select only orders, and related customers will be retrieved from the cache.
+
+In order to turn on entity cache, set the following properties in the <<app_properties_files,app.properties>> file of your *core* module:
+
+* `eclipselink.cache.shared.sales$Customer = true` - turns on caching of `sales$Customer` entity.
+
+* `eclipselink.cache.size.sales$Customer = 500` - sets cache size for `sales$Customer` to 500 instances. Default size is 100.
++
+[TIP]
+====
+If the entity cache is enabled, it is always recommended to increase the value of cache size. Otherwise, if the number of records returned by the query exceeds 100, a lot of fetch operations will be performed for each record of the query result.
+====
+
+The fact of whether an entity is cached affects the <<views,fetch mode>> chosen by the platform for loading entity graphs. If a reference attribute is a cacheable entity, the fetch mode is always `UNDEFINED`, which allows ORM to retrieve the reference from the cache instead of executing queries with JOINs or separate batch queries.
+
+The platform provides entity cache coordination in <<cluster_mw_server,middleware cluster>>. When a cached entity is updated or deleted on one cluster node, the same cached instance on other nodes (if any) will be invalidated, so the next operation with this instance will read a fresh state from the database.
+--
+
+Query Cache::
++
+--
+Query cache stores identifiers of entity instances returned by JPQL queries, so it naturally complements the entity cache.
+
+For example, if entity cache is enabled for an entity (say, `sales$Customer`), and you execute the query `select c from sales$Customer c where c.grade = :grade` for the first time, the following happens:
+
+* ORM runs the query on the database.
+
+* Loaded `Customer` instances are placed to the entity cache.
+
+* A mapping of the query text and parameters to the list of identifiers of the returned instances is placed to the query cache.
+
+When you execute the same query with the same parameters the second time, the platform finds the query in the query cache and loads entity instances from the entity cache by identifiers. No database operations are needed.
+
+Queries are not cached by default. You can specify that a query should be cached on different layers of the application:
+
+* Using `setCacheable()` method of the <<query,Query>> interface when working with <<entityManager,EntityManager>>.
+
+* Using `setCacheable()` method of the `LoadContext.Query` interface when working with <<dataManager,DataManager>>.
+
+* Using `setCacheable()` method of the `CollectionDatasource` interface or `cacheable` XML attribute when working with <<datasources,datasources>>.
+
+[WARNING]
+====
+Use cacheable queries only if entity cache is enabled for the returned entity. Otherwise on every query entity instances will be fetched from the database by their identifiers one by one.
+====
+
+Query cache is invalidated automatically when <<orm,ORM>> performs creation, update or deletion of instances of the corresponding entities. The invalidation works across the <<cluster_mw,middleware cluster>>.
+
+The `app-core.cuba:type=QueryCacheSupport` JMX-bean can be used to monitor the cache state and to evict cached queries manually. For example, if you have modified an instance of the `sales$Customer` entity directly in the database, you should evict all cached queries for this entity using the `evict()` operation with `sales$Customer` argument.
+
+The following application properties affect the query cache:
+
+* <<cuba.queryCache.enabled,cuba.queryCache.enabled>>
+
+* <<cuba.queryCache.maxSize,cuba.queryCache.maxSize>>
+--
+

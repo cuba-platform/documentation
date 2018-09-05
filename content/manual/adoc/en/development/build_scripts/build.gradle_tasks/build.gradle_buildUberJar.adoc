@@ -1,0 +1,105 @@
+:sourcesdir: ../../../../../source
+
+[[build.gradle_buildUberJar]]
+===== buildUberJar
+
+`buildUberJar` – the task of the `CubaUberJarBuilding` type that creates JAR files containing the application code and all its dependencies together with embedded Jetty HTTP server. You can create either a single all-in-one JAR file or separate JARs for each application <<app_tiers,block>>, e.g. `app-core.jar` for the middleware and `app.jar` for the web client.
+
+The task must be declared in the root of `build.gradle`. The resulting JAR files are located in the `build/distributions` project subdirectory. See the <<uberjar_deployment>> section for how to run the generated JAR files.
+
+[TIP]
+====
+The task can be configured using the *Deployment settings > Uber JAR* page in Studio. See its context help for details.
+====
+
+Task parameters:
+
+* `coreJettyEnvPath` - required parameter that defines a relative (from the project root) path to a file which contains JNDI resource definitions for Jetty HTTP server. The file must at least contain definition of a JDBC data source for the main database. Studio can generate this file on the basis of entered database connection parameters.
++
+[source, groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    coreJettyEnvPath = 'modules/core/web/META-INF/jetty-env.xml'
+    // ...
+}
+----
++
+You can also provide different DB settings for one and the same UberJar at run time using different <<jetty-env,jetty-env.xml>> files and the `-jettyEnvPath` <<uberjar_deployment,command line>> argument.
+
+* `appProperties` - a map defining application properties. These properties will be added to the `WEB-INF/local.app.properties` files inside generated JARs.
++
+[source, groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    appProperties = ['cuba.automaticDatabaseUpdate' : true]
+    // ...
+}
+----
+
+* `singleJar` - if set to `true`, a single JAR containing all modules (core, web, portal) will be created. `false` by default.
++
+[source, groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    singleJar = true
+    // ...
+}
+----
+
+* `webPort` - port for single (if `singleJar=true`) or web JAR embedded HTTP server, `8080` if not defined. Can also be set at run time using the `-port` command line argument.
+
+* `corePort` - port for core JAR embedded HTTP server, `8079` if not defined. Can also be set at run time using the `-port` <<uberjar_deployment,command line>> argument for the respective JAR.
+
+* `portalPort` - port for portal JAR embedded HTTP server, `8081` if not defined. Can also be set at run time using the `-port` command line argument for the respective JAR.
+
+* `appName` - name of the application, which is `app` by default. You can change it for the whole project if you set *Module prefix* field on the *Project Properties > Advanced* tab in Studio, or you can set it only for the `buildUberJar` task using this parameter. For example:
++
+[source, groovy]
+----
+task buildUberJar(type: CubaUberJarBuilding) {
+    appName = 'sales'
+    // ...
+}
+----
++
+After changing the application name to `sales` the task will generate `sales-core.jar` and `sales.jar` files and the web client will be available at `++http://localhost:8080/sales++`. You can also change web contexts at run time without changing the application name using the `-contextName` <<uberjar_deployment,command line>> argument or just by renaming the JAR file itself.
+
+* `logbackConfigurationFile` - defines a relative path to a file to be used for logging configuration.
++
+For example:
++
+[source, groovy]
+----
+logbackConfigurationFile = "/modules/global/src/logback.xml"
+----
+
+* `useDefaultLogbackConfiguration` - while `true` (default value), the task will copy its own standard `logback.xml` configuration file.
+
+* `webJettyConfPath` - a relative path to a file to be used for Jetty server configuration for the single (if `singleJar=true`) or web JAR (if `singleJar=false`). See https://www.eclipse.org/jetty/documentation/9.4.x/jetty-xml-config.html.
+
+* `coreJettyConfPath` (do not confuse with `coreJettyEnvPath` described above) - a relative path to a file to be used for Jetty server configuration for the core JAR (if `singleJar=false`).
+
+* `portalJettyConfPath` - a relative path to a file to be used for Jetty server configuration for the portal JAR (if `singleJar=false`).
+
+* `coreWebXmlPath` - a relative path to a file to be used as a `web.xml` for the core module web application.
+
+* `webWebXmlPath` - a relative path to a file to be used as a `web.xml` for the web module web application.
+
+* `portalWebXmlPath` - a relative path to a file to be used as a `web.xml` for the portal module web application.
+
+* `excludeResources` - a file pattern of resources to not include in JARs.
+
+* `mergeResources` - a file pattern of resources to be merged in JARs.
+
+* `webContentExclude` - a file pattern of web content to not include in web JAR.
+
+* `coreProject` - a Gradle project representing the core module (Middleware). If not defined, the standard *core* module is used.
+
+* `webProject` - a Gradle project representing the web module (Web Client). If not defined, the standard *web* module is used.
+
+* `portalProject` - a Gradle project representing the portal module (Web Portal). If not defined, the standard *portal* module is used.
+
+* `polymerProject` - a Gradle project representing the <<polymer_ui,Polymer UI>> module. If not defined, the standard *polymer-client* module is used.
+
+* `polymerBuildDir` - the name of the directory where the <<polymer_build_and_structure,Polymer UI is built>>. It is `es6-unbundled` by default. Set this parameter if you have changed the build preset in `polymer.json`.
+

@@ -1,0 +1,161 @@
+:sourcesdir: ../../../../../../source
+
+'''
+[[abstractWindow]]
+====== AbstractWindow
+
+`AbstractWindow` is a subclass of <<abstractFrame,AbstractFrame>> and defines the following methods:
+
+[[dialogOptions]]
+* `getDialogOptions()` – returns a `DialogOptions` object to control geometry and behaviour of the screen when it is opened as a dialog  (`WindowManager.OpenType.DIALOG`). These options can be set when the screen is initialized as well as can be changed at a runtime. See the examples below.
++
+Setting the width and height:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_2.java[]
+----
++
+Setting the dialog position on the screen:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_9.java[]
+----
++
+Making the dialog closeable by click on outside area:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_7.java[]
+----
++
+Making the dialog non-modal and resizable:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_3.java[]
+----
++
+Defining whether the dialog should be maximized across the screen:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_8.java[]
+----
++
+Specifying that the screen should always be opened as a dialog regardless of what `WindowManager.OpenType` was selected in the calling code:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_4.java[]
+----
+
+[[abstractWindow_contentSwitchMode]]
+* `setContentSwitchMode()` - defines how the <<cuba.web.mainTabSheetMode,managed main TabSheet>> should switch a tab with the given window: hide it or unload its content.
++
+--
+Three options are available:
+
+* `DEFAULT` - the switch mode is determined by the managed main TabSheet mode, defined in the <<cuba.web.managedMainTabSheetMode,cuba.web.managedMainTabSheetMode>> application property.
+
+* `HIDE` - the tab content should be hidden not considering the TabSheet mode.
+
+* `UNLOAD` - tab content should be unloaded not considering the TabSheet mode.
+--
+
+[[abstractWindow_saveSettings]]
+* `saveSettings()` - saves the screen settings of the current user to the database when the screen is closed.
++
+For example, the screen contains a checkBox *showPanel* that manages some panel's visibility. In the following method we create an XML element for the checkBox, then add an attribute `showPanel` containing the checkBox value to this element, and finally we save the `settings` element to the XML descriptor for the current user in the database:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_6.java[]
+----
+
+[[abstractWindow_applySettings]]
+* `applySettings()` - restores settings saved in the database for the current user when the screen is opened.
++
+This method can be overridden to restore custom settings. For example, in the method below we get the XML element of the checkBox from the previous example, then we make sure the required attribute is not null, and if it isn't, we set the restored value to the checkBox:
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_5.java[]
+----
++
+Another example of managing settings is the standard *Server Log* screen from the *Administration* menu of CUBA application that automatically saves and restores recently opened log files.
+
+[[abstractWindow_ready]]
+* `ready()` - a template method that can be implemented in controller to intercept the moment of screen opening. It is invoked when the screen is fully initialized and opened.
+
+[[abstractWindow_validateAll]]
+* `validateAll()` – validates a screen. The default implementation calls `validate()` for all screen components implementing the `Component.Validatable` interface, collects information about exceptions and displays corresponding message. Method returns `false`, if any exceptions were found; and `true` otherwise.
++
+This method should be overridden only if it is required to override screen validation procedure completely. It is sufficient to implement a special template method – `postValidate()`, if validation should be just supplemented.
+
+[[abstractWindow_postValidate]]
+* `postValidate()` – a template method that can be implemented in controller for additional screen validation. The method stores validation errors information in `ValidationErrors` object which is passed to it. Afterwards this information is displayed together with the errors of standard validation. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_1.java[]
+---- 
+
+[[abstractWindow_showValidationErrors]]
+* `showValidationErrors()` - shows validation errors alert. It can be overridden to change the default alert behavior. The notification type can be defined by the <<cuba.gui.validationNotificationType,cuba.gui.validationNotificationType>> application property.
++
+[source, java]
+----
+include::{sourcesdir}/gui/abstractwindow_10.java[]
+----
+
+[[abstractWindow_close]]
+* `close()` – closes this screen. 
++
+The method accepts string value, which is then passed to `preClose()` template method and to `CloseListener` listeners. Thus, the information about the reason why the window was closed can be obtained from the code that initiated the closing event. It is recommended to use the following constants for closing edit screens: `++Window.COMMIT_ACTION_ID++` after committing changes, `++Window.CLOSE_ACTION_ID++` – without committing changes.
++
+If any of the datasources contains unsaved changes, a dialog with a corresponding message will be displayed before the screen is closed. Notification type may be adjusted using the <<cuba.gui.useSaveConfirmation,cuba.gui.useSaveConfirmation>> application property.
++
+A variant of `close()` method with `force = true` parameter closes the screen without calling `preClose()` and without a notification regardless of any unsaved changes.
++
+`close()` method returns `true`, if the screen is closed successfully, and `false` – if closing procedure was interrupted.
+
+[[abstractWindow_preClose]]
+* `preClose()` is a template method which can be implemented in a controller to intercept the moment when the window closes. The method receives a string value provided by the closing initiator when invoking `close()` method.
++
+If the `preClose()` method returns `false`, the window closing process is interrupted.
+
+[[abstractWindow_addBeforeCloseWithCloseButtonListener]]
+* `addBeforeCloseWithCloseButtonListener()` - adds a listener to be notified when a screen is closed with one of the following approaches: the screen's close button, bread crumbs, or `TabSheet` tabs' close actions (Close, Close All, Close Others). To prevent a user from closing a window accidentally, invoke the `preventWindowClose()` method of `BeforeCloseEvent`:
++
+[source, java]
+----
+addBeforeCloseWithCloseButtonListener(BeforeCloseEvent::preventWindowClose);
+----
+
+[[abstractWindow_addBeforeCloseWithShortcutListener]]
+* `addBeforeCloseWithShortcutListener` - adds a listener to be notified when a screen is closed with a close shortcut (for example, `Esc` button). To prevent a user from closing a window accidentally, invoke the `preventWindowClose()` method of `BeforeCloseEvent`:
++
+[source, java]
+----
+addBeforeCloseWithShortcutListener(BeforeCloseEvent::preventWindowClose);
+----
+
+'''
+
+API::
+<<abstractWindow_addBeforeCloseWithCloseButtonListener,addBeforeCloseWithCloseButtonListener()>> -
+<<abstractWindow_addBeforeCloseWithShortcutListener,addBeforeCloseWithShortcutListener()>> -
+<<abstractWindow_applySettings,applySettings()>> -
+<<abstractWindow_close,close()>> -
+<<abstractWindow_contentSwitchMode,setContentSwitchMode()>> -
+<<dialogOptions,getDialogOptions()>> -
+<<abstractWindow_postValidate,postValidate()>> -
+<<abstractWindow_preClose,preClose()>> -
+<<abstractWindow_ready,ready()>> -
+<<abstractWindow_saveSettings,saveSettings()>> -
+<<abstractWindow_validateAll,validateAll()>>
+
+'''
+

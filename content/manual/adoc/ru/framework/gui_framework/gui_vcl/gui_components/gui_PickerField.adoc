@@ -1,0 +1,153 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_PickerField]]
+====== PickerField
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo.cuba-platform.com/sampler/open?screen=simple-pickerfield" class="live-demo-btn" target="_blank">ДЕМОНСТРАЦИЯ</a>
+</div>
+++++
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/6.9/com/haulmont/cuba/gui/components/PickerField.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`PickerField` позволяет отображать экземпляр сущности в текстовом поле и выполнять действия нажатием на кнопки справа.
+
+image::PickerField.png[align="center"]
+
+XML-имя компонента: `pickerField`.
+
+Компонент `PickerField` реализован для блоков *Web Client* и *Desktop Client*.
+
+* Как правило, `PickerField` используется для работы со ссылочными атрибутами сущностей. При этом компоненту достаточно указать атрибуты <<gui_attr_datasource,datasource>> и <<gui_attr_property,property>>:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_1.xml[]
+----
++
+Как видно из примера, в экране описывается <<datasources,источник данных>> `carDs` для некоторой сущности `Car`, имеющей атрибут `colour`. В элементе `pickerField` в атрибуте `datasource` указывается ссылка на источник данных, а в атрибуте `property` − название атрибута сущности, значение которого должно быть отображено в компоненте. Атрибут сущности должен являться ссылкой на другую сущность, в приведенном примере это `Colour`.
+
+[[gui_PickerField_actions]]
+* Для `PickerField` можно определить произвольное количество <<gui_Action,действий>>, отображаемых кнопками справа.
++
+[[gui_PickerField_addAction]]
+Это можно сделать как в XML-дескрипторе с помощью вложенного элемента `actions`, так и программно в контроллере методом `addAction()`.
+
+** Существуют <<standard_actions,стандартные действия>>, определенные перечислением `PickerField.ActionType`: `lookup`, `clear`, `open`. Они выполняют соответственно выбор связанной сущности, очистку поля и открытие экрана редактирования выбранной связанной сущности. Для стандартных действий в XML не нужно определять никаких атрибутов, кроме идентификатора. Если при объявлении компонента никаких действий в элементе `actions` не задано, загрузчик XML определит для него действия `lookup` и `clear`. Чтобы добавить к действиям по умолчанию, например, действие `open`, нужно определить элемент `actions` следующим образом:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_2.xml[]
+----
++
+Элемент `action` не дополняет, а переопределяет набор стандартных действий, поэтому необходимо указывать идентификаторы всех требуемых действий. Компонент примет следующий вид:
++
+image::gui_pickerFieldActionsSt.png[align="center"]
++
+[[gui_PickerField_addLookupAction]] [[gui_PickerField_addOpenAction]] [[gui_PickerField_addClearAction]]
+Для программного задания стандартных действий служат методы `addLookupAction()`, `addOpenAction()` и `addClearAction()`. Если компонент определен в XML-дескрипторе без вложенного элемента `actions`, то достаточно добавить недостающие действия:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_3.java[]
+----
++
+Если же компонент создается в контроллере, то никаких действий по умолчанию он не получает, и необходимо добавить все нужные действия явно:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_4.java[]
+----
++
+Стандартные действия можно параметризовать. В XML-дескрипторе возможности для этого ограничены: существует только атрибут `openType`, в котором можно задать режим открытия экрана выбора (для `LookupAction`) или редактирования (для `OpenAction`).
++
+При программном создании действий можно задать любые свойства объектов `PickerField.LookupAction`, `PickerField.OpenAction` и `PickerField.ClearAction`, возвращаемых методами добавления стандартных действий. Например, так можно задать специфический экран выбора:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_5.java[]
+----
++
+Подробнее см. JavaDocs классов <<standard_actions,стандартных действий>>.
+
+** Произвольные действия в XML-дескрипторе также определяются во вложенном элементе `actions`, например:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_6.xml[]
+----
++
+Программно задать произвольное действие можно следующим образом:
++
+[[gui_PickerField_setLookupScreen]]
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_7.java[]
+----
++
+Декларативное и программное создание действий подробно описано в разделе <<gui_Action>>.
+
+[[gui_PickerField_metaclass]]
+* Компонент `PickerField` можно использовать без непосредственной привязки к данным, то есть без указания <<gui_attr_datasource,datasource>> и <<gui_attr_property,property>>. В этом случае для указания типа сущности, с которой должен работать `PickerField`, используется атрибут `metaClass`. Например:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/pickerfield_8.xml[]
+----
++
+Экземпляр выбранной сущности можно получить, инжектировав компонент в контроллер и вызвав его метод `getValue()`.
++
+[WARNING]
+====
+Для правильной работы компонента `PickerField` необходима либо установка атрибута `metaClass`, либо одновременная установка атрибутов <<gui_attr_datasource,datasource>> и <<gui_attr_property,property>>.
+====
+
+* В компоненте `PickerField` можно использовать горячие клавиши: см. <<shortcuts,>>.
+
+'''
+
+Атрибуты pickerField::
+<<gui_attr_align,align>> -
+<<gui_attr_caption,caption>> -
+<<gui_attr_captionProperty,captionProperty>> -
+<<gui_attr_contextHelpText,contextHelpText>> -
+<<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_datasource,datasource>> -
+<<gui_attr_description,description>> -
+<<gui_attr_editable,editable>> -
+<<gui_attr_enable,enable>> -
+<<gui_attr_height,height>> -
+<<gui_attr_icon,icon>> -
+<<gui_attr_id,id>> -
+<<gui_PickerField_metaclass,metaClass>> -
+<<gui_attr_property,property>> -
+<<gui_attr_required,required>> -
+<<gui_attr_requiredMessage,requiredMessage>> -
+<<gui_attr_stylename,stylename>> -
+<<gui_attr_tabIndex,tabIndex>> -
+<<gui_attr_visible,visible>> -
+<<gui_attr_width,width>>
+
+Элементы pickerField::
+<<gui_PickerField_actions,actions>> -
+<<gui_validator,validator>>
+
+API::
+<<gui_PickerField_addAction,addAction>> -
+<<gui_PickerField_addClearAction,addClearAction>> -
+<<gui_PickerField_addLookupAction,addLookupAction>> -
+<<gui_PickerField_addOpenAction,addOpenAction>> -
+<<gui_api_addValueChangeListener,addValueChangeListener>> -
+<<gui_api_commit,commit>> -
+<<gui_api_discard,discard>> -
+<<gui_api_isModified,isModified>> -
+<<gui_api_contextHelp,setContextHelpIconClickHandler>> -
+<<gui_PickerField_setLookupScreen,setLookupScreen>>
+
+'''
+

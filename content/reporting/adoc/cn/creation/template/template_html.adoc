@@ -1,0 +1,123 @@
+:sourcesdir: ../../../../source
+
+[[template_html]]
+==== HTML Template
+
+An HTML template is defined in an `.html` file (`UTF-8` encoding without `BOM`). You can use HTML/CSS features of https://github.com/flyingsaucerproject/flyingsaucer[Flying Saucer] library, its main guide is available at http://flyingsaucerproject.github.io/flyingsaucer/r8/guide/users-guide-R8.html
+
+To control page size, page headers and footers, use special CSS rules and properties. You can find an example of a report with repeatable header and footer blocks in the <<example_html,Sample Reports>> section.
+
+FreeMarker tags are used to place data (FreeMarker documentation is available at https://freemarker.apache.org/docs/).
+
+The FreeMarker document model has the following structure:
+
+[source, groovy]
+----
+Band { 
+      bands [ bandName : [ band, .. ], .. ]
+      fields [ fieldName : fieldValue, .. ] 
+}
+----
+
+For example, you should use the following expression to access the `name` field in a row having index 0 of the `band` band:
+
+[source, groovy]
+----
+Root.bands.band[0].fields.name
+----
+
+You may use variables for convenience, e.g.:
+
+[source, html]
+----
+<#assign headerRow = Root.bands.Header[0]>
+<p>Date: ${headerRow.fields.reportDate}</p>
+----
+
+Below is an example of a template which outputs a report consisting of two bands, `Book` and `Authors`. The first band outputs a book name and genre, and the second outputs a list of authors of this book.
+
+[source, html]
+----
+include::{sourcesdir}/examples_html_6.html[]
+----
+
+Below is a more complex example. Let us assume we have the following bands structure:
+
+[source, groovy]
+----
+Root {
+    HeaderBand {
+        query = return [[ "name" : "Column1" ],[ "name" : "Column2" ]]
+    }
+    Band1 {
+        query = return [
+                ["field1" : "Value 11", "field2" : "Value 12"],
+                ["field1" : "Value 21" , "field2" : "Value 22"]
+        ]
+    }
+    Band2 {
+        query = return [[ "header" : "Header1" ], [ "header" : "Header2" ]]
+        SubBand1 {
+            query = return [["header" : 'SubHeader1'] , [ "header" : 'SubHeader2' ]]
+        }
+    }
+}
+----
+
+* Inserting a field:
+
+[source, html]
+----
+include::{sourcesdir}/examples_html_8.html[]
+----
+
+* Inserting a list:
+
+[source, html]
+----
+include::{sourcesdir}/examples_html_9.html[]
+----
+
+* Inserting a table:
+
+[source, html]
+----
+include::{sourcesdir}/examples_html_10.html[]
+----
+
+* Inserting a multi-level list:
+
+[source, html]
+----
+include::{sourcesdir}/examples_html_11.html[]
+----
+
+*Embedded pictures*
+
+At the moment, CUBA Reporting add-on does not provide means of inserting images into HTML-reports similarly to DOCX/XLSX reports. Images still can be embedded with the `img` tag and the link to the picture in the `src` attribute. There are two ways to add images to the HTML-report:
+
+* by URL
++
+An image can be hosted on the Tomcat server or any external hosting up to the local file reference. For example, the image hosted in the `deploy\tomcat\webapps\ROOT\images` folder can be inserted like:
+[source, html]
+----
+<img src="http://localhost:8080/images/SomeImage.jpg" height="68" width="199" border="0" align="right"/>
+----
+
+* by Bitmap
++
+An image is added as a byte array within the `src` attribute. This approach allows you to use variables for the `FileDescriptor` attributes of the entities. The byte array can even be added directly to the template, even though this approach is not recommended:
+[source, html]
+----
+<img alt="SomePicture.png" src="data:image/png;base64,iVBORw0K ..... AcEP9PwxD0hNKK1FCAAAAAElFTkSuQmCC"/>
+----
+
+*Inline editor*
+
+HTML templates support inline editing. You can edit the template directly in the *Template editor* window and see the changes without having to re-upload the template file.
+
+.HTML inline editor
+image::html_report_editor.png[align="center"]
+
+include::template_html/html_to_pdf.adoc[]
+

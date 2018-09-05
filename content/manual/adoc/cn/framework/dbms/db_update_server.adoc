@@ -1,0 +1,29 @@
+:sourcesdir: ../../../../source
+
+[[db_update_server]]
+==== The Execution of Database Scripts by the Server
+
+The mechanism to execute database scripts by the server is used for bringing the DB up to date at the start of the application server and is activated during the initialization of the Middleware block. Obviously, the application should have been built and deployed on the server – production or developer's Tomcat instance.
+
+Depending on the conditions described below, this mechanism either executes create or update scripts, i.e., it can initialize the DB from scratch and update it. However, unlike the Gradle `createDb` task described in the previous section, the database must exist to be initialized – the server does not create the DB automatically but only executes scripts on it.
+
+The mechanism to execute scripts by the server works as follows:
+
+* The scripts are extracted from the <<db_dir,database scripts directory>>, defined by the <<cuba.dbDir,cuba.dbDir>> application property, which by default is set to `tomcat/webapps/app-core/WEB-INF/db`.
+
+* If the DB does not have the `SEC_USER` table, the database is considered empty and the full initialization is run using the create scripts. After executing the initialization scripts, their names are stored in the `SYS_DB_CHANGELOG` table. The names of all available update scripts are stored in the same table, __without their execution__.
+
+* If the DB has the `SEC_USER` table but does not have the `SYS_DB_CHANGELOG` table (this is the case when the described mechanism is launched for the first time on the existing production DB), __no scripts are executed__. Instead, the `SYS_DB_CHANGELOG` table is created and the names of all currently available create and update scripts are stored.
+
+* If the DB has both the `SEC_USER` and `SYS_DB_CHANGELOG` tables, the update scripts whose names were not previously stored in the `SYS_DB_CHANGELOG` table are executed and their names are stored in the `SYS_DB_CHANGELOG` table. The sequence of scripts execution is determined by two factors: the priority of the application component (see <<db_dir,database scripts directory>>: `10-cuba`, `20-bpm`, ...) and the name of the script file (taking into account the subdirectories of the `update` directory) in the alphabetical order.
++
+Before the execution of update scripts, the check is performed, whether all creation scripts of application components have been run (by checking the `SYS_DB_CHANGELOG` table). If the database is not initialized for use of some application component, its creation scripts are executed.
+
+The mechanism to execute the scripts on server startup is enabled by the <<cuba.automaticDatabaseUpdate,cuba.automaticDatabaseUpdate>> application property.
+
+In already running application, the script execution mechanism can be launched using the `app-core.cuba:type=PersistenceManager` JMX bean by calling its `updateDatabase()` method with the *`update`* parameter. Obviously, it is only possible to update already existing DB as it is impossible to log in to the system to run a method of the JMX bean with an empty DB. Please note, that an unrecoverable error will occur, if part of the data model no longer corresponding to the outdated DB schema is initialized during Middleware startup or user login. That is why the automatic update of the DB on the server startup before initializing the data model is only universal.
+
+The JMX `app-core.cuba:type=PersistenceManager` bean has one more method related to the DB update mechanism: `findUpdateDatabaseScripts()`. It returns a list of new update scripts available in the directory and not registered in the DB (not yet executed).
+
+Recommendations for usage of the server DB update mechanism can be found in <<db_update_in_prod>>.
+

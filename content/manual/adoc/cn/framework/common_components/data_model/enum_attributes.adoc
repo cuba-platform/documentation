@@ -1,0 +1,37 @@
+:sourcesdir: ../../../../../source
+
+[[enum_attributes]]
+===== Enum Attributes
+
+The standard use of <<jpa, JPA>> for `enum` attributes involves an integer database field containing a value obtained from the `ordinal()` method. This approach may lead to the following issues with extending a system in production:
+
+* An entity instance cannot be loaded, if the value of the enum in the database does not equal to any `ordinal` value.
+
+* It is impossible to add a new value between the existing ones, which is important when sorting by enumeration value (order by).
+
+CUBA-style approach to solving these problems is to detach the value stored in the database from `ordinal` value of the enumeration. In order to do this, the field of the entity should be declared with the type, stored in the database (`Integer` or `String`), while the access methods (getter / setter) should be created with the actual enumeration type.
+
+Example:
+
+[source, java]
+----
+include::{sourcesdir}/common/enum_1.java[]
+----
+
+In this case, the enumeration class can look like this:
+
+[source, java]
+----
+include::{sourcesdir}/common/enum_2.java[]
+----
+
+For correct reflection in <<metadata_framework,metadata>>, the enumeration class must implement the `EnumClass` interface.
+
+As the examples show, `grade` attribute corresponds to the `Integer` type value stored in the database, which is specified by the `id` field of `CustomerGrade` enumeration, namely `10`, `20` or `30`. At the same time, the application code and metadata framework use `CustomerGrade` enum through access methods, which perform the actual conversion.
+
+A call to `getGrade()` method will simply return `null`, if the value in the database does not correspond to any of the enumeration values. In order to add a new value, for example, `HIGHER`, between `HIGH` and `PREMIUM`, it is sufficient to add new enumeration value with `id = 15`, which ensures that sorting by `Customer.grade` field remains correct.
+
+The `Integer` field type provides the ordered list of constants and enables sorting in JPQL and SQL queries (`>`, `<`, `>=`, `<=`, `order` `by`), not to mention the negligible issue of database space and performance. On the other hand, `Integer` values are not self-explanatory in query results, that complicates debugging and using raw data from the database or in serialized formats. In this regard, the `String` type is more convenient.
+
+Enumerations can be created in CUBA Studio on the *DATA MODEL* tab (New -> Enumeration). To be used as an entity attribute, choose `ENUM` in the *Attribute type* field of the attribute editor and select the Enumeration class in the *Type* field. Enumeration values can be associated with <<enum_localization,localized names>> that will be displayed in the user interface of the application.
+

@@ -1,0 +1,50 @@
+:sourcesdir: ../../../../source
+
+[[dbms_types]]
+==== DBMS Types
+
+The type of the DBMS used in the application is defined by the <<cuba.dbmsType,cuba.dbmsType>> and (optionally) <<cuba.dbmsVersion,cuba.dbmsVersion>> application properties. These properties affect various platform mechanisms depending on the database type.
+
+The application connects to the database through the `javax.sql.DataSource` which is extracted from JNDI by the name specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property (`java:comp/env/jdbc/CubaDS` by default). Configuration of the data source for <<fast_deployment,standard deployment>> is defined in the <<context.xml>> file of the *core* module. The data source should use a proper JDBC driver for the selected DBMS.
+
+The platform supports the following types of DBMS "out of the box":
+
+[options="header", cols="2,1,1,2"]
+|===
+| ^|cuba.dbmsType ^|cuba.dbmsVersion ^|JDBC driver
+|HSQLDB |hsql||org.hsqldb.jdbc.JDBCDriver
+|PostgreSQL 8.4+ |postgres||org.postgresql.Driver
+|Microsoft SQL Server 2005 |mssql|2005|net.sourceforge.jtds.jdbc.Driver
+|Microsoft SQL Server 2008 |mssql||com.microsoft.sqlserver.jdbc.SQLServerDriver
+|Microsoft SQL Server 2012+ |mssql |2012|com.microsoft.sqlserver.jdbc.SQLServerDriver
+|Oracle Database 11g+ |oracle||oracle.jdbc.OracleDriver
+|MySQL 5.6+ |mysql||com.mysql.jdbc.Driver
+|===
+
+The table below describes the recommended mapping of data types between entity attributes in Java and table columns in different DBMS. CUBA Studio automatically chooses these types when generates scripts to create and update the database. The operation of all platform mechanisms is guaranteed when you use these types.
+
+[options="header"]
+|===
+^|Java ^|HSQL ^|PostgreSQL ^|MS SQL Server ^|Oracle ^|MySQL
+|UUID|varchar(36)|uuid|uniqueidentifier|varchar2(32)|varchar(32)
+|Date|timestamp|timestamp|datetime|timestamp|datetime(3)
+|java.sql.Date|timestamp|date|datetime|date|date
+|java.sql.Time|timestamp|time|datetime|timestamp|time(3)
+|BigDecimal|decimal(p, s)|decimal(p, s)|decimal(p, s)|number(p, s)|decimal(p, s)
+|Double|double precision|double precision|double precision|float|double precision
+|Long|bigint|bigint|bigint|number(19)|bigint
+|Integer|integer|integer|integer|integer|integer
+|Boolean|boolean|boolean|tinyint|char(1)|boolean
+|String (limited)|varchar(n)|varchar(n)|varchar(n)|varchar2(n)|varchar(n)
+|String (unlimited)|longvarchar|text|varchar(max)|clob|longtext
+|byte[]|longvarbinary|bytea|image|blob|longblob
+|===
+
+Usually, the whole work to convert the data between the database and the Java code is performed by the <<orm,ORM layer>> in conjunction with the appropriate JDBC driver. This means that no manual conversion is required when working with the data using the <<entityManager,EntityManager>> methods and <<query,JPQL queries>>; you should simply use Java types listed in the left column of the table.
+
+When using native SQL through <<nativeQuery,EntityManager.createNativeQuery()>> or through <<queryRunner,QueryRunner>>, some types in the Java code will be different from those mentioned above, depending on DBMS used. In particular, this applies to attributes of the `UUID` - type – only the PostgreSQL driver returns values of corresponding columns using this type; other servers return `String`. To abstract application code from the database type, it is recommended to convert parameter types and query results using the <<dbTypeConverter,DbTypeConverter>> interface.
+
+include::dbms_types/arbitrary_dbms.adoc[]
+
+include::dbms_types/dbms_version.adoc[]
+

@@ -1,0 +1,60 @@
+:sourcesdir: ../../../../source
+
+[[tomcat_war_deployment_linux]]
+==== WAR deployment to Tomcat Linux Service
+
+The example below has been tested on Ubuntu 16.04
+
+. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>. You can also specify a different `context.xml` file to setup the connection to the production database:
++
+--
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_2_linux.groovy[]
+----
+
+If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999, the task definition should be as follows:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_3.groovy[]
+----
+--
+
+. Run the `buildWar` gradle task. As a result, `app.war` file will be generated in the `build/distibutions` directory of your project.
++
+[source, plain]
+----
+gradlew buildWar
+----
+
+. Install Tomcat 8 Linux Service:
++
+[source, plain]
+----
+sudo apt-get install tomcat8
+----
+
+. Copy the generated `app.war` file to the empty `/var/lib/tomcat8/webapps` directory of the server.
++
+[TIP]
+====
+Tomcat service runs from `tomcat8` user by default. The owner of `webapps` folder is `tomcat8` as well.
+====
+
+. Create configuration file `/usr/share/tomcat8/bin/setenv.sh` with the following text:
++
+[source,plain]
+----
+export CATALINA_OPTS="$CATALINA_OPTS -Xmx1024m"
+----
+
+. Restart the Tomcat service:
++
+[source, plain]
+----
+sudo service tomcat8 restart
+----
+
+. Open `++http://localhost:8080/app++` in your web browser.
+

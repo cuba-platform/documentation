@@ -1,0 +1,27 @@
+:sourcesdir: ../../../../source
+
+[[app_start_recipe]]
+==== Running Code on Startup
+
+Sometimes you need to run some code on the application startup, at the moment when all application functionality is already initialized and ready to work. For this, you can use <<app_lifecycle_events,application lifecycle event listeners>>.
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo1.cuba-platform.com/business-logic/open?screen=sample$Employee.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+In this section we demonstrate how to dynamically register an <<entity_listeners,entity listener>> on application startup. Consider the following task: a project has an `Employee` entity that is linked one-to-one to the platform's `User` entity.
+
+image::app_start_recipe_1.png[align="center"]
+
+If the `name` attribute of the `User` entity is changed, for example, through a standard user management screen, the `name` attribute of the related `Employee` should change as well. This is a common task for "denormalized" data, which is typically solved using entity listeners. Our case is more complicated, since we need to track changes of the platform's `User` entity, and thus we cannot add an entity listener using the <<listeners_annotation,@Listeners>> annotation. So we will add a listener dynamically using the `EntityListenerManager` bean on application start.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/core/AppLifecycle.java[AppLifecycle.java] - a middleware bean listening to the `AppContextInitializedEvent` events.
+
+* {proj_business_logic}/blob/master/modules/core/src/com/company/sample/listener/UserEntityListener.java[UserEntityListener.java] - an entity listener for the `User` entity.
+
+As a result, the `initEntityListeners()` method of the `AppLifecycle` class will be invoked on the middleware <<app_tiers,block>> startup. This method registers the `sample_UserEntityListener` bean as an entity listener for the `User` entity.
+
+The `onBeforeUpdate()` method of the `UserEntityListener` class will be invoked every time before the changes in the `User` instances are saved to the database. The method checks if the `name` attribute exists among the updated attributes. If yes, a related `Employee` instance is loaded and its `name` is updated with the new value.
+

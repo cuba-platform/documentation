@@ -1,0 +1,134 @@
+:sourcesdir: ../../../source
+
+[[proc_actions_frame]]
+=== ProcActionsFrame
+
+`ProcActionsFrame` - фрейм для работы с процессными действиями. После инициализации во фрейме автоматически отобразятся:
+
+* кнопка запуска процесса, если процесс не запущен;
+* кнопки, соответствующие выходам из задачи, если процесс запущен и текущий пользователь имеет активную задачу;
+* кнопка отмены процесса;
+* информация о задаче (имя и дата создания).
+
+Каждому из действий возможно задать предикат, вычисляемый перед выполнением этого действия, что позволяет сделать проверку возможности выполнения действия в настоящее время (например, выполнить коммит экрана и в случае неудачи не выполнять процессное действие). Также можно задать слушатель, который будет выполнен после завершения действия (например, закрыть экран редактирования сущности и отобразить сообщение пользователю).
+
+`ProcActionsFrame` должен быть связан с экземпляром `ProcInstance`. Связывание происходит во время инициализации фрейма.
+
+Пример инициализации фрейма:
+
+[source,java]
+----
+include::{sourcesdir}/quickstart/ProcActionsFrameInitialization.java[]
+----
+
+* Метод `initializer()` возвращает объект, используемый для инициализации фрейма.
+
+* Метод `setBeforeStartProcessPredicate` устанавливает предикат, который будет вычислен перед выполнением запуска процесса. Если предикат вернет `false`, запуск процесса будет прерван.
+
+* Метод `setAfterStartProcessListener` задает слушатель, который будет вызван после завершения действия запуска процесса.
+
+* Самое главное - метод `init` принимает два параметра: код процесса и экземпляр сущности. При вызове этого метода происходит поиск объекта `ProcInstance`, связанного с указанным экземпляром сущности и ссылающимся на `ProcDefinition` с указанным кодом. Если `ProcInstance` существует, фрейм связывается с ним, если нет, то создается новый объект `ProcInstance`.
+
+Самый простой способ проиницализировать `ProcActionsFrame` - использовать метод *standard()*:
+
+[source,java]
+----
+include::{sourcesdir}/quickstart/ProcActionsFrameStandardInitialization.java[]
+----
+
+Стандартная инициализация делает следующее:
+
+* создает предикаты, которые вызывают коммит редактора сущности перед процессным действием запуска процесса или завершения задачи
+
+* создает слушатели, показывающее сообщения "Процесс запущен", "Задача завершена" после процессного действия, а также вызывающие повторную инициалзизацию `ProcActionsFrame`
+
+Полный список методов, которые можно использовать для работы с фреймом:
+
+Жизненный цикл процесса::
++
+--
+[[ProcActionsFrame_initializer]]
+* `initializer()` - возвращает экземпляр инициализатора фрейма.
+
+[[ProcActionsFrame_init]]
+* `init()` - пробует найти экземпляр процесса по переданному коду и ссылке на сущность. Если существующий процесс не найден, создаётся новый. Затем происходит инициализация UI, отображающий действия, доступные для этого процесса и для текущего пользователя.
+--
+
+Конфигурация процесса::
++
+--
+[[ProcActionsFrame_setStartProcessEnabled]]
+* `setStartProcessEnabled()` - устанавливает разрешение или запрет на запуск процесса.
+
+[[ProcActionsFrame_setCancelProcessEnabled]]
+* `setCancelProcessEnabled()` - устанавливает разрешение или запрет на отмену процесса.
+
+[[ProcActionsFrame_setCompleteTaskEnabled]]
+* `setCompleteTaskEnabled()` - устанавливает разрешение или запрет на завершение задачи.
+
+[[ProcActionsFrame_setClaimTaskEnabled]]
+* `setClaimTaskEnabled()` - устанавливает разрешение или запрет на выбор задачи самим пользователем.
+
+[[ProcActionsFrame_setTaskInfoEnabled]]
+* `setTaskInfoEnabled()` - управляет видимостью контейнера, отображающего локализованное имя задачи и дату её начала.
+
+[[ProcActionsFrame_setButtonWidth]]
+* `setButtonWidth()` - устанавливает ширину кнопок управления процессом. По умолчанию кнопки имеют ширину 150 px.
+--
+
+Предикаты::
++
+--
+[[ProcActionsFrame_setBeforeStartProcessPredicate]]
+* `setBeforeStartProcessPredicate()` - устанавливает предикат, который должен быть вычислен перед запуском процесса. Если предикат вернёт `false`, запуск процесса будет прерван.
+
+[[ProcActionsFrame_setBeforeCompleteTaskPredicate]]
+* `setBeforeCompleteTaskPredicate()` - устанавливает предикат, который должен быть вычислен перед завершением задачи. Если предикат вернёт `false`, завершение задачи будет прервано.
+
+[[ProcActionsFrame_setBeforeClaimTaskPredicate]]
+* `setBeforeClaimTaskPredicate()` - устанавливает предикат, который должен быть вычислен перед назначением задачи на пользователя. Если предикат вернёт `false`, назначение задачи будет прервано.
+
+[[ProcActionsFrame_setBeforeCancelProcessPredicate]]
+* `setBeforeCancelProcessPredicate()` - устанавливает предикат, который должен быть вычислен перед отменой задачи. Если предикат вернёт `false`, задача не будет отменена.
+--
+
+Слушатели процесса и задач::
++
+--
+[[ProcActionsFrame_setAfterStartProcessListener]]
+* `setAfterStartProcessListener()` - задаёт слушатель, который будет вызван после запуска процесса.
+
+[[ProcActionsFrame_setAfterCompleteTaskListener]]
+* `setAfterCompleteTaskListener()` - задаёт слушатель, который будет вызван после завершения задачи.
+
+[[ProcActionsFrame_setAfterClaimTaskListener]]
+* `setAfterClaimTaskListener()` - задаёт слушатель, который будет вызван после выбора задачи пользователем.
+
+[[ProcActionsFrame_setAfterCancelProcessListener]]
+* `setAfterCancelProcessListener()` - задаёт слушатель, который будет вызван после отмены выполнения процесса.
+--
+
+'''
+
+ProcActionsFrame API::
+<<ProcActionsFrame_initializer,initializer>>
+
+Initializer API::
+<<ProcActionsFrame_init,init>> -
+<<ProcActionsFrame_setAfterCancelProcessListener,setAfterCancelProcessListener>> -
+<<ProcActionsFrame_setAfterClaimTaskListener,setAfterClaimTaskListener>> -
+<<ProcActionsFrame_setAfterCompleteTaskListener,setAfterCompleteTaskListener>> -
+<<ProcActionsFrame_setAfterStartProcessListener,setAfterStartProcessListener>> -
+<<ProcActionsFrame_setBeforeCancelProcessPredicate,setBeforeCancelProcessPredicate>> -
+<<ProcActionsFrame_setBeforeClaimTaskPredicate,setBeforeClaimTaskPredicate>> -
+<<ProcActionsFrame_setBeforeCompleteTaskPredicate,setBeforeCompleteTaskPredicate>> -
+<<ProcActionsFrame_setBeforeStartProcessPredicate,setBeforeStartProcessPredicate>> -
+<<ProcActionsFrame_setButtonWidth,setButtonWidth>> -
+<<ProcActionsFrame_setCancelProcessEnabled,setCancelProcessEnabled>> -
+<<ProcActionsFrame_setClaimTaskEnabled,setClaimTaskEnabled>> -
+<<ProcActionsFrame_setCompleteTaskEnabled,setCompleteTaskEnabled>> -
+<<ProcActionsFrame_setStartProcessEnabled,setStartProcessEnabled>> -
+<<ProcActionsFrame_setTaskInfoEnabled,setTaskInfoEnabled>>
+
+'''
+

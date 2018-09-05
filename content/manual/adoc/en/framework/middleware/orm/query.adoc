@@ -1,0 +1,38 @@
+:sourcesdir: ../../../../../source
+
+[[query]]
+===== Executing JPQL Queries
+
+The `Query` interface is designed to execute <<jpql,JPQL>> queries. The reference to it may be obtained from the current `EntityManager` instance by calling `createQuery()` method. If the query is supposed to be used to load entities, we recommend calling `createQuery()` with the result type as a parameter. This will create a `TypedQuery` instance.
+
+The methods of `Query` mainly correspond to the methods of the standard JPA link:http://docs.oracle.com/javaee/7/api/javax/persistence/Query.html[javax.persistence.Query] interface. Let us have a look at the differences.
+
+* `setParameter()` – sets a value to a query parameter. If the value is an entity instance, implicitly converts the instance into its identifier. For example: 
++
+[source, java]
+----
+include::{sourcesdir}/middleware/jpqlquery_1.java[]
+----
++
+Note that the entity is passed as a parameter while comparison in the query is done using identifier.
++
+A variant of the method with `implicitConversions = false` does not perform such conversion.
+
+* `setView()`, `addView()` – define a <<views,view>> which is used to load data.
+
+* `getDelegate()` – returns an instance of `javax.persistence.Query`, provided by the ORM implementation.
+
+If a <<views,view>> is set for a query, then by default the query has `FlushModeType.AUTO`, which affects the case when the current persistence context contains changed entity instances: these instances will be saved to the database prior to the query execution. In other words, ORM first synchronizes the state of entities in the persistence context and in the database, and only after that runs the query. It guarantees that the query results contain all relevant instances, even if they have not been saved to the database explicitly yet. The downside of this is that you will have an implicit flush, i.e. execution of SQL update statements for all currently changed entity instances, which may affect performance.
+
+If a query is executed without a view, then by default the query has `FlushModeType.COMMIT`, which means that the query will not cause a flush,  and the query results will not respect the contents of the current persistence context.
+
+In most cases ignoring the current persistence context is acceptable, and is a preferred behavior because it doesn't lead to extra SQL updates. But there is the following issue when using views: if there is a changed entity instance in the persistence context, and you execute a query with a view and `FlushModeType.COMMIT` loading the same instance, the changes will be lost. That is why we use `FlushModeType.AUTO` by default when running queries with views.
+
+You can also set flush mode explicitly using the `setFlushMode()` method of the `Query` interface. It will override the default settings described above.
+
+include::query/jpql_functions.adoc[]
+
+include::query/query_case_insensitive.adoc[]
+
+include::query/jpql_macro.adoc[]
+

@@ -1,0 +1,54 @@
+:sourcesdir: ../../../../../source
+
+[[views_creation]]
+===== Views Creation
+
+A view can be created in two possible ways: 
+
+* *Programmatically* – by creating a `View` instance, for example:
++
+[source, java]
+----
+include::{sourcesdir}/common/views_1.java[]
+----
++
+Typically, this way can be appropriate for creating views that are used in a single piece of business logic.
+
+* *Declaratively* – by creating an XML descriptor and deploying it to `ViewRepository`. `View` instances are created and cached when the XML descriptor is deployed. Further on, the required view can be retrieved in any part of the application code by a call to `ViewRepository` providing the entity class and the view name.
+
+Let us consider in details the declarative way for creation and working with views.
+
+`ViewRepository` is a Spring bean, accessible to all application blocks. The reference to `ViewRepository` can be obtained using injection or through the <<metadata,Metadata>> infrastructure interface. `ViewRepository.getView()` methods are used to retrieve view instances from the repository. `deployViews()` methods from `AbstractViewRepository` basic implementation are used to deploy XML descriptors to the repository.
+
+Three views named `++_local++`, `++_minimal++` and `_base` are available in the views repository for each entity by default:
+
+* `++_local++` contains all <<local_attribute, local>> entity attributes.
+
+* `++_minimal++` contains the attributes which are included to the name of the entity instance and specified in the <<namePattern_annotation,@NamePattern>> annotation. If the `@NamePattern` annotation is not specified at the entity, this view does not contain any attributes.
+
+* `_base` includes all local non-system attributes and attributes defined by `@NamePattern` (effectively `_minimal` + `_local`).
+
+The detailed structure of view XML descriptors is explained <<views.xml, here>>.
+
+The example below shows a view descriptor for the `Order` entity which provides loading of all local attributes, associated `Customer` and the `Items` collection:
+
+[source, xml]
+----
+include::{sourcesdir}/common/views_2.xml[]
+----
+
+The recommended way of grouping and deployment of view descriptors is as follows: 
+
+* Create <<views.xml>> file in the `src` root of the *global* module and place all view descriptors that should be globally accessible (i.e. on all application tiers) into it.
+
+* Register this file in the <<cuba.viewsConfig,cuba.viewsConfig>> application property of all blocks, i.e. in `app.properties` of the *core* module, `web-app.properties` of the *web* module, etc. This will ensure automatic deployment of the views upon application startup into the repository.
+
+* If there are views which are used only in one application block, they can be specified in the similar file of this block, for example, `web-views.xml`, and registered in <<cuba.viewsConfig,cuba.viewsConfig>> property of this block only.
++
+If the repository contains a view with certain name for some entity, an attempt to deploy another view with this name for the same entity will be ignored. If you need to replace the existing view in the repository with a new one and guarantee its deployment, specify `overwrite = "true"` attribute for it.
+
+[TIP]
+====
+It is recommended to give descriptive names to the views. For example, not just "browse", but "customerBrowse". It simplifies the search of views in XML descriptors.
+====
+

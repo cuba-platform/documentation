@@ -1,0 +1,79 @@
+:sourcesdir: ../../../../source
+
+[[war_deployment]]
+==== WAR deployment to Jetty
+
+Below is an example of deployment of the WAR files to the *Jetty* web server. It is assumed that the application uses a PostgreSQL database.
+
+. Use *Deployment settings > WAR* page in Studio or just manually add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_1.groovy[]
+----
++
+Please note that we are building two separate WAR files for Middleware and Web Client blocks here.
+
+. Start build process by running `buildWar` from the *Search* dialog in Studio or from the command line (provided that you have created the Gradle wrapper beforehand):
++
+[source, plain]
+----
+gradlew buildWar
+----
++
+As a result, the `app-core.war` and `app.war` files will be created in the `build\distributions\war` project subdirectory.
+
+. Create an <<app_home,application home>> directory, for example, `c:\work\app_home`.
+
+. Download and install Jetty to a local directory, for example, `c:\work\jetty-home`. This example has been tested on `jetty-distribution-9.3.6.v20151106.zip`.
+
+. Create the `c:\work\jetty-base` directory, open the command prompt in it and execute:
++
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar --add-to-start=http,jndi,deploy,plus,ext,resources
+----
+
+. Create the `c:\work\jetty-base\app-jetty.xml` file with the following contents (for a PostgreSQL database named `test`):
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/warDeployment_2.xml[]
+----
++
+The `app-jetty.xml` file for MS SQL databases should correspond to the following template:
++
+[source, xml]
+----
+include::{sourcesdir}/deployment/warDeployment_5.xml[]
+----
+
+. Optionally (for example, for MS SQL database) you may be required to download the following JARs and add them to the `c:\work\jetty-base\lib\ext` folder:
++
+[source, plain]
+----
+commons-pool2-2.4.2.jar
+commons-dbcp2-2.1.1.jar
+commons-logging-1.2.jar
+----
+
+. Add the following text to the beginning of `c:\work\jetty-base\start.ini` file:
++
+[source, plain]
+----
+include::{sourcesdir}/deployment/warDeployment_3.ini[]
+----
+
+. Copy the JDBC driver for your database to the `c:\work\jetty-base\lib\ext` directory. You can take the driver file from the CUBA Studio `lib` directory or from the `build\tomcat\lib` project directory. In case of PostgreSQL database, it is `postgresql-9.1-901.jdbc4.jar`.
+
+. Copy WAR files to the `c:\work\jetty-base\webapps` directory.
+
+. Open the command prompt in the `c:\work\jetty-base` directory and run:
++
+[source, plain]
+----
+java -jar c:\work\jetty-home\start.jar
+----
+
+. Open `++http://localhost:8080/app++` in your web browser.
+

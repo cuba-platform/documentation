@@ -1,0 +1,55 @@
+:sourcesdir: ../../../../source
+
+[[entity_extension]]
+==== Extending an Entity
+
+In the application project, derive an entity class from `com.haulmont.cuba.security.entity.User` and add the required attribute with the corresponding access methods:
+
+[source, java]
+----
+include::{sourcesdir}/extension/entity_extension_1.java[]
+----
+
+The new name of the entity should be specified in the <<entity_annotation,@Entity>> annotation. Since the parent entity does not declare the <<inheritance_annotation,inheritance strategy>>, it is assumed to be `SINGLE_TABLE` by default. It means that the child entity will be stored in the same table as the parent one, and the <<table_annotation,@Table>> annotation is not required. Other parent entity annotations ( <<namePattern_annotation,@NamePattern>>, <<listeners_annotation,@Listeners>>, etc.) are automatically applied to the child entity, but can be overridden in its class.
+
+An important element of the new entity class is the `@Extends` annotation, which takes the parent class as a parameter. It enables creating a registry of child entities and forces the platform mechanisms to use them everywhere instead of the parent ones. The registry is implemented by the `ExtendedEntities` class, which is a *Spring* bean named `cuba_ExtendedEntities`, and is also accessible via the <<metadata,Metadata>> interface.
+
+Add a localized name of the new attribute to the `com.sample.sales.entity` <<message_packs,package>>: 
+
+`messages.properties`
+
+[source, properties]
+----
+ExtUser.address=Address
+----
+
+`messages_ru.properties`
+
+[source, properties]
+----
+ExtUser.address=Адрес
+----
+
+Register the new entity in the <<persistence.xml,persistence.xml>> file of the project:
+
+[source, xml]
+----
+<class>com.sample.sales.entity.ExtUser</class>
+----
+
+Add the update script for the corresponding table to the <<db_scripts,database create and update scripts>>:
+
+[source, sql]
+----
+include::{sourcesdir}/extension/entity_extension_2.sql[]
+----
+
+In order to use new entity attributes in screens, create <<views,views>> for the new entity with the same names as the views of the base entity. A new view should extend the base view and define new attributes, for example:
+
+[source, xml]
+----
+include::{sourcesdir}/extension/entity_extension_3.xml[]
+----
+
+The extended view will include all attributes from its parent view. An extended view is not required if the base one extends `_local` and you add only local attributes, so in the described case this step can be omitted.
+

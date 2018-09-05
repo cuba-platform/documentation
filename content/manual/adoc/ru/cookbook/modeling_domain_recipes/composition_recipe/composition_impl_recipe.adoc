@@ -1,0 +1,39 @@
+:sourcesdir: ../../../../../source
+
+[[composition_impl_recipe]]
+===== One-to-Many: один уровень вложенности
+
+++++
+<div class="manual-live-demo-container">
+    <a href="https://demo2.cuba-platform.com/model/open?screen=sample$Airport.browse" class="live-demo-btn" target="_blank">LIVE DEMO</a>
+</div>
+++++
+
+Рассмотрим реализацию композиции на примере сущностей `Airport` и `Terminal`:
+
+image::cookbook/composition_recipe_1.png[align="center"]
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Terminal.java[Terminal.java] - сущность `Terminal` содержит обязательную ссылку на `Airport`.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `airport`: *Attribute type* - ASSOCIATION, *Cardinality* - MANY_TO_ONE, *Mandatory* - on.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/entity/airports/Airport.java[Airport.java] - сущность `Airport` содержит one-to-many коллекцию терминалов. Соответствующее поле аннотировано <<composition_annotation,@Composition>> для реализации композиции, и <<onDelete_annotation,@OnDelete>> для каскадного мягкого удаления.
++
+В редакторе сущностей Studio установите следующие свойства для атрибута `terminals`: *Attribute type* - COMPOSITION, *Cardinality* - ONE_TO_MANY, *On delete* - CASCADE.
+
+* {proj_model}/blob/master/modules/global/src/com/company/sample/views.xml[views.xml] - <<views,представление>> `airport-terminals` экрана редактирования аэропорта содержит атрибут-коллекцию `terminals`. Для этого атрибута используется представление `_local`, так как атрибут `airport` сущности `Terminal` устанавливается только во время создания экземпляра `Terminal` и никогда не изменяется после этого, поэтому загружать его не требуется.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports/airport/airport-edit.xml[airport-edit.xml] - XML-дескриптор экрана редактирования аэропорта определяет источник данных для экземпляра аэропорта, и вложенный источник для его терминалов. Кроме того, экран содержит таблицу, отображающую терминалы.
+
+* {proj_model}/blob/master/modules/web/src/com/company/sample/web/airports/terminal/terminal-edit.xml[terminal-edit.xml] - стандартный редактор для сущности `Terminal`.
+
+В результате редактирование экземпляра аэропорта работает следующим образом:
+
+* В экране редактирования аэропорта отображается таблица терминалов.
+
+* Пользователь может выбрать терминал и открыть экран его редактирования. При нажатии *OK* в экране редактирования терминала измененный экземпляр терминала сохраняется не в базу данных, а в источник данных `terminalsDs` экрана редактирования аэропорта.
+
+* Пользователь может создавать новые или удалять терминалы - все изменения сохраняются в источнике данных `terminalsDs`.
+
+* Пользователь нажимает *OK* в экране редактирования аэропорта, и измененный `Airport` вместе со всеми измененными экземплярами `Terminal` отправляется на middleware в метод <<dataManager,DataManager>>.commit() и сохраняется в базе данных в рамках одной транзакции.
+
