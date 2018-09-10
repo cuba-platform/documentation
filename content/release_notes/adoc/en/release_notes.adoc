@@ -71,6 +71,8 @@ entitiesEnhancing {
 +
 If you are using Studio, the migration will be done automatically.
 
+. While implementing the <<gui_hover_theme,new theme>>, we had to refactor the standard login window. If you have extended the login window in your project, you should adapt your code to be compatible with the new base implementation. See https://github.com/cuba-platform/cuba/issues/932#loginformchanges[changes] and https://github.com/cuba-platform/cuba/issues/932#samplemigration[example migration] for details.
+
 . Due to https://github.com/cuba-platform/cuba/issues/469[this enhancement] your code may not compile if you have created a custom `DataSupplier` and implemented the `commit()` method. In order to fix the code, change the method return type to `EntitySet`.
 
 . REST v1 is now disabled by default (see https://github.com/cuba-platform/cuba/issues/1027[#1027]). To enable it in your project, add the following line to the `web-dispatcher-spring.xml` or `portal-dispatcher-spring.xml`:
@@ -85,45 +87,67 @@ If you are using Studio, the migration will be done automatically.
 [[gui]]
 === Generic UI
 
-https://github.com/cuba-platform/cuba/issues/932
-https://github.com/cuba-platform/cuba/issues/704
-https://github.com/cuba-platform/cuba/issues/1154
+[[gui_hover_theme]]
+* Created a new visual theme: Hover. See details in the https://github.com/cuba-platform/cuba/issues/932[issue].
+
+* Now it is possible to exclude properties from the Filter component recursively down to the object graph. See the {manual}/gui_Filter.html#gui_Filter_properties_excludeRecursively[excludeRecursively] property.
 
 [[rest]]
 === REST API
 
-https://github.com/cuba-platform/cuba/issues/404
+. A certain service method can be marked as available without authentication even when the anonymous access to the whole REST API is disabled. See the `anonymousAllowed` attribute of a {manual}/rest_api_v2_services_config.html[service configuration].
 
 [[charts]]
 === Charts Addon
 
-https://github.com/cuba-platform/charts/issues/43
-https://github.com/cuba-platform/charts/issues/28
-https://github.com/cuba-platform/charts/issues/27
+. Pivot Table data can now be exported and downloaded in XLS and JSON formats using {charts}/pivotTable_extension.html[PivotTableExtension].
+
+. The new {charts}/pivotTable_ShowPivotAction.html[ShowPivotAction] allows users to quickly export data from Table, Tree, or DataGrid to a pivot table.
 
 [[fts]]
 === Full-Text Search Addon
 
-https://github.com/cuba-platform/fts/issues/26
-
-[[bpm]]
-=== BPM Addon
+. Search process and visualization of results have been changed considerably for better performance and accuracy. Now the results are checked for row-level security in batches. The search results screen has pages, which guarantees sequential loading of all available results. See https://github.com/cuba-platform/fts/issues/26[#26] for details.
 
 [[reporting]]
 === Reporting Addon
 
-https://github.com/cuba-platform/reports/issues/14
-https://github.com/cuba-platform/reports/issues/70
-https://github.com/cuba-platform/reports/issues/92
-https://github.com/cuba-platform/reports/issues/81
+. Reports can be generated and downloaded via {reporting}/rest_reports.html[REST API].
+
+. The new _Copy_ button allows users to copy report templates. See https://github.com/cuba-platform/reports/issues/70[#70] for details.
+
+. Ports available for OpenOffice can be set in the {reporting}/app_properties.html#reporting.openoffice.ports[reporting.openoffice.ports] application property.
 
 [[misc]]
 === Miscellaneous
 
-https://github.com/cuba-platform/cuba/issues/1116
-https://github.com/cuba-platform/cuba/issues/1239
+. A new experimental API has been introduced in this release: `EntityChangedEvent` and `TransactionalDataManager`.
++
+--
+`EntityChangedEvent` is a Spring's ApplicationEvent of the middle tier which is sent when an entity instance is saved to the database. The event can be handled both inside the transaction and after its completion (using `@TransactionalEventListener`). The event is sent only for entities annotated with `@PublishEntityChangedEvents`.
+
+`EntityChangedEvent` does not contain the changed object but only its id. Also, the `getOldValue(attributeName)` method returns ids of references instead of objects. This is done intentionally to make the developer reload objects with required view, dynamic attributes and other parameters. This also allows us to keep the security and other logic just in one place - in the loading mechanism, and saves from potential bugs and inconsistencies.
+
+`TransactionalDataManager` mimics the `DataManager` interface but can join to an existing transaction. It has the following properties:
+
+** If there is an active transaction, `TransactionalDataManager` joins it, otherwise it creates and commits a transaction same as `DataManager`.
+** It returns entities in detached state, so no automatic saving of changes on transaction commit is performed. Lazy loading also doesn't work, so a developer has to load entities with appropriate views.
+** No persistence context, no implicit flushes.
+** It applies row-level security, works with dynamic attributes and cross-datastore references as expected.
+
+Please be informed that these features are not stable yet and we can change the API and implementation in the near future. See some additional information https://github.com/cuba-platform/cuba/pull/1033[here].
+--
+
+. Standard JPA lifecycle callbacks (`@PrePersist`, `@PreUpdate`, `@PostLoad`, etc.) can be used for simple changes of entity attributes before saving and after loading.
+
+. The `create()` and `getReference()` methods have been added to the {manual}/dataManager.html[DataManager] interface.
+
+// TODO
+
 https://github.com/cuba-platform/cuba-gradle-plugin/issues/48
+
 https://github.com/cuba-platform/cuba/issues/687
+
 https://github.com/cuba-platform/cuba/issues/1148
 
 
