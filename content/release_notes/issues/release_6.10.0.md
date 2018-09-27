@@ -2,10 +2,26 @@
 
 # cuba-platform/cuba
 
+* [#1298 Migrate to Vaadin 7.7.14](https://github.com/cuba-platform/cuba/issues/1298) \
+    `type: enhancement` `ver: 6.10.0` 
+* [#1295 Improve EntityLog API to enable logging of non-persistent attributes](https://github.com/cuba-platform/cuba/pull/1295) \
+    `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1284 Ability to log app properties for startup troubleshooting](https://github.com/cuba-platform/cuba/issues/1284) \
+    `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1258 Ability to react to datasource refresh initiated by RowsCount](https://github.com/cuba-platform/cuba/issues/1258) \
+    `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1243 Improve EntityLog API to enable logging of non-persistent attributes](https://github.com/cuba-platform/cuba/issues/1243) \
+    `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1241 Constrains constructor incorrectly hints embedded attributes in the join clause](https://github.com/cuba-platform/cuba/issues/1241) \
+    `severity: minor` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1239 Add create() and getReference() methods to DataManager](https://github.com/cuba-platform/cuba/issues/1239) \
     `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1222 AppContext.getProperty() uses poorly-scaling System.getProperty inside](https://github.com/cuba-platform/cuba/issues/1222) \
+    `state: fixed` `type: performance` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1216 Add description to the Access Groups' Import button](https://github.com/cuba-platform/cuba/issues/1216) \
     `severity: minor` `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1196 REST API should support optimistic locking via version field](https://github.com/cuba-platform/cuba/issues/1196) \
+    `comp: rest` `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1195 Inconsistent work of cuba-sidemenu-background-color variable](https://github.com/cuba-platform/cuba/issues/1195) \
     `client: web` `severity: minor` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1189 Sequence with long name can't be generated on the Oracle database](https://github.com/cuba-platform/cuba/pull/1189) \
@@ -20,6 +36,8 @@
     `severity: minor` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1149 NPE occurs while trying to create an entity if KRYO serialization is enabled in the project](https://github.com/cuba-platform/cuba/issues/1149) \
     `state: fixed` `type: bug` `type: regression` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1148 Ability to handle commit of non-persistent entities](https://github.com/cuba-platform/cuba/issues/1148) \
+    `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1143 FTS css styles for search window](https://github.com/cuba-platform/cuba/issues/1143) \
     `ver: 6.10.0` `ver: 7.0.0` 
 * [#1140 Refactor usage of BeforeCommit/AfterCommit actions](https://github.com/cuba-platform/cuba/issues/1140) \
@@ -30,6 +48,8 @@
     `client: web` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1129 Different indents from left and right borders in notifications](https://github.com/cuba-platform/cuba/issues/1129) \
     `client: web` `severity: minor` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
+* [#1116 Data access improvements: EntityChangedEvent and TransactionalDataManager](https://github.com/cuba-platform/cuba/issues/1116) \
+    `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#1100 getOldValue() for collection attribute returns all soft deleted items…](https://github.com/cuba-platform/cuba/pull/1100) \
     `ver: 6.10.0` `ver: 6.9.4` `ver: 7.0.0` 
 * [#1099 Add JavaDoc for AbstractAction isPrimary / setPrimary](https://github.com/cuba-platform/cuba/issues/1099) \
@@ -201,6 +221,8 @@
     `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
 * [#62 Update dependencies for 6.10 release](https://github.com/cuba-platform/cuba-gradle-plugin/issues/62) \
     `severity: minor` `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#61 'SetupTomcat' fails when custom ports are defined](https://github.com/cuba-platform/cuba-gradle-plugin/issues/61) \
+    `state: fixed` `type: regression` `ver: 6.10.0` `ver: 7.0.0` 
 * [#54 Improve default Console logging for Fast Deployment](https://github.com/cuba-platform/cuba-gradle-plugin/issues/54) \
     `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#53 Remove obsolete "cuba-persistence.xml" file](https://github.com/cuba-platform/cuba-gradle-plugin/issues/53) \
@@ -218,6 +240,10 @@
 
 # cuba-platform/reports
 
+* [#103 Could not open report template editor when the charts component is not enabled](https://github.com/cuba-platform/reports/issues/103) \
+    `severity: critical` `state: fixed` `type: regression` `ver: 6.10.0` `ver: 7.0.0` 
+* [#96 Add report name validation to avoid special characters](https://github.com/cuba-platform/reports/issues/96) \
+    `easy` `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
 * [#92 Make series reorderable in the chart template properties ](https://github.com/cuba-platform/reports/issues/92) \
     `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#89 Entity data set can't load values if it uses some field from entity e.g. entity#lines](https://github.com/cuba-platform/reports/issues/89) \
@@ -242,9 +268,13 @@
     `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#30 Update reportException messages (OpenOffice -> LibreOffice)](https://github.com/cuba-platform/reports/issues/30) \
     `severity: minor` `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
+* [#14 REST API for Reporting add-on](https://github.com/cuba-platform/reports/issues/14) \
+    `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 
 # cuba-platform/charts
 
+* [#47 Update PivotTable to v2.21.0](https://github.com/cuba-platform/charts/issues/47) \
+    `client: web` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#43 Add meaningful aliases for setDefaultAggregation and setDefaultRenderer](https://github.com/cuba-platform/charts/issues/43) \
     `state: fixed` `type: enhancement` `ver: 6.10.0` `ver: 7.0.0` 
 * [#38 Use static final loggers in CubaAmchartsScene and CubaAmStockChartScene](https://github.com/cuba-platform/charts/issues/38) \
@@ -258,8 +288,14 @@
 
 # cuba-platform/fts
 
+* [#37 Fts search window doesn't show last empty page](https://github.com/cuba-platform/fts/issues/37) \
+    `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
+* [#36 NoSuchMethodException: org.openxmlformats.schemas.wordprocessingml.x2006.main.impl.CTPictureBaseImpl.<init> for entity with office attachment](https://github.com/cuba-platform/fts/issues/36) \
+    `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
 * [#30 Use read-only transaction in LuceneIndexerBean.indexEntity()](https://github.com/cuba-platform/fts/issues/30) \
     `severity: minor` `state: fixed` `type: performance` `ver: 6.10.0` `ver: 7.0.0` 
+* [#26 Optimize FTS search performance](https://github.com/cuba-platform/fts/issues/26) \
+    `breaking-changes` `state: fixed` `type: performance` `ver: 6.10.0` `ver: 7.0.0` 
 * [#25 JAR hell with "json" dependencies](https://github.com/cuba-platform/fts/issues/25) \
     `state: fixed` `type: bug` `ver: 6.10.0` `ver: 7.0.0` 
 
