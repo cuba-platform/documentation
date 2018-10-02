@@ -2,7 +2,7 @@
 private DataManager dataManager;
 
 private Book loadBookById(UUID bookId) {
-    return dataManager.load(Book.class).id(bookId).view("book.edit").one;
+    return dataManager.load(Book.class).id(bookId).view("book.edit").one();
 }
 
 private List<BookPublication> loadBookPublications(UUID bookId) {
