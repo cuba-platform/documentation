@@ -5,7 +5,7 @@ task buildWar(type: CubaWarBuilding) {
     doAfter = {
         copy {
             from 'jboss-deployment-structure.xml'
-            into "${project.buildDir}/tmp/war/META-INF/"
+            into "${project.buildDir}/buildWar/war/META-INF/"
         }
     }
 }
