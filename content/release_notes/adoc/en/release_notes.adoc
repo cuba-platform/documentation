@@ -86,6 +86,38 @@ If you are using Studio, the migration will be done automatically.
 
 . Java system properties are now cached at server startup, so if your application relies on ability to override an app property with a system property defined at runtime, you have to reset the cache using the `clearSystemPropertiesCache()` methods of the `CachingFacadeMBean` JMX beans available in the `core` and `web` modules. See https://github.com/cuba-platform/cuba/issues/1222[#1222].
 
+. Non-persistent entities are now https://github.com/cuba-platform/cuba/issues/1148[sent to the middleware] when created or updated. If you are using standard browser and editor screens for a non-persistent entity, you will get the "Access denied" exception on attempt to edit an entity displayed in the browser screen. To fix this, define a custom `DataSupplier` for the editor screen, for example:
++
+[source, java]
+----
+package com.company.sample.web;
+
+import com.haulmont.chile.core.model.MetaClass;
+import com.haulmont.cuba.core.entity.Entity;
+import com.haulmont.cuba.core.global.View;
+import com.haulmont.cuba.gui.data.impl.GenericDataSupplier;
+
+import javax.annotation.Nullable;
+
+public class NonPersistentDataSupplier extends GenericDataSupplier {
+
+    @Override
+    public <E extends Entity> E reload(E entity, View view, @Nullable MetaClass metaClass, boolean loadDynamicAttributes) {
+        return entity;
+    }
+}
+----
++
+[source, xml]
+----
+<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+        class="com.company.sample.web.SomeEntityEdit"
+        ...
+        dataSupplier="com.company.sample.web.NonPersistentDataSupplier">
+    <dsContext>
+    ...
+----
+
 [[gui]]
 === Generic UI
 
