@@ -5,7 +5,7 @@ public class DemoEventListener {
 
     @Order(10)
     @EventListener
-    private void onUserLoggedIn(UserLoggedInEvent event) {
+    protected void onUserLoggedIn(UserLoggedInEvent event) {
         log.info("Demo");
     }
 }

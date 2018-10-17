@@ -4,7 +4,7 @@ public class LoginEventListener {
     private Logger log;
 
     @EventListener
-    private void onUserLoggedIn(UserLoggedInEvent event) {
+    protected void onUserLoggedIn(UserLoggedInEvent event) {
         User user = event.getSource().getUser();
         log.info("Logged in user {}", user.getInstanceName());
     }

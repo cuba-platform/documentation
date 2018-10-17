@@ -11,7 +11,7 @@ public class MaintenanceModeValve {
     }
 
     @EventListener
-    private void onBeforeLogin(BeforeLoginEvent event) throws LoginException {
+    protected void onBeforeLogin(BeforeLoginEvent event) throws LoginException {
         if (maintenance && event.getCredentials() instanceof AbstractClientCredentials) {
             throw new LoginException("Sorry, system is unavailable");
         }
