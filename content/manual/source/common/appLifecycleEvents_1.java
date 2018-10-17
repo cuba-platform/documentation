@@ -18,18 +18,18 @@ public class MyAppLifecycleBean {
     @EventListener(AppContextInitializedEvent.class)
     // run after all platform listeners
     @Order(Events.LOWEST_PLATFORM_PRECEDENCE + 100)
-    private void appInitialized() {
+    protected void appInitialized() {
         log.info("Initialized");
     }
 
     // event type is defined by method parameter
     @EventListener
-    private void appStarted(AppContextStartedEvent event) {
+    protected void appStarted(AppContextStartedEvent event) {
         log.info("Started");
     }
 
     @EventListener
-    private void appStopped(AppContextStoppedEvent event) {
+    protected void appStopped(AppContextStoppedEvent event) {
         log.info("Stopped");
     }
 }
