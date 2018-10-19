@@ -41,13 +41,25 @@ BeforeDeleteEntityListener::
 AfterDeleteEntityListener::
 `onAfterDelete()` method is called after a record is deleted from the database (in the case of soft_deletion – before updating a record), but before transaction commit. This method does not allow modifications of the current persistence context, however, database modifications can be done using `QueryRunner`.
 
-An entity listener should be a <<managed_beans, managed bean>>, so you can use injection. For example:
+An entity listener must be a <<managed_beans, managed bean>>, so you can use injection. For example:
 
 [source, java]
 ----
 include::{sourcesdir}/middleware/entitylisteners_1.java[]
 ----
 
+All listeners except `BeforeAttachEntityListener` work within a transaction. It means that if an exception is thrown inside the listener, the current transaction is rolled back and all database changes are discarded.
+
+If you need to perform some actions after successful transaction commit, use Spring's `TransactionSynchronization` callback to defer execution to a desired transaction phase. For example:
+
+[source, java]
+----
+include::{sourcesdir}/middleware/entitylisteners_3.java[]
+----
+
+Registration of entity listeners::
++
+--
 An entity listener can be specified for an entity in two ways:
 
 * Statically – the bean names of listeners are listed in <<listeners_annotation,@Listeners>> annotation on the entity class.
@@ -65,9 +77,4 @@ If several listeners of the same type (for example from annotations of entity cl
 
 . For each ancestor, starting from the most distant one, dynamically added listeners are invoked first, followed by statically assigned listeners.
 . Once parent classes are processed, dynamically added listeners for the given class are invoked first, followed by statically assigned.
-
-[TIP]
-====
-If you need to do some calculations and update attributes of _multiple_ entity instances at once on transaction commit, consider using a <<transaction_listeners,transaction listener>>.
-====
-
+--
