@@ -1,7 +1,7 @@
 package chopper.server;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -10,7 +10,6 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class Search {
 
@@ -35,23 +34,13 @@ public class Search {
     private final List<Sect> sections = new ArrayList<>();
 
     public Search(InputStream inputStream) throws IOException {
-        String index;
         try (BufferedReader buffer = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
-            index = buffer.lines().collect(Collectors.joining("\n"));
+            buffer.lines().forEach(s -> {
+                String[] parts = s.split("\t");
+                sections.add(new Sect(parts[0], parts[1], parts[2], parts.length == 4 ? parts[3] : ""));
+            });
         }
         inputStream.close();
-
-        int idx = index.indexOf("\n");
-        int start = 0;
-        while (idx > -1) {
-            String sectContent = index.substring(start, idx);
-            String[] parts = sectContent.split("\t");
-
-            sections.add(new Sect(parts[0], parts[1], parts[2], parts.length == 4 ? parts[3] : ""));
-
-            start = idx + 1;
-            idx = index.indexOf("\n", start);
-        }
     }
 
     public Search(List<Sect> sections) {
