@@ -65,17 +65,17 @@ public class MyProjectTestContainer extends TestContainer {
 
 . IntelliJ IDEA / Eclipse project files generation is not required anymore.
 +
-The framework does not use `idea` / `eclipse` Gradle plugins and you must import project using the standard IDE support. In the simplest case you just open `build.gradle` file as a project. If you customized *.ipr / *.iws generation process then your customization will not be applied, check https://github.com/JetBrains/gradle-idea-ext-plugin[Gradle IntelliJ] plugin for available options.
+The framework does not use `idea` / `eclipse` Gradle plugins and you must import project using the standard IDE support. In the simplest case you just open `build.gradle` file as a project.
 
-. Interfaces `Component.Container`, `Component.HasValue`, `Component.HasFormatter` and others have been extracted from `Component` and moved to `com.haulmont.cuba.gui.components` package. See https://github.com/cuba-platform/cuba/issues/925[GitHub issue] for details.
+. Interfaces `Component.Container`, `Component.HasValue`, `Component.HasFormatter` and others have been extracted from `Component` and moved to `com.haulmont.cuba.gui.components` package. See https://github.com/cuba-platform/cuba/issues/925[GitHub issue] for details. Imports of those interfaces must be changed, e.g. instead of `com.haulmont.cuba.gui.components.Component.HasValue` import `com.haulmont.cuba.gui.components.HasValue` directly.
 
-. Old `commons-lang` dependency removed, the platform depends on new `commons-lang3` library. You can either migrate usages to `commons-lang3` (simply change imports to use `org.apache.commons.lang3` package) or add explicit dependency `compile('commons-lang:commons-lang:2.6')` to your global module in `build.gradle`.
+. Old `commons-lang` dependency has been removed, the platform depends on new `commons-lang3` library. You can either migrate usages to `commons-lang3` (simply change imports to use `org.apache.commons.lang3` package) or add explicit dependency `compile('commons-lang:commons-lang:2.6')` to your global module in `build.gradle`.
 
 . Dependency on `groovy-all` package removed. Now the platform depends only on `groovy`, `groovy-templates` and `groovy-sql` modules. Add required Groovy modules to your project dependencies if needed.
 
 . Behavior of `Component` methods `isVisible` and `isEnabled` has been changed. Now methods return only value of the component visibility / enabled without taking parent value into consideration. New `isVisibleRecursive` and `isEnabledRecursive` methods are introduced.
 
-. All `addSomeListener` and `removeSomeListener` methods in UI components now receive `Consumer<E>` where `E` is a type of event object. Concrete listener interfaces are deprecated. See https://github.com/cuba-platform/cuba/issues/1108[GitHub issue] for details.
+. All `addSomeListener` and `removeSomeListener` methods in UI components now receive `Consumer<E>` where `E` is a type of event object. If you use those methods with a lambda parameter then your code will not require migration. If you implement one of the old listener interfaces (e.g. ValueChangeListener) with a standalone class you will need to implement `Consumer<E>` (e.g. ValueChangeEvent) instead. See https://github.com/cuba-platform/cuba/issues/1108[GitHub issue] for details.
 
 . `WebWindowManager` class has been replaced with `WebScreens`. If you have extended `WebWindowManager` in your code you will need to migrate your improvements manually.
 
@@ -102,7 +102,7 @@ protected TextField<Long> countField;
 protected Label<String> defaultTypedLabel;
 ----
 
-. Method `HasValue.getValue` does not support auto cast of the return value anymore. You should either cast value manually or use type UI Component, e.g. `TextField<String>`.
+. Method `HasValue.getValue()` does not support auto cast of the return value anymore. You should either cast value manually or use typed UI Component, e.g. `TextField<String>`.
 
 . Widget set file location has been changed. If you have `web-toolkit` module in your project you will need to change references to widget sets in `AppWidgetSet.gwt.xml` file:
 +
@@ -112,9 +112,7 @@ charts: `com.haulmont.charts.web.toolkit.ui.ChartsWidgetSet` changed to `com.hau
 
 . FreeMarker templates are not supported in `caption` and `description` attributes of a window. Now values loaded from XML are treated as simple String values. If you want to use templates in those attributes you can call `com.haulmont.cuba.core.global.TemplateHelper` methods manually from a screen controller.
 
-. New screen controllers (based on `Screen` class) do not implement `Window` interface. There are no `getMessage()`, `showNotification()`, `openWindow()` and `showOptionDialog()` methods in the parent class. You should use new Screen APIs: `MessageBundle`, `Notifications`, `Screens` and `Dialogs`, they can be easily injected into a screen controller.
-
-. Screens declared in screens.xml file with `class` attribute do not support `Runnable` interface anymore. You can register only UI controllers that extend `Screen` class.
+. Screens declared in screens.xml file with `class` attribute do not support `Runnable` interface anymore. You can register only UI controllers that extend `Screen` class. The old behaviour is considered dangerous because a caller that opens such a screen receives `null` from `openWindow` call. Those screens must be changed: you can convert them into Spring beans or if you need to call them only from the menu - use `class` attribute of a menu item.
 
 . Old Havana UI theme completely reimplemented on the basis of Halo theme. If you have extended Havana you will need to migrate your SCSS styles accordingly. See https://github.com/cuba-platform/cuba/issues/1067[Github issue] for details.
 
@@ -126,14 +124,14 @@ charts: `com.haulmont.charts.web.toolkit.ui.ChartsWidgetSet` changed to `com.hau
 
 . `ComponentPalette` has been removed. Use the standard mechanism with `cuba.web.componentsConfig` application property if your application component provides UI components.
 
-. Charts UI palette - `ChartComponentPalette` removed. Use the standard app-component mechanism or include `charts-web-components.xml` into `cuba.web.componentsConfig` application property explicitly. If you did not use `ChartComponentPalette` then there are no migration actions required.
+. Charts UI palette - `ChartComponentPalette` removed. Use the standard application component mechanism or include `charts-web-components.xml` into `cuba.web.componentsConfig` application property explicitly. If you did not use `ChartComponentPalette` then migration actions are not required.
 
 . Deprecated `ObjectsCache` classes removed as a legacy and undocumented feature.
 
 [[known_issues]]
-=== Known issues and limitations
+=== Known Issues And Limitations
 
-. For now Desktop client is not available in release 7.0. You should not migrate your project to this release if you depend on Desktop module.
+. CUBA 7.0 does not support the desktop client. You should not migrate your project to this release if you depend on Desktop module.
 
 . Hot-deploy mechanism for UI screens is limited to changes in the existing screens only. If you create a new screen while your application is running this screen will not be hot-deployed. See https://github.com/cuba-platform/cuba/issues/1509[Github issue] for details.
 
