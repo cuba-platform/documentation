@@ -18,6 +18,7 @@
 :revremark: Copyright (c) 2018 Haulmont
 :youtrack: https://youtrack.cuba-platform.com
 :manual: https://doc.cuba-platform.com/manual-{revnumber}
+:studio: https://doc.cuba-platform.com/studio-{revnumber}
 :manual_app_props: https://doc.cuba-platform.com/manual-{revnumber}/app_properties_reference.html#
 :reporting: https://doc.cuba-platform.com/reporting-{revnumber}
 :charts: https://doc.cuba-platform.com/charts-{revnumber}
@@ -42,6 +43,10 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 [[platform_breaking_changes]]
 === Breaking Changes
 
+. IntelliJ IDEA / Eclipse project files generation (`idea` and `eclipse` Gradle tasks) is not required anymore.
++
+The framework does not use `idea` / `eclipse` Gradle plugins and you must import the project using the standard IDE mechanisms. In the simplest case you just open `build.gradle` file as a project. See {studio}/open_project.html[Studio User Guide] for detailed instructions.
+
 . CUBA and add-ons (BPM, Charts, FTS, Reports) configuration files have been moved from the classpath root to the root packages of the appropriate application components. For example, `/cuba-persistence.xml` became `/com/haulmont/cuba/persistence.xml`. These changes do not affect properly configured application projects, except in one case: in the test containers, there is a reference to the `test-app.properties` file which is now at `com/haulmont/cuba/testsupport/test-app.properties`. So if you are using middleware integration tests, edit your test container class and replace the reference:
 +
 [source, java]
@@ -52,45 +57,34 @@ public class MyProjectTestContainer extends TestContainer {
         super();
         // ...
         appPropertiesFiles = Arrays.asList(
-                // List the files defined in your web.xml
-                // in appPropertiesConfig context parameter of the core module
                 "com/company/myproject/app.properties",
-                // Add this file which is located in CUBA and defines some properties
-                // specifically for test environment. You can replace it with your own
-                // or add another one in the end.
                 "com/haulmont/cuba/testsupport/test-app.properties");
-        // ...
-    }
 ----
-
-. IntelliJ IDEA / Eclipse project files generation is not required anymore.
-+
-The framework does not use `idea` / `eclipse` Gradle plugins and you must import project using the standard IDE support. In the simplest case you just open `build.gradle` file as a project.
-
-. Interfaces `Component.Container`, `Component.HasValue`, `Component.HasFormatter` and others have been extracted from `Component` and moved to `com.haulmont.cuba.gui.components` package. See https://github.com/cuba-platform/cuba/issues/925[GitHub issue] for details. Imports of those interfaces must be changed, e.g. instead of `com.haulmont.cuba.gui.components.Component.HasValue` import `com.haulmont.cuba.gui.components.HasValue` directly.
 
 . Old `commons-lang` dependency has been removed, the platform depends on new `commons-lang3` library. You can either migrate usages to `commons-lang3` (simply change imports to use `org.apache.commons.lang3` package) or add explicit dependency `compile('commons-lang:commons-lang:2.6')` to your global module in `build.gradle`.
 
 . Dependency on `groovy-all` package removed. Now the platform depends only on `groovy`, `groovy-templates` and `groovy-sql` modules. Add required Groovy modules to your project dependencies if needed.
 
-. Behavior of `Component` methods `isVisible` and `isEnabled` has been changed. Now methods return only value of the component visibility / enabled without taking parent value into consideration. New `isVisibleRecursive` and `isEnabledRecursive` methods are introduced.
+. Dependency on MyBatis and `com.haulmont.cuba.core.sys.mybatis.UUIDTypeHandler` class have been removed. If you need MyBatis in your project, see the {manual}/myBatis.html[Integration with MyBatis] section for instructions.
+
+. Interfaces `Component.Container`, `Component.HasValue`, `Component.HasFormatter` and others have been extracted from `Component` and moved to `com.haulmont.cuba.gui.components` package. See https://github.com/cuba-platform/cuba/issues/925[GitHub issue] for details. Imports of those interfaces must be changed, e.g. instead of `com.haulmont.cuba.gui.components.Component.HasValue` import `com.haulmont.cuba.gui.components.HasValue` directly.
+
+. Deprecated methods `addListener` and `removeListener` of `Instance` have been removed. Use `addPropertyChangeListener` and `removePropertyChangeListener` instead.
 
 . All `addSomeListener` and `removeSomeListener` methods in UI components now receive `Consumer<E>` where `E` is a type of event object. If you use those methods with a lambda parameter then your code will not require migration. If you implement one of the old listener interfaces (e.g. ValueChangeListener) with a standalone class you will need to implement `Consumer<E>` (e.g. ValueChangeEvent) instead. See https://github.com/cuba-platform/cuba/issues/1108[GitHub issue] for details.
 
 . `WebWindowManager` class has been replaced with `WebScreens`. If you have extended `WebWindowManager` in your code you will need to migrate your improvements manually.
 
-. Interface `HasValue` now has type parameter `V` - type of the corresponding value of UI component. Old code that uses untyped UI components, for instance `TextField` or `LookupField` might be broken. You can find default type of the UI component in its interface in `TYPE_DEFAULT` constant:
+. Behavior of `Component` methods `isVisible` and `isEnabled` has been changed. Now methods return only value of the component visibility / enabled without taking parent value into consideration. New `isVisibleRecursive` and `isEnabledRecursive` methods are introduced.
+
+. Interface `HasValue` now has type parameter `V` - type of the corresponding value of UI component. Old code that uses untyped UI components, for instance `TextField` or `LookupField` might be broken. You can find default type of the UI component in its interface in `TYPE_DEFAULT` constant. For example (here `TextField` has default type `String`):
 +
-Example (here `TextField` has default type `String`):
 [source, java]
-+
 ----
 TypeToken<TextField<String>> TYPE_DEFAULT = new TypeToken<TextField<String>>(){};
 ----
 +
-It is highly recommended to set type parameter for UI components explicitly, even default type parameter should be set:
-+
-Example:
+It is highly recommended to set type parameter for UI components explicitly, even default type parameter should be set. For example:
 +
 [source, java]
 ----
@@ -112,23 +106,21 @@ charts: `com.haulmont.charts.web.toolkit.ui.ChartsWidgetSet` changed to `com.hau
 
 . FreeMarker templates are not supported in `caption` and `description` attributes of a window. Now values loaded from XML are treated as simple String values. If you want to use templates in those attributes you can call `com.haulmont.cuba.core.global.TemplateHelper` methods manually from a screen controller.
 
-. Screens declared in screens.xml file with `class` attribute do not support `Runnable` interface anymore. You can register only UI controllers that extend `Screen` class. The old behaviour is considered dangerous because a caller that opens such a screen receives `null` from `openWindow` call. Those screens must be changed: you can convert them into Spring beans or if you need to call them only from the menu - use `class` attribute of a menu item.
-
-. Old Havana UI theme completely reimplemented on the basis of Halo theme. If you have extended Havana you will need to migrate your SCSS styles accordingly. See https://github.com/cuba-platform/cuba/issues/1067[Github issue] for details.
-
-. Deprecated methods `addListener` and `removeListener` of `Instance` have been removed. Use `addPropertyChangeListener` and `removePropertyChangeListener` instead.
-
-. Property `wordwrap` of `TextArea` has been renamed to `wordWrap`. XML definitions still work, but `wordwrap` is removed from XSD and should not be used anymore.
-
-. Deprecated classes from charts `com.haulmont.charts.gui.amcharts.model.data` package have been removed. Use data items classes from `com.haulmont.charts.gui.data` package instead.
+. Screens declared in `screens.xml` file with `class` attribute do not support `Runnable` interface anymore. You can register only UI controllers that extend `Screen` class. The old behaviour is considered dangerous because a caller that opens such a screen receives `null` from `openWindow` call. Those screens must be changed: you can convert them into Spring beans or if you need to call them only from the menu - use `class` attribute of a menu item.
 
 . ScreenAgent support has been removed without replacement. You can either open fragments in a screen depending on `DeviceInfo` or create separate screen for each device type.
 
+. Old Havana UI theme completely reimplemented on the basis of Halo theme. If you have extended Havana you will need to migrate your SCSS styles accordingly. See https://github.com/cuba-platform/cuba/issues/1067[Github issue] for details.
+
+. Property `wordwrap` of `TextArea` has been renamed to `wordWrap`. XML definitions still work, but `wordwrap` is removed from XSD and should not be used anymore.
+
 . `ComponentPalette` has been removed. Use the standard mechanism with `cuba.web.componentsConfig` application property if your application component provides UI components.
 
-. Charts UI palette - `ChartComponentPalette` removed. Use the standard application component mechanism or include `charts-web-components.xml` into `cuba.web.componentsConfig` application property explicitly. If you did not use `ChartComponentPalette` then migration actions are not required.
+. Deprecated `ObjectsCache` classes have been removed as a legacy and undocumented feature.
 
-. Deprecated `ObjectsCache` classes removed as a legacy and undocumented feature.
+. Deprecated classes from charts `com.haulmont.charts.gui.amcharts.model.data` package have been removed. Use data items classes from `com.haulmont.charts.gui.data` package instead.
+
+. Charts UI palette - the `ChartComponentPalette` class have been removed. Use the standard application component mechanism or include `charts-web-components.xml` into `cuba.web.componentsConfig` application property explicitly. If you did not use `ChartComponentPalette` then migration actions are not required.
 
 [[known_issues]]
 === Known Issues And Limitations
@@ -172,11 +164,6 @@ org.dom4j/dom4j = 2.1.0
 [[studio]]
 == Studio
 
-=== All Resolved Issues
+All Studio functionality has been moved to the plugin for IntelliJ IDEA. It supports projects based on CUBA 6.10 and 7.0, so you can open an existing project in the new Studio and migrate it to the new framework version.
 
-* https://youtrack.cuba-platform.com/issues/STUDIO?q=Milestone:%20%7BRelease%206.10%7D%20State:%20Fixed,%20Verified%20Fix%20versions:%206.10.0%20Affected%20versions:%20-SNAPSHOT%20sort%20by:%20created%20asc[Studio 6.10.0 Resolved Issues]
-
-[[studio_known_issues]]
-=== Known Issues
-
-If you use the in-place update in Studio SE on macOS, it will completely replace your application folder. If you previously added some JDBC drivers to `/Applications/Cuba Studio SE.app/Contents/Resources/app/studio/lib`, they will be lost and you will have to add them again.
+See {studio}[CUBA Studio User Guide] for details.
