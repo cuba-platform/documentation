@@ -1,20 +1,11 @@
-@Named("carsTable.create")
-private CreateAction createAction;
-
-@Named("carsTable.copy")
-private Action copyAction;
+@Named("customersTable.copy")
+private Action customersTableCopy;
 
 @Inject
-private PickerField colourField;
+private PickerField<User> userPickerField;
 
-@Override
-public void init(Map<String, Object> params) {
-    Map<String, Object> values = new HashMap<>();
-    values.put("type", CarType.PASSENGER);
-    createAction.setInitialValues(values);
-
-    copyAction.setEnabled(false);
-
-    Action showAction = colourField.getAction("show");
-    showAction.setEnabled(false);
+@Subscribe
+protected void onBeforeShow(BeforeShowEvent event) {
+    customersTableCopy.setEnabled(false);
+    userPickerField.getActionNN("show").setEnabled(false);
 }

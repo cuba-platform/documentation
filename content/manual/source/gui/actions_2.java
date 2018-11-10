@@ -1,5 +1,8 @@
 // controller
+@Inject
+private Notifications notifications;
 
-public void sayHello(Component component) {
-    showNotification("Hello!", NotificationType.TRAY);
+@Subscribe("sayHello")
+protected void onSayHelloActionPerformed(Action.ActionPerformedEvent event) {
+    notifications.create().setCaption("Hello").setType(Notifications.NotificationType.HUMANIZED).show();
 }

@@ -3,12 +3,7 @@
 [[declarative_actions]]
 ===== Declarative Creation of Actions
 
-[WARNING]
-====
-This section will be updated before release 7.0
-====
-
-You can specify a set of <<gui_Action,actions>> in an XML screen descriptor for any component that implements the `Component.ActionsHolder` interface, including the entire screen or frame. This is done in the `actions` element, which contains nested `action` elements.
+You can specify a set of <<gui_Action,actions>> in an XML screen descriptor for any component that implements the `Component.ActionsHolder` interface, including the entire window or fragment. This is done in the `actions` element, which contains nested `action` elements.
 
 The `action` element can have the following attributes:
 
@@ -22,20 +17,18 @@ The `action` element can have the following attributes:
 
 * `icon` – action icon.
 
-* `invoke` - name of the controller method to be invoked. The method should be `public` `void`, and either not have arguments or have one argument of the `Component` type. If the method has a `Component` argument, then an instance of the visual component that launches this action will be passed to it when invoked.
-
 [[actions_primary]]
 * `primary` - attribute that indicates if a button representing this action should be highlighted with a special visual style (`true` / `false`).
 +
 --
 The highlighting is available by default in the `hover` theme; to enable this feature in the `halo` theme, set `true` for the `$cuba-highlight-primary-action` <<web_theme_extension_common,style variable>>.
 
-The following actions are `primary` by default:  <<createAction,CreateAction>> and <<screen_lookup,SelectAction>>.
+The `create` standard list action and the `lookupSelectAction` in the lookup screen are primary by default.
 
 image::actions_primary.png[align="center"]
 --
 
-* `shortcut` - keyboard shortcut for invocation.
+* `shortcut` - a keyboard shortcut.
 +
 --
 Shortcut values can be hard-coded in the XML descriptor. Possible modifiers, `ALT`, `CTRL`, `SHIFT`, are separated by the "-" character. For example:
@@ -45,7 +38,7 @@ Shortcut values can be hard-coded in the XML descriptor. Possible modifiers, `AL
 <action id="create" shortcut="ALT-N"/>
 ----
 
-To avoid the hard code, you can use the predefined shortcut aliases from the list below, for example:
+To avoid the hard-coded values, you can use the predefined shortcut aliases from the list below, for example:
 
 [source, xml]
 ----
@@ -71,7 +64,7 @@ To avoid the hard code, you can use the predefined shortcut aliases from the lis
 
 ** `PICKER_CLEAR_SHORTCUT`
 
-Another option is to use the full qualified name of the `Config` interface and method which returns shortcut:
+Another option is to use the fully qualified name of the `Config` interface and method which returns shortcut:
 
 [source, xml]
 ----
@@ -81,9 +74,9 @@ Another option is to use the full qualified name of the `Config` interface and m
 
 * `visible` – visibility flag (`true` / `false`).
 
-The examples of declaration are provided below.
+The examples of action declaration and handling are provided below.
 
-* Declaring actions at the screen level: 
+* Declaring actions for the whole screen:
 +
 [source, xml]
 ----
@@ -95,7 +88,7 @@ include::{sourcesdir}/gui/actions_1.xml[]
 include::{sourcesdir}/gui/actions_2.java[]
 ----
 +
-In the example above, an action with `sayHelloAction` identifier and a name from <<message_packs,message pack>> is declared. This action is bound with a button, which caption will be set to the action name. The action will invoke the `sayHello()` controller method when clicking on the button, or when pressing the ALT-T shortcut if at that moment the screen has input focus.
+In the example above, an action with `sayHello` identifier and a caption from the screen's <<message_packs,message pack>> is declared. This action is bound to a button, which caption will be set to the action's name. The screen controller subscribes to the action's `ActionPerformedEvent`, so the `onSayHelloActionPerformed()` method will be invoked when the user clicks the button or presses the ALT-T keyboard shortcut.
 
 * Declaring actions for <<gui_PopupButton,PopupButton>>: 
 +
@@ -103,6 +96,11 @@ In the example above, an action with `sayHelloAction` identifier and a name from
 ----
 include::{sourcesdir}/gui/actions_3.xml[]
 ---- 
++
+[source, java]
+----
+include::{sourcesdir}/gui/actions_3_1.java[]
+----
 
 * Declaring actions for <<gui_Table,Table>>: 
 +
@@ -111,9 +109,12 @@ include::{sourcesdir}/gui/actions_3.xml[]
 include::{sourcesdir}/gui/actions_4.xml[]
 ----
 +
-In this example `copy` and `changePassw` actions are declared in addition to `create` and `edit` standard actions of the table. These actions invoke corresponding methods of the controller. In addition, the `trackSelection="true"` attribute is specified for them, which means that the action and corresponding button become disabled if no row is selected in the table. It is useful if the action is intended to be executed over a currently selected table row.
+[source, java]
+----
+include::{sourcesdir}/gui/actions_4_1.java[]
+----
 +
-An optional `openType` attribute can be specified for create and edit actions to define edit screen opening mode, as described for the `setOpenType()` method of the <<createAction,CreateAction>> class.
+In this example, the `copy` action is declared in addition to `create`, `edit` and `remove` standard actions of the table. The `trackSelection="true"` attribute means that the action and corresponding button become disabled if no row is selected in the table. It is useful if the action is intended to be executed for a currently selected table row.
 
 * Declaring <<gui_PickerField,PickerField>> actions: 
 +
@@ -122,9 +123,14 @@ An optional `openType` attribute can be specified for create and edit actions to
 include::{sourcesdir}/gui/actions_5.xml[]
 ----
 +
-In the example above, the standard `lookup` action and an additional `show` action invoking the `showColour()` method of the controller, are declared for the `PickerField` component. Since `PickerField` buttons that display actions use icons instead of captions, the caption attribute is explicitly set to an empty string, otherwise action name and button caption would be set to the action identifier. The `description` attribute allows you to display a tooltip when hovering over the action button.
+[source, java]
+----
+include::{sourcesdir}/gui/actions_5_1.java[]
+----
++
+In the example above, the standard `picker_lookup` action and an additional `show` action are declared for the `PickerField` component. Since `PickerField` buttons that display actions use icons instead of captions, the caption attribute is not set. The `description` attribute allows you to display a tooltip when hovering over the action button.
 
-You can obtain references to any declared actions in the screen controller either directly by <<screen_controller_injection,injection>>, or from components that implement the `Component.ActionsHolder` interface. This can be useful to set action properties programmatically. For example: 
+You can obtain a reference to any declared action in the screen controller either directly by injection, or from a component that implements the `Component.ActionsHolder` interface. It can be useful to set action properties programmatically. For example:
 
 [source, java]
 ----
