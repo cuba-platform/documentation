@@ -1,12 +1,12 @@
 package com.company.addondemo.web.customer;
 
-import com.haulmont.cuba.gui.components.AbstractEditor;
 import com.company.addondemo.entity.Customer;
+import com.haulmont.cuba.gui.UiComponents;
+import com.haulmont.cuba.gui.components.AbstractEditor;
 import com.haulmont.cuba.gui.components.Component;
 import com.haulmont.cuba.gui.components.FieldGroup;
 import com.haulmont.cuba.gui.components.VBoxLayout;
 import com.haulmont.cuba.gui.data.Datasource;
-import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
 import com.haulmont.cuba.web.gui.components.WebComponentsHelper;
 import com.vaadin.ui.Layout;
 import org.vaadin.risto.stepper.IntStepper;
@@ -17,7 +17,7 @@ import java.util.Map;
 public class CustomerEdit extends AbstractEditor<Customer> {
 
     @Inject
-    private ComponentsFactory componentsFactory;
+    private UiComponents uiComponents;
 
     @Inject
     private FieldGroup fieldGroup;
@@ -30,7 +30,7 @@ public class CustomerEdit extends AbstractEditor<Customer> {
     @Override
     public void init(Map<String, Object> params) {
         fieldGroup.createField("score");
-        Component box = componentsFactory.createComponent(VBoxLayout.class);
+        Component box = uiComponents.create(VBoxLayout.class);
         fieldGroup.getFieldNN("score").setComponent(box);
         Layout layout = (Layout) WebComponentsHelper.unwrap(box);
         layout.addComponent(stepper);

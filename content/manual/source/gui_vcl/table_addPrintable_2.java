@@ -1,7 +1,7 @@
 ordersTable.addGeneratedColumn("product", new Table.PrintableColumnGenerator<Order, String>() {
     @Override
     public Component generateCell(Order entity) {
-        Label label = componentsFactory.createComponent(Label.NAME);
+        Label label = uiComponents.create(Label.NAME);
         Product product = order.getProduct();
         label.setValue(product.getName() + ", " + product.getCost());
         return label;

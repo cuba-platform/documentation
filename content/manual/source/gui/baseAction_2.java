@@ -1,12 +1,12 @@
 @Inject
-private ComponentsFactory componentsFactory;
+private UiComponents uiComponents;
 
 @Inject
 private BoxLayout box;
 
 @Override
 public void init(Map<String, Object>params) {
-    PickerField pickerField = componentsFactory.createComponent(PickerField.NAME);
+    PickerField pickerField = uiComponents.create(PickerField.NAME);
 
     pickerField.addAction(new BaseAction("hello") {
         @Override

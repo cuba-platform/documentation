@@ -1,13 +1,13 @@
 package com.company.jscomponent.web.product;
 
-import com.company.jscomponent.web.toolkit.ui.slider.SliderServerComponent;
-import com.haulmont.cuba.gui.components.AbstractEditor;
 import com.company.jscomponent.entity.Product;
+import com.company.jscomponent.web.toolkit.ui.slider.SliderServerComponent;
+import com.haulmont.cuba.gui.UiComponents;
+import com.haulmont.cuba.gui.components.AbstractEditor;
 import com.haulmont.cuba.gui.components.Component;
 import com.haulmont.cuba.gui.components.FieldGroup;
 import com.haulmont.cuba.gui.components.VBoxLayout;
 import com.haulmont.cuba.gui.data.Datasource;
-import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
 import com.haulmont.cuba.web.gui.components.WebComponentsHelper;
 import com.vaadin.ui.Layout;
 
@@ -19,7 +19,7 @@ public class ProductEdit extends AbstractEditor<Product> {
     private FieldGroup fieldGroup;
 
     @Inject
-    private ComponentsFactory componentsFactory;
+    private UiComponents uiComponents;
 
     @Inject
     private Datasource<Product> productDs;
@@ -35,7 +35,7 @@ public class ProductEdit extends AbstractEditor<Product> {
     protected void postInit() {
         super.postInit();
 
-        Component box = componentsFactory.createComponent(VBoxLayout.class);
+        Component box = uiComponents.create(VBoxLayout.NAME);
         Layout vBox = (Layout) WebComponentsHelper.unwrap(box);
         SliderServerComponent slider = new SliderServerComponent();
         slider.setValue(new double[]{getItem().getMinDiscount(), getItem().getMaxDiscount()});

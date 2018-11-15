@@ -1,10 +1,10 @@
 import com.haulmont.cuba.core.global.Configuration;
 import com.haulmont.cuba.core.global.GlobalConfig;
+import com.haulmont.cuba.gui.UiComponents;
 import com.haulmont.cuba.gui.components.AbstractWindow;
 import com.haulmont.cuba.gui.components.Component;
 import com.haulmont.cuba.gui.components.DataGrid;
 import com.haulmont.cuba.gui.components.LookupField;
-import com.haulmont.cuba.gui.xml.layout.ComponentsFactory;
 import com.haulmont.cuba.security.entity.User;
 import com.haulmont.cuba.web.gui.components.renderers.WebComponentRenderer;
 
@@ -15,7 +15,7 @@ import java.util.TreeMap;
 
 public class Users extends AbstractWindow {
     @Inject
-    private ComponentsFactory componentsFactory;
+    private UiComponents uiComponents;
     @Inject
     private Configuration configuration;
     @Inject
@@ -34,7 +34,7 @@ public class Users extends AbstractWindow {
                 new DataGrid.ColumnGenerator<User, Component>() {
                     @Override
                     public Component getValue(DataGrid.ColumnGeneratorEvent<User> event) {
-                        LookupField component = componentsFactory.createComponent(LookupField.class);
+                        LookupField component = uiComponents.create(LookupField.NAME);
                         component.setOptionsMap(options);
                         component.setWidth("100%");
 

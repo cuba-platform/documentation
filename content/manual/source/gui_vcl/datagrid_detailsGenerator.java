@@ -2,14 +2,14 @@ ordersGrid.setDetailsGenerator(new DataGrid.DetailsGenerator<Order>() {
     @Nullable
     @Override
     public Component getDetails(Order entity) {
-        VBoxLayout mainLayout = componentsFactory.createComponent(VBoxLayout.class);
+        VBoxLayout mainLayout = uiComponents.create(VBoxLayout.NAME);
         mainLayout.setWidth("100%");
         mainLayout.setMargin(true);
 
-        HBoxLayout headerBox = componentsFactory.createComponent(HBoxLayout.class);
+        HBoxLayout headerBox = uiComponents.create(HBoxLayout.NAME);
         headerBox.setWidth("100%");
 
-        Label infoLabel = componentsFactory.createComponent(Label.class);
+        Label infoLabel = uiComponents.create(Label.NAME);
         infoLabel.setHtmlEnabled(true);
         infoLabel.setStyleName("h1");
         infoLabel.setValue("Order info:");
