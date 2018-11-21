@@ -1,0 +1,62 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_collection_container]]
+====== CollectionContainer
+
+The `CollectionContainer` interface is designed to hold a collection of entities of the same type. It is a descendant of `InstanceContainer` and defines the following specific methods:
+
+* `setItems()` - sets a collection of entities to the container.
+
+* `getItems()` - returns an immutable list of entities stored in the container. Use this method to iterate over the collection, to get a stream or to get an instance by its position in the list. If you need to get an entity instance by its id, use `getItem(entityId)`. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/data_containers/collection_1.java[]
+----
+
+
+* `getMutableItems()` - returns a mutable list of entities stored in the container. All list changes caused by the `add()`, `addAll()`, `remove()`, `removeAll()`, `set()`, `clear()` methods produce `CollectionChangeEvent`, so subscribed visual components will update accordingly. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/data_containers/collection_2.java[]
+----
++
+[TIP]
+====
+Use `getMutableItems()` only when you want to change the collection, otherwise prefer `getItems()`.
+====
+
+* `setItem()` - sets the _current_ item for this container. If the provided item is not null, it must exist in the collection. The method sends `ItemChangeEvent`.
++
+[TIP]
+====
+Please note that visual components like <<gui_Table,Table>> do not listen to `ItemChangeEvent` sent by the container. So if you want to select a row in a table, use the `setSelected()` method of the table instead of `setItem()` method of the collection container. The current item of the container will also be changed, because the container listen to the component. For example:
+
+[source, java]
+----
+include::{sourcesdir}/gui/data_containers/collection_3.java[]
+----
+====
+
+* `getItem()` - overrides the method of `InstanceContainer` and returns the _current_ item. If the current item is not set, the method throws an exception. Use this method when you are sure that the current item has been set for the container, then you don't have to check the returned value for null.
+
+* `getItemOrNull()` - overrides the method of `InstanceContainer` returns the _current_ item. If the current item is not set, this method returns null. Always check the returned value for null before using it.
+
+* `getItemIndex(entityId)` - returns the position of an instance with the given id in the list returned by the `getItems()` and `getMutableItems()` methods. This method accepts `Object` and you can pass either id or the entity instance itself. The container implementation maintains a map of ids to indexes, so the method works fast even on large lists.
+
+* `getItem(entityId)` - returns an instance from the collection by its id. It's a shortcut method which first obtains the instance position using `getItemIndex(entityId)` and then returns the instance from the list using `getItems().get(index)`. The method throws an exception if the instance with the specified id doesn't exist in the collection.
+
+* `getItemOrNull(entityId)` - same as `getItem(entityId)` but returns null if the instance with the specified id doesn't exist in the collection. Always check the returned value for null before using it.
+
+* `containsItem(entityId)` - returns true if an instance with the specified id exists in the collection. It's a shortcut method which uses `getItemIndex(entityId)` under the hood.
+
+* `replaceItem(entity)` - if the item with the same id exists in the container, it is replaced with the given instance. If not, the given instance is added to the items list. The method sends `CollectionChangeEvent` of the `SET_ITEM` or `ADD_ITEMS` type depending on what has been done.
+
+* `setSorter()` - sets the given sorter for this container. Standard implementation of the `Sorter` interface is `CollectionContainerSorter`. It is set by the framework automatically when the container is associated with a <<gui_data_loaders,loader>>. You can provide your own implementation.
+
+* `getSorter()` - returns the sorter currently set for this container.
+
+The `CollectionContainer` interface allows you to register listeners to the following event:
+
+* `CollectionChangeEvent` is sent when the container items collection is changed, i.e. on adding, removing and replacing elements.
