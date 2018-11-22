@@ -1,9 +1,9 @@
 @Inject
-private RadioButtonGroup radioButtonGroup;
+private RadioButtonGroup<Integer> radioButtonGroup;
 
 @Subscribe
 protected void onInit(InitEvent event) {
-    Map<String, Object> map = new LinkedHashMap<>();
+    Map<String, Integer> map = new LinkedHashMap<>();
     map.put("two", 2);
     map.put("four", 4);
     map.put("five", 5);

@@ -1,5 +1,5 @@
 @Inject
-private RadioButtonGroup radioButtonGroup;
+private RadioButtonGroup<Integer> radioButtonGroup;
 
 @Subscribe
 protected void onInit(InitEvent event) {
