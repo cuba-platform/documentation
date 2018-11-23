@@ -3,47 +3,104 @@
 [[qs_customer_edit_with_orders]]
 ==== Customer Editor With a List of Orders
 
-Do the following to display the list of Orders in the Customer's edit screen:
+Do the following to display the list of orders in the `Customer` edit screen:
 
-* Go to the *Generic UI* tab on the navigation panel. Choose `customer-edit.xml` screen and click *Edit*.
+Go to the *Generic UI* section of CUBA project tree. Open the `customer-edit.xml` screen for editing.
 
-* Go to the *Datasources* tab on the screen designer page and click *New*.
+Switch to the *Designer* tab.
 
-* Select the newly created <<datasources,datasource>> in the list. Its attributes will appear in the right part of the page.
+In the components palette find *Container* in the <<gui_data,Data components>> group. Drag this component to the *data* section* in screen components hierarchy panel.
 
-* Specify `collectionDatasource` in the *Type* field.
+Select the `com.company.sales.entity.Order` entity and its `_local` view for the data container. Generate the loader ID.
 
-* Select `Order` entity in the *Entity* list.
+Finally, you should get a data container which will load the `Order` instances:
 
-* The data source identifier − `ordersDs` - will be automatically generated in *Id* field.
-
-* Select `++_local++` view in the *View* list.
-
-* Add the WHERE clause to the <<datasource_query,query>> generated in the *Query* field:
-+
-[source, jpql]
+[source, xml]
 ----
-select e from sales$Order e where e.customer.id = :ds$customerDs order by e.date
+<data>
+    <instance id="customerDc" class="com.company.sales.entity.Customer" view="_local">
+        <loader/>
+    </instance>
+    <collection id="ordersCt" class="com.company.sales.entity.Order" view="_local">
+        <loader id="ordersDl">
+            <query><![CDATA[select e from sales_Order e]]></query>
+        </loader>
+    </collection>
+</data>
 ----
-+
-The query contains orders selection criterion with `ds$customerDs` <<datasource_query_params,parameter>>. The parameter value named like `++ds${datasource_name}++` will contain id of the entity selected in `++datasource_name++` datasource at the moment, in this case it is the id of the Customer being edited.
-+
-image::qs_customer_screen_orders_ds.png[align="center"]
 
-* Click *Apply* to save the changes. 
+Next, find the `Label` component in the components palette. Drag this component to the screen components hierarchy panel and place it between `form` and `editActions`. Go to the *Properties* tab on the properties panel. Enter the label value `Orders` in the *value* field.
 
-* Next go to the *Layout* tab in the screen designer and find the `Label` component in the components palette. Drag this component to the screen components hierarchy panel and place it between `fieldGroup` and `windowActions`. Go to the *Properties* tab on the properties panel. Enter the label value `Orders` in the *value* field.
-+
-image::qs_customer_screen_label.png[align="center"]
-+
 [TIP]
 ====
 If the application is intended to be used in multiple languages, use the image:localization.png[] button next to the *value* field to create the new <<messages,message>> `msg://orders` and define label values in required languages.
 ====
 
-* Drag `Table` from the components palette to components hierarchy panel and place it between `label` and `windowActions`. Select this component in the hierarchy and specify table size in the *Properties* tab: set `100%` in the *width* field and `200px` in the *height* field. Choose `orderDs` from the list of available datasources. Then generate the table identifier using the image:generate_id.png[] button next to the *id* field: `ordersTable`.
-+
-image::qs_customer_screen_table.png[align="center"]
+Drag `Table` from the components palette to components hierarchy panel and place it between `label` and `editActions`. Select this component in the hierarchy and specify table size in the *Properties* tab: set `300px` in the *width* field and `200px` in the *height* field. Choose `ordersCt` from the list of available data containers. Then generate the table identifier using the image:generate_id.png[] button next to the *id* field: `ordersTable`.
 
-* Click *OK* on the top panel to save the changes in the screen.
+image::quick_start/customer_edit.png[align="center"]
 
+As a result, the `customer-edit.xml` code on the *Text* tab will look as follows:
+
+[source, xml]
+----
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<window xmlns="http://schemas.haulmont.com/cuba/screen/window.xsd" caption="msg://editorCaption" focusComponent="form"
+        messagesPack="com.company.sales.web.customer">
+    <data>
+        <instance id="customerDc" class="com.company.sales.entity.Customer" view="_local">
+            <loader/>
+        </instance>
+        <collection id="ordersCt" class="com.company.sales.entity.Order" view="_local">
+            <loader id="ordersDl">
+                <query><![CDATA[select e from sales_Order e]]></query>
+            </loader>
+        </collection>
+    </data>
+    <dialogMode height="600" width="800"/>
+    <layout expand="editActions" spacing="true">
+        <form id="form" dataContainer="customerDc">
+            <column width="250px">
+                <textField property="name"/>
+                <textField property="email"/>
+            </column>
+        </form>
+        <label id="label" value="msg://orders"/>
+        <table id="ordersTable" dataContainer="ordersCt" height="200px" width="300px">
+            <columns>
+                <column id="date"/>
+                <column id="amount"/>
+            </columns>
+            <rows/>
+        </table>
+        <hbox id="editActions" spacing="true">
+            <button action="windowCommitAndClose"/>
+            <button action="windowClose"/>
+        </hbox>
+    </layout>
+</window>
+----
+
+Open the `CustomerEdit` screen controller and <<screen_controller_injection,inject>> the orders loader:
+
+[source, java]
+----
+@Inject
+private CollectionLoader<Order> ordersDl;
+----
+
+//TODO update this part
+
+Then, subscribe to the customer's `ItemChangeEvent`:
+
+[source, java]
+----
+@Subscribe(id = "customerDc", target = Target.DATA_CONTAINER)
+protected void onCustomerDcItemChange(InstanceContainer.ItemChangeEvent<Customer> event) {
+//        ordersDl.setParameter("customer", event.getItem());
+    ordersDl.setQuery("select e from sales_Order e where e.customer.id = '" + event.getItem().getId()+"'");
+    ordersDl.load();
+}
+----
+
+This method will be in charge of loading related `Order` instances.
