@@ -1,10 +1,18 @@
+package com.company.sales.core;
+
+import com.haulmont.cuba.security.entity.User;
+import org.springframework.context.ApplicationEvent;
+
 public class DemoEvent extends ApplicationEvent {
-    public DemoEvent(User source) {
+
+    private User user;
+
+    public DemoEvent(Object source, User user) {
         super(source);
+        this.user = user;
     }
 
-    @Override
-    public User getSource() {
-        return (User) super.getSource();
+    public User getUser() {
+        return user;
     }
 }

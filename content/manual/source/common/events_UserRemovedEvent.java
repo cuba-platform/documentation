@@ -1,10 +1,19 @@
+package com.company.sales.web;
+
+import com.haulmont.cuba.gui.events.UiEvent;
+import com.haulmont.cuba.security.entity.User;
+import org.springframework.context.ApplicationEvent;
+
 public class UserRemovedEvent extends ApplicationEvent implements UiEvent {
-    public UserRemovedEvent(User source) {
+
+    private User user;
+
+    public UserRemovedEvent(Object source, User user) {
         super(source);
+        this.user = user;
     }
 
-    @Override
-    public User getSource() {
-        return (User) super.getSource();
+    public User getUser() {
+        return user;
     }
 }
