@@ -8,12 +8,164 @@
 . Создать роль `*Default*`, отбирающую все права в системе. Проще всего это сделать, установив тип роли *Denying*. Включить флажок *Default role*, чтобы эта роль автоматически назначалась всем новым пользователям.
 
 . Создать набор ролей, дающих нужные права различным категориям пользователей. Можно предложить две стратегии создания таких ролей:
-
++
+--
 * Крупнозернистые (coarse-grained) роли - каждая роль содержит набор разрешений для всего круга обязанностей пользователя в системе. Например `*Sales Manager*`, `*Accountant*`. В этом случае пользователям в дополнение к запрещающей `*Default*` роли необходимо назначить как правило только одну разрешающую роль.
 
 * Мелкозернистые (fine-grained) роли - каждая роль содержит небольшой набор разрешений для выполнения пользователем некоторой функции в системе. Например `*Task Creator*`, `*References Editor*`. В этом случае пользователям в дополнение к запрещающей `*Default*` роли необходимо назначить несколько разрешающих ролей в соответствии с кругом их обязанностей.
-+
+
 Разумеется, ничто не мешает совмещать обе стратегии.
+--
 
 . Администратору системы можно просто не назначать никаких ролей вообще, тогда у него будут все права на все объекты системы. Пользователя с запрещающими ролями можно сделать администратором, добавив ему роль типа *Super*.
 
+[[roles_example_permissions]]
+*Доступ к функциональности администрирования*
+
+Ниже приведен краткий перечень разрешений, которые необходимо настроить для пользователя с *Denying*-ролью, чтобы предоставить ему доступ к функциональности из меню *Администрирование*.
+К примеру, если вы хотите открыть доступ только к функциональности <<entity_log,Entity log>>, добавьте разрешения, перечисленные в одноименной секции ниже.
+
+Рекомендуется всегда предоставлять доступ к сущности `sys$FileDescriptor` как минимум на чтение, так она широко используется в различных механизмах платформы: отправка писем, вложения, системные журналы и т.д.
+
+Разрешения, описанные ниже, можно настроить в редакторе сущности `Role` на соответствующих вкладках: *Entity*, *Screen* и *Specific*.
+
+Кроме того. доступ к системным сущностям по умолчанию можно сконфигурировать с помощью свойства приложения <<cuba.defaultPermissionValuesConfig,cuba.defaultPermissionValuesConfig>>.
+
+Users::
++
+--
+Сущность <<users,User>> может использоваться и как ссылочный атрибут в модели данных вашего приложения. Чтобы отображать пользователей в выпадающих списках и экранах выбора, достаточно дать разрешение на доступ к самой сущности `sec$User`.
+
+В случае, если вам требуется создавать и редактировать сущность `User` из запрещающей роли, вам понадобятся следующие разрешения:
+
+* Entities: `sec$User`, `sec$Group`; (опционально) `sec$Role`, `sec$UserRole`, `sec$UserSubstitution`.
+
+[TIP]
+====
+Без разрешения на чтение сущности `sec$UserSubstitution` не будет работать работы механизм <<user_substitution,user substitution>>.
+====
+
+* Screens: элемент меню *Users*, `sec$User.edit`, `sec$Group.lookup`; (опционально) `sec$Group.edit`, `sec$Role.edit`, `sec$Role.lookup`, `sec$User.changePassword`, `sec$User.copySettings`, `sec$User.newPasswords`, `sec$User.resetPasswords`, `sec$UserSubstitution.edit`.
+--
+
+Access Groups::
++
+--
+Создание и управление <<groups,группами доступа>> и ограничениями безопасности.
+
+* Entities: `sec$Group`, `sec$Constraint`, `sec$SessionAttribute`, `sec$LocalizedConstraintMessage`.
+
+* Screens: элемент меню *Access Groups*, `sec$Group.lookup`, `sec$Group.edit`, `sec$Constraint.edit`, `sec$SessionAttribute.edit`, `sec$LocalizedConstraintMessage.edit`.
+--
+
+Dynamic Attributes::
++
+--
+Доступ к дополнительным <<dynamic_attributes,неперсистентным атрибутам>> сущности.
+
+* Entities: `sys$Category`, `sys$CategoryAttribute`, а также требуемые сущности из вашей модели данных.
+
+* Screens: элемент меню *Dynamic Attributes*, `sys$Category.edit`, `sys$CategoryAttribute.edit`, `dynamicAttributesConditionEditor`, `dynamicAttributesConditionFrame`.
+--
+
+User Sessions::
++
+--
+Просмотр информации о <<userSession,пользовательских сессиях>>.
+
+* Entities: `sec$User`, `sec$UserSessionEntity`.
+
+* Screens: элемент меню *User Sessions*, `sessionMessageWindow`.
+--
+
+Locks::
++
+--
+Настройка <<pessimistic_locking,пессимистичной блокировки>> сущностей.
+
+* Entities: `sys$LockInfo`, `sys$LockDescriptor`, а также требуемые сущности из вашей модели данных.
+
+* Screens: элемент меню *Locks*, `sys$LockDescriptor.edit`.
+--
+
+External Files::
++
+--
+Доступ к <<file_storage,файловому хранилищу>>.
+
+* Entities: `sys$FileDescriptor`.
+
+* Screens: элемент меню *External Files*; (опционально) `sys$FileDescriptor.edit`.
+--
+
+Scheduled Tasks::
++
+--
+Работа с <<scheduled_tasks,назначенными заданиями>>.
+
+* Entities: `sys$ScheduledTask`, `sys$ScheduledExecution`.
+
+* Screens: элемент меню *Scheduled Tasks*, `sys$ScheduledExecution.browse`, `sys$ScheduledTask.edit`.
+--
+
+Entity Inspector::
++
+--
+Работа с любыми объектами приложения из динамически создаваемых экранов при помощи <<entity_inspector,entity inspector>>.
+
+* Entities: требуемые сущности из вашей модели данных.
+
+* Screens: элемент меню *Entity Inspector*, `entityInspector.edit`, а также требуемые сущности из вашей модели данных.
+--
+
+Entity Log::
++
+--
+<<entity_log,Отслеживание>> изменений сущностей на уровне <<entity_listeners,entity listeners>>.
+
+* Entities: `sec$EntityLog`, `sec$User`, `sec$EntityLogAttr`, `sec$LoggedAttribute`, `sec$LoggedEntity`, а также требуемые сущности из вашей модели данных.
+
+* Screens: элемент меню *Entity Log*.
+--
+
+User Session Log::
++
+--
+Просмотр исторических данных о входе и выходе пользователей из системы, или <<userSession_log,user sessions>>.
+
+* Entities: `sec$SessionLogEntry`.
+
+* Screens: элемент меню *User Session Log*.
+--
+
+Email History::
++
+--
+Просмотр <<email_sending,сообщений электронной почты>>, отправленных из приложения.
+
+* Entities: `sys$SendingMessage`, `sys$SendingAttachment`, `sys$FileDescriptor` (для вложений).
+
+* Screens: элемент меню *Email History*, `sys$SendingMessage.attachments`.
+--
+
+Server Log::
++
+--
+Просмотр и скачивание <<logging_setup_tomcat,журналов приложения>>.
+
+* Entities: `sys$FileDescriptor`.
+
+* Screens: элемент меню *Server Log*, `serverLogDownloadOptionsDialog`.
+
+* Specific: `Download log files`.
+--
+
+Screen Profiler::
++
+--
+Статистические данные об использовании экранов приложения.
+
+* Entities: `sec$User`, `sys$ScreenProfilerEvent`.
+
+* Screens: элемент меню *Screen Profiler*.
+--
