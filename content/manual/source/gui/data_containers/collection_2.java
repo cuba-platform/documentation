@@ -3,6 +3,6 @@ private CollectionContainer<Customer> customersDc;
 
 private void createCustomer() {
     Customer customer = metadata.create(Customer.class);
-    customer.setName("Gomer Simpson");
+    customer.setName("Homer Simpson");
     customersDc.getMutableItems().add(customer);
 }
