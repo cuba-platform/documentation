@@ -5,7 +5,7 @@ import com.vaadin.ui.AbstractJavaScriptComponent;
 import com.vaadin.annotations.JavaScript;
 import elemental.json.JsonArray;
 
-@JavaScript({"slider-connector.js", "jquery-ui.js"})
+@JavaScript({"slider-connector.js", "jquery.js", "jquery-ui.js"})
 @StyleSheet({"jquery-ui.css"})
 public class SliderServerComponent extends AbstractJavaScriptComponent {
 
