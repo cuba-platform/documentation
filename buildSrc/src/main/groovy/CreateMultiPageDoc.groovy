@@ -27,12 +27,21 @@ class CreateMultiPageDoc extends DefaultTask {
     @TaskAction
     def createMultiPageDoc() {
 
+        def props = ['docName': docName]
+        if (project.hasProperty('canonicalVer')) {
+            def url = "${project.docHome}/${docName}-${project.canonicalVer}"
+            if (docLang != 'en') {
+                url += "-${docLang}"
+            }
+            props.put('canonicalUrl', url)
+        }
+
         def chopper = new Chopper(
                 "${srcDir}/${docName}.html",
                 dstDir.absolutePath,
                 "${project.rootDir}/tools/chopper",
                 docLang == 'en' ? '' : docLang,
-                ['docName': docName]
+                props
         )
         chopper.process()
 
