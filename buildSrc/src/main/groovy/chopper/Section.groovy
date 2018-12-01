@@ -81,6 +81,12 @@ class Section {
         vars.setProperty("content", (parent == null) ? headerEl.outerHtml() : element.outerHtml())
         vars.setProperty("next.href", next.id + ".html")
         vars.setProperty("next.text", next.title)
+        def canonicalUrl = vars.getProperty('canonicalUrl')
+        if (canonicalUrl) {
+            def canonical = "${canonicalUrl}/${id}.html"
+            def head = vars.getProperty('head')
+            vars.setProperty('head', "${head}\n    <link rel=\"canonical\" href=\"${canonical}\">")
+        }
 
         for (name in vars.stringPropertyNames()) {
             if (name == 'scripts' && Boolean.valueOf(System.getProperty('noScripts'))) {
