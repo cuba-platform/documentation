@@ -121,8 +121,12 @@ class Asciidoc2Html extends DefaultTask {
 
         doc.head().append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=0.6\">")
 
-        if (project.hasProperty('canonicalUrl')) {
-            doc.head().append("<link rel=\"canonical\" href=\"${project.canonicalUrl}/${docName}.html\">")
+        if (project.hasProperty('canonicalVer')) {
+            def url = "${project.docHome}/${docName}-${project.canonicalVer}"
+            if (docLang != 'en') {
+                url += "-${docLang}"
+            }
+            doc.head().append("<link rel=\"canonical\" href=\"${url}/${docName}.html\">")
         }
 
         doc.body().append("<script type=\"text/javascript\">(function(g,a,i){(a[i]=a[i]||[]).push(function(){try{a.yaCounter31327533=new Ya.Metrika({id:31327533,clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true,trackHash:true})}catch(c){}});var h=g.getElementsByTagName(\"script\")[0],b=g.createElement(\"script\"),e=function(){h.parentNode.insertBefore(b,h)};b.type=\"text/javascript\";b.async=true;b.src=\"https://mc.yandex.ru/metrika/watch.js\";if(a.opera==\"[object Opera]\"){g.addEventListener(\"DOMContentLoaded\",e,false)}else{e()}})(document,window,\"yandex_metrika_callbacks\");</script> \n" +
