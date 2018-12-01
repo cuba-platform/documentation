@@ -37,12 +37,17 @@ class CreateMultiPageDoc extends DefaultTask {
     @TaskAction
     def createMultiPageDoc() {
 
+        def props = ['docName': docName, 'gitBranch': getGitBranch()]
+        if (project.hasProperty('canonicalUrl')) {
+            props.put('canonicalUrl', project.canonicalUrl)
+        }
+
         def chopper = new Chopper(
                 "${srcDir}/${docName}.html",
                 dstDir.absolutePath,
                 "${project.rootDir}/tools/chopper",
                 docLang == 'en' ? '' : docLang,
-                ['docName': docName, 'gitBranch': getGitBranch()]
+                props
         )
         chopper.process()
 

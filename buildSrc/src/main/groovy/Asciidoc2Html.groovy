@@ -121,6 +121,10 @@ class Asciidoc2Html extends DefaultTask {
 
         doc.head().append("<meta name=\"viewport\" content=\"width=device-width, initial-scale=0.6\">")
 
+        if (project.hasProperty('canonicalUrl')) {
+            doc.head().append("<link rel=\"canonical\" href=\"${project.canonicalUrl}/${docName}.html\">")
+        }
+
         doc.body().append("<script type=\"text/javascript\">(function(g,a,i){(a[i]=a[i]||[]).push(function(){try{a.yaCounter31327533=new Ya.Metrika({id:31327533,clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:true,trackHash:true})}catch(c){}});var h=g.getElementsByTagName(\"script\")[0],b=g.createElement(\"script\"),e=function(){h.parentNode.insertBefore(b,h)};b.type=\"text/javascript\";b.async=true;b.src=\"https://mc.yandex.ru/metrika/watch.js\";if(a.opera==\"[object Opera]\"){g.addEventListener(\"DOMContentLoaded\",e,false)}else{e()}})(document,window,\"yandex_metrika_callbacks\");</script> \n" +
                 "  <noscript><div><img alt=\"\" style=\"position:absolute; left:-9999px;\" src=\"https://mc.yandex.ru/watch/31327533\"></div></noscript> \n" +
                 "  <script>(function(d,e,j,h,f,c,b){d.GoogleAnalyticsObject=f;d[f]=d[f]||function(){(d[f].q=d[f].q||[]).push(arguments)},d[f].l=1*new Date();c=e.createElement(j),b=e.getElementsByTagName(j)[0];c.async=1;c.src=h;b.parentNode.insertBefore(c,b)})(window,document,\"script\",\"//www.google-analytics.com/analytics.js\",\"ga\");ga(\"create\",\"UA-48250949-2\",\"auto\",{allowLinker:true});ga(\"require\",\"linker\");ga(\"linker:autoLink\",[\"www.cuba-platform.com\"]);ga(\"require\",\"displayfeatures\");ga(\"send\",\"pageview\");</script>")
