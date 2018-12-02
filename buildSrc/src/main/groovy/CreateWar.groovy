@@ -11,6 +11,7 @@ public class CreateWar extends DefaultTask {
 
     String docName
     String docLang
+    String docVer
 
     @InputDirectory
     File getSrcDir() {
@@ -24,17 +25,21 @@ public class CreateWar extends DefaultTask {
 
     @OutputFile
     File getDstFile() {
-        return new File("${project.buildDir}/war/$docName-${project.docVersion}${docLang == 'en' ? '' : ('-' + docLang)}.war")
+        return new File("${project.buildDir}/war/$docName${getDocVersion()}${docLang == 'en' ? '' : ('-' + docLang)}.war")
     }
 
     @TaskAction
     def createWar() {
-        def tmpDir = new File(project.buildDir, "tmp/war/$docName-${project.docVersion}${docLang == 'en' ? '' : ('-' + docLang)}")
+        def tmpDir = new File(project.buildDir, "tmp/war/$docName${getDocVersion()}${docLang == 'en' ? '' : ('-' + docLang)}")
         project.copy {
             from srcDir
             from srcFile
             into tmpDir
         }
         ant.jar(destfile: dstFile, basedir: tmpDir)
+    }
+
+    private getDocVersion() {
+        docVer ? "-$docVer" : ''
     }
 }

@@ -13,6 +13,7 @@ class CreateMultiPageDoc extends DefaultTask {
     String docName
     String docLang
     String docTitle
+    Map<String, String> properties
 
     @InputDirectory
     File getSrcDir() {
@@ -45,6 +46,8 @@ class CreateMultiPageDoc extends DefaultTask {
             }
             props.put('canonicalUrl', url)
         }
+        if (properties)
+            props.putAll(properties)
 
         def chopper = new Chopper(
                 "${srcDir}/${docName}.html",

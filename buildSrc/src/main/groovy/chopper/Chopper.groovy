@@ -75,11 +75,6 @@ class Chopper {
             }
         }
 
-        // add passed properties
-        props.entrySet().each { entry ->
-            vars.setProperty(entry.key, entry.value)
-        }
-
         // add some properties from the source HTML file
         def titleEl = doc.body().getElementsByTag("h1").first()
         if (titleEl != null && !vars.containsKey("title")) {
@@ -92,6 +87,11 @@ class Chopper {
         def copyrightEl = doc.body().getElementById("revremark")
         if (copyrightEl != null && !vars.containsKey("copyright")) {
             vars.setProperty("copyright", copyrightEl.ownText());
+        }
+
+        // add passed properties
+        props.entrySet().each { entry ->
+            vars.setProperty(entry.key, entry.value)
         }
 
         return vars
