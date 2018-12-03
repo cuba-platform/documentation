@@ -4,29 +4,34 @@ private FileUploadField uploadField;
 private FileUploadingAPI fileUploadingAPI;
 @Inject
 private DataSupplier dataSupplier;
+@Inject
+private Notifications notifications;
 
-@Override
-public void init(Map<String, Object> params) {
-    uploadField.addFileUploadSucceedListener(event -> {
-        // here you can get the file uploaded to the temporary storage if you need it
-        File file = fileUploadingAPI.getFile(uploadField.getFileId());
+@Subscribe
+protected void onInit(InitEvent event) {
+    uploadField.addFileUploadSucceedListener(uploadSucceedEvent -> {
+
+        File file = fileUploadingAPI.getFile(uploadField.getFileId()); <1>
         if (file != null) {
-            showNotification("File is uploaded to temporary storage at " + file.getAbsolutePath());
+            notifications.create()
+                    .withCaption("File is uploaded to temporary storage at " + file.getAbsolutePath())
+                    .show();
         }
 
-        // normally you would want to save the file to the file storage of the middle tier
-        FileDescriptor fd = uploadField.getFileDescriptor();
+        FileDescriptor fd = uploadField.getFileDescriptor(); <2>
         try {
-            // save file to FileStorage
-            fileUploadingAPI.putFileIntoStorage(uploadField.getFileId(), fd);
+            fileUploadingAPI.putFileIntoStorage(uploadField.getFileId(), fd); <3>
         } catch (FileStorageException e) {
             throw new RuntimeException("Error saving file to FileStorage", e);
         }
-        // save file descriptor to database
-        dataSupplier.commit(fd);
-        showNotification("Uploaded file: " + uploadField.getFileName());
+        dataSupplier.commit(fd); <4>
+        notifications.create()
+                .withCaption("Uploaded file: " + uploadField.getFileName())
+                .show();
     });
 
-    uploadField.addFileUploadErrorListener(event ->
-            showNotification("File upload error"));
+    uploadField.addFileUploadErrorListener(uploadErrorEvent ->
+            notifications.create()
+                    .withCaption("File upload error")
+                    .show());
 }

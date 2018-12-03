@@ -1,71 +1,80 @@
+import com.company.sales.entity.Employee;
 import com.haulmont.cuba.core.entity.FileDescriptor;
+import com.haulmont.cuba.core.global.DataManager;
 import com.haulmont.cuba.core.global.FileStorageException;
-import com.haulmont.cuba.gui.components.*;
-import com.company.employeeimages.entity.Employee;
-import com.haulmont.cuba.gui.data.DataSupplier;
-import com.haulmont.cuba.gui.data.Datasource;
+import com.haulmont.cuba.gui.Notifications;
+import com.haulmont.cuba.gui.components.Button;
+import com.haulmont.cuba.gui.components.FileDescriptorResource;
+import com.haulmont.cuba.gui.components.FileUploadField;
+import com.haulmont.cuba.gui.components.Image;
 import com.haulmont.cuba.gui.export.ExportDisplay;
 import com.haulmont.cuba.gui.export.ExportFormat;
+import com.haulmont.cuba.gui.model.InstanceContainer;
+import com.haulmont.cuba.gui.screen.*;
 import com.haulmont.cuba.gui.upload.FileUploadingAPI;
 
 import javax.inject.Inject;
-import java.util.Map;
 
-public class EmployeeEdit extends AbstractEditor<Employee> {
+@UiController("sales_Employee.edit")
+@UiDescriptor("employee-edit.xml")
+@EditedEntityContainer("employeeDc")
+@LoadDataBeforeShow
+public class EmployeeEdit extends StandardEditor<Employee> {
 
     @Inject
-    private DataSupplier dataSupplier;
+    private InstanceContainer<Employee> employeeDc;
+    @Inject
+    private Image image;
+    @Inject
+    private FileUploadField uploadField;
     @Inject
     private FileUploadingAPI fileUploadingAPI;
     @Inject
-    private ExportDisplay exportDisplay;
+    private DataManager dataManager;
     @Inject
-    private FileUploadField uploadField;
+    private Notifications notifications;
     @Inject
     private Button downloadImageBtn;
     @Inject
     private Button clearImageBtn;
-    @Inject
-    private Datasource<Employee> employeeDs;
 
-    @Inject
-    private Image image;
-
-    @Override
-    public void init(Map<String, Object> params) {
-        uploadField.addFileUploadSucceedListener(event -> {
-            FileDescriptor fd = uploadField.getFileDescriptor();
+    @Subscribe
+    protected void onInit(InitEvent event) { <1>
+        uploadField.addFileUploadSucceedListener(uploadSucceedEvent -> {
+            FileDescriptor fd = uploadField.getFileDescriptor(); <2>
             try {
                 fileUploadingAPI.putFileIntoStorage(uploadField.getFileId(), fd);
             } catch (FileStorageException e) {
                 throw new RuntimeException("Error saving file to FileStorage", e);
             }
-            getItem().setImageFile(dataSupplier.commit(fd));
-            displayImage();
+            getEditedEntity().setImageFile(dataManager.commit(fd)); <3>
+            displayImage(); <4>
         });
 
-        uploadField.addFileUploadErrorListener(event ->
-                showNotification("File upload error", NotificationType.HUMANIZED));
+        uploadField.addFileUploadErrorListener(uploadErrorEvent ->
+                notifications.create()
+                        .withCaption("File upload error")
+                        .show());
 
-        employeeDs.addItemPropertyChangeListener(event -> {
-            if ("imageFile".equals(event.getProperty()))
-                updateImageButtons(event.getValue() != null);
+        employeeDc.addItemPropertyChangeListener(employeeItemPropertyChangeEvent -> { <5>
+            if ("imageFile".equals(employeeItemPropertyChangeEvent.getProperty()))
+                updateImageButtons(employeeItemPropertyChangeEvent.getValue() != null);
         });
     }
 
-    @Override
-    protected void postInit() {
+    @Subscribe
+    protected void onAfterShow(AfterShowEvent event) { <6>
         displayImage();
-        updateImageButtons(getItem().getImageFile() != null);
+        updateImageButtons(getEditedEntity().getImageFile() != null);
     }
 
-    public void onDownloadImageBtnClick() {
+    public void onDownloadImageBtnClick() { <7>
         if (getItem().getImageFile() != null)
             exportDisplay.show(getItem().getImageFile(), ExportFormat.OCTET_STREAM);
     }
 
-    public void onClearImageBtnClick() {
-        getItem().setImageFile(null);
+    public void onClearImageBtnClick() { <8>
+        getEditedEntity().setImageFile(null);
         displayImage();
     }
 
@@ -74,9 +83,9 @@ public class EmployeeEdit extends AbstractEditor<Employee> {
         clearImageBtn.setEnabled(enable);
     }
 
-    private void displayImage() {
-        if (getItem().getImageFile() != null) {
-            image.setSource(FileDescriptorResource.class).setFileDescriptor(getItem().getImageFile());
+    private void displayImage() { <9>
+        if (getEditedEntity().getImageFile() != null) {
+            image.setSource(FileDescriptorResource.class).setFileDescriptor(getEditedEntity().getImageFile());
             image.setVisible(true);
         } else {
             image.setVisible(false);

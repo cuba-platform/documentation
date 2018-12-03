@@ -11,24 +11,28 @@
 
 The `FileUploadField` component allows a user to upload files to the server. The component can contain a caption, a link to uploaded file, and two buttons: for uploading and for clearing the selected file. When the upload button is clicked, a standard OS file picker window is shown, where the user can select a file. In order to upload multiple files, use <<gui_FileMultiUploadField,FileMultiUploadField>>.
 
-image::gui_upload.png[align="center"]
+image::gui_upload_7.0.png[align="center"]
 
 XML name of the component: `upload`.
 
 The component is implemented for *Web Client* and *Desktop Client*. 
 
+////
 * `FileUploadField` is automatically used inside <<gui_FieldGroup,FieldGroup>> for entity attributes of type `FileDescriptor`. In this case, the field looks as shown above and does not require additional configuration. An uploaded file is immediately stored in <<file_storage,file storage>> and the corresponding `FileDescriptor` instance is saved to the database.
 
 * You can use the component outside `FieldGroup` and connect it to a datasource. For example, here we suppose that the `personDs` datasource contains an entity with the `photo` attribute which is a reference to `FileDescriptor`:
-+
+////
+
+For entity attributes of `FileDescriptor` type, the component can be used inside <<gui_FieldGroup,FieldGroup>> with <<gui_attr_datasource,datasource>> attribute, inside <<gui_Form,Form>> with <<gui_attr_dataContainer,dataContainer>> attribute, or independently. If the component is bound to any data component, the uploaded file is immediately stored in <<file_storage,file storage>> and the corresponding `FileDescriptor` instance is saved to the database.
+
 [source, xml]
 ----
 include::{sourcesdir}/gui_vcl/upload_0.xml[]
 ----
 
-* You can also control the saving of file and `FileDescriptor` programmatically.
+You can also control the saving of file and `FileDescriptor` programmatically:
 
-** Declare the component in an XML screen descriptor:
+* Declare the component in an XML screen descriptor:
 +
 [source, xml]
 ----
@@ -36,19 +40,23 @@ include::{sourcesdir}/gui_vcl/upload_1.xml[]
 ---- 
 
 [[gui_FileUploadField_FileUploadSucceedListener]]
-** In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. In the `init()` method, add listeners which will react on successful uploads and errors:
+* In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. Subscribe to the the `InitEvent` and add listeners which will react on successful uploads and errors:
 +
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/upload_2.java[]
 ---- 
-+
---
+
+<1> Here you can get the file uploaded to the temporary storage if you need it.
+<2> Normally, you would want to save the file to the file storage of the middle tier.
+<3> Save file to FileStorage.
+<4> Save file descriptor to database.
+
 The component will upload the file to the temporary storage of the client <<app_tiers,tier>> and invoke the listener added by the `addFileUploadSucceedListener()` method. In this listener, a `FileDescriptor` object is requested from the component. `com.haulmont.cuba.core.entity.FileDescriptor` is a persistent entity, which uniquely identifies an uploaded file and is used to download the file from the system.
 
 `FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object. Both of these parameters are provided by `FileUploadField`.
 
-After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in the database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration* -> *External Files* screen.
+After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in the database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration > External Files* screen.
 
 The listener added by the `addFileUploadErrorListener()` method will be invoked if an error occurs when uploading a file to the temporary storage of the client tier.
 
@@ -73,18 +81,19 @@ Below is the list of listeners available to track the upload process:
 * `FileUploadSucceedListener`,
 
 * `ValueChangeListener`.
---
 
 `fileUploadField` attributes:
 
 [[gui_FileUploadField_fileStoragePutMode]]
 * `fileStoragePutMode` - defines how the file and the corresponding `FileDescriptor` are stored.
 +
-** In the `IMMEDIATE` mode it is done right after uploading file to the temporary storage of the client tier.
-+
-** In the `MANUAL` mode, you should do it programmatically in a `FileUploadSucceedListener`.+
-+
+--
+* In the `IMMEDIATE` mode it is done right after uploading file to the temporary storage of the client tier.
+
+* In the `MANUAL` mode, you should do it programmatically in a `FileUploadSucceedListener`.
+
 The `IMMEDIATE` mode is selected by default when `FileUploadField` is used inside `FieldGroup`. Otherwise, the default mode is `MANUAL`.
+--
 
 [[gui_FileUploadField_uploadButtonCaption]]
 * `uploadButtonCaption`, `uploadButtonIcon` and `uploadButtonDescription` XML attributes allow you to set the properties of the upload button.
@@ -163,6 +172,7 @@ Attributes of upload::
 <<gui_FileUploadField_clearButtonCaption,clearButtonIcon>> -
 <<gui_attr_contextHelpText,contextHelpText>> -
 <<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_dataContainer,dataContainer>> -
 <<gui_attr_datasource,datasource>> -
 <<gui_attr_description,description>> -
 <<gui_FileUploadField_dropZone,dropZone>> -

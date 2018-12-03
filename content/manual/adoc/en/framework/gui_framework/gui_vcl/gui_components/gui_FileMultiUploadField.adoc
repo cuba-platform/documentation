@@ -17,6 +17,8 @@ XML name of the component: `multiUpload`.
 
 The component is implemented for *Web Client* and *Desktop Client*.
 
+Below is an example of using `FileMultiUploadField`.
+
 * Declare the component in an XML screen descriptor: 
 +
 [source, xml]
@@ -25,16 +27,29 @@ include::{sourcesdir}/gui_vcl/multiupload_1.xml[]
 ----
 
 [[gui_FileMultiUploadField_QueueUploadCompleteListener]]
-* In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataSupplier,DataSupplier>> interfaces. In the `init()` method, add listeners which will react on successful uploads and errors:
+* In the screen controller, inject the component itself, the <<file_upload,FileUploadingAPI>> and <<dataManager,DataManager>> interfaces.
 +
+--
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/multiupload_2.java[]
----- 
-+
-The component uploads all selected files to the temporary storage of the client <<app_tiers,tier>> and invokes the listener added by the `addQueueUploadCompleteListener()` method. In this listener, the `FileMultiUploadField.getUploadsMap()` method is invoked to obtain a map of temporary storage file identifiers to file names. Then, corresponding `FileDescriptor` objects are created by calling `FileUploadingAPI.getFileDescriptor()` for each map entry. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
-+
+----
+
+<1> In the `onInit()` method, add listeners which will react on successful uploads and errors.
+
+<2> The component uploads all selected files to the temporary storage of the client <<app_tiers,tier>> and invokes the listener added by the `addQueueUploadCompleteListener()` method.
+
+<3> In this listener, the `FileMultiUploadField.getUploadsMap()` method is invoked to obtain a map of temporary storage file identifiers to file names.
+
+<4> Then, corresponding `FileDescriptor` objects are created by calling `FileUploadingAPI.getFileDescriptor()` for each map entry. `com.haulmont.cuba.core.entity.FileDescriptor` (do not confuse with `java.io.FileDescriptor`) is a persistent entity, which uniquely identifies an uploaded file and then is used to download the file from the system.
+
+<5> `FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object.
+
+<6> After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in a database by invoking `DataManager.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration > External Files* screen.
+
+<7> After processing, the list of files should be cleared by calling the `clearUploads()` method in order to prepare for further uploads.
 --
+
 Below is the list of listeners available to track the upload process:
 
 [[gui_FileMultiUploadField_FileUploadErrorListener]]
@@ -46,16 +61,12 @@ Below is the list of listeners available to track the upload process:
 [[gui_FileMultiUploadField_FileUploadFinishListener]]
 * `FileUploadFinishListener`,
 
+[[gui_FileMultiUploadField_QueueUploadCompleteListener]]
 * `QueueUploadCompleteListener`.
 
-`FileUploadingAPI.putFileIntoStorage()` method is used to move the uploaded file from the temporary client storage to <<file_storage,FileStorage>>. Parameters of this method are temporary storage file identifier and the `FileDescriptor` object.
+Maximum upload size is determined by the <<cuba.maxUploadSizeMb,cuba.maxUploadSizeMb>> application property and is  20MB by default. If a user selects a file of a larger size, a corresponding message will be displayed, and the upload will be interrupted.
 
-After uploading the file to `FileStorage`, the `FileDescriptor` instance is saved in a database by invoking `DataSupplier.commit()`. The saved instance returned by this method can be set to an attribute of an entity related to this file. Here, `FileDescriptor` is simply stored in the database. The file will be available through the *Administration* -> *External Files* screen.
-
-After processing, the list of files should be cleared by calling the `clearUploads()` method in order to prepare for further uploads.
---
-
-* Maximum upload size is determined by the <<cuba.maxUploadSizeMb,cuba.maxUploadSizeMb>> application property and is  20MB by default. If a user selects a file of a larger size, a corresponding message will be displayed, and the upload will be interrupted.
+`multiUpload` attributes:
 
 [[gui_FileMultiUploadField_accept]]
 * The `accept` XML attribute (and the corresponding `setAccept()` method) can be used to set the file type mask in the file selection dialog. Users still be able to change the mask to "All files" and upload arbitrary files.

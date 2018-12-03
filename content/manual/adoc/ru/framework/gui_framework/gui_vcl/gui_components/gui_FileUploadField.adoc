@@ -11,24 +11,28 @@
 
 Компонент `FileUploadField` позволяет пользователю загружать файлы на сервер. Компонент может содержать заголовок, ссылку на загруженный файл и две кнопки: для загрузки файла и для очистки. При нажатии на кнопку загрузки на экране отображается стандартное для операционной системы окно, в котором можно выбрать один файл. Чтобы дать пользователю возможность загружать сразу несколько файлов, используйте компонент <<gui_FileMultiUploadField,FileMultiUploadField>>.
 
-image::gui_upload.png[align="center"]
+image::gui_upload_7.0.png[align="center"]
 
 XML-имя компонента: `upload`.
 
 Компонент реализован для блоков *Web Client* и *Desktop Client*.
 
+////
 * `FileUploadField` автоматически используется внутри <<gui_FieldGroup,FieldGroup>> для атрибутов типа `FileDescriptor`. В этом случае компонент выглядит как на приведенном выше скриншоте и не требует никакого конфигурирования. Загруженный файл сразу же сохраняется в <<file_storage,file storage>>, а соответствующий `FileDescriptor` - в базу данных.
 
 * Компонент можно использовать вне `FieldGroup` и подключить к источнику данных. В примере ниже предполагается, что источник данных `personDs` содержит сущность с атрибутом `photo`, который является ссылкой на `FileDescriptor`:
-+
+////
+
+Для атрибутов сущности с типом `FileDescriptor` компонент может использоваться внутри <<gui_FieldGroup,FieldGroup>> с атрибутом <<gui_attr_datasource,datasource>>, внутри <<gui_Form,Form>> с атрибутом <<gui_attr_dataContainer,dataContainer>>, либо независимо. Если компонент связан с данными, загруженный файл сразу же сохраняется в <<file_storage,file storage>>, а соответствующий `FileDescriptor` - в базу данных.
+
 [source, xml]
 ----
 include::{sourcesdir}/gui_vcl/upload_0.xml[]
 ----
 
-* Сохранением файла и `FileDescriptor` можно также управлять программно.
+Сохранением файла и `FileDescriptor` можно также управлять программно:
 
-** Объявляем компонент в XML-дескрипторе экрана:
+* Объявляем компонент в XML-дескрипторе экрана:
 +
 [source, xml]
 ----
@@ -36,19 +40,23 @@ include::{sourcesdir}/gui_vcl/upload_1.xml[]
 ----
 
 [[gui_FileUploadField_FileUploadSucceedListener]]
-** В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в методе `init()` добавляем слушатели, которые будут реагировать на события успешной загрузки или ошибки:
+* В контроллере экрана инжектируем сам компонент, а также интерфейсы <<file_upload,FileUploadingAPI>> и <<dataSupplier,DataSupplier>>. Затем в событии `InitEvent` добавляем слушатели, которые будут реагировать на события успешной загрузки или ошибки:
 +
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/upload_2.java[]
 ----
-+
---
+
+<1> Здесь при необходимости можно получить загруженный файл из временного хранилища.
+<2> Обычно требуется сохранить файл в хранилище на среднем слое.
+<3> Сохраняем файл в FileStorage.
+<4> Сохраняем объект `FileDescriptor` в БД.
+
 Компонент загружает файл во временное хранилище клиентского <<app_tiers,уровня>> и вызывает слушатель, добавленный методом `addFileUploadSucceedListener()`. В этом слушателе у компонента запрашивается объект `FileDescriptor`, соответствующий загруженному файлу. Объект `com.haulmont.cuba.core.entity.FileDescriptor` является персистентной сущностью, которая однозначно идентифицирует загруженный файл и впоследствии используется для выгрузки файла из системы.
 
 Метод `FileUploadingAPI.putFileIntoStorage()` используется для перемещения загружаемого файла из временного хранилища клиентского уровня в <<file_storage,FileStorage>>. Параметрами этого метода являются идентификатор файла во временном хранилище и объект `FileDescriptor`. Оба эти параметра предоставляет `FileUploadField`.
 
-После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто сохраняется в базе данных. Соответствующий файл будет доступен через экран *Administration* → *External Files*.
+После загрузки файла в `FileStorage` выполняется сохранение экземпляра `FileDescriptor` в базе данных посредством вызова `DataSupplier.commit()`. Возвращаемый этим методом сохраненный экземпляр может быть установлен в атрибут какой-либо сущности предметной области, связанной с данным файлом. В данном же случае `FileDescriptor` просто сохраняется в базе данных. Соответствующий файл будет доступен через экран *Administration > External Files*.
 
 Слушатель, добавленный методом `addFileUploadErrorListener()`, вызывается в случае ошибки загрузки файла во временное хранилище клиентского уровня.
 
@@ -73,18 +81,19 @@ include::{sourcesdir}/gui_vcl/upload_2.java[]
 * `FileUploadSucceedListener`,
 
 * `ValueChangeListener`.
---
 
 Атрибуты `fileUploadField`:
 
 [[gui_FileUploadField_fileStoragePutMode]]
 * `fileStoragePutMode` - задает режим сохранения файла и соответствующего `FileDescriptor`.
 +
-** В режиме `IMMEDIATE` это делается автоматически сразу после загрузки файла во временное хранилище клиентского уровня.
-+
-** В режиме `MANUAL` необходимо сделать это в листенере `FileUploadSucceedListener`.
-+
+--
+* В режиме `IMMEDIATE` это делается автоматически сразу после загрузки файла во временное хранилище клиентского уровня.
+
+* В режиме `MANUAL` необходимо сделать это в листенере `FileUploadSucceedListener`.
+
 Режим `IMMEDIATE` выбирается по умолчанию, когда `FileUploadField` используется внутри `FieldGroup`. В противном случае, по умолчанию выбирается `MANUAL`.
+--
 
 [[gui_FileUploadField_uploadButtonCaption]]
 * XML-атрибуты `uploadButtonCaption`, `uploadButtonIcon` и `uploadButtonDescription` позволяют задать параметры кнопки загрузки.
@@ -163,6 +172,7 @@ include::{sourcesdir}/gui_vcl/pasteZone.xml[]
 <<gui_FileUploadField_clearButtonCaption,clearButtonIcon>> -
 <<gui_attr_contextHelpText,contextHelpText>> -
 <<gui_attr_contextHelpTextHtmlEnabled,contextHelpTextHtmlEnabled>> -
+<<gui_attr_dataContainer,dataContainer>> -
 <<gui_attr_datasource,datasource>> -
 <<gui_attr_description,description>> -
 <<gui_FileUploadField_dropZone,dropZone>> -

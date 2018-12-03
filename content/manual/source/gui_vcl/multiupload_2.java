@@ -3,28 +3,34 @@ private FileMultiUploadField multiUploadField;
 @Inject
 private FileUploadingAPI fileUploadingAPI;
 @Inject
-private DataSupplier dataSupplier;
+private Notifications notifications;
+@Inject
+private DataManager dataManager;
 
-@Override
-public void init(Map<String, Object> params) {
-    multiUploadField.addQueueUploadCompleteListener(() -> {
-        for (Map.Entry<UUID, String> entry : multiUploadField.getUploadsMap().entrySet()) {
+@Subscribe
+protected void onInit(InitEvent event) {
+
+    multiUploadField.addQueueUploadCompleteListener(queueUploadCompleteEvent -> { <2>
+        for (Map.Entry<UUID, String> entry : multiUploadField.getUploadsMap().entrySet()) { <3>
             UUID fileId = entry.getKey();
             String fileName = entry.getValue();
-            FileDescriptor fd = fileUploadingAPI.getFileDescriptor(fileId, fileName);
-            // save file to FileStorage
+            FileDescriptor fd = fileUploadingAPI.getFileDescriptor(fileId, fileName); <4>
             try {
-                fileUploadingAPI.putFileIntoStorage(fileId, fd);
+                fileUploadingAPI.putFileIntoStorage(fileId, fd); <5>
             } catch (FileStorageException e) {
                 throw new RuntimeException("Error saving file to FileStorage", e);
             }
-            // save file descriptor to database
-            dataSupplier.commit(fd);
+            dataManager.commit(fd); <6>
         }
-        showNotification("Uploaded files: " + multiUploadField.getUploadsMap().values(), NotificationType.HUMANIZED);
-        multiUploadField.clearUploads();
+        notifications.create()
+                .withCaption("Uploaded files: " + multiUploadField.getUploadsMap().values())
+                .show();
+        multiUploadField.clearUploads(); <7>
     });
 
-    multiUploadField.addFileUploadErrorListener(event ->
-            showNotification("File upload error", NotificationType.HUMANIZED));
+    multiUploadField.addFileUploadErrorListener(queueFileUploadErrorEvent -> {
+        notifications.create()
+                .withCaption("File upload error")
+                .show();
+    });
 }
