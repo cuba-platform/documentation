@@ -1,7 +1,7 @@
 @Inject
 protected PickerField colourField;
 
-@Override
-public void init(Map<String, Object> params) {
-    colourField.addOpenAction();
+@Subscribe
+protected void onInit(InitEvent event) {
+    colourField.addAction(actions.create(OpenAction.class));
 }
