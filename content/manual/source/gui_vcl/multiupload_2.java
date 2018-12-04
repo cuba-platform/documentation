@@ -8,7 +8,7 @@ private Notifications notifications;
 private DataManager dataManager;
 
 @Subscribe
-protected void onInit(InitEvent event) {
+protected void onInit(InitEvent event) { <1>
 
     multiUploadField.addQueueUploadCompleteListener(queueUploadCompleteEvent -> { <2>
         for (Map.Entry<UUID, String> entry : multiUploadField.getUploadsMap().entrySet()) { <3>
