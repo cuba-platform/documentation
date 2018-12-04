@@ -1,8 +1,8 @@
 @Inject
-protected LookupField numberOfSeatsField;
+protected LookupField<Integer> numberOfSeatsField;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+public void onInit(InitEvent event) {
     List<Integer> list = new ArrayList<>();
     list.add(2);
     list.add(4);

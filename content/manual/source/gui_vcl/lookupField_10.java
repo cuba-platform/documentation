@@ -1,5 +1,5 @@
-lookupField.setOptionsStyleProvider((field, item) -> {
-    User user = (User) item;
+lookupField.setOptionStyleProvider(entity -> {
+    User user = (User) entity;
     switch (user.getGroup().getName()) {
         case "Company":
             return "company";
