@@ -1,0 +1,41 @@
+:sourcesdir: ../../../../../../source
+
+[[gui_data_comp_dep]]
+====== Dependencies Between Data Components
+
+TODO
+////
+Sometimes you need to load and display data which depends on other data in the same screen. For example, on the screenshot below the left table displays the list of orders and the right one displays the list of lines of the selected order. The right list is refreshed each time the selected item in the left list changes.
+
+.Dependent Tables
+image::gui_data/dep_data_comp.png[align="center"]
+
+In this example, the `Order` entity contains the `orderLines` attribute which is a one-to-many collection. So the simplest way to implement the screen is to load the list of orders with a view containing the `orderLines` attribute and use a <<gui_property_containers,property container>> to hold the list of dependent lines. Then bind the left table to the master container and the right table to the property container.
+
+But this approach has the following performance implication: you will load lines for all orders from the left table, even though you display the order lines only for a single order at a time. And the longer the list of orders is, the more unneeded data is loaded, because there is a little chance that the user will go through all orders to see their lines. This is why we recommend using property containers and wide views only when loading a single master item, for example in an order editor screen.
+
+Also, the master entity may have no direct property pointing to the dependent entity. In this case, the above approach with property container would not work at all.
+
+The common approach to organize relations between data in a screen is to use queries with parameters. The dependent loader contains a query with a parameter which links data to the master, and when the current item in the master container changes, you set the parameter and trigger the dependent loader.
+
+Below is an example of the screen which has two dependent container/loader pairs and the tables bound to them.
+
+[source, xml]
+----
+include::{sourcesdir}/gui/data_comp/data_comp_dep_1.xml[]
+----
+
+<1> Master container and loader.
+<2> Dependent container and loader.
+<3> Master table.
+<4> Dependent table.
+
+[source, java]
+----
+include::{sourcesdir}/gui/data_comp/data_comp_dep_1.java[]
+----
+
+<1> The screen controller class has no `@LoadDataBeforeShow` annotation, so the loaders will not be triggered automatically.
+<2> The master loader is triggered in the `BeforeShowEvent` handler.
+<3> In the `ItemChangeEvent` handler of the master container, a parameter is set to the dependent loader and it is triggered.
+////

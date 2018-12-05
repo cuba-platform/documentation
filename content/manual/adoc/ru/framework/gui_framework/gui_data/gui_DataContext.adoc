@@ -1,0 +1,65 @@
+:sourcesdir: ../../../../../source
+
+[[gui_DataContext]]
+===== DataContext
+
+TODO
+
+////
+`DataContext` is an interface for tracking changes in entities loaded to the client tier. Tracked entities are marked as "dirty" on any modification of their attributes, and `DataContext` saves dirty entities to the middle tier when its `commit()` method is invoked.
+
+Within `DataContext`, an entity with the given identifier is represented by a single object instance, no matter where and how many times it is used in object graphs.
+
+In order to be tracked, an entity must be put into `DataContext` using its `merge()` method.
+
+[WARNING]
+====
+The main rule of using the `merge()` method is to continue working with the returned instance and forgetting about the passed one. It follows from the fact that the context could already contain an instance with the same identifier, and in this case that instance would be returned. This principle allows the context to always have only one instance of an entity with a particular identifier.
+====
+
+Example of merging an entity into `DataContext`:
+
+[source, java]
+----
+include::{sourcesdir}/gui/data_context/dataContext_1.java[]
+----
+
+A single instance of `DataContext` exists for a given <<gui_screens,screen>> and all its nested fragments. It is created if the `<data>` element exists in the screen XML descriptor.
+
+The `<data>` element can have `readOnly="true"` attribute, in that case a special "no-op" implementation is used which actually doesn't track entities and hence doesn't affect performance. By default, entity browsers scaffolded by Studio have the read-only data context, so if you need to track changes and commit dirty entities in a browser, remove the `readOnly="true"` XML attribute.
+
+[[parent_data_context]]
+Parent DataContext::
++
+--
+`DataContext` instances can form parent-child relationships. If a `DataContext` instance has parent context, it commits changed entities to the parent instead of saving them to the middle tier. This feature enables editing <<composition_recipe,compositions>>, when detail entities are saved only together with the master entity. If an entity attribute is annotated with <<composition_annotation,@Composition>>, the framework automatically sets parent context in the attribute editor screen, so the changed attribute entity will be saved to the data context of the master entity.
+
+You can easily provide the same behavior for any entities and screens.
+
+If you open an edit screen which should commit data to the current screen's data context, use `withParentDataContext()` method of the builder:
+
+[source, java]
+----
+include::{sourcesdir}/gui/data_context/dataContext_2.java[]
+----
+
+If you open a simple screen using the `Screens` bean, provide a setter method accepting the parent data context:
+
+[source, java]
+----
+include::{sourcesdir}/gui/data_context/dataContext_3.java[]
+----
+
+And use it after creating the screen:
+
+[source, java]
+----
+include::{sourcesdir}/gui/data_context/dataContext_4.java[]
+----
+
+[WARNING]
+====
+Make sure the parent data context is not defined with `readOnly="true"` attribute. Otherwise you will get an exception when try to use it as a parent for another context.
+====
+--
+////
