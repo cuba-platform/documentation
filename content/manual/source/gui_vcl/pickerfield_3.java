@@ -1,7 +1,7 @@
 @Inject
-protected PickerField colourField;
+protected PickerField<Color> colorField;
 
 @Subscribe
 protected void onInit(InitEvent event) {
-    colourField.addAction(actions.create(OpenAction.class));
+    colorField.addAction(actions.create(OpenAction.class));
 }

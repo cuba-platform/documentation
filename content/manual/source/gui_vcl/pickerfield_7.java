@@ -1,22 +1,11 @@
 @Inject
-protected PickerField colourField;
+private PickerField<Customer> pickerField;
 
-@Override
-public void init(Map<String, Object> params) {
-    colourField.addAction(new AbstractAction("show") {
-        @Override
-        public void actionPerform(Component component) {
-            showColour(colourField.getValue());
-        }
-
-        @Override
-        public String getCaption() {
-            return "";
-        }
-
-        @Override
-        public String getIcon() {
-            return "icons/show.png";
-        }
-    });
+@Subscribe("pickerField.show")
+protected void onPickerFieldShowActionPerformed(Action.ActionPerformedEvent event) {
+    CustomerEdit customerEdit = editorScreens.builder(pickerField)
+            .withScreen(CustomerEdit.class)
+            .build();
+    customerEdit.setDiscount(true);
+    customerEdit.show();
 }
