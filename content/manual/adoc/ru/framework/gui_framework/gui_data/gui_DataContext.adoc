@@ -3,54 +3,51 @@
 [[gui_DataContext]]
 ===== DataContext
 
-TODO
+Интерфейс `DataContext` позволяет отслеживать изменения в сущностях, загружаемых на клиентский уровень. Отслеживаемые сущности помечаются как "грязные" при любом изменении их атрибутов, и `DataContext` сохраняет грязные экземпляры на Middleware при вызове его метода `commit()`.
 
-////
-`DataContext` is an interface for tracking changes in entities loaded to the client tier. Tracked entities are marked as "dirty" on any modification of their attributes, and `DataContext` saves dirty entities to the middle tier when its `commit()` method is invoked.
+Внутри `DataContext` сущность с некоторым идентификатором будет представлена как единственный объект экземпляра, вне зависимости от того, где и сколько раз она использована в графах других объектов.
 
-Within `DataContext`, an entity with the given identifier is represented by a single object instance, no matter where and how many times it is used in object graphs.
-
-In order to be tracked, an entity must be put into `DataContext` using its `merge()` method.
+Чтобы сущность отслеживалась, её необходимо поместить в `DataContext` с помощью метода `merge()`.
 
 [WARNING]
 ====
-The main rule of using the `merge()` method is to continue working with the returned instance and forgetting about the passed one. It follows from the fact that the context could already contain an instance with the same identifier, and in this case that instance would be returned. This principle allows the context to always have only one instance of an entity with a particular identifier.
+Главный принцип использования метода `merge()` заключается в том, чтобы продолжать работать с возвращённым экземпляром, забывая про переданный. Это следствие того, что в контекст ранее уже мог быть помещён экземпляр с тем же идентификатором, и в таком случае именно этот экземпляр будет возвращён. Данный принцип позволяет всегда иметь в контексте не более одного экземпляра сущности с конкретным идентификатором.
 ====
 
-Example of merging an entity into `DataContext`:
+Пример помещения сущности в `DataContext`:
 
 [source, java]
 ----
 include::{sourcesdir}/gui/data_context/dataContext_1.java[]
 ----
 
-A single instance of `DataContext` exists for a given <<gui_screens,screen>> and all its nested fragments. It is created if the `<data>` element exists in the screen XML descriptor.
+Для одного <<gui_screens,экрана>> и всех его вложенных фрагментов может существовать только один экземпляр `DataContext`. Он создаётся автоматически, если в XML-дескрипторе экрана существует элемент `<data>`.
 
-The `<data>` element can have `readOnly="true"` attribute, in that case a special "no-op" implementation is used which actually doesn't track entities and hence doesn't affect performance. By default, entity browsers scaffolded by Studio have the read-only data context, so if you need to track changes and commit dirty entities in a browser, remove the `readOnly="true"` XML attribute.
+Элемент `<data>` может содержать атрибут `readOnly="true"`, в этом случае будет использована специальная "no-op"-реализация, в которой не будут отслеживаться изменения в сущностях и, следовательно, улучшится быстродействие экрана. Экраны просмотра списков, автоматически создаваемые в Studio, по умолчанию имеют read-only data context, поэтому если вам нужно отслеживать изменения и сохранять грязные сущности в браузере, удалите XML-атрибут `readOnly="true"`.
 
 [[parent_data_context]]
-Parent DataContext::
+Родительский DataContext::
 +
 --
-`DataContext` instances can form parent-child relationships. If a `DataContext` instance has parent context, it commits changed entities to the parent instead of saving them to the middle tier. This feature enables editing <<composition_recipe,compositions>>, when detail entities are saved only together with the master entity. If an entity attribute is annotated with <<composition_annotation,@Composition>>, the framework automatically sets parent context in the attribute editor screen, so the changed attribute entity will be saved to the data context of the master entity.
+Сущности `DataContext` могут образовывать отношения предок-потомок. Если у экземпляра `DataContext` есть родительский контекст, он будет сохранять измененные сущности в своего предка вместо того. чтобы сразу отправлять их на Middleware. Эта особенности позволяет редактировать <<composition_recipe,композитные сущности>>, где дочерние сущности должны сохраняться только вместе с родительской. Если атрибут сущности снабжён аннотацией <<composition_annotation,@Composition>>, платформа автоматически установит родительский контекст для экрана редактирования этого атрибута, чтобы изменённая сущность атрибута могла быть сохранена только вместе с основной сущностью.
 
-You can easily provide the same behavior for any entities and screens.
+Подобное поведение можно легко настроить вручную для любой сущности или экрана.
 
-If you open an edit screen which should commit data to the current screen's data context, use `withParentDataContext()` method of the builder:
+Если вы программно открываете экран редактирования сущности, который должен сохранять изменения в data context текущего экрана, используйте метод `withParentDataContext()` builder'а:
 
 [source, java]
 ----
 include::{sourcesdir}/gui/data_context/dataContext_2.java[]
 ----
 
-If you open a simple screen using the `Screens` bean, provide a setter method accepting the parent data context:
+Если вы открываете простой экран с помощью бина `Screens`, определите в нём сеттер, принимающий data context родительского экрана:
 
 [source, java]
 ----
 include::{sourcesdir}/gui/data_context/dataContext_3.java[]
 ----
 
-And use it after creating the screen:
+Этот метод вы сможете использовать при создании экрана:
 
 [source, java]
 ----
@@ -59,7 +56,6 @@ include::{sourcesdir}/gui/data_context/dataContext_4.java[]
 
 [WARNING]
 ====
-Make sure the parent data context is not defined with `readOnly="true"` attribute. Otherwise you will get an exception when try to use it as a parent for another context.
+Убедитесь, что для родительского data context не задан атрибут `readOnly="true"`. В противном случае при попытке использовать его как предка другого контекста будет выброшено исключение.
 ====
 --
-////

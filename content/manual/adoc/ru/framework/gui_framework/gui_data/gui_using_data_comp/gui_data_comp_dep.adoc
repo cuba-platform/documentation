@@ -1,41 +1,38 @@
 :sourcesdir: ../../../../../../source
 
 [[gui_data_comp_dep]]
-====== Dependencies Between Data Components
+====== Зависимости между компонентами данных
 
-TODO
-////
-Sometimes you need to load and display data which depends on other data in the same screen. For example, on the screenshot below the left table displays the list of orders and the right one displays the list of lines of the selected order. The right list is refreshed each time the selected item in the left list changes.
+Иногда требуется загружать и отображать данные, которые зависят от других данных в том же экране. К примеру, на скриншоте ниже таблица слева отображает список заказов, а таблица справа - список строк выбранного заказа. Список справа обновляется каждый раз, когда меняется выбранный заказ в таблице слева.
 
-.Dependent Tables
+.Зависимые таблицы
 image::gui_data/dep_data_comp.png[align="center"]
 
-In this example, the `Order` entity contains the `orderLines` attribute which is a one-to-many collection. So the simplest way to implement the screen is to load the list of orders with a view containing the `orderLines` attribute and use a <<gui_property_containers,property container>> to hold the list of dependent lines. Then bind the left table to the master container and the right table to the property container.
+В нашем примере сущность `Order` содержит атрибут `orderLines`, который является коллекцией с отношением one-to-many. Самый простой способ реализации экрана - загружать список заказов с представлением, содержащим атрибут `orderLines`, и использовать <<gui_property_containers,property container>> для работы со списком зависимых строк. Затем мы связываем левую таблицу с родительским контейнером, а правую - с контейнером свойства.
 
-But this approach has the following performance implication: you will load lines for all orders from the left table, even though you display the order lines only for a single order at a time. And the longer the list of orders is, the more unneeded data is loaded, because there is a little chance that the user will go through all orders to see their lines. This is why we recommend using property containers and wide views only when loading a single master item, for example in an order editor screen.
+Однако этот подход может иметь последствия для производительности, ведь мы загружаем все строки для всех заказов из левой таблицы, несмотря на то, что в один момент времени отображаются строки только для одного выбранного заказа. При этом чем длиннее список заказов, тем больше ненужных данных будет загружено, и вероятность того, что пользователь захочет просмотреть все строки, очень мала. Поэтому мы рекомендуем использовать контейнеры свойств и расширенные представления только тогда, когда нужно загрузить единственный экземпляр родительской сущности: например, в экране редактирования одного заказа.
 
-Also, the master entity may have no direct property pointing to the dependent entity. In this case, the above approach with property container would not work at all.
+Кроме того, родительская сущность может не иметь прямого атрибута, указывающего на зависимую сущности. В этом случае подход с использованием контейнера свойств совсем не подходит.
 
-The common approach to organize relations between data in a screen is to use queries with parameters. The dependent loader contains a query with a parameter which links data to the master, and when the current item in the master container changes, you set the parameter and trigger the dependent loader.
+Наилучшей практикой организации отношений между данными в экране является использование запросов с параметрами. Зависимый загрузчик содержит запрос с параметром, который связывает данные с родительским контейнером, и когда меняется текущий экземпляр в родительском контейнере, мы передаём его в качестве параметра и вызываем зависимый загрузчик.
 
-Below is an example of the screen which has two dependent container/loader pairs and the tables bound to them.
+Рассмотрим пример экрана, в котором есть две зависимых пары контейнер/загрузчик и привязанные к ним таблицы для отображения данных.
 
 [source, xml]
 ----
 include::{sourcesdir}/gui/data_comp/data_comp_dep_1.xml[]
 ----
 
-<1> Master container and loader.
-<2> Dependent container and loader.
-<3> Master table.
-<4> Dependent table.
+<1> Родительский контейнер и загрузчик.
+<2> Дочерний контейнер и загрузчик.
+<3> Основная таблица.
+<4> Зависимая таблица.
 
 [source, java]
 ----
 include::{sourcesdir}/gui/data_comp/data_comp_dep_1.java[]
 ----
 
-<1> The screen controller class has no `@LoadDataBeforeShow` annotation, so the loaders will not be triggered automatically.
-<2> The master loader is triggered in the `BeforeShowEvent` handler.
-<3> In the `ItemChangeEvent` handler of the master container, a parameter is set to the dependent loader and it is triggered.
-////
+<1> Класс контроллера экрана не содержит аннотации `@LoadDataBeforeShow`, поэтому загрузчики не будут вызваны автоматически.
+<2> Родительский загрузчик вызывается обработчиком `BeforeShowEvent`.
+<3> В обработчике родительского контейнера `ItemChangeEvent` передаём параметр в зависимый загрузчик и вызываем его.

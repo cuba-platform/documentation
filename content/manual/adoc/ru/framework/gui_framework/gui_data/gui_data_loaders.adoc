@@ -1,54 +1,50 @@
 :sourcesdir: ../../../../../source
 
 [[gui_data_loaders]]
-===== Data Loaders
+===== Загрузчики данных
 
-TODO
+Загрузчики, или loaders, предназначены для загрузки данных со среднего слоя в <<gui_data_containers,контейнеры данных>>.
 
-////
-Loaders are designed to load data from the middle tier to <<gui_data_containers,containers>>.
+Интерфейсы загрузчиков немного отличаются в зависимости от типа контейнера, с которым они работают:
 
-There are slightly different interfaces of loaders depending on containers they work with:
+* `InstanceLoader` загружает единственный экземпляр сущности в контейнер `InstanceContainer` по идентификатору сущности или с помощью JPQL-запроса.
 
-* `InstanceLoader` loads a single instance to `InstanceContainer` by entity id or JPQL query.
+* `CollectionLoader` загружает коллекцию сущностей в `CollectionContainer` с помощью JPQL-запроса. Для этого загрузчика можно настроить пагинацию, сортировку и другие дополнительные параметры.
 
-* `CollectionLoader` loads a collection of entities to `CollectionContainer` by a JPQL query. You can specify paging, sorting and other optional parameters.
+* `KeyValueCollectionLoader` загружает коллекцию экземпляров `KeyValueEntity` в контейнер `KeyValueCollectionContainer`. Кроме параметров, доступных для `CollectionLoader`, вы также можете указать имя <<data_store,хранилища данных>>.
 
-* `KeyValueCollectionLoader` loads a collection of `KeyValueEntity` instances to `KeyValueCollectionContainer`. In addition to `CollectionLoader` parameters, you can specify a <<data_store,data store>> name.
+В XML-дескрипторах экрана загрузчики объявляются с помощью элемента `<loader>`, тип загрузчика будет определяться типом контейнера, в который он вложен.
 
-In screen XML descriptors, all loaders are defined by the same `<loader>` element and the type of a loader is determined by what container it is enclosed in.
-
-Loaders are optional because you can just load data using `DataManager` or your custom service and set directly to containers, but they simplify this process in declaratively defined screens, especially with the <<gui_Filter,Filter>> component. Usually, a collection loader obtains a JPQL query from the screen XML descriptor and query parameters from the filter component, creates `LoadContext` and invokes `DataManager` to load entities. So the typical XML descriptor looks like this:
+Использование загрузчиков необязательно, так как вы можете загружать данные с помощью `DataManager` или собственного сервиса и самостоятельно добавлять их в контейнеры, однако загрузчики облегчают этот процесс для экранов, описываемых декларативно, особенно в случае компонента <<gui_Filter,Filter>>. Обычно загрузчик коллекций получает запрос JPQL из XML-дескриптора экрана, а параметры запроса - из компонента `Filter`, затем создаёт объект `LoadContext` и вызывает `DataManager` для загрузки сущностей. В итоге, XML-дескриптор выглядит подобным образом:
 
 [source, xml]
 ----
 include::{sourcesdir}/gui/data_loaders/loader_1.xml[]
 ----
 
-Attributes of the `loader` XML element allow you to define optional parameters like `cacheable`, `softDeletion`, etc.
+Дополнительные параметры для XML-элемента `loader` можно указать с помощью атрибутов `cacheable`, `softDeletion` и т.д.
 
-In an entity editor screen, the loader XML element is usually empty, because the instance loader requires an entity identifier which is specified programmatically by the `StandardEditor` base class:
+В экране редактора сущности XML-элемент `loader` обычно пуст, так как для загрузки единственного экземпляра сущности требуется её идентификатор, который устанавливается программно классом `StandardEditor`:
 
 [source, xml]
 ----
 include::{sourcesdir}/gui/data_loaders/loader_2.xml[]
 ----
 
-Loaders can delegate actual loading to a function which can be provided using the `setLoadDelegate()` method or declaratively using the `@Install` annotation in the screen controller, for example:
+Загрузчики могут делегировать непосредственно загрузку данных отдельной функции, переданной с помощью метода `setLoadDelegate()` либо декларативно с помощью аннотации `@Install` в контроллере экрана, например:
 
 [source, java]
 ----
 include::{sourcesdir}/gui/data_loaders/loader_3.java[]
 ----
 
-In the example above, the `customersDlLoadDelegate()` method will be used by the `customersDl` loader to load the list of `Customer` entities. The method accepts `LoadContext` which will be created by the loader based on its parameters: query, filter (if any), etc. In the example, the loading is done via `DataManager` which is effectively the same as the standard loader implementation, but you can use a custom service or perform any post-processing of the loaded entities.
+В данном примере метод `customersDlLoadDelegate()` используется загрузчиком `customersDl` для получения списка экземпляров сущности `Customer`. Метод принимает `LoadContext`, который будет создан загрузчиком на основе его параметров: запрос, фильтр (при наличии) и т.д. В этом примере загрузка осуществляется через интерфейс `DataManager`, который функционально повторяет стандартную реализацию загрузчика, однако вы можете использовать собственный сервис или же выполнить пост-обработку загруженных сущностей.
 
-A loader can also be created and configured programmatically, for example:
+Загрузчики также можно создавать и настраивать программно, к примеру:
 
 [source, java]
 ----
 include::{sourcesdir}/gui/data_loaders/loader_4.java[]
 ----
 
-When <<gui_DataContext,DataContext>> is set for a loader (which is always the case when the loader is defined in XML descriptor), all loaded entities are automatically merged into the data context.
-////
+Если для загрузчика установлен <<gui_DataContext,DataContext>> (как всегда бывает в случае, если загрузчик задан в XML-дескрипторе), все загруженные сущности будут автоматически помещены в data context.
