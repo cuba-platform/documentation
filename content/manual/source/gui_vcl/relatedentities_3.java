@@ -1,22 +1,25 @@
 import com.company.sales.entity.Order;
-import com.haulmont.cuba.gui.components.AbstractLookup;
-import com.haulmont.cuba.gui.components.Table;
+import com.haulmont.cuba.gui.components.Button;
+import com.haulmont.cuba.gui.components.GroupTable;
 import com.haulmont.cuba.gui.relatedentities.RelatedEntitiesAPI;
+import com.haulmont.cuba.gui.screen.*;
 
 import javax.inject.Inject;
 
-
-public class OrderBrowse extends AbstractLookup {
+@UiController("sales_Order.browse")
+@UiDescriptor("order-browse.xml")
+@LookupComponent("ordersTable")
+@LoadDataBeforeShow
+public class OrderBrowse extends StandardLookup<Order> {
 
     @Inject
     private RelatedEntitiesAPI relatedEntitiesAPI;
-
     @Inject
-    private Table<Order> ordersTable;
+    private GroupTable<Order> ordersTable;
 
-
-    public void onRelatedClick() {
-        relatedEntitiesAPI.openRelatedScreen(ordersTable.getSelected(),
-                Order.class, "customer");
+    @Subscribe("related")
+    protected void onRelatedClick(Button.ClickEvent event) {
+        relatedEntitiesAPI.openRelatedScreen(ordersTable.getSelected(), Order.class, "customer");
     }
+
 }
