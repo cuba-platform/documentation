@@ -1,9 +1,14 @@
 @Inject
 private PopupView popupView;
+@Inject
+private Notifications notifications;
 
-@Override
-public void init(Map<String, Object> params) {
-    popupView.addPopupVisibilityListener(event ->
-        showNotification(event.isPopupVisible() ? "The popup is visible" : "The popup is hidden",
-            NotificationType.HUMANIZED));
+@Subscribe
+protected void onInit(InitEvent event) {
+    popupView.addPopupVisibilityListener(popupVisibilityEvent ->
+            notifications.create()
+                    .withCaption(popupVisibilityEvent.isPopupVisible() ? "The popup is visible" : "The popup is hidden")
+                    .withType(Notifications.NotificationType.HUMANIZED)
+                    .show()
+    );
 }

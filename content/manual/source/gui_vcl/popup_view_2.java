@@ -1,7 +1,7 @@
 @Inject
 private PopupView popupView;
 
-@Override
-public void init(Map<String, Object> params) {
-    popupView.setPopupVisible(true);
+@Subscribe
+protected void onInit(InitEvent event) {
+    popupView.setMinimizedValue("Hello world!");
 }
