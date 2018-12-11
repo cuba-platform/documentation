@@ -1,16 +1,12 @@
 @Inject
-private Tree<Region> tree;
+private Tree<Department> tree;
 
-@Override
-public void init(Map<String, Object> params) {
-    tree.setIconProvider(new ListComponent.IconProvider<Region>() {
-        @Nullable
-        @Override
-        public String getItemIcon(Region entity) {
-            if (entity.getParent() == null) {
-                return "icons/root.png";
-            }
-            return "icons/leaf.png";
+@Subscribe
+protected void onInit(InitEvent event) {
+    tree.setIconProvider(department -> {
+        if (department.getParentDept() == null) {
+            return "icons/root.png";
         }
+        return "icons/leaf.png";
     });
 }
