@@ -30,12 +30,12 @@ An example of component definition in an XML-descriptor of a screen:
 include::{sourcesdir}/gui_vcl/table_1.xml[]
 ---- 
 
-In the example the `dsContext` element defines <<datasources,collectionDatasource>>, which selects `Order` entities using <<jpql,JPQL>> query. The `rows` element defines the data source, while `columns` element defines which entity attributes are used as table columns.
+In the example, the `data` element defines the <<gui_collection_container,collection container>>, which selects `Order` entities using <<jpql,JPQL>> query. The `table` element defines the data container, while `columns` element defines which entity attributes are used as table columns.
 
 `table` elements:
 
 [[gui_Table_rows]]
-* `rows` – a required element; its `datasource` attribute defines the <<datasources,data source>> to be used by the table.
+* `rows` – a required element if the <<gui_attr_datasource,datasource>> attribute is used for data binding.
 +
 Each row can have an icon in an additional column on the left. Create an implementation of the `ListComponent.IconProvider` interface in the screen controller and set it for the table:
 +
@@ -51,7 +51,7 @@ Each column is described in a nested `column` element with the following attribu
 +
 --
 [[gui_Table_column_id]]
-** `id` − a mandatory attribute, contains the name of an entity attribute displayed in the column. Can be either an attribute of the entity from the data source or a linked entity – object graph traversal is indicated with a dot. For example: 
+** `id` − a mandatory attribute, contains the name of an entity attribute displayed in the column. Can be either an attribute of the entity from the data container or a linked entity – object graph traversal is indicated with a dot. For example:
 +
 [source, xml]
 ----
@@ -145,12 +145,12 @@ include::{sourcesdir}/gui_vcl/tableFormatter_1.xml[]
 --
 
 [[gui_Table_rowsCount]]
-* `rowsCount` − an optional element adding the `RowsCount` component for the table; this component enables loading the table data in pages. Page size can be defined by limiting the number of records in the data source using `CollectionDatasource.setMaxResults()` method. Typically, this is performed by a <<gui_Filter,Filter>> component linked to the table's data source. However, if there is no generic filter, this method can be called directly from the screen controller.
+* `rowsCount` − an optional element adding the `RowsCount` component for the table; this component enables loading the table data in pages. Page size can be defined by limiting the number of records in the data container using the <<gui_data_loaders,loader's>> `setMaxResults()` method. Typically, this is performed by a <<gui_Filter,Filter>> component linked to the table's data loader. However, if there is no generic filter, this method can be called directly from the screen controller.
 +
-`RowsCount` component can also show the total number of records returned by the current query from the datasource without extracting the records themselves. It invokes `AbstractCollectionDatasource.getCount()` when user clicks the *?* icon, which results in performing a database query with the same conditions as the current query, but using a `++COUNT(*)++` aggregate function instead. The number retrieved is displayed instead of the *?* icon.
+`RowsCount` component can also show the total number of records returned by the current query from the container without extracting the records themselves. It invokes `com.haulmont.cuba.core.global.DataManager#getCount` when user clicks the *?* icon, which results in performing a database query with the same conditions as the current query, but using a `++COUNT(*)++` aggregate function instead. The number retrieved is displayed instead of the *?* icon.
 
 [[gui_Table_actions]]
-* `actions` − an optional element describing the <<gui_Action,actions>>, related to the table. In addition to custom arbitrary actions, the element supports the following <<standard_actions,standard actions>>, defined in `ListActionType` enum: `create`, `edit`, `remove`, `refresh`, `add`, `exclude`, `excel`.
+* `actions` − an optional element describing the <<gui_Action,actions>>, related to the table. In addition to custom arbitrary actions, the element supports the following <<std_list_actions,standard actions>>, defined in the `com.haulmont.cuba.gui.actions.list` package: `create`, `edit`, `remove`, `refresh`, `add`, `exclude`, `excel`.
 
 [[gui_Table_buttonsPanel]]
 * `buttonsPanel` – an optional element, which adds a <<gui_ButtonsPanel,ButtonsPanel>> container to show action buttons above the table.
@@ -176,7 +176,7 @@ In the latter case, the database sorting will be performed by attributes defined
 +
 If the column refers to a non-persistent entity attribute, the database sorting will be performed by attributes defined in the `related()` parameter of the `@MetaProperty` annotation. If no related attributes are specified, the sorting will be performed in memory only within the current page.
 +
-If the table is connected to a nested <<datasources,datasource>> that contains a collection of related entities, the collection attribute must be of ordered type (`List` or `LinkedHashSet`) for table to be sortable. If the attribute is of type `Set`, the `sortable` attribute has no effect and the table cannot be sorted by users.
+If the table is connected to a nested <<gui_property_containers,property container>> that contains a collection of related entities, the collection attribute must be of ordered type (`List` or `LinkedHashSet`) for table to be sortable. If the attribute is of type `Set`, the `sortable` attribute has no effect and the table cannot be sorted by users.
 
 [[gui_Table_presentations]]
 * `presentations` attribute controls the mechanism of <<gui_presentations,presentations>>. By default, the value is `false`. If the attribute value is `true`, a corresponding icon is added to the top right corner of the table image:gui_presentation.png[]. The mechanism of presentations is implemented for the *Web Client* only.
@@ -257,7 +257,7 @@ The component type for each editable column is selected automatically based on t
 +
 For a `Date` type editable column, you can additionally define `dateFormat` or `resolution` attributes similar to the ones described for the <<gui_DateField,DateField>>.
 +
-<<gui_attr_optionsDatasource,optionsDatasource>> and <<gui_attr_captionProperty,captionProperty>> attributes can be additionally defined for an editable column showing a linked entity. If `optionsDatasource` is set, the application will use <<gui_LookupField,LookupField>> instead of <<gui_PickerField,PickerField>>.
+<<gui_attr_optionsContainer,optionsContainer>> and <<gui_attr_captionProperty,captionProperty>> attributes can be additionally defined for an editable column showing a linked entity. If `optionsContainer` is set, the application will use <<gui_LookupField,LookupField>> instead of <<gui_PickerField,PickerField>>.
 +
 Custom configuration (including editing) of a cell can be performed using `Table.addGeneratedColumn()` method – see below.
 
@@ -271,6 +271,7 @@ include::{sourcesdir}/gui_vcl/table_2.xml[]
 ----
 
 When setting a style programmatically, select one of the `HaloTheme` class constants with the `TABLE_` prefix:
+
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/table_3.java[]
@@ -311,28 +312,33 @@ Methods of the `Table` interface:
 [[gui_Table_addGeneratedColumn]]
 * `addGeneratedColumn()` method allows you to define custom representation of data in a column. It takes two parameters: identifier of the column and an implementation of the `Table.ColumnGenerator` interface. Identifier can match one of the identifiers set for table columns in XML-descriptor – in this case the new column is inserted instead of the one defined in XML. If the identifier does not match any of the columns, a new column is added to the right.
 +
+--
 [[gui_Table_generateCell]]
 `generateCell()` method of the `Table.ColumnGenerator` interface is invoked for each row of the table. The method receives an instance of the entity displayed in the corresponding row. `generateCell()` method should return a visual component which will be displayed in the cell. 
-+
+
 Example of using the component: 
-+
+
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/tableColumnGenerator_1.java[]
 ---- 
-+
-In the example above, all cells within the `colour` column in the table show the <<gui_LookupPickerField,LookupPickerField>> component. The component should save its value into the `colour` attribute of the entity which instance is displayed in the corresponding row. For this purpose `getItemDatasource()` method is used to get the datasource for the current entity instance from the table and pass it to the `LookupPickerField` component.
-+
+
+In the example above, all cells within the `color` column in the table show the <<gui_LookupPickerField,LookupPickerField>> component. The component should save its value into the `color` attribute of the entity which instance is displayed in the corresponding row.
+////
+For this purpose, `getItemDatasource()` method is used to get the datasource for the current entity instance from the table and pass it to the `LookupPickerField` component.
+////
+
 If you want to display just dynamic text, use special class `Table.PlainTextCell` instead of the <<gui_Label,Label>> component. It will simplify rendering and make the table faster.
-+
+
 If `addGeneratedColumn()` method receives the identifier of a column which is not declared in XML-descriptor, the header for the new column to be set as follows: 
-+
+
 [source, java]
 ----
 carsTable.getColumn("colour").setCaption("Colour");
 ----
-+
+
 Consider also using a more declarative approach with the <<gui_Table_column_generator,generator>> XML attribute.
+--
 
 [[gui_Table_requestFocus]]
 * `requestFocus()` method allows you to set focus on the concrete editable field of a certain row. It takes two parameters: an entity instance which identifies the row and the column identifier. Example of requesting a focus:
@@ -427,6 +433,7 @@ Attributes of table::
 <<gui_Table_columnControlVisible,columnControlVisible>> -
 <<gui_Table_columnHeaderVisible,columnHeaderVisible>> -
 <<gui_Table_allowPopupMenu,contextMenuEnabled>> -
+<<gui_attr_dataContainer,dataContainer>> -
 <<gui_Table_editable,editable>> -
 <<gui_attr_enable,enable>> -
 <<gui_attr_expandRatio,box.expandRatio>> -

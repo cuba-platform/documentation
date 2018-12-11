@@ -1,4 +1,9 @@
+@Inject
+private Notifications notifications;
+
 public void linkedMethod(Entity item, String columnId) {
     Customer customer = (Customer) item;
-    showNotification(customer.getName());
+    notifications.create()
+            .withCaption(customer.getName())
+            .show();
 }

@@ -1,8 +1,8 @@
 @Inject
 private Table<Customer> table;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     table.setIconProvider(new ListComponent.IconProvider<Customer>() {
         @Nullable
         @Override

@@ -1,20 +1,22 @@
 @Inject
-protected Table carsTable;
-
+private GroupTable<Car> carsTable;
 @Inject
-protected UiComponents uiComponents;
+private CollectionContainer<Car> carsDc;
+@Inject
+private CollectionContainer<Color> colorsDc;
+@Inject
+private UiComponents uiComponents;
+@Inject
+private Actions actions;
 
-@Override
-public void init(Map<String, Object> params) {
-    carsTable.addGeneratedColumn("colour", new Table.ColumnGenerator() {
-        @Override
-        public Component generateCell(Entity entity) {
-            LookupPickerField field = uiComponents.create(LookupPickerField.NAME);
-            field.setDatasource(carsTable.getItemDatasource(entity), "colour");
-            field.setOptionsDatasource(coloursDs);
-            field.addLookupAction();
-            field.addOpenAction();
-            return field;
-        }
+@Subscribe
+protected void onInit(InitEvent event) {
+    carsTable.addGeneratedColumn("color", entity -> {
+        LookupPickerField<Color> field = uiComponents.create(LookupPickerField.NAME);
+        field.setValueSource(new ContainerValueSource<>(carsDc, "color"));
+        field.setOptions(new ContainerOptions<>(colorsDc));
+        field.addAction(actions.create(LookupAction.class));
+        field.addAction(actions.create(OpenAction.class));
+        return field;
     });
 }
