@@ -175,6 +175,21 @@ Interface: `ServerConfig`
 Used in the Middleware block.
 --
 
+[[cuba.checkPasswordOnClient]]
+cuba.checkPasswordOnClient::
++
+--
+When set to false (which is the default), `LoginPasswordLoginProvider` of the client block sends user's password as is to the middleware `AuthenticationService.login()` method. This is appropriate if the client and middleware blocks are co-located in the same JVM. For a distributed deployment when the client block is located on a different computer on the network, the connection between the client and middleware in this case should be encrypted using SSL.
+
+If set to true, `LoginPasswordLoginProvider` loads the `User` entity by the entered login and checks the password itself. If the password matches the loaded password hash, the provider performs login as a trusted client using the password specified in the <<cuba.trustedClientPassword,cuba.trustedClientPassword>> property. This mode saves you from setting up SSL connections between clients and middleware in trusted networks, and at the same time does not exposes user passwords to the network: only hashes are transmitted. However notice that trusted client password is still transmitted over the network, so the SSL-protected connection is still more secure.
+
+Default value: `false`
+
+Interface: `WebAuthConfig`, `PortalConfig`, `RestApiConfig`
+
+Used in the Web and Portal blocks.
+--
+
 [[cuba.cluster.enabled]]
 cuba.cluster.enabled::
 +
@@ -1189,6 +1204,17 @@ Interface: `GlobalConfig`
 Used in all standard <<app_tiers,blocks>>.
 --
 
+[[cuba.legacyPasswordEncryptionModule]]
+cuba.legacyPasswordEncryptionModule::
++
+--
+Same as <<cuba.passwordEncryptionModule,cuba.passwordEncryptionModule>> but defines the name of the bean used for user password hashing for users created before migration to the framework version 7 and having the `SEC_USER.PASSWORD_ENCRYPTION` field empty.
+
+Default value: `++cuba_Sha1EncryptionModule++`
+
+Used in all standard <<app_tiers,blocks>>.
+--
+
 [[cuba.localeSelectVisible]]
 cuba.localeSelectVisible::
 +
@@ -1300,9 +1326,11 @@ cuba.metadataConfig = +com/company/sample/metadata.xml
 cuba.passwordEncryptionModule::
 +
 --
-Defines the name of the bean used for user password hashing.
+Defines the name of the bean used for user password hashing. When creating new user or updating user's password, the value of this property is stored for the user in the `SEC_USER.PASSWORD_ENCRYPTION` database field.
 
-Default value: `++cuba_Sha1EncryptionModule++`
+See also <<cuba.legacyPasswordEncryptionModule,cuba.legacyPasswordEncryptionModule>>.
+
+Default value: `++cuba_BCryptEncryptionModule++`
 
 Used in all standard <<app_tiers,blocks>>.
 --

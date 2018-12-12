@@ -173,6 +173,21 @@ cuba.bruteForceProtection.maxLoginAttemptsNumber::
 Используется в блоке Middleware.
 --
 
+[[cuba.checkPasswordOnClient]]
+cuba.checkPasswordOnClient::
++
+--
+При установке в false (по умолчанию), `LoginPasswordLoginProvider` клиентских блоков пересылает пароль пользователя на средний слой в метод `AuthenticationService.login()` в исходном виде. Это нормально и не требует дополнительных мер если клиентский блок и middleware расположены в одной JVM. Для распределенного варианта развертывания, когда клиентский блок расположен на другом компьютере в сети, соединение с middleware в данном случае должно быть защищено с помощью SSL.
+
+При установке в true, `LoginPasswordLoginProvider` загружает экземпляр сущности `User` по введенному логину и проверяет пароль сам. Если пароль соответствует загруженному хэшу, производится логин с помощью пароля установленного в свойстве <<cuba.trustedClientPassword,cuba.trustedClientPassword>>. Данный режим избавляет от необходимости устанавливать SSL-соединение между клиентом и средним слоем в доверенной сети, так как пароли пользователей никогда не передаются по сети в открытом виде, передаются только хэши. Однако следует иметь в виду, что открытым передается пароль доверенного клиента, поэтому SSL-соединение все-таки обеспечивает лучшую защищенность.
+
+Значение по умолчанию: `false`
+
+Интерфейс: `WebAuthConfig`, `PortalConfig`, `RestApiConfig`
+
+Используется в блоках Web и Portal.
+--
+
 [[cuba.cluster.enabled]]
 cuba.cluster.enabled::
 +
@@ -1186,6 +1201,16 @@ cuba.numberIdCacheSize::
 Используется во всех стандартных <<app_tiers,блоках>>.
 --
 
+[[cuba.legacyPasswordEncryptionModule]]
+cuba.legacyPasswordEncryptionModule::
++
+--
+То же самое что и <<cuba.passwordEncryptionModule,cuba.passwordEncryptionModule>>, но задает имя бина, используемого для хэширования паролей для пользователей, созданных до миграции на версию 7 фреймворка и имеющих пустое поле `SEC_USER.PASSWORD_ENCRYPTION`.
+
+Значение по умолчанию: `++cuba_Sha1EncryptionModule++`
+
+Используется во всех стандартных <<app_tiers,блоках>>.
+--
 
 [[cuba.localeSelectVisible]]
 cuba.localeSelectVisible::
@@ -1298,9 +1323,11 @@ cuba.metadataConfig = +com/company/sample/metadata.xml
 cuba.passwordEncryptionModule::
 +
 --
-Задает имя бина, используемого для хэширования паролей пользователей.
+Задает имя бина, используемого для хэширования паролей пользователей. При создании нового пользователя и при смене пароля, значение данного свойства запоминается для данного пользователя в поле `SEC_USER.PASSWORD_ENCRYPTION` базы данных.
 
-Значение по умолчанию: `++cuba_Sha1EncryptionModule++`
+См. также <<cuba.legacyPasswordEncryptionModule,cuba.legacyPasswordEncryptionModule>>.
+
+Значение по умолчанию: `++cuba_BCryptEncryptionModule++`
 
 Используется во всех стандартных <<app_tiers,блоках>>.
 --
