@@ -1,13 +1,19 @@
 @Inject
 private CheckBox accessField;
+@Inject
+private Notifications notifications;
 
-@Override
-public void init(Map<String, Object> params) {
-    accessField.addValueChangeListener(event -> {
-        if (Boolean.TRUE.equals(event.getValue())) {
-            showNotification("set", NotificationType.HUMANIZED);
+@Subscribe
+protected void onInit(InitEvent event) {
+    accessField.addValueChangeListener(valueChangeEvent -> {
+        if (Boolean.TRUE.equals(valueChangeEvent.getValue())) {
+            notifications.create()
+                    .withCaption("set")
+                    .show();
         } else {
-            showNotification("not set", NotificationType.HUMANIZED);
+            notifications.create()
+                    .withCaption("not set")
+                    .show();
         }
     });
 }

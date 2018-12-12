@@ -1,6 +1,7 @@
 @Inject
 private Label dynamicLabel;
 
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     dynamicLabel.setValue("Some value");
 }

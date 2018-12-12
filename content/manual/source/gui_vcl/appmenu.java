@@ -1,12 +1,16 @@
 public class ExtAppMainWindow extends AppMainWindow {
 
-    @Override
-    public void init(Map<String, Object> params) {
-        super.init(params);
+    @Inject
+    private Notifications notifications;
 
+    @Subscribe
+    protected void onInit(InitEvent event) {
         AppMenu.MenuItem item = mainMenu.createMenuItem("shop", "Shop");
         AppMenu.MenuItem subItem = mainMenu.createMenuItem("customer", "Customers", null, menuItem -> {
-            showNotification("Customers menu item clicked", NotificationType.HUMANIZED);
+            notifications.create()
+                    .withCaption("Customers menu item clicked")
+                    .withType(Notifications.NotificationType.HUMANIZED)
+                    .show();
         });
         item.addChildItem(subItem);
         mainMenu.addMenuItem(item, 0);

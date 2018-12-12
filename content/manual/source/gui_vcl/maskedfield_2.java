@@ -1,6 +1,12 @@
 @Inject
 private MaskedField phoneNumberField;
+@Inject
+private Notifications notifications;
 
-public void showPhoneNumber(){
-    showNotification((String) phoneNumberField.getValue(), NotificationType.HUMANIZED);
+@Subscribe("showPhoneNumberBtn")
+protected void onShowPhoneNumberBtnClick(Button.ClickEvent event) {
+    notifications.create()
+            .withCaption((String) phoneNumberField.getValue())
+            .withType(Notifications.NotificationType.HUMANIZED)
+            .show();
 }

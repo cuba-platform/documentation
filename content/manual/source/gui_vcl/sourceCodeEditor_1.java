@@ -1,14 +1,18 @@
 @Inject
+protected DataGrid<User> usersGrid;
+@Inject
 private SourceCodeEditor suggesterCodeEditor;
 @Inject
-private CollectionDatasource<User, UUID> usersDs;
+private CollectionContainer<User> usersDc;
+@Inject
+private CollectionLoader<User> usersDl;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     suggesterCodeEditor.setSuggester((source, text, cursorPosition) -> {
         List<Suggestion> suggestions = new ArrayList<>();
-        usersDs.refresh();
-        for (User user : usersDs.getItems()) {
+        usersDl.load();
+        for (User user : usersDc.getItems()) {
             suggestions.add(new Suggestion(source, user.getLogin(), user.getName(), null, -1, -1));
         }
         return suggestions;

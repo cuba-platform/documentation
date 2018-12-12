@@ -1,6 +1,11 @@
 @Inject
 private PasswordField passwordField;
+@Inject
+private Notifications notifications;
 
-public void showPassword(){
-    showNotification((String) passwordField.getValue(), NotificationType.HUMANIZED);
+@Subscribe("showPasswordBtn")
+protected void onShowPasswordBtnClick(Button.ClickEvent event) {
+    notifications.create()
+            .withCaption(passwordField.getValue())
+            .show();
 }

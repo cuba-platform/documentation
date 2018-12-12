@@ -7,7 +7,7 @@ protected void onInit(InitEvent event) {
         if (property == null) {
         // style for row
         if (hasComplaints(customer)) {
-            return"unsatisfied-customer";
+            return "unsatisfied-customer";
         }
     } else if (property.equals("grade")) {
         // style for column "grade"
