@@ -1,23 +1,27 @@
 @Inject
-private ComponentsFactory componentsFactory;
+private Notifications notifications;
+@Inject
+private UiComponents uiComponents;
 
-@Override
-public void init(Map<String, Object> params) {
-    // create timer
-    Timer helloTimer = componentsFactory.createTimer();
-    // add timer to the screen
-    addTimer(helloTimer);
-    // set timer parameters
+@Subscribe
+protected void onInit(InitEvent event) {
+    Timer helloTimer = uiComponents.create(Timer.NAME);
+    getWindow().addTimer(helloTimer); <1>
+    helloTimer.setId("helloTimer"); <2>
     helloTimer.setDelay(5000);
     helloTimer.setRepeating(true);
-    // add execution handler
-    helloTimer.addActionListener(timer -> {
-        showNotification("Hello", NotificationType.HUMANIZED);
+
+    helloTimer.addTimerActionListener(e -> { <3>
+        notifications.create()
+                .withCaption("Hello")
+                .show();
     });
-    // add stop listener
-    helloTimer.addStopListener(timer -> {
-        showNotification("Timer is stopped", NotificationType.HUMANIZED);
+
+    helloTimer.addTimerStopListener(e -> { <4>
+        notifications.create()
+                .withCaption("Timer is stopped")
+                .show();
     });
-    // start the timer
-    helloTimer.start();
+
+    helloTimer.start(); <5>
 }

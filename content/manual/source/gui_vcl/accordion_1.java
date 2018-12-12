@@ -3,20 +3,19 @@ private Accordion accordion;
 
 private boolean tabInitialized;
 
-@Override
-public void init(Map<String, Object> params) {
-    accordion.addSelectedTabChangeListener(event -> {
-        if ("tabCambridge".equals(event.getSelectedTab().getName())) {
+@Subscribe
+protected void onInit(InitEvent event) {
+    accordion.addSelectedTabChangeListener(selectedTabChangeEvent -> {
+        if ("tabCambridge".equals(selectedTabChangeEvent.getSelectedTab().getName())) {
             initCambridgeTab();
         }
     });
 }
 
-private void initCambridgeTab(){
+private void initCambridgeTab() {
     if (tabInitialized) {
         return;
     }
     tabInitialized = true;
-    // initialization code here
-    // use getComponentNN("comp_id") here to get lazy tab's components
+    <1>
 }

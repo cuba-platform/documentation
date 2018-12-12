@@ -1,16 +1,23 @@
 @Inject
 private Timer helloTimer;
+@Inject
+private Notifications notifications;
 
-@Override
-public void init(Map<String, Object> params) {
-    // add execution handler
-    helloTimer.addActionListener(timer -> {
-        showNotification("Hello", NotificationType.HUMANIZED);
-    });
-    // add stop listener
-    helloTimer.addStopListener(timer -> {
-        showNotification("Timer is stopped", NotificationType.HUMANIZED);
-    });
-    // start the timer
+@Subscribe("helloTimer")
+protected void onHelloTimerTimerAction(Timer.TimerActionEvent event) { <1>
+    notifications.create()
+            .withCaption("Hello")
+            .show();
+}
+
+@Subscribe("helloTimer")
+protected void onHelloTimerTimerStop(Timer.TimerStopEvent event) { <2>
+    notifications.create()
+            .withCaption("Timer is stopped")
+            .show();
+}
+
+@Subscribe
+protected void onInit(InitEvent event) { <3>
     helloTimer.start();
 }

@@ -1,2 +1,5 @@
 scrollBox.addShortcutAction(new ShortcutAction("SHIFT-A", shortcutTriggeredEvent ->
-        showNotification("SHIFT-A action" )));
+        notifications.create()
+                .withCaption("SHIFT-A action")
+                .show()
+));
