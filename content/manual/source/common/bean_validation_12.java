@@ -1,22 +1,22 @@
-public class Screen extends AbstractWindow {
+@UiController("sample_NewScreen")
+@UiDescriptor("new-screen.xml")
+public class NewScreen extends Screen {
 
     @Inject
-    private TextField field1;
+    private TextField<String> field1;
     @Inject
-    private TextField field2;
+    private TextField<String> field2;
 
-    public void init(Map<String, Object> params) {
-        // Completely remove bean validation from the UI component
+    @Subscribe
+    protected void onInit(InitEvent event) {
         field1.getValidators().stream()
-                .filter(validator -> validator instanceof BeanValidator)
-                .forEach(textField::removeValidator);
+                .filter(BeanPropertyValidator.class::isInstance)
+                .forEach(field1::removeValidator); <1>
 
-        // Here validators will check only constraints with explicitly set UiComponentChecks group, because
-        // the Default group will not be passed
         field2.getValidators().stream()
-                .filter(validator -> validator instanceof BeanValidator)
+                .filter(BeanPropertyValidator.class::isInstance)
                 .forEach(validator -> {
-                    ((BeanValidator) validator).setValidationGroups(new Class[] {UiComponentChecks.class});
+                    ((BeanPropertyValidator) validator).setValidationGroups(new Class[] {UiComponentChecks.class}); <2>
                 });
     }
 }

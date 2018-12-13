@@ -3,19 +3,14 @@ void methodA() {
     try {
         EntityManager em = persistence.getEntityManager();
 
-        // (1) loading an entity with name == "old name"
-        Employee employee = em.find(Employee.class, id);
+        Employee employee = em.find(Employee.class, id); <1>
         assertEquals("old name", employee.getName());
 
-        // (2) setting new value to the field
-        employee.setName("name A");
+        employee.setName("name A"); <2>
 
-        // (3) calling a method creating a nested transaction
-        methodB();
+        methodB(); <3>
 
-        // (8) the changes are committed to DB, and
-        //     it will contain "name B"
-        tx.commit();
+        tx.commit(); <8>
     } finally {
       tx.end();
     }
@@ -24,19 +19,14 @@ void methodA() {
 void methodB() {
     Transaction tx = persistence.getTransaction();
     try {
-        // (4) retrieving the same instance of EntityManager as methodA
-        EntityManager em = persistence.getEntityManager();
+        EntityManager em = persistence.getEntityManager(); <4>
 
-        // (5) loading an entity with the same identifier
-        Employee employee = em.find(Employee.class, id);
+        Employee employee = em.find(Employee.class, id); <5>
 
-        // (6) the field value is the new one since we are working with the same
-        //     persistent context, and there are no calls to DB at all
-        assertEquals("name A", employee.getName());
+        assertEquals("name A", employee.getName()); <6>
         employee.setName("name B");
 
-        // (7) no actual commit is done at this point
-        tx.commit();
+        tx.commit(); <7>
     } finally {
       tx.end();
     }

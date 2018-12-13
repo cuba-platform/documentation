@@ -13,6 +13,14 @@ If a nested transaction was created via `getTransaction()` and rolled back, then
 include::{sourcesdir}/middleware/transactions_3.java[]
 ----
 
+<1> calling a method creating a nested transaction
+
+<2> let us assume the exception occurs here
+
+<3> handle it and exit
+
+<4> at this point an exception will be thrown, because transaction is marked as rollback only
+
 If the transaction in `methodB()` is created with `createTransaction()` instead, then rolling it back will have no influence on the enclosing transaction in `methodA()`.
 --
 
@@ -26,12 +34,44 @@ Let us first have a look at a dependent nested transaction created using `getTra
 include::{sourcesdir}/middleware/transactions_4.java[]
 ----
 
+<1> loading an entity with name == "old name"
+
+<2> setting new value to the field
+
+<3> calling a method creating a nested transaction
+
+<4> retrieving the same instance of EntityManager as methodA
+
+<5> loading an entity with the same identifier
+
+<6> the field value is the new one since we are working with the same persistent context, and there are no calls to DB at all
+
+<7> no actual commit is done at this point
+
+<8> the changes are committed to DB, and it will contain "name B"
+
 Now, let us have a look at the same example with an independent nested transaction created with `createTransaction()`:
 
 [source, java]
 ----
 include::{sourcesdir}/middleware/transactions_5.java[]
 ----
+
+<1> loading an entity with name == "old name"
+
+<2> setting new value to the field
+
+<3> calling a method creating a nested transaction
+
+<4> creating a new instance of EntityManager, as this is a new transaction
+
+<5> loading an entity with the same identifier
+
+<6> the field value is old because an old instance of the entity has been loaded from DB
+
+<7> the changes are committed to DB, and the value of "name B" will now be in DB
+
+<8> an exception occurs due to optimistic locking and commit will fail
 
 In the last example, the exception at point (8) will only occur if the entity supports optimistic locking, i.e. if it implements `Versioned` interface.
 --

@@ -1,6 +1,6 @@
-public class TaskEdit extends AbstractEditor<Task> {
-    @Override
-    public void init(Map<String, Object> params) {
+public class TaskEdit extends StandardEditor<Task> {
+    @Subscribe
+    protected void onInit(InitEvent event) {
         setCrossFieldValidate(false);
     }
 }

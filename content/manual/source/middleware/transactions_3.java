@@ -1,12 +1,8 @@
 void methodA() {
     Transaction tx = persistence.createTransaction();
     try {
-        // (1) calling a method creating a nested transaction
-        methodB();
-
-        // (4) at this point an exception will be thrown, because transaction
-        //     is marked as rollback only
-        tx.commit();
+        methodB(); <1>
+        tx.commit(); <4>
     } finally {
         tx.end();
     }
@@ -15,11 +11,9 @@ void methodA() {
 void methodB() {
     Transaction tx = persistence.getTransaction();
     try {
-        // (2) let us assume the exception occurs here
-        tx.commit();
+        tx.commit(); <2>
     } catch (Exception e) {
-        // (3) handle it and exit
-        return;
+        return; <3>
     } finally {
         tx.end();
     }
