@@ -1,5 +1,5 @@
-@Override
-public void init(Map<String, Object> params){
+@Subscribe
+protected void onInit(InitEvent event) {
     DataGrid.Column avatar = usersGrid.addGeneratedColumn("userAvatar", new DataGrid.ColumnGenerator<User, String>() {
         @Override
         public String getValue(DataGrid.ColumnGeneratorEvent<User> event) {

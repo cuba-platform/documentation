@@ -1,5 +1,5 @@
-customersTable.addEditorOpenListener(event -> {
-    Map<String, Field> fieldMap = event.getFields();
+customersTable.addEditorOpenListener(editorOpenEvent -> {
+    Map<String, Field> fieldMap = editorOpenEvent.getFields();
     Field active = fieldMap.get("active");
     Field grade = fieldMap.get("grade");
 

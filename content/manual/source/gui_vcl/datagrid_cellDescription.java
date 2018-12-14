@@ -1,18 +1,20 @@
-customersDataGrid.setCellDescriptionProvider((entity,columnId)->{
-    if ("name".equals(columnId)||"lastName".equals(columnId)){
-        return null;
-    }
+@Inject
+private DataGrid<Customer> customersDataGrid;
 
-    String description="<strong>"+
-            messages.getTools().getPropertyCaption(entity.getMetaClass(),columnId)+
-            ": </strong>";
+@Subscribe
+protected void onInit(InitEvent event) {
+    customersDataGrid.getColumnNN("age").setDescriptionProvider(customer ->
+                    getPropertyCaption(customer, "age") +
+                            customer.getAge(),
+            ContentMode.HTML);
 
-    if ("grade".equals(columnId)){
-        description += messages.getMessage(entity.getGrade());
-    } else if ("active".equals(columnId)){
-        description += getMessage(entity.getActive() ? "trueString":"falseString");
-    } else {
-        description += entity.getValue(columnId);
-    }
-        return description;
-});
+    customersDataGrid.getColumnNN("active").setDescriptionProvider(customer ->
+                    getPropertyCaption(customer, "active") +
+                            getMessage(customer.getActive() ? "trueString" : "falseString"),
+            ContentMode.HTML);
+
+    customersDataGrid.getColumnNN("grade").setDescriptionProvider(customer ->
+                    getPropertyCaption(customer, "grade") +
+                            messages.getMessage(customer.getGrade()),
+            ContentMode.HTML);
+}

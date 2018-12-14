@@ -1,30 +1,32 @@
-ordersGrid.setDetailsGenerator(new DataGrid.DetailsGenerator<Order>() {
-    @Nullable
-    @Override
-    public Component getDetails(Order entity) {
-        VBoxLayout mainLayout = uiComponents.create(VBoxLayout.NAME);
-        mainLayout.setWidth("100%");
-        mainLayout.setMargin(true);
+@Inject
+private DataGrid<Order> ordersDataGrid;
+@Inject
+private UiComponents uiComponents;
 
-        HBoxLayout headerBox = uiComponents.create(HBoxLayout.NAME);
-        headerBox.setWidth("100%");
+@Install(to = "ordersDataGrid", subject = "detailsGenerator")
+protected Component ordersDataGridDetailsGenerator(Order order) {
+    VBoxLayout mainLayout = uiComponents.create(VBoxLayout.NAME);
+    mainLayout.setWidth("100%");
+    mainLayout.setMargin(true);
 
-        Label infoLabel = uiComponents.create(Label.NAME);
-        infoLabel.setHtmlEnabled(true);
-        infoLabel.setStyleName("h1");
-        infoLabel.setValue("Order info:");
+    HBoxLayout headerBox = uiComponents.create(HBoxLayout.NAME);
+    headerBox.setWidth("100%");
 
-        Component closeButton = createCloseButton(entity);
-        headerBox.add(infoLabel);
-        headerBox.add(closeButton);
-        headerBox.expand(infoLabel);
+    Label infoLabel = uiComponents.create(Label.NAME);
+    infoLabel.setHtmlEnabled(true);
+    infoLabel.setStyleName("h1");
+    infoLabel.setValue("Order info:");
 
-        Component contentLabel = getContentLabel(entity);
+    Component closeButton = createCloseButton(order);
+    headerBox.add(infoLabel);
+    headerBox.add(closeButton);
+    headerBox.expand(infoLabel);
 
-        mainLayout.add(headerBox);
-        mainLayout.add(contentLabel);
-        mainLayout.expand(contentLabel);
+    Component content = getContent(order);
 
-        return mainLayout;
-    }
-});
+    mainLayout.add(headerBox);
+    mainLayout.add(content);
+    mainLayout.expand(content);
+
+    return mainLayout;
+}
