@@ -1,0 +1,1 @@
+jsComponent.setInitFunctionName("com_company_demo_web_toolkit_ui_slider_SliderServerComponent");

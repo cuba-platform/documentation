@@ -1,0 +1,136 @@
+:sourcesdir: ../../../../../source
+
+[[jsComponent]]
+===== Generic JavaScriptComponent
+
+`JavaScriptComponent` is a simple UI component that can work with any JavaScript wrapper without Vaadin component implementation. Thus, you can easily integrate any pure JavaScript component in your CUBA-based application.
+
+The component can be defined declaratively in an XML descriptor of the screen, so that you can configure dynamic properties and JavaScript dependencies in XML.
+
+XML-name of the component: `jsComponent`.
+
+Defining dependencies::
++
+--
+You can define a list of dependencies (`js`, `css`) for the component. Each dependency corresponds to one of the sources:
+
+* <<using_webjars,WebJar resource>> - starts with `webjar://`
+* File placed within VAADIN directory - starts with `vaadin://`
+
+For example:
+
+[source, java]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_1.java[]
+----
+--
+
+
+Defining initialization function::
++
+--
+The component requires an initialization function. This function's name that will be used to find an entry point for the JavaScript component connector (see below).
+
+[WARNING]
+====
+The initialization function name must be unique within a window.
+====
+
+The function name can be passed to the component using the `setInitFunctionName()` method:
+
+[source, java]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_2.java[]
+----
+--
+
+Defining JavaScript connector::
++
+--
+To use `JavaScriptComponent` wrapper for a library, you should define a JavaScript connector - a function that initializes the JavaScript component and handles communication between the server-side and the JavaScript code.
+
+The following methods are available from the connector function:
+
+* `this.getElement()` returns the HTML DOM element of the component.
+* `this.getState()` returns a shared state object with the current state as synchronized from the server-side.
+--
+
+Component features::
++
+--
+The `JavaScriptComponent` component has the following features that let you:
+
+* Set a state object that can be used in the client-side JavaScript connector and is accessible from the `data` field of the component's state, for example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_3.java[]
+----
+
+* Register a function that can be called from the JavaScript using the provided name, for example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_4.java[]
+----
++
+[source, js]
+----
+this.valueChanged(values);
+----
+
+* Invoke a named function that the connector JavaScript has added to the JavaScript connector wrapper object.
++
+[source, java]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_5.java[]
+----
++
+[source, js]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_6.js[]
+----
+--
+
+[[jsComponent_example]]
+JavaScriptComponent usage example::
++
+--
+This section describes how to integrate a third-party JavaScript library to a CUBA-based application taking Quill Rich Text Editor from https://quilljs.com/ as an example. To use Quill in your project, you should follow the steps below.
+
+. Add the following dependency to the *web* module:
++
+[source, groovy]
+----
+compile('org.webjars.npm:quill:1.3.6')
+----
+
+. Create a `quill-connector.js` file in the `web/VAADIN/quill` directory on the web module.
+
+. In this file, add the connector implementation:
++
+[source, js]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_7.js[]
+----
+
+. Create a screen with the following `jsComponent` definition:
++
+[source, xml]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_8.xml[]
+----
+
+. Add the following screen controller implementation:
++
+[source, java]
+----
+include::{sourcesdir}/gui/js_component/jsComponent_9.java[]
+----
+
+As a result, the Quill Rich Text Editor is available on the screen:
+
+image::jsComponent_example.png[align="center"]
+
+Another example of custom JavaScript component integration see at <<js_library_sample,>>.
+--
