@@ -1,1 +1,4 @@
-textField.addEnterPressListener(e -> showNotification("Enter pressed"));
+textField.addEnterPressListener(enterPressEvent ->
+        notifications.create()
+                .withCaption("Enter pressed")
+                .show());

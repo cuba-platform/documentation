@@ -1,5 +1,7 @@
 @Order(15)
 @EventListener
 protected void onUserRemove(UserRemovedEvent event) {
-    showNotification("User is removed " + event.getUser());
+    notifications.create()
+            .withCaption("User is removed " + event.getUser())
+            .show();
 }

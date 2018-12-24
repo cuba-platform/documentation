@@ -1,11 +1,14 @@
 @Inject
 private UiComponents uiComponents;
-
 @Inject
-private BoxLayout box;
+private Notifications notifications;
+@Inject
+private MessageBundle messageBundle;
+@Inject
+private HBoxLayout box;
 
-@Override
-public void init(Map<String, Object>params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     PickerField pickerField = uiComponents.create(PickerField.NAME);
 
     pickerField.addAction(new BaseAction("hello") {
@@ -16,25 +19,31 @@ public void init(Map<String, Object>params) {
 
         @Override
         public String getDescription() {
-            return getMessage("helloDescription");
+            return messageBundle.getMessage("helloDescription");
         }
 
         @Override
         public String getIcon() {
-            return"icons/hello.png";
+            return "icons/hello.png";
         }
 
         @Override
         public void actionPerform(Component component) {
-            showNotification("Hello!", NotificationType.TRAY);
+            notifications.create()
+                    .withCaption("Hello!")
+                    .withType(Notifications.NotificationType.TRAY)
+                    .show();
         }
     });
     // OR
     pickerField.addAction(new BaseAction("hello")
             .withCaption(null)
-            .withDescription(getMessage("helloDescription"))
+            .withDescription(messageBundle.getMessage("helloDescription"))
             .withIcon("icons/ok.png")
-            .withHandler(e -> showNotification("Hello", NotificationType.TRAY)));
-
+            .withHandler(e ->
+                    notifications.create()
+                            .withCaption("Hello!")
+                            .withType(Notifications.NotificationType.TRAY)
+                            .show()));
     box.add(pickerField);
 }

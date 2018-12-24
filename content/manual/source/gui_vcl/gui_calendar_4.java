@@ -1,7 +1,6 @@
 calendar.addWeekClickListener(calendarWeekClickEvent ->
-        showNotification(String.format("%s week clicked in %s",
-                calendarWeekClickEvent.getWeek(),
-                calendarWeekClickEvent.getYear()),
-                NotificationType.HUMANIZED
-        )
-);
+        notifications.create()
+                .withCaption(String.format("%s week clicked in %s",
+                        calendarWeekClickEvent.getWeek(),
+                        calendarWeekClickEvent.getYear()))
+                .show());

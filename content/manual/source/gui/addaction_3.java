@@ -1,4 +1,6 @@
 customersTableAdd.setBeforeActionPerformedHandler(() -> {
-    showNotification("The new customer will be added");
+    notifications.create()
+            .withCaption("The new customer will be added")
+            .show();
     return isValid();
 });

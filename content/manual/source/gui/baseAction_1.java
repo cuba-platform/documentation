@@ -1,8 +1,10 @@
 @Inject
+private Notifications notifications;
+@Inject
 private Button helloBtn;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     helloBtn.setAction(new BaseAction("hello") {
         @Override
         public boolean isPrimary() {
@@ -11,11 +13,18 @@ public void init(Map<String, Object> params) {
 
         @Override
         public void actionPerform(Component component) {
-            showNotification("Hello!", NotificationType.TRAY);
+            notifications.create()
+                    .withCaption("Hello!")
+                    .withType(Notifications.NotificationType.TRAY)
+                    .show();
         }
     });
     // OR
     helloBtn.setAction(new BaseAction("hello")
             .withPrimary(true)
-            .withHandler(e -> showNotification("Hello", NotificationType.TRAY)));
+            .withHandler(e ->
+                    notifications.create()
+                            .withCaption("Hello!")
+                            .withType(Notifications.NotificationType.TRAY)
+                            .show()));
 }

@@ -1,8 +1,6 @@
-calendar.addEventClickListener(
-        calendarEventClickEvent ->
-                showNotification(String.format("Event clicked: %s\n%s",
+calendar.addEventClickListener(calendarEventClickEvent ->
+        notifications.create()
+                .withCaption(String.format("Event clicked: %s\n%s",
                         calendarEventClickEvent.getCalendarEvent().getCaption(),
-                        calendarEventClickEvent.getCalendarEvent().getDescription()),
-                        NotificationType.HUMANIZED
-                )
-);
+                        calendarEventClickEvent.getCalendarEvent().getDescription()))
+                .show());

@@ -1,1 +1,4 @@
-textArea.addResizeListener(e -> showNotification("Resized"));
+textArea.addResizeListener(resizeEvent ->
+        notifications.create()
+                .withCaption("Resized")
+                .show());
