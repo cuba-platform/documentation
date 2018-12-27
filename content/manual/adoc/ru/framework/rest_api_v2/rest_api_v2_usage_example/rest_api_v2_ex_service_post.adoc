@@ -1,0 +1,60 @@
+:sourcesdir: ../../../../../source
+
+[[rest_api_v2_ex_service_post]]
+===== Вызов метода сервиса (POST)
+
+REST API позволяет выполнять методы сервисов, аргументами которых являются не только простые типы, но также:
+
+* сущности
+* коллекции сущностей
+* произвольные сериализуемые POJO
+
+Небольшой пример. Предположим, в сервис `OrderService`, созданный в предыдущем разделе, добавлен следующий метод:
+
+[source, java]
+----
+@Override
+public OrderValidationResult validateOrder(Order order, Date validationDate){
+    OrderValidationResult result=new OrderValidationResult();
+    result.setSuccess(false);
+    result.setErrorMessage("Validation of order "+order.getNumber()+" failed. validationDate parameter is: "+validationDate);
+    return result;
+}
+----
+
+Класс `OrderValidationResult` выглядит следующим образом:
+
+[source, java]
+----
+include::{sourcesdir}/features/OrderValidationResult.java[]
+----
+
+Новый метод сервиса принимает сущность `Order` в качестве первого аргумента и возвращает POJO.
+
+Перед вызовом данного метода с помощью REST API необходимо разрешить его, добавив запись в конфигурационный файл `rest-services.xml` (его создание было рассмотрено в <<rest_api_v2_ex_service_get>>):
+
+[source, xml]
+----
+include::{sourcesdir}/rest/sales-rest-services-2.xml[]
+----
+
+Метод `validateOrder` сервиса вызывается *POST* запросом по адресу:
+
+`\http://localhost:8080/app/rest/v2/services/sales_OrderService/validateOrder`
+
+Параметры в случае POST передаются в теле запроса в JSON объекте. Каждое поле JSON объекта соответствует аргументу метода сервиса:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-validateOrder-service-request.json[]
+----
+
+OAuth-токен должен быть передан в заголовке запроса `Authorization` с типом *Bearer*.
+
+Метод вернет сериализованный POJO:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-validateOrder-service-response.json[]
+----
+
