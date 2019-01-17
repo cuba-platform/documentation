@@ -14,12 +14,12 @@ protected void onShowUploadDialogBtnClick(Button.ClickEvent event) {
         UUID fileId = dialog.getFileId();
         String fileName = dialog.getFileName();
 
-        File file = fileUploadingAPI.getFile(fileId); <1>
+        File file = fileUploadingAPI.getFile(fileId); // <1>
 
-        FileDescriptor fileDescriptor = fileUploadingAPI.getFileDescriptor(fileId, fileName); <2>
+        FileDescriptor fileDescriptor = fileUploadingAPI.getFileDescriptor(fileId, fileName); // <2>
         try {
-            fileUploadingAPI.putFileIntoStorage(fileId, fileDescriptor); <3>
-            dataManager.commit(fileDescriptor); <4>
+            fileUploadingAPI.putFileIntoStorage(fileId, fileDescriptor); // <3>
+            dataManager.commit(fileDescriptor); // <4>
         } catch (FileStorageException e) {
             throw new RuntimeException(e);
         }
