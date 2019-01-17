@@ -10,7 +10,7 @@ public class OrderEdit extends StandardEditor<Order> {
     @Subscribe(id = "orderDc", target = Target.DATA_CONTAINER)
     protected void onOrderDcItemPropertyChange(InstanceContainer.ItemPropertyChangeEvent<Order> event) {
         if ("customer".equals(event.getProperty())) {
-            attributeAccessSupport.applyAttributeAccess(getWindow(), true, getEditedEntity());
+            attributeAccessSupport.applyAttributeAccess(this, true, getEditedEntity());
         }
     }
 
