@@ -3,16 +3,20 @@
 [[exceptionHandlers]]
 ===== Client-Level Exception Handlers
 
-[WARNING]
-====
-This section will be updated before release 7.0
-====
+Unhandled exceptions thrown on the client tier or passed from Middleware, are passed to the special handlers mechanism of the Web Client block.
 
-Unhandled exceptions in Web Client and Desktop Client <<app_tiers,blocks>> thrown on the client tier or passed from Middleware, are passed to the special handlers mechanism. This mechanism is implemented in the *gui* <<app_modules,module>> and available for both blocks.
+A handler is a <<managed_beans,managed bean>> implementing the `UiExceptionHandler` interface. Its `handle()` method should process the exception and return `true`, or immediately return `false` if this handler is not able to handle the passed exception. This behavior enables creating a "chain of responsibility" for handlers.
 
-You can create custom handlers classes in the root package of the *gui*, *web*, or *desktop* project module. The handler should be a <<managed_beans,managed bean>> implementing the `GenericExceptionHandler` interface, handle processing in its `handle()` method and return `true`, or immediately return `false`, if this handler is not able to handle the passed exception. This behavior enables creating a "chain of responsibility" for handlers.
+It is recommended to inherit your handlers from the `AbstractUiExceptionHandler` base class, which is able to disassemble the exceptions chain (including ones packed inside `RemoteException`) and handle specific exception types. Exception types supported by this handler are defined by passing a string array to the base constructor from the handler constructor. Each string of the array should contain one full class name of the handled exception.
 
-It is recommended to inherit your handlers from the `AbstractGenericExceptionHandler` base class, which is able to disassemble the exceptions chain (including ones packed inside `RemoteException`) and handle specific exception types. Exception types supported by this handler are defined by passing strings array to the base constructor from the handler constructor. Each string of the array should contain one full class name of the handled exception, for example:
+Suppose you have the following exception class:
+
+[source, java]
+----
+include::{sourcesdir}/common/exceptionHandlers_0.java[]
+----
+
+Then the handler for this exception must have the following constructor:
 
 [source, java]
 ----
@@ -26,14 +30,14 @@ If the exception class is not accessible on the client side, specify its name wi
 include::{sourcesdir}/common/exceptionHandlers_2.java[]
 ----
 
-In the case of using `AbstractGenericExceptionHandler` as a base class, the processing logic is located in `doHandle()` method and looks as follows:
+In the case of using `AbstractUiExceptionHandler` as a base class, the processing logic is located in `doHandle()` method and looks as follows:
 
 [source, java]
 ----
 include::{sourcesdir}/common/exceptionHandlers_3.java[]
 ----
 
-If the name of the exception class is insufficient to make a decision whether this handler can be applied to the exception, `canHandle()` method should be defined. This method accepts also the text of the exception. If the handler is applicable for this exception, the method must return `true`. For example:
+If the name of the exception class is insufficient to make a decision whether this handler can be applied to the exception, define the `canHandle()` method. This method accepts also the text of the exception. If the handler is applicable for this exception, the method must return `true`. For example:
 
 [source, java]
 ----
@@ -41,25 +45,9 @@ include::{sourcesdir}/common/exceptionHandlers_4.java[]
 ----
 
 [[dialogs_showExceptionDialog]]
-`WindowManager` provides a method for showing an exception with its stack trace: `showExceptionDialog()`. The method has the following parameters:
-
-** `throwable` - `Throwable` instance.
-
-** `caption` - dialog caption. It is an optional parameter, if not set, the default caption is used.
-
-** `message` - dialog message. It is an optional parameter, if not set, the default caption is used.
-
-An example of using the method in an exception handler:
+The `Dialogs` interface available via the `UiContext` parameter of the `doHandle()` method provides a special dialog for displaying exceptions containing a collapsable area with the complete exception stack trace. This dialog is used in the default handler, but you can use it for your exceptions too, for example:
 
 [source, java]
 ----
 include::{sourcesdir}/common/exceptionHandlers_5.java[]
 ----
-
-To <<localization,localize>> the error messages, you should override the localization keys for the corresponding exception handlers in the <<main_message_pack,main message pack>>. Below is an example for the `RowLevelSecurityExceptionHandler` used in case if <<roles,row-level>> security constraints violation:
-
-** `rowLevelSecurity.caption.User.create` - notification caption for concrete entity and operation,
-** `rowLevelSecurity.caption.Group` - notification caption for concrete entity,
-** `rowLevelSecurity.entityAndOperationMessage.User.create` - notification message for concrete entity and operation,
-** `rowLevelSecurity.entityAndOperationMessage.Group` - notification message for concrete entity.
-
