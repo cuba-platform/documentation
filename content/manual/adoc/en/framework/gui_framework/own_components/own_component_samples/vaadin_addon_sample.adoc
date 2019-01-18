@@ -7,44 +7,11 @@ This is an example of using the *Stepper* component available at `http://vaadin.
 
 Create a new project in CUBA Studio and name it `addon-demo`.
 
-A Vaadin add-on may be integrated if the application project has a *web-toolkit* module. Create the module by clicking the *Create web toolkit module* link of the *Project properties* navigator section.
+A Vaadin add-on may be integrated if the application project has a *web-toolkit* module. A convenient way to do this is to use *CUBA Studio*: in the main menu, click *CUBA > Advanced > Manage modules > Create 'web-toolkit' Module*.
 
-// TODO update Studio flow
-Then click the *New UI component* link. The *UI component generation* page will open. Select the *Vaadin add-on* value in the *Component type* section.
+Then add add-on dependencies:
 
-image::ui_component/studio_vaadin_addon_wizard_no_gui.png[align="center"]
-
-Fill in the following fields:
-
-* The *Add-on Maven dependency* field contains Maven coordinates of the Vaadin add-on. The add-on will be included as a dependency to the project. You can define coordinates in two formats:
-
-. As an XML copied from the add-on web site (http://vaadin.com/addon/stepper):
-+
-[source, xml]
-----
-<dependency>
-   <groupId>org.vaadin.addons</groupId>
-   <artifactId>stepper</artifactId>
-   <version>2.2.2</version>
-</dependency>
-----
-
-. In one line as you add dependencies in <<build.gradle,build.gradle>>: `org.vaadin.addons:stepper:2.2.2`
-
-* The *Inherited widgetset* field contains a widgetset name of the add-on:
-+
-[source]
-----
-org.vaadin.risto.stepper.widgetset.StepperWidgetset
-----
-
-* *Integrate into generic UI* - deselect this checkbox as we do not integrate the component into the Generic UI in this example.
-
-Press the *OK* button.
-
-If you open the project in the IDE, you can see that Studio has changed two files:
-
-. In `build.gradle`, the *web* module now contains a dependency on the add-on that contains the component.
+. In <<build.gradle,build.gradle>>, for the *web* module add a dependency on the add-on that contains the component:
 +
 [source, java]
 ----
@@ -52,18 +19,18 @@ configure(webModule) {
     ...
     dependencies {
         ...
-        compile("org.vaadin.addons:stepper:2.2.2")
+        compile("org.vaadin.addons:stepper:2.4.0")
     }
 ----
 
-. The `AppWidgetSet.gwt.xml` file of the *web-toolkit* module now inherits the add-on widgetset:
+. In `AppWidgetSet.gwt.xml` file of the *web-toolkit* module, add an inheritance on the add-on widgetset:
 +
 [source, xml]
 ----
 <module>
-    <inherits name="com.haulmont.cuba.web.toolkit.ui.WidgetSet" />
+    <inherits name="com.haulmont.cuba.web.widgets.WidgetSet" />
 
-    <inherits name="org.vaadin.risto.stepper.widgetset.StepperWidgetset" />
+    <inherits name="org.vaadin.risto.stepper.StepperWidgetset" />
 
     <set-property name="user.agent" value="safari" />
 </module>
@@ -81,59 +48,40 @@ Now the component from the Vaadin add-on is included to the project. Let's see h
 ** `name` of type String
 ** `score` of type Integer
 
-* Generate standard screens for the new entity. Ensure that the *In module* field is set to `Web Module`. Screens that use Vaadin components directly must be placed in the *web* module.
+* Generate standard screens for the new entity. Ensure that the *Module* field is set to `Module: 'app-web_main'` (this field is shown only if the *gui* module is added to a project). Screens that use Vaadin components directly must be placed in the *web* module.
 +
 [TIP]
 ====
 Actually, screens can be placed in the *gui* module as well, but then the code that uses the Vaadin component should be moved to a separate <<companions,companion>>.
 ====
 
-* Next, we will add the `stepper` component to the screen. You can place it in a <<gui_FieldGroup,FieldGroup>> or in a separate container. Let's examine both methods.
+* Next, we will add the `stepper` component to the screen.
 +
---
-. Add the `custom = "true"` attribute to the `score` field of the `fieldGroup` component of the `customer-edit.xml` screen.
+Replace the `score` field of the `form` component of the `customer-edit.xml` screen with a `hBox` that will be used as a container for a Vaadin component.
 +
 [source, xml]
 ----
-include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui-custom-field.xml[]
+include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui.xml[]
 ----
 +
 Add the following code to the `CustomerEdit.java` controller:
 +
 [source, java]
 ----
-include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiCustomField.java[]
+include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGui.java[]
 ----
 +
-The `init()` method initializes the custom `score` field. The `UiComponents` creates an instance of <<gui_BoxLayout,BoxLayout>>, retrieves a link to the Vaadin container via <<webComponentsHelper,WebComponentsHelper>>, and adds the new component to it. The `BoxLayout` is then returned to be used in the custom field.
+The `onInit()` method initializes a stepper component instance, retrieves a link to the Vaadin container using the `unwrap` method, and adds the new component to it.
 +
-Data binding is implemented programmatically by setting a current value to the `stepper` component from the edited `Customer` instance in the `postInit()` method. Additionally, the corresponding entity attribute is updated through the value change listener, when the user changes the value.
+Data binding is implemented programmatically by setting a current value to the `stepper` component from the edited `Customer` instance in the `onBeforeShow()` method. Additionally, the corresponding entity attribute is updated through the value change listener, when the user changes the value.
 
-. The new component can be used in any part of the screen outside of the `FieldGroup`. In order to do this, declare the `scoreBox` container in the XML-descriptor:
-+
-[source, xml]
-----
-include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui-container.xml[]
-----
-+
-Inject the container to the screen controller, retrieve a link to the underlying Vaadin container and add the component to it:
-+
-[source, java]
-----
-include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGuiContainer.java[]
-----
-+
-Data binding is implemented in the same way as described above.
---
-
-* To adapt the component style, create a theme extension in the project. Click the *Create theme extension* link in the *Project properties* navigator section. Select the `halo` theme. After that, open the `themes/halo/com.company.application/halo-ext.scss` file located in the *web* module and add the following code:
+* To adapt the component style, create a theme extension in the project. A convenient way to do this is to use *CUBA Studio*: in the main menu, click *CUBA > Advanced > Manage themes > Create theme extension*. Select the `hover` theme in the popup window. Another way is to use the `extend-theme` command in https://www.cuba-platform.com/marketplace/cuba-cli[CUBA CLI]. After that, open the `themes/hover/com.company.demo/hover-ext.scss` file located in the *web* module and add the following code:
 +
 [source, css]
 ----
-include::{sourcesdir}/ui_component/vaadin_no_gui/halo-ext.scss[]
+include::{sourcesdir}/ui_component/vaadin_no_gui/hover-ext.scss[]
 ----
 
 * Start the application server. The resulting editor screen will look as follows:
 
-image::ui_component/customer_edit_result.png[align="center"]
-
+image::ui_component/customer_edit_result.png[align="center",358,250]
