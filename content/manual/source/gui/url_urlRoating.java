@@ -14,7 +14,7 @@ protected void onTaskChooseBtnClick(Button.ClickEvent event) {
         return;
     }
 
-    String serializedTaskId = UrlTools.serializeId(task.getId());
+    String serializedTaskId = UrlIdSerializer.serializeId(task.getId());
 
     if (serializedTaskId == null || serializedTaskId.isEmpty()) {
         // remove params if failed to serialize task id
