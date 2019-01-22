@@ -1,18 +1,17 @@
-package com.company.addonguidemo.web.gui.xml.layout.loaders;
+package com.company.demo.web.gui.xml.layout.loaders;
 
-import com.company.addonguidemo.web.gui.components.Stepper;
+import com.company.demo.web.gui.components.Stepper;
 import com.haulmont.cuba.gui.xml.layout.loaders.AbstractFieldLoader;
 
 public class StepperLoader extends AbstractFieldLoader<Stepper> {
     @Override
     public void createComponent() {
-        resultComponent = factory.createComponent(Stepper.class);
+        resultComponent = factory.create(Stepper.class);
         loadId(resultComponent, element);
     }
 
     @Override
     public void loadComponent() {
-
         super.loadComponent();
 
         String manualInput = element.attributeValue("manualInput");
