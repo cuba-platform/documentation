@@ -1,8 +1,6 @@
-/*
- * UrlRouting usage example
- *
- * Screen is located in Web module
- */
+//UrlRouting usage example
+//Screen is located in Web module
+
 @Inject 
 private UrlRouting urlRouting;
 

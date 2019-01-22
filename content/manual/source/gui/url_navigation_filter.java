@@ -10,6 +10,8 @@ public class CubaLoginScreenFilter implements NavigationFilter {
             return AccessCheckResult.allowed();
         }
         boolean authenticated = App.getInstance().getConnection().isAuthenticated();
-        return authenticated ? AccessCheckResult.rejected(messages.getMainMessage("navigation.unableToGoToLogin")) : AccessCheckResult.allowed();
+        return authenticated 
+		? AccessCheckResult.rejected(messages.getMainMessage("navigation.unableToGoToLogin")) 
+		: AccessCheckResult.allowed();
     }
 }
