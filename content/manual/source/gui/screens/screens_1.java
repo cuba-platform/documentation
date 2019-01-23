@@ -1,11 +1,3 @@
-package com.company.sample.web.screen;
-
-import com.haulmont.cuba.gui.components.Button;
-import com.haulmont.cuba.gui.components.Label;
-import com.haulmont.cuba.gui.screen.*;
-
-import javax.inject.Inject;
-
 @UiController("sample_FancyMessageScreen")
 @UiDescriptor("fancy-message-screen.xml")
 public class FancyMessageScreen extends Screen {

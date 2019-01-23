@@ -1,5 +1,5 @@
 @Inject
-private RadioButtonGroup<Employee> radioButtonGroup;
+private CheckBoxGroup<Employee> checkBoxGroup;
 @Inject
 private CollectionContainer<Employee> employeesCt;
 

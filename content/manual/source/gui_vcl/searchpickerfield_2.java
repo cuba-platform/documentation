@@ -1,19 +1,25 @@
 @Inject
-private SearchPickerField colourField;
+private Notifications notifications;
+@Inject
+private SearchPickerField colorField;
 
-@Override
-public void init(Map<String, Object> params) {
-    colourField.setSearchNotifications(new SearchField.SearchNotifications() {
+@Subscribe
+protected void onInit(InitEvent event) {
+    colorField.setSearchNotifications(new SearchField.SearchNotifications() {
         @Override
         public void notFoundSuggestions(String filterString) {
-            showNotification("No colours found for search string: " + filterString,
-                             NotificationType.TRAY);
+            notifications.create()
+                    .withCaption("No colors found for search string: " + filterString)
+                    .withType(Notifications.NotificationType.TRAY)
+                    .show();
         }
 
         @Override
         public void needMinSearchStringLength(String filterString, int minSearchStringLength) {
-            showNotification("Minimum length of search string is " + minSearchStringLength,
-                             NotificationType.TRAY);
+            notifications.create()
+                    .withCaption("Minimum length of search string is " + minSearchStringLength)
+                    .withType(Notifications.NotificationType.TRAY)
+                    .show();
         }
     });
 }

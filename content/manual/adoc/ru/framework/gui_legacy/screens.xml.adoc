@@ -1,0 +1,69 @@
+:sourcesdir: ../../../../source
+
+[[screens.xml]]
+==== screens.xml (устаревшее)
+
+[WARNING]
+====
+<<gui_screens,Экраны>>, написанные на новом API версии 7.0 не требуют регистрации. Они обнаруживаются по аннотации `@UiController`.
+====
+
+Файлы данного типа используются в блоке Web Client для регистрации <<screen_xml,XML-дескрипторов>> экранов.
+
+Схема XML доступна по адресу {xsd_url}/screens.xsd.
+
+Расположение файла задается в свойстве приложения <<cuba.windowConfig,cuba.windowConfig>>. При создании нового проекта в Studio, она создает файл `web-screens.xml` в корневом пакете модуля *web*, например `modules/web/src/com/company/sample/web-screens.xml`.
+
+Рассмотрим структуру файла.
+
+`screen-config` - корневой элемент. Он содержит следующие элементы:
+
+. `screen` - описатель экрана
++
+--
+Атрибуты `screen`:
+
+* `id` - идентификатор экрана, по которому он доступен в программном коде (например, в методах `Frame.openWindow()` и т.п.) и в <<menu.xml,menu.xml>>.
+
+* `template` - путь к файлу <<screen_xml,XML-дескриптора>> экрана. Загрузка производится по правилам интерфейса <<resources,Resources>>.
+
+* `class` - если атрибут `template` не указан, в данном атрибуте нужно указать имя класса, реализующего либо `Callable`, либо `Runnable`.
++
+В случае `Callable` метод `call()` должен возвращать экземпляр созданного `Window`, который будет возвращен вызывающему коду как результат `WindowManager.openWindow()`. Класс может содержать конструктор с параметрами для передачи ему строковых значений, заданных вложенным элементом `param` (см. ниже). 
+
+* `agent` - если для одного `id` зарегистрировано несколько шаблонов, данный атрибут используется для определения, какой шаблон выбрать. Существует три стандартных типа агентов: `DESKTOP`, `TABLET`, `PHONE`. Они позволяют выбрать экран в зависимости от текущего устройства и параметров дисплея пользователя. Подробнее см. <<screen_agent,>>.
+
+* `multipleOpen` - опциональный атрибут, задающий возможность многократного открытия экрана. Если равен `false` или не задан, и в главном окне уже открыт экран с данным идентификатором, то вместо открытия нового экземпляра экрана отобразится имеющийся. Значение `true` позволяет открывать произвольное количество одинаковых экранов.
+
+Элементы `screen`:
+
+* `param` - задает параметр экрана, передаваемый в мэп метода `init()` <<screen_controller,контроллера>>. Параметры, передаваемые из вызывающего кода в методы `openWindow()`, переопределяют одноименные параметры, заданные в `screens.xml`.
++
+Атрибуты `param`:
++
+** `name` - имя параметра
++
+** `value` - значение параметра. Строки `true` и `false` автоматически преобразуются в значения типа `Boolean`.
+--
+
+. `include` - включение другого файла типа `screens.xml`
++
+Атрибуты `include`:
++
+* `file` - путь к файлу по правилам интерфейса <<resources,Resources>>
+
+Пример файла `screens.xml`:
+
+[source, xml]
+----
+<screen-config xmlns="http://schemas.haulmont.com/cuba/screens.xsd">
+
+  <screen id="sales$Customer.lookup" template="/com/sample/sales/gui/customer/customer-browse.xml"/>
+  <screen id="sales$Customer.edit" template="/com/sample/sales/gui/customer/customer-edit.xml"/>
+
+  <screen id="sales$Order.lookup" template="/com/sample/sales/gui/order/order-browse.xml"/>
+  <screen id="sales$Order.edit" template="/com/sample/sales/gui/order/order-edit.xml"/>
+
+</screen-config>
+----
+

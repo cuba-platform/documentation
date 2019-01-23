@@ -1,0 +1,189 @@
+:sourcesdir: ../../../../../../source
+
+[[screen_layout_rules_positioning]]
+====== Позиционирование компонентов
+
+[[screen_layout_rules_size]]
+Виды размеров::
++
+--
+Размеры <<gui_vcl,компонента>>, т.е. его <<gui_attr_width,ширина>> и <<gui_attr_height,высота>>, могут быть заданы следующих видов:
+
+* По содержимому - `AUTO`
+* Фиксированные (в пикселах) - `10px`
+* Относительные (в процентах) - `100%`
+
+image::cookbook/screen_layout_rules_1_ru.png[align="center"]
+--
+
+[[screen_layout_rules_size_auto]]
+Размер по содержимому::
++
+--
+Компонент займет столько места, сколько нужно его содержимому.
+
+Примеры:
+
+* Компонент <<gui_Label,Label>> выбирает такой размер по размеру текста.
+* <<gui_layouts,Контейнеры>> выбирают размер по сумме размеров всех расположенных в контейнере компонентов.
+
+[source, xml]
+.XML
+----
+<label width=”AUTO”/>
+----
+
+[source, java]
+.Java
+----
+label.setWidth(Component.AUTO_SIZE);
+----
+
+Компоненты с размером по содержимому будут подстраивать размер во время компоновки экрана и при изменении размера содержимого.
+
+image::cookbook/screen_layout_rules_2_ru.png[align="center"]
+--
+
+[[screen_layout_rules_size_fixed]]
+Фиксированный размер::
++
+--
+Фиксированные размеры не предполагают изменения размера компонента во время исполнения.
+
+[source, xml]
+.XML
+----
+<vbox width=”320px” height=”240px”/>
+----
+
+[source, java]
+.Java
+----
+vbox.setWidth(”320px”);
+----
+
+image::cookbook/screen_layout_rules_3.png[align="center"]
+--
+
+[[screen_layout_rules_size_relative]]
+Относительные размеры::
++
+--
+Относительные размеры указывают, какой процент доступного компоненту места будет использован.
+
+[source, xml]
+.XML
+----
+<label width=”100%”/>
+----
+
+[source, java]
+.Java
+----
+label.setWidth(”50%”);
+----
+
+Компонент с относительными размерами будет реагировать на изменение доступного места и изменять свой реальный размер на экране.
+
+image::cookbook/screen_layout_rules_4_ru.png[align="center"]
+--
+
+[[screen_layout_rules_container]]
+Особенности контейнеров::
++
+--
+По умолчанию контейнеры без установленного атрибута <<gui_attr_expand,expand>> выделяют для всех вложенных компонентов одинаковое количество места. Исключения: <<gui_BoxLayout_flowBox,flowBox>> и <<gui_HtmlBoxLayout,htmlBox>>.
+
+Пример контейнера с одинаковой высотой компонентов по умолчанию:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/screen_layout_rules_container.xml[]
+----
+
+image::cookbook/screen_layout_rules_7.png[align="center"]
+
+Компоненты и контейнеры при создании имеют высоту и ширину по содержимому. Некоторые контейнеры имеют другие значения высоты и ширины по умолчанию:
+
+[options="header"]
+|===============
+|Контейнер                         |Ширина |Высота
+|<<gui_BoxLayout_vbox,VBox>>       |100%   |AUTO
+|<<gui_GroupBoxLayout,GroupBox>>   |100%   |AUTO
+|<<gui_BoxLayout_flowBox,FlowBox>> |100%   |AUTO
+|===============
+
+Корневой элемент компоновки *layout* является вертикальным контейнером (`VBox`) и имеет 100% ширину и высоту 100%. В режиме диалога высота корневого элемента может быть `AUTO`.
+
+Вкладка компонента <<gui_TabSheet,TabSheet>> (`tab`) является контейнером `VBox`.
+
+Компонент `GroupBox` содержит `VBox` или `HBox` в зависимости от значения свойства <<gui_GroupBox_orientation,orientation>>.
+
+Пример контейнера с высотой по содержимому:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/screen_layout_rules_container_2.xml[]
+----
+
+image::cookbook/screen_layout_rules_8.png[align="center"]
+
+Пример контейнера с относительными размерами компонентов:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/screen_layout_rules_container_3.xml[]
+----
+
+image::cookbook/screen_layout_rules_9.png[align="center"]
+
+Здесь `layout`, так же как `vbox` или `hbox`, выделяет равные части всем вложенным компонентам, а для `groupBox` указана высота 100%. Кроме того, `groupBox`  имеет 100% ширину по умолчанию, поэтому он занимает все доступное ему пространство.
+--
+
+[[screen_layout_rules_component]]
+Особенности компонентов::
++
+--
+Для <<gui_Table,Table>> и <<gui_Tree,Tree>> рекомендуется задавать абсолютную или относительную высоту, иначе таблица/дерево может неограниченно вырасти при большом количестве строк/узлов.
+
+Контейнер <<gui_ScrollBoxLayout,ScrollBox>> должен обязательно иметь заданные высоту и ширину (не `AUTO`). Внутри `ScrollBox` нельзя использовать 100% размеры в направлении, для которого необходима полоса прокрутки.
+
+Ниже приведены примеры правильного использования `ScrollBox` с вертикальной и горизонтальной прокруткой. Если требуются обе полосы прокрутки, компоненты должны иметь и ширину, и высоту (`AUTO` или абсолютные значения).
+
+image::cookbook/screen_layout_rules_5_ru.png[align="center"]
+--
+
+[[screen_layout_rules_expand]]
+Опция expand::
++
+--
+Атрибут <<gui_attr_expand,expand>> контейнера позволяет указать, какому из компонентов предоставить максимальное доступное место.
+
+Компоненту, указанному в `expand`, будет выставлен размер 100% в направлении роста контейнера (`VBox` — по вертикали, `HBox` — по горизонтали). При изменении размера контейнера изменять размер будет именно этот компонент.
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/screen_layout_rules_expand.xml[]
+----
+
+image::cookbook/screen_layout_rules_6.png[align="center"]
+
+`expand` работает по направлению роста контейнера, например:
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/screen_layout_rules_expand_2.xml[]
+----
+
+image::cookbook/screen_layout_rules_10.png[align="center"]
+
+В следующем примере используется вспомогательный элемент <<gui_Label,Label>> - spacer. Для него применяется `expand`, поэтому он занимает всё оставшееся в контейнере место.
+
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/screen_layout_rules_expand_3.xml[]
+----
+
+image::cookbook/screen_layout_rules_11.png[align="center"]
+--
+

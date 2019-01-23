@@ -1,0 +1,87 @@
+:sourcesdir: ../../../../../../source
+
+[[vaadin_addon_sample]]
+====== Using a Third-party Vaadin Component
+
+This is an example of using the *Stepper* component available at `http://vaadin.com/addon/stepper`, in an application project. The component enables changing text field value in steps using the keyboard, mouse scroll or built-in up/down buttons.
+
+Create a new project in CUBA Studio and name it `addon-demo`.
+
+A Vaadin add-on may be integrated if the application project has a *web-toolkit* module. A convenient way to do this is to use *CUBA Studio*: in the main menu, click *CUBA > Advanced > Manage modules > Create 'web-toolkit' Module*.
+
+Then add add-on dependencies:
+
+. In <<build.gradle,build.gradle>>, for the *web* module add a dependency on the add-on that contains the component:
++
+[source, java]
+----
+configure(webModule) {
+    ...
+    dependencies {
+        ...
+        compile("org.vaadin.addons:stepper:2.4.0")
+    }
+----
+
+. In `AppWidgetSet.gwt.xml` file of the *web-toolkit* module, indicate that the project's widgetset inherits from the add-on widgetset:
++
+[source, xml]
+----
+<module>
+    <inherits name="com.haulmont.cuba.web.widgets.WidgetSet" />
+
+    <inherits name="org.vaadin.risto.stepper.StepperWidgetset" />
+
+    <set-property name="user.agent" value="safari" />
+</module>
+----
++
+[TIP]
+====
+You can speed up the widgetset compilation by defining the `user.agent` property. In this example, widgetset will be compiled only for browsers based on WebKit: Chrome, Safari, etc.
+====
+
+Now the component from the Vaadin add-on is included to the project. Let's see how to use it in the project screens.
+
+* Create a new entity `Customer` with two fields:
+
+** `name` of type String
+** `score` of type Integer
+
+* Generate standard screens for the new entity. Ensure that the *Module* field is set to `Module: 'app-web_main'` (this field is shown only if the *gui* module is added to the project). Screens that use Vaadin components directly must be placed in the *web* module.
++
+[TIP]
+====
+Actually, screens can be placed in the *gui* module as well, but then the code that uses the Vaadin component should be moved to a separate <<companions,companion>>.
+====
+
+* Next, we will add the `stepper` component to the screen.
++
+Replace the `score` field of the `form` component of the `customer-edit.xml` screen with a `hBox` that will be used as a container for a Vaadin component.
++
+[source, xml]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/customer-edit-nogui.xml[]
+----
++
+Add the following code to the `CustomerEdit.java` controller:
++
+[source, java]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/CustomerEditNoGui.java[]
+----
++
+The `onInit()` method initializes a stepper component instance, retrieves a link to the Vaadin container using the `unwrap` method, and adds the new component to it.
++
+Data binding is implemented programmatically by setting a current value to the `stepper` component from the edited `Customer` instance in the `onBeforeShow()` method. Additionally, the corresponding entity attribute is updated through the value change listener, when the user changes the value.
+
+* To adapt the component style, create a theme extension in the project. A convenient way to do this is to use *CUBA Studio*: in the main menu, click *CUBA > Advanced > Manage themes > Create theme extension*. Select the `hover` theme in the popup window. Another way is to use the `extend-theme` command in https://www.cuba-platform.com/marketplace/cuba-cli[CUBA CLI]. After that, open the `themes/hover/com.company.demo/hover-ext.scss` file located in the *web* module and add the following code:
++
+[source, css]
+----
+include::{sourcesdir}/ui_component/vaadin_no_gui/hover-ext.scss[]
+----
+
+* Start the application server. The resulting editor screen will look as follows:
+
+image::ui_component/customer_edit_result.png[align="center",358,250]

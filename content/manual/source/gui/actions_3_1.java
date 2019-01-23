@@ -3,15 +3,22 @@
 private Notifications notifications;
 
 private void showNotification(String message) {
-    notifications.create().setCaption(message).setType(Notifications.NotificationType.HUMANIZED).show();
+    notifications.create()
+            .withCaption(message)
+            .withType(NotificationType.HUMANIZED)
+            .show();
 }
 
 @Subscribe("sayBtn.hello")
 private void onSayBtnHelloActionPerformed(Action.ActionPerformedEvent event) {
-    showNotification("Hello");
+    notifications.create()
+            .withCaption("Hello")
+            .show();
 }
 
 @Subscribe("sayBtn.goodbye")
 private void onSayBtnGoodbyeActionPerformed(Action.ActionPerformedEvent event) {
-    showNotification("Goodbye");
+    notifications.create()
+            .withCaption("Hello")
+            .show();
 }

@@ -1,11 +1,12 @@
 @Inject
-private Table table;
-
+private Notifications notifications;
+@Inject
+private Table<Customer> table;
 @Inject
 private Security security;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     table.addAction(new HelloAction());
 }
 
@@ -17,7 +18,10 @@ private class HelloAction extends BaseAction {
 
     @Override
     public void actionPerform(Component component) {
-        showNotification("Hello " + table.getSingleSelected(), NotificationType.TRAY);
+        notifications.create()
+                .withCaption("Hello " + table.getSingleSelected())
+                .withType(Notifications.NotificationType.TRAY)
+                .show();
     }
 
     @Override
@@ -27,6 +31,6 @@ private class HelloAction extends BaseAction {
 
     @Override
     public boolean isApplicable() {
-        return target != null && target.getSelected().size() == 1;
+        return table != null && table.getSelected().size() == 1;
     }
 }

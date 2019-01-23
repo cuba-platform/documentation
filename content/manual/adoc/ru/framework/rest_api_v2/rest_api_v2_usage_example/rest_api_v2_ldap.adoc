@@ -1,0 +1,51 @@
+:sourcesdir: ../../../../../source
+
+[[rest_api_v2_ldap]]
+===== Аутентификация LDAP в REST API
+
+Для настройки LDAP аутентификации в REST API используются следующие свойства приложения:
+
+* `cuba.rest.ldap.enabled` - определяет включен ли вход по LDAP логину/паролю.
+
+* `cuba.rest.ldap.urls` - URL сервера LDAP.
+
+* `cuba.rest.ldap.base` - base DN поиска имен пользователей.
+
+* `cuba.rest.ldap.user` - distinguished name системного пользователя, имеющего право на чтение информации из LDAP.
+
+* `cuba.rest.ldap.password` - пароль системного пользователя, заданного свойством `cuba.rest.ldap.user`.
+
+* `cuba.rest.ldap.userLoginField` - название атрибута пользователя в LDAP, значение которого соответствует логину пользователя. По умолчанию `sAMAccountName` (подходит для Active Directory).
+
+Пример содержимого файла <<app_properties_files,local.app.properties>>:
+
+[source, properties]
+----
+cuba.rest.ldap.enabled = true
+cuba.rest.ldap.urls = ldap://192.168.1.1:389
+cuba.rest.ldap.base = ou=Employees,dc=mycompany,dc=com
+cuba.rest.ldap.user = cn=System User,ou=Employees,dc=mycompany,dc=com
+cuba.rest.ldap.password = system_user_password
+----
+
+Получить OAuth токен можно выполнив POST запрос по адресу:
+
+`\http://localhost:8080/app/rest/v2/ldap/token`
+
+Доступ к данному URL защищен с помощью базовой аутентификации с использованием идентификатора и пароля клиента REST API. Обратите внимание, что это не логин и пароль пользователя приложения. Идентификатор и пароль клиента REST API заданы в свойствах приложения <<cuba.rest.client.id, cuba.rest.client.id>> и <<cuba.rest.client.secret, cuba.rest.client.secret>> (значения по умолчанию для этих свойств: `client` и `secret`). Заголовок `Authorization` запроса на получение токена должен содержать логин и пароль клиента, разделенные символом ":" и закодированные в base64.
+
+Запрос должен содержать следующие параметры (соответствуют параметрам стандартной аутентификации):
+
+* `grant_type` - всегда значение `password`.
+* `username` - логин пользователя приложения.
+* `password` - пароль пользователя приложения.
+
+Тип запроса на получение токена должен быть `application/x-www-form-urlencoded`, кодировка `UTF-8`.
+
+Стандартная аутентификация может быть отключена при помощи свойства `cuba.rest.standardAuthenticationEnabled`:
+
+[source, properties]
+----
+cuba.rest.standardAuthenticationEnabled = false
+----
+

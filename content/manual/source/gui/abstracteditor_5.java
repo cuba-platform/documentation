@@ -1,7 +1,10 @@
 @Override
 protected boolean preCommit() {
     if (somethingWentWrong) {
-        showNotification("Something went wrong", NotificationType.WARNING);
+        notifications.create()
+                .withCaption("Something went wrong")
+                .withType(Notifications.NotificationType.WARNING)
+                .show();
         return false;
     }
     return true;

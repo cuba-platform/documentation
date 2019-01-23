@@ -1,0 +1,67 @@
+:sourcesdir: ../../../../../source
+
+[[rest_api_v2_ex_get_token]]
+===== Получение OAuth токена
+
+OAuth токен необходим для выполнения любого метода REST API (кроме случая <<rest_api_v2_anonymous, анонимного доступа к REST API>>). Получить токен можно выполнив POST запрос по адресу
+
+`\http://localhost:8080/app/rest/v2/oauth/token`
+
+Доступ к данному URL защищен с помощью базовой аутентификации с использованием идентификатора и пароля клиента REST API. Обратите внимание, что это не логин и пароль пользователя приложения. Идентификатор и пароль клиента REST API заданы в свойствах приложения <<cuba.rest.client.id, cuba.rest.client.id>> и <<cuba.rest.client.secret, cuba.rest.client.secret>> (значения по умолчанию для этих свойств: `client` и `secret`). Заголовок Authorization запроса на получение токена должен содержать логин и пароль клиента, разделенные символом ":" и закодированные в base64.
+
+Тип запроса на получение токена должен быть `application/x-www-form-urlencoded`, кодировка `UTF-8`.
+
+Запрос должен содержать следующие параметры:
+
+* `grant_type` - всегда значение `password`.
+* `username` - логин пользователя приложения.
+* `password` - пароль пользователя приложения.
+
+[source, httprequest]
+----
+include::{sourcesdir}/rest/rest-access-token-request.txt[]
+----
+
+Вы также можете использовать утилиту https://curl.haxx.se/[cURL]:
+
+[source, plain]
+----
+include::{sourcesdir}/rest/rest-access-token-request-curl.txt[]
+----
+
+Метод возвращает JSON объект:
+
+[source, json]
+----
+include::{sourcesdir}/rest/rest-access-token-response.json[]
+----
+
+Значение токена содержится в поле `access_token`
+
+Чтобы использовать токен, его нужно передать в заголовке запроса `Authorization` с типом `Bearer`, например:
+
+[source, plain]
+----
+Authorization: Bearer 29bc6b45-83cd-4050-8c7a-2a8a60adf251
+----
+
+Свойство `refresh_token` содержит значение refresh токена. Он не может быть использован для доступа к защищённым ресурсам приложения, но он имеет большее время жизни по сравнению с access токеном и используется для получения нового access токена, когда старый токен истек.
+
+Запрос на получение нового access токена с помощью refresh токена должен содержать следующие параметры:
+
+* `grant_type` - `refresh_token`.
+* `refresh_token` - значения refresh токена.
+
+[source, httprequest]
+----
+include::{sourcesdir}/rest/rest-access-token-using-refresh-request.txt[]
+----
+
+См. также следующие свойства приложения, имеющие отношение к токенам:
+
+* <<cuba.rest.client.tokenExpirationTimeSec,cuba.rest.client.tokenExpirationTimeSec>>
+
+* <<cuba.rest.client.refreshTokenExpirationTimeSec,cuba.rest.client.refreshTokenExpirationTimeSec>>
+
+* <<cuba.rest.client.authorizedGrantTypes,cuba.rest.client.authorizedGrantTypes>>
+

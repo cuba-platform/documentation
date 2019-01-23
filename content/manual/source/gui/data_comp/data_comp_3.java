@@ -69,7 +69,7 @@ public class OrderEdit extends StandardEditor<Order> {
         Form form = uiComponents.create(Form.class);
         getWindow().add(form);
 
-        LookupPickerField<Customer> customerField = uiComponents.create(LookupPickerField.class);
+        LookupPickerField<Customer> customerField = uiComponents.create(LookupField.of(Customer.class));
         form.add(customerField);
         customerField.setValueSource(new ContainerValueSource<>(orderDc, "customer"));
         customerField.setOptions(new ContainerOptions<>(customersDc)); // <8>
@@ -77,7 +77,7 @@ public class OrderEdit extends StandardEditor<Order> {
         TextField<Integer> amountField = uiComponents.create(TextField.TYPE_INTEGER);
         amountField.setValueSource(new ContainerValueSource<>(orderDc, "amount"));
 
-        Table<OrderLine> table = uiComponents.create(Table.class);
+        Table<OrderLine> table = uiComponents.create(Table.of(OrderLine.class));
         getWindow().add(table);
         getWindow().expand(table);
         table.setItems(new ContainerTableItems<>(linesDc)); // <9>

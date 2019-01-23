@@ -1,0 +1,172 @@
+:sourcesdir: ../../../../source
+
+[[web_login]]
+==== Процесс входа в Web Client
+
+В данном разделе описывается, как работает аутентификация на веб-клиент и как расширить ее в проекте. Для информации об аутентификации на среднем слое см. <<login>>.
+
+Реализация логина в Web Client включает следующие механизмы:
+
+- `Connection` реализованный классом `ConnectionImpl`.
+- Реализации интерфейса `LoginProvider`.
+- Реализации интерфейса `HttpRequestFilter`.
+
+.Механизмы логина в Web Client
+image::WebLoginStructure.png[align="center"]
+
+Основной интерфейс подсистемы входа в Web Client - `Connection`, включающий следующие основные методы:
+
+- *login()* - аутентифицирует пользователя, создаёт пользовательскую сессию и изменяет состояние соединения.
+- *logout()* - выполняет выход из системы.
+- *substituteUser()* - замещает пользователя в текущей сессии. Этот метод создаёт новый объект *UserSession*, но с тем же ID.
+- *getSession()* - возвращает текущую сессию.
+
+После успешного входа *Connection* устанавливает объект *UserSession* в атрибут `VaadinSession` и устанавливает `SecurityContext`. Объект *Connection* связан с `VaadinSession`, поэтому вы не можете использовать его из фоновых потоков, при попытке вызова `login/logout` из фонового потока выбрасывается исключение *IllegalConcurrentAccessException*.
+
+Обычно, логин выполняется из экрана `AppLoginWindow`, который поддерживает вход при помощи логина/пароля и токена "запомнить меня".
+
+Реализация `Connection` по умолчанию - `ConnectionImpl`, который делегирует логин цепочке объектов `LoginProvider`. Интерфейс `LoginProvider` предназначен для реализации модулей входа, которые могут обрабатывать специфичные реализации интерфейса `Credentials`, также этот интерфейс включает метод `supports()`, позволяющий проверить поддерживает ли модули определённый тип `Credentials`.
+
+.Стандартный процесс входа в Web Client
+image::WebLoginProcedure.png[align="center"]
+
+Стандартный процесс входа:
+
+* Пользователь вводит свой логин и пароль.
+
+* Web Client создаёт объект `LoginPasswordCredentials`, передав логи и пароль в его конструктор, и вызывает метод `Connection.login()` с этими данными для входа.
+
+* `Connection` использует цепочку объектов `LoginProvider`. Существует стандартный модуль входа `LoginPasswordLoginProvider`, который работает с аутентификационными данными типа `LoginPasswordCredentials`. В зависимости от значения свойства <<cuba.checkPasswordOnClient,cuba.checkPasswordOnClient>>, он либо вызывает `AuthenticationService.login(Credentials)` передавая логин и пароль пользователя, либо загружает сущность `User` по логину, проверяет пароль на соответствие загруженному хэшу, и выполняет вход как доверенный клиент используя `TrustedClientCredentials` и <<cuba.trustedClientPassword,cuba.trustedClientPassword>>.
+
+* Если вход выполнен успешно, то объект `AuthenticationDetails` с активной сессией <<userSession,UserSession>> возвращается в `Connection`.
+
+* `Connection` создаёт специальный класс-обёртку `ClientUserSession` и устанавливает его в атрибут `VaadinSession`.
+
+* `Connection` создаёт экземпляр `SecurityContext` и устанавливает его в `AppContext`.
+
+* `Connection` публикует событие `StateChangeEvent`, стандартный обработчик которого обновляет UI и инициализирует `AppMainWindow`.
+
+Все реализации `LoginProvider` должны:
+
+* Аутентифицировать пользователя при помощи переданного объекта `Credentials`.
+* Создать и запустить новую пользовательскую сессию при помощи `AuthenticationService` или вернуть существующий объект активной сессии (например, для пользователя anonymous).
+* Вернуть данные аутентификации или null если объект `Credentials` не может быть обработан, например, если модуль входа отключен или не сконфигурирован.
+* Выбросить исключение `LoginException` в случае некорректных данных `Credentials` или пробросить вызывающему коду исключение `LoginException`, полученное от среднего слоя,.
+
+[[web_http_filter]]
+`HttpRequestFilter` - маркерный интерфейс для бинов, которые будут автоматически добавлены в цепочку фильтров приложения в качестве HTTP фильтра: https://docs.oracle.com/javaee/6/api/javax/servlet/Filter.html. Вы можете использовать такой фильтр для реализации дополнительной аутентификации, пре- и пост-обработки запроса и ответа.
+
+Вы можете реализовать такой `Filter` если создадите компонент Spring Framework и реализуете интерфейс `HttpRequestFilter`:
+[source, java]
+----
+include::{sourcesdir}/gui/web_customHttpFilter.java[]
+----
+
+Обратите внимание, что минимальная реализация должна делегировать исполнение объекту `FilterChain`, в противном случае ваше приложение будет неработоспособно. По умолчанию фильтры добавленные как бины `HttpRequestFilter` не будут получать запросы к каталогу `VAADIN` и другим путям, указанным в свойстве приложения `cuba.web.cubaHttpFilterBypassUrls`.
+
+[[built_in_login_providers]]
+Встроенные провайдеры входа::
++
+--
+Платформа включает следующие реализации интерфейса `LoginProvider`:
+
+- `AnonymousLoginProvider` - предоставляет анонимный вход для пользователей, не выполнивших вход в систему.
+- `LoginPasswordLoginProvider` - делегирует логин сервису `AuthenticationService` для переданного объекта `LoginPasswordCredentials`.
+- `RememberMeLoginProvider`- делегирует логин сервису `AuthenticationService` для переданного объекта `RememberMeCredentials`.
+- `LdapLoginProvider` - выполняет аутентификацию при помощи LDAP и выполняет вход, передавая `ExternalUserCredentials` сервису `AuthenticationService`.
+- `ExternalUserLoginProvider` - может использоваться для выполнения входа из обработчиков событий приложения, позволяет выполнить вход от имени любого пользователя по его логину.
+
+Все реализации создают активную сессию при помощи `AuthenticationService.login()`.
+
+Вы можете переопределить любой из провайдеров входа при помощи механизмов Spring Framework.
+--
+
+[[web_login_events]]
+События::
++
+--
+Стандартная реализация `Connection` - `ConnectionImpl` публикует следующие <<events, события>> во время процедуры входа:
+
+- `BeforeLoginEvent` / `AfterLoginEvent`
+- `LoginFailureEvent`
+- `UserConnectedEvent` / `UserDisconnectedEvent`
+- `UserSessionStartedEvent` / `UserSessionFinishedEvent`
+- `UserSessionSubstitutedEvent`
+
+Обработчики событий `BeforeLoginEvent` и `LoginFailureEvent` могут выбросить исключение `LoginException` чтобы прервать процесс входа или переопределить оригинальную причину ошибки входа.
+
+Например, при помощи обработчика `BeforeLoginEvent` вы можете разрешить вход в Web Client только для пользователей, логин которых включает домен компании.
+
+[source, java]
+----
+include::{sourcesdir}/gui/web_beforeLoginEventListener.java[]
+----
+
+Дополнительно, стандартный класс приложения - `DefaultApp` публикует следующие события:
+
+- `AppInitializedEvent` - публикуется после инициализации объекта `App`, выполняется один раз для одной HTTP сессии.
+- `AppStartedEvent` - публикуется во время обработки первого HTTP запроса к `App` перед инициализацией анонимного входа. Обработчики события могут выполнить вход при помощи `Connection`, связанного с `App`.
+- `AppLoggedInEvent` - публикуется после инициализации UI `App` сразу после того, как выполнен вход в приложение.
+- `AppLoggedOutEvent` - публикуется после инициализации UI `App` сразу после того, как выполнен выход из приложения.
+- `SessionHeartbeatEvent` - публикуется во время запросов `heartbeat` от веб-браузера пользователя.
+
+Событие `AppStartedEvent` может использоваться для реализации прозрачного входа и SSO со сторонними системами, такими как Jasig CAS. Обычно, используется вместе с дополнительной реализацией `HttpRequestFilter`, которая должна собрать и предоставить дополнительные аутентификационные данные из HTTP запроса.
+
+Допустим, что система должна автоматически выполнять вход для пользователей, у которых есть специальный файл cookie - `PROMO_USER`.
+
+[source, java]
+----
+include::{sourcesdir}/gui/web_appStartedEventListener.java[]
+----
+
+Так, если веб-браузер хранит файл cookie `PROMO_USER`, и пользователь откроет приложение, будет выполнен вход от имени пользователя, указанного в `promoUserLogin`.
+
+Если вы хотите выполнить дополнительные действия после входа в приложение и инициализации UI вы можете реализовать обработчик события `AppLoggedInEvent`. Обратите внимание, что вы должны проверить, аутентифицирован ли пользователь или нет в обработчиках события, поскольку все события публикуются и для пользователя `anonymous`, даже если пользователь не аутентифицирован.
+
+--
+
+[[web_login_extension_points]]
+Точки расширения::
++
+--
+Вы можете расширить механизм входа, используя следующие точки расширения::
+
+- `Connection` - заменить существующий `ConnectionImpl`.
+- `HttpRequestFilter` - реализовать дополнительный `HttpRequestFilter`.
+- `LoginProvider` implementations - реализовать новый или заменить существующий бин `LoginProvider`.
+- Events - реализовать обработчик одного из доступных <<web_login_events,событий>>.
+
+Вы можете заменить существующие бины, используя механизмы Spring Framework, например, зарегистрировав новый бин в конфигурационном файле Spring XML модуля *web*.
+
+[source, xml]
+----
+<bean id="cuba_LoginPasswordLoginProvider"
+      class="com.company.demo.web.CustomLoginProvider"/>
+----
+
+--
+
+[[web_login_obsolete]]
+Устаревшие механизмы::
++
+--
+
+При необходимости можно создать собственный класс имплементации `CubaAuthProvider` и использовать его, установив следующие свойства приложения:
+
+[source, properties]
+----
+cuba.web.externalAuthentication = true
+cuba.web.externalAuthenticationProviderClass = com.company.sample.web.MyAuthProvider
+----
+
+Следующие компоненты считаются устаревшими:
+
+- Интерфейс `CubaAuthProvider` и его реализации доступны в режиме совместимости. Используйте вместо него события, интерфейсы `LoginProvider` и `HttpRequestFilter`.
+- `LdapAuthProvider` заменён на `LdapLoginProvider`, который может быть включен как описано здесь: <<ldap_basic,Интеграция с LDAP>>
+- `IdpAuthProvider` заменён на `IdpLoginProvider`, который может быть включен как описано здесь: <<sso,IDP SSO>>
+
+Не используйте эти компоненты. Они будут удалены в следующей major версии платформы.
+
+Используйте вместо этих механизмов <<web_login_extension_points,точки расширения Web Client>>.
+--
+
