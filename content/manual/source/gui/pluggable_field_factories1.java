@@ -1,10 +1,23 @@
-@Component(SalesComponentGenerationStrategy.NAME)
+import com.company.sales.entity.Order;
+import com.haulmont.chile.core.model.MetaClass;
+import com.haulmont.cuba.core.global.Metadata;
+import com.haulmont.cuba.gui.UiComponents;
+import com.haulmont.cuba.gui.components.*;
+import com.haulmont.cuba.gui.components.data.ValueSource;
+import org.springframework.core.Ordered;
+
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+import java.sql.Date;
+
+@org.springframework.stereotype.Component(SalesComponentGenerationStrategy.NAME)
 public class SalesComponentGenerationStrategy implements ComponentGenerationStrategy, Ordered {
 
     public static final String NAME = "sales_SalesComponentGenerationStrategy";
 
     @Inject
-    private ComponentsFactory componentsFactory;
+    private UiComponents uiComponents;
+
     @Inject
     private Metadata metadata;
 
@@ -20,11 +33,12 @@ public class SalesComponentGenerationStrategy implements ComponentGenerationStra
                 && "date".equals(property)
                 && context.getComponentClass() != null
                 && FieldGroup.class.isAssignableFrom(context.getComponentClass())) {
-            DatePicker datePicker = componentsFactory.createComponent(DatePicker.class);
+            DatePicker<Date> datePicker = uiComponents.create(DatePicker.TYPE_DATE);
 
-            Datasource datasource = context.getDatasource();
-            if (datasource != null) {
-                datePicker.setDatasource(datasource, property);
+            ValueSource valueSource = context.getValueSource();
+            if (valueSource != null) {
+                //noinspection unchecked
+                datePicker.setValueSource(valueSource);
             }
 
             return datePicker;

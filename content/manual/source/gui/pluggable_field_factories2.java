@@ -1,11 +1,28 @@
+import com.company.colordatatype.datatypes.ColorDatatype;
+import com.haulmont.chile.core.datatypes.Datatype;
+import com.haulmont.chile.core.model.MetaClass;
+import com.haulmont.chile.core.model.MetaPropertyPath;
+import com.haulmont.chile.core.model.Range;
+import com.haulmont.cuba.core.app.dynamicattributes.DynamicAttributesUtils;
+import com.haulmont.cuba.gui.UiComponents;
+import com.haulmont.cuba.gui.components.ColorPicker;
+import com.haulmont.cuba.gui.components.Component;
+import com.haulmont.cuba.gui.components.ComponentGenerationContext;
+import com.haulmont.cuba.gui.components.ComponentGenerationStrategy;
+import com.haulmont.cuba.gui.components.data.ValueSource;
+import org.springframework.core.annotation.Order;
+
+import javax.annotation.Nullable;
+import javax.inject.Inject;
+
 @Order(100)
-@Component(ColorComponentGenerationStrategy.NAME)
+@org.springframework.stereotype.Component(ColorComponentGenerationStrategy.NAME)
 public class ColorComponentGenerationStrategy implements ComponentGenerationStrategy {
 
     public static final String NAME = "colordatatype_ColorComponentGenerationStrategy";
 
     @Inject
-    private ComponentsFactory componentsFactory;
+    private UiComponents uiComponents;
 
     @Nullable
     @Override
@@ -17,12 +34,13 @@ public class ColorComponentGenerationStrategy implements ComponentGenerationStra
             Range mppRange = mpp.getRange();
             if (mppRange.isDatatype()
                     && ((Datatype) mppRange.asDatatype()) instanceof ColorDatatype) {
-                ColorPicker colorPicker = componentsFactory.createComponent(ColorPicker.class);
+                ColorPicker colorPicker = uiComponents.create(ColorPicker.class);
                 colorPicker.setDefaultCaptionEnabled(true);
 
-                Datasource datasource = context.getDatasource();
-                if (datasource != null) {
-                    colorPicker.setDatasource(datasource, property);
+                ValueSource valueSource = context.getValueSource();
+                if (valueSource != null) {
+                    //noinspection unchecked
+                    colorPicker.setValueSource(valueSource);
                 }
 
                 return colorPicker;
