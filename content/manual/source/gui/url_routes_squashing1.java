@@ -1,7 +1,7 @@
 @Route("orders")
-public class OrderBrowser extends Screen {
+public class OrderBrowser extends StandardLookup<Order> {
 }
 
 @Route("orders/edit")
-public class OrderEditor extends Screen implements EditorScreen {
+public class OrderEditor extends StandardEditor<Order> {
 }

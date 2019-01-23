@@ -1,16 +1,86 @@
 :sourcesdir: ../../../../../source
 
 [[url_routing]]
-===== Routing
+===== Routing API
 
-This section describes the key concepts of the feature:
+This section describes the key concepts of the routing API.
 
-* Routes registration
-* Manual UI state reflection
-* NavigationFilters
+[[url_route_registration]]
+Route Registration::
++
+--
+In order to register a route for a screen, add the `@Route` annotation to the screen controller, for example:
 
-include::url_routing/url_routes_registration.adoc[]
+[source, java]
+----
+include::{sourcesdir}/gui/url_new_screen_registration.java[]
+----
 
-include::url_routing/url_manual_ui_state_reflection.adoc[]
+The annotation has two parameters:
 
-include::url_routing/url_navigation_filter.adoc[]
+* `path` (or `value`) is the route itself;
+* `parentPrefix` is used for routes squashing (see <<url_route_squashing,below>>).
+
+If you need to define a route for a <<screens,legacy screen>> add the `route` (and optionally `routeParentPrefix`) attributes to the screen's element in the <<screens.xml,screens.xml>> file, for example:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/url_legacy_screen_registration.xml[]
+----
+--
+
+[[url_route_squashing]]
+Route Squashing::
++
+--
+This feature is designed to keep the URL clean and readable when opening multiple screens with routes having the same parts.
+
+Suppose that we have browser and editor screens for the `Order` entity:
+
+[source, java]
+----
+include::{sourcesdir}/gui/url_routes_squashing1.java[]
+----
+
+URL squashing is used to avoid repeating of the `orders` route in the URL when the editor screen is opened right after browser. Just specify the repeated part in the `parentPrefix` parameter of the `@Route` annotation on the editor screen:
+
+[source, java]
+----
+include::{sourcesdir}/gui/url_routes_squashing2.java[]
+----
+
+Now when the editor is opened in the same tab as the browser, the resulting address will be like `app/#main/0/orders/edit?id=...`
+--
+
+[[url_ui_state_mapping]]
+Mapping of UI State to URL::
++
+--
+The `UrlRouting` bean allows you to change the current application URL according to the current screen and some parameters. It has the following methods:
+
+* `pushState()` – changes the address and pushes new browser history entry;
+* `replaceState()` – replaces the address without adding new browser history entry;
+* `getState()` – returns a current state as `NavigationState` object.
+
+The `pushState()/replaceState()` methods accept the current screen controller and optional map of parameters.
+
+See an example of using `UrlRouting` in the section <<mapping_state_to_url,below>>.
+--
+
+[[url_navigation_filter]]
+Navigation Filter::
++
+--
+The navigation filters mechanism allows you to prevent transition to some routes.
+
+A navigation filter is a managed bean that implements the `NavigationFilter` interface. The `@Order` annotation can be used to configure the order of  invocation of all navigation filters. The `NavigationFilter.HIGHEST_PLATFORM_PRECEDENCE` and `NavigationFilter.LOWEST_PLATFORM_PRECEDENCE` constants define the range which is used by filters defined in the framework.
+
+The `NavigationFilter` interface has the `allowed()` method which accepts two arguments: current navigation state `fromState` and requested navigation state `toState`. The method returns `AccessCheckResult` instance and checks whether the transition from the current navigation state to the requested navigation state is allowed.
+
+`CubaLoginScreenFilter` is an example of navigation filter. It is designed for checking whether the current session is authenticated to prevent navigation to the login screen when the user is logged in already:
+
+[source, java]
+----
+include::{sourcesdir}/gui/url_navigation_filter.java[]
+----
+--

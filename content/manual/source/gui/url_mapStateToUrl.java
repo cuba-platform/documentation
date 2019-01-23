@@ -2,17 +2,14 @@ package com.company.demo.web.navigation;
 
 import com.company.demo.entity.Task;
 import com.google.common.collect.ImmutableMap;
-import com.haulmont.cuba.core.global.DataManager;
 import com.haulmont.cuba.gui.Route;
 import com.haulmont.cuba.gui.UrlRouting;
 import com.haulmont.cuba.gui.components.Button;
 import com.haulmont.cuba.gui.components.LookupField;
-import com.haulmont.cuba.gui.navigation.UrlParamsChangedEvent;
 import com.haulmont.cuba.gui.screen.*;
 import com.haulmont.cuba.web.sys.navigation.UrlIdSerializer;
 
 import javax.inject.Inject;
-import java.util.UUID;
 
 @Route("task-info")
 @UiController("demo_TaskInfoScreen")
@@ -26,27 +23,15 @@ public class TaskInfoScreen extends Screen {
     @Inject
     private UrlRouting urlRouting;
 
-    @Inject
-    private DataManager dataManager;
-
-    @Subscribe
-    protected void onUrlParamsChanged(UrlParamsChangedEvent event) {
-        String serializedTaskId = event.getParams().get("task_id"); // <1>
-
-        UUID taskId = (UUID) UrlIdSerializer.deserializeId(UUID.class, serializedTaskId); // <2>
-
-        taskField.setValue(dataManager.load(Task.class).id(taskId).one()); // <3>
-    }
-
     @Subscribe("selectBtn")
     protected void onSelectBtnClick(Button.ClickEvent event) {
-        Task task = taskField.getValue();
+        Task task = taskField.getValue(); // <1>
         if (task == null) {
-            urlRouting.replaceState(this);
+            urlRouting.replaceState(this); // <2>
             return;
         }
-        String serializedTaskId = UrlIdSerializer.serializeId(task.getId());
+        String serializedTaskId = UrlIdSerializer.serializeId(task.getId()); // <3>
 
-        urlRouting.replaceState(this, ImmutableMap.of("task_id", serializedTaskId));
+        urlRouting.replaceState(this, ImmutableMap.of("task_id", serializedTaskId)); // <4>
     }
 }
