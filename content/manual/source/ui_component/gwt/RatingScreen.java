@@ -1,24 +1,25 @@
-package com.company.ratingsample.web.screens;
+package com.company.ratingsample.web.screens.rating;
 
 import com.company.ratingsample.web.toolkit.ui.RatingFieldServerComponent;
-import com.haulmont.cuba.gui.components.AbstractWindow;
-import com.haulmont.cuba.gui.components.BoxLayout;
-import com.haulmont.cuba.web.gui.components.WebComponentsHelper;
+import com.haulmont.cuba.gui.components.VBoxLayout;
+import com.haulmont.cuba.gui.screen.Screen;
+import com.haulmont.cuba.gui.screen.Subscribe;
+import com.haulmont.cuba.gui.screen.UiController;
+import com.haulmont.cuba.gui.screen.UiDescriptor;
 import com.vaadin.ui.Layout;
 
 import javax.inject.Inject;
-import java.util.Map;
 
-public class RatingScreen extends AbstractWindow {
+@UiController("ratingsample_RatingScreen")
+@UiDescriptor("rating-screen.xml")
+public class RatingScreen extends Screen {
     @Inject
-    private BoxLayout container;
+    private VBoxLayout container;
 
-    @Override
-    public void init(Map<String, Object> params) {
-        super.init(params);
-        com.vaadin.ui.Layout containerLayout = (Layout) WebComponentsHelper.unwrap(container);
+    @Subscribe
+    protected void onInit(InitEvent event) {
         RatingFieldServerComponent field = new RatingFieldServerComponent();
         field.setCaption("Rate this!");
-        containerLayout.addComponent(field);
+        container.unwrap(Layout.class).addComponent(field);
     }
 }

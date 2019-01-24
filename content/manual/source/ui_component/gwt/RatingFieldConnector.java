@@ -1,8 +1,6 @@
 package com.company.ratingsample.web.toolkit.ui.client.ratingfield;
 
 import com.company.ratingsample.web.toolkit.ui.RatingFieldServerComponent;
-import com.company.ratingsample.web.toolkit.ui.client.ratingfield.RatingFieldServerRpc;
-import com.company.ratingsample.web.toolkit.ui.client.ratingfield.RatingFieldState;
 import com.vaadin.client.communication.StateChangeEvent;
 import com.vaadin.client.ui.AbstractFieldConnector;
 import com.vaadin.shared.ui.Connect;
@@ -18,12 +16,8 @@ public class RatingFieldConnector extends AbstractFieldConnector {
         RatingFieldWidget widget = (RatingFieldWidget) super.getWidget();
 
         if (widget.listener == null) {
-            widget.listener = new RatingFieldWidget.StarClickListener() {
-                @Override
-                public void starClicked(int value) {
+            widget.listener = value ->
                     getRpcProxy(RatingFieldServerRpc.class).starClicked(value);
-                }
-            };
         }
         return widget;
     }
