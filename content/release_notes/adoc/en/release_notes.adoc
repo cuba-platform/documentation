@@ -51,7 +51,7 @@ This document highlights major changes in CUBA Platform and Studio version {revn
 [[platform_breaking_changes]]
 === Breaking Changes
 
-. Internet Explorer 8-10 is not supported any more. Supported web browsers are: Chrome, Firefox 45+, Safari 4.1+, Internet Explorer 11, Microsoft Edge.
+. Internet Explorer 8-10 is not supported anymore. Supported web browsers are: Chrome, Firefox 45+, Safari 4.1+, Internet Explorer 11, Microsoft Edge.
 
 . IntelliJ IDEA / Eclipse project files generation (`idea` and `eclipse` Gradle tasks) is not required anymore.
 +
@@ -73,7 +73,7 @@ public class MyProjectTestContainer extends TestContainer {
 
 . Old `commons-lang` dependency has been removed, the platform depends on new `commons-lang3` library. You can either migrate usages to `commons-lang3` (simply change imports to use `org.apache.commons.lang3` package) or add explicit dependency `compile('commons-lang:commons-lang:2.6')` to your global module in `build.gradle`.
 
-. Dependency on `groovy-all` package removed. Now the platform depends only on `groovy`, `groovy-templates` and `groovy-sql` modules. Add required Groovy modules to your project dependencies if needed.
+. Dependency on `groovy-all` package has been removed. Now the framework depends only on `groovy`, `groovy-templates` and `groovy-sql` modules. Add required Groovy modules to your project dependencies if needed.
 
 . Dependency on MyBatis and `com.haulmont.cuba.core.sys.mybatis.UUIDTypeHandler` class have been removed. If you need MyBatis in your project, see the {manual}/myBatis.html[Integration with MyBatis] section for instructions.
 
@@ -144,13 +144,25 @@ charts: `com.haulmont.charts.web.toolkit.ui.ChartsWidgetSet` changed to `com.hau
 
 . By default, the UI components `description` property isn't processed as HTML markup. This can be changed by setting `descriptionAsHtml=true`.
 
-. BaseAction does not set caption implicitly (using id as message key) anymore. Now it must be set explicitly.
+. `BaseAction` does not set caption implicitly (using id as message key) anymore. Now it must be set explicitly.
 
-. WidgetsTree UI component has been removed as legacy and undocumented feature.
+. `WidgetsTree` UI component has been removed as legacy and undocumented feature.
 
-. Removed multiSelect attribute of TwinColumn UI component.
+. Removed `multiSelect` attribute of the `TwinColumn` UI component.
 
-. TextArea and ResizableTextArea are different UI components. If you inject `<textArea>` element in a screen controller it will lead to ClassCastException.
+. `TextArea` and `ResizableTextArea` are now different UI components with own XML elements: `<textArea>` and `<resizableTextArea>`. The `<textArea>` element still has `resizableDirection` and `resizable` attributes for backward compatibility, but if you inject the component with `resizable="true"` in a controller, the type of the field must be `ResizableTextArea`, otherwise you will get `ClassCastException`.
+
+[[premium_addons]]
+=== Former Premium Add-ons
+
+The former premium add-ons (BPM, Charts, Full-Text Search, Reports) - are free and open-source since version 7.0. The source code projects have been moved to GitHub:
+
+* https://github.com/cuba-platform/bpm
+* https://github.com/cuba-platform/charts
+* https://github.com/cuba-platform/fts
+* https://github.com/cuba-platform/reports
+
+The binary artifacts of the addons version 7.0 are published in the main repositories: https://dl.bintray.com/cuba-platform/main and https://repo.cuba-platform.com/content/groups/work, so there is no need to add premium repositories to your `build.gradle` to use the add-ons.
 
 [[gui]]
 === Generic UI
@@ -165,37 +177,25 @@ charts: `com.haulmont.charts.web.toolkit.ui.ChartsWidgetSet` changed to `com.hau
 +
 The old screen API, standard actions and datasources are kept for backward compatibility.
 
-. New UI components - `RadioButtonGroup`, `CheckBoxGroup`, `TreeDataGrid`, `Form`.
+. New UI components - {manual}/gui_Form.html[Form], {manual}/gui_TreeDataGrid.html[TreeDataGrid], {manual}/gui_RadioButtonGroup.html[RadioButtonGroup], {manual}/gui_CheckBoxGroup.html[CheckBoxGroup].
 
-. Implemented `JavaScriptComponent` - simplified way of JavaScript UI component integration.
+. Implemented {manual}/jsComponent.html[JavaScriptComponent] - a simplified way of integration with JavaScript UI components.
 
 . Data aware UI components that implement `HasValue` interface provide typed API. Now you can use them as: `LookupField<User>`, `TextField<Integer>`, `DateField<LocalDate>` etc.
 
 . Introduced new UI components factory - `UiComponents` bean.
 
-. Implemented URL browser history and navigation: it works out of the box for standard CRUD screens and can be customized for custom screens.
+. Implemented {manual}/url_history_navigation.html[URL browser history and navigation].
 
 . Implemented single `BeforeCloseEvent` for `Window` with `CloseOriginType`.
 
-. All UI components support context help.
+. All UI components now support {manual}/gui_attributes.html#gui_attr_contextHelpText[context help].
 
 . All UI component events have the `userOriginated` attribute that indicates whether this event was triggered by user interaction on the client side, or programmatically, on the server side.
 
-. CSS rules for UI components can be set from XML using `css` attribute.
+. CSS rules for UI components can be set in screen XML using the {manual}/gui_attributes.html#gui_attr_css[css] attribute.
 
 . `Button` supports `ClickEvent` and can be used without an action.
-
-//[[rest]]
-//=== REST API
-//
-//[[charts]]
-//=== Charts Addon
-//
-//[[fts]]
-//=== Full-Text Search Addon
-//
-//[[bpm]]
-//=== BPM Addon
 
 === IDP Single Sign-On
 
@@ -204,17 +204,7 @@ IDP functionality has been extracted to the https://github.com/cuba-platform/idp
 [[misc]]
 === Miscellaneous
 
-. Java 8, 9 and 10 can be used to build and run applications. If you are going to run the application on Java 10, add the following dependencies to the `global` module in `build.gradle`:
-+
-[source, groovy]
-----
-configure(globalModule) {
-    dependencies {
-        runtime('javax.xml.bind:jaxb-api:2.3.1')
-        runtime('org.glassfish.jaxb:jaxb-runtime:2.3.1')
-    }
-    // ...
-----
+. Java 8, 9, 10 and 11 can be used to build and run applications.
 
 . It is recommended to use underscore instead of "$" to separate namespace and class in entity names, for example `sales_Customer`.
 
@@ -227,14 +217,37 @@ configure(globalModule) {
 [[upd_dep]]
 === Updated Dependencies
 
+Core framework:
 ----
-org.springframework = 5.1.2.RELEASE
-org.eclipse.persistence/eclipselink = 2.7.2-2-cuba
-com.vaadin = 8.6.1-7-cuba
-org.codehaus.groovy = 2.5.2
 com.google.guava = 26.0-jre
+com.sun.mail/javax.mail = 1.6.0
+com.vaadin = 8.6.4-2-cuba
+de.javakaffee/kryo-serializers = 0.42
+javax/javaee-api = 8.0
+org.codehaus.groovy = 2.5.4
 org.dom4j/dom4j = 2.1.0
+org.eclipse.persistence/org.eclipse.persistence.jpa = 2.7.3-1-cuba
+org.eclipse.persistence/org.eclipse.persistence.oracle = 2.7.3
+org.freemarker/freemarker = 2.3.23
+org.glassfish/javax.el = 3.0.1-b10
+org.hibernate.validator/hibernate-validator = 6.0.13.Final
+org.javassist/javassist = 3.24.0-GA
+org.jmockit/jmockit = 1.39
+org.springframework = 5.1.2.RELEASE
+org.springframework.security = 5.1.1.RELEASE
+org.springframework.security.oauth/spring-security-oauth2 = 2.3.4.RELEASE
+org.webjars.bower/jquery-file-upload = 9.22.0.cuba.0
 org.webjars/jquery = 3.3.1
+----
+
+Full-Text Search add-on:
+----
+org.apache.lucene = 7.5.0
+----
+
+Reports add-on:
+----
+com.haulmont.yarg = 2.1.3
 ----
 
 [[studio]]
