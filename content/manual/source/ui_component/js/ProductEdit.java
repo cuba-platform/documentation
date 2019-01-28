@@ -2,51 +2,42 @@ package com.company.jscomponent.web.product;
 
 import com.company.jscomponent.entity.Product;
 import com.company.jscomponent.web.toolkit.ui.slider.SliderServerComponent;
-import com.haulmont.cuba.gui.UiComponents;
-import com.haulmont.cuba.gui.components.AbstractEditor;
-import com.haulmont.cuba.gui.components.Component;
-import com.haulmont.cuba.gui.components.FieldGroup;
-import com.haulmont.cuba.gui.components.VBoxLayout;
-import com.haulmont.cuba.gui.data.Datasource;
-import com.haulmont.cuba.web.gui.components.WebComponentsHelper;
+import com.haulmont.cuba.gui.components.HBoxLayout;
+import com.haulmont.cuba.gui.screen.*;
 import com.vaadin.ui.Layout;
 
 import javax.inject.Inject;
 
-public class ProductEdit extends AbstractEditor<Product> {
+@UiController("jscomponent_Product.edit")
+@UiDescriptor("product-edit.xml")
+@EditedEntityContainer("productDc")
+@LoadDataBeforeShow
+public class ProductEdit extends StandardEditor<Product> {
 
     @Inject
-    private FieldGroup fieldGroup;
+    private HBoxLayout sliderBox;
 
-    @Inject
-    private UiComponents uiComponents;
-
-    @Inject
-    private Datasource<Product> productDs;
-
-    @Override
-    protected void initNewItem(Product item) {
-        super.initNewItem(item);
-        item.setMinDiscount(15.0);
-        item.setMaxDiscount(70.0);
+    @Subscribe
+    protected void onInitEntity(InitEntityEvent<Product> event) {
+        event.getEntity().setMinDiscount(15.0);
+        event.getEntity().setMaxDiscount(70.0);
     }
 
-    @Override
-    protected void postInit() {
-        super.postInit();
-
-        Component box = uiComponents.create(VBoxLayout.NAME);
-        Layout vBox = (Layout) WebComponentsHelper.unwrap(box);
+    @Subscribe
+    protected void onBeforeShow(BeforeShowEvent event) {
         SliderServerComponent slider = new SliderServerComponent();
-        slider.setValue(new double[]{getItem().getMinDiscount(), getItem().getMaxDiscount()});
+        slider.setValue(new double[]{
+                getEditedEntity().getMinDiscount(),
+                getEditedEntity().getMaxDiscount()
+        });
         slider.setMinValue(0);
         slider.setMaxValue(100);
-        slider.setWidth("240px");
+        slider.setWidth("250px");
         slider.setListener(newValue -> {
-            getItem().setMinDiscount(newValue[0]);
-            getItem().setMaxDiscount(newValue[1]);
+            getEditedEntity().setMinDiscount(newValue[0]);
+            getEditedEntity().setMaxDiscount(newValue[1]);
         });
-        vBox.addComponent(slider);
-        fieldGroup.getFieldNN("slider").setComponent(box);
+
+        sliderBox.unwrap(Layout.class).addComponent(slider);
     }
 }

@@ -1,12 +1,12 @@
 package com.company.jscomponent.web.toolkit.ui.slider;
 
-import com.vaadin.annotations.StyleSheet;
-import com.vaadin.ui.AbstractJavaScriptComponent;
+import com.haulmont.cuba.web.widgets.WebJarResource;
 import com.vaadin.annotations.JavaScript;
+import com.vaadin.ui.AbstractJavaScriptComponent;
 import elemental.json.JsonArray;
 
-@JavaScript({"slider-connector.js", "jquery.js", "jquery-ui.js"})
-@StyleSheet({"jquery-ui.css"})
+@WebJarResource({"jquery:jquery.min.js", "jquery-ui:jquery-ui.min.js", "jquery-ui:jquery-ui.css"})
+@JavaScript({"slider-connector.js"})
 public class SliderServerComponent extends AbstractJavaScriptComponent {
 
     public interface ValueChangeListener {

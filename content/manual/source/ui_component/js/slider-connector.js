@@ -2,7 +2,7 @@ com_company_jscomponent_web_toolkit_ui_slider_SliderServerComponent = function()
     var connector = this;
     var element = connector.getElement();
     $(element).html("<div/>");
-    $(element).css("padding", "5px 10px");
+    $(element).css("padding", "5px 0px");
 
     var slider = $("div", element).slider({
         range: true,
