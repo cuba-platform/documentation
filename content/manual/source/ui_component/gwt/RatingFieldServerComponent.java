@@ -12,10 +12,17 @@ public class RatingFieldServerComponent extends AbstractField<Integer> {
         registerRpc((RatingFieldServerRpc) value -> setValue(value, true));
     }
 
-    // field value type
     @Override
-    public Class<? extends Integer> getType() {
-        return Integer.class;
+    protected void doSetValue(Integer value) {
+        if (value == null) {
+            value = 0;
+        }
+        getState().value = value;
+    }
+
+    @Override
+    public Integer getValue() {
+        return getState().value;
     }
 
     // define own state class
@@ -27,15 +34,5 @@ public class RatingFieldServerComponent extends AbstractField<Integer> {
     @Override
     protected RatingFieldState getState(boolean markAsDirty) {
         return (RatingFieldState) super.getState(markAsDirty);
-    }
-
-    // we need to refresh the state when setValue is invoked from the application code
-    @Override
-    protected void setInternalValue(Integer newValue) {
-        super.setInternalValue(newValue);
-        if (newValue == null) {
-            newValue = 0;
-        }
-        getState().value = newValue;
     }
 }

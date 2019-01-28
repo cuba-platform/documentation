@@ -19,7 +19,7 @@ public class RatingFieldWidget extends FocusWidget {
         void starClicked(int value);
     }
 
-    protected List<SpanElement> stars = new ArrayList<SpanElement>(5);
+    protected List<SpanElement> stars = new ArrayList<>(5);
     protected StarClickListener listener;
     protected int value = 0;
 
