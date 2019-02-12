@@ -1,0 +1,124 @@
+:sourcesdir: ../../../../../source
+
+[[using_screen_fragments]]
+===== Использование фрагментов экранов
+
+В данном разделе рассматриваются примеры определения и использования <<screen_controllers,фрагментов экранов>>.
+
+'''
+
+<<using_screen_fragment_decl,Декларативное использование фрагмента>>
+
+<<using_screen_fragment_prog,Программное использование фрагмента>>
+
+<<using_screen_fragment_data,Компоненты данных в фрагментах>>
+
+<<using_screen_fragment_provided_data,Контейнеры данных, предоставляемые экраном>>
+
+'''
+
+[[using_screen_fragment_decl]]
+Декларативное использование фрагмента::
++
+--
+Предположим, имеется фрагмент для ввода адреса:
+
+.AddressFragment.java
+[source, java]
+----
+include::{sourcesdir}/gui/screens/address_fragment_1.java[]
+----
+
+.address-fragment.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_fragment_1.xml[]
+----
+
+Он может быть включен в некоторый экран с помощью элемента `fragment` с атрибутом `screen`, указывающим на id фрагмента, который задан в аннотации `@UiController`:
+
+.host-screen.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_host_1.xml[]
+----
+
+Элемент `fragment` может быть добавлен в любой UI-контейнер экрана, в том числе в корневой элемент `layout`.
+--
+
+[[using_screen_fragment_prog]]
+Программное использование фрагмента::
++
+--
+<<using_screen_fragment_decl,Тот же самый>> фрагмент может быть включен в экран программно в обработчике <<screen_InitEvent,InitEvent>> или <<screen_AfterInitEvent,AfterInitEvent>> как показано ниже:
+
+.host-screen.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_host_2.xml[]
+----
+
+.HostScreen.java
+[source, java]
+----
+include::{sourcesdir}/gui/screens/address_host_2.java[]
+----
+<1> - инжекция бина `Fragments`, который предназначен для инстанциирования фрагментов
+<2> - создание экземпляра контроллера фрагмента по его классу
+<3> - получение визуального компонента `Fragment` из контроллера и добавление его в UI-контейнер
+--
+
+[[using_screen_fragment_data]]
+Компоненты данных в фрагментах::
++
+--
+Фрагмент экрана может иметь свои собственные контейнеры и загрузчики данных, определенные в XML-элементе `data`. В то же время, фреймворк создает единственный экземпляр <<gui_DataContext,DataContext>> для экрана и всех его фрагментов. Поэтому все загруженные сущности помещаются в один контекст и их изменения сохраняются, когда экран выполняет коммит.
+
+Далее рассматривается пример использования собственных компонентов данных в фрагменте.
+
+Предположим, имеется сущность `City`, и во фрагменте вместо текстового поля необходимо отобразить выпадающий список с имеющимися городами. Во фрагменте можно определить компоненты данных точно так же, как в обычном экране:
+
+.address-fragment.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_fragment_2.xml[]
+----
+
+Для того, чтобы загрузить данные в момент открытия включающего экрана, необходимо подписаться на событие экрана:
+
+.AddressFragment.java
+[source, java]
+----
+include::{sourcesdir}/gui/screens/address_fragment_2.java[]
+----
+<1> - подписка на <<screen_BeforeShowEvent,BeforeShowEvent>> включающего экрана
+
+[WARNING]
+====
+Аннотация `@LoadDataBeforeShow` в фрагментах экранов не действует.
+====
+--
+
+[[using_screen_fragment_provided_data]]
+Контейнеры данных, предоставляемые экраном::
++
+--
+Следующий пример демонстрирует использование контейнеров данных, предоставляемых включающим экраном.
+
+.host-screen.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_host_3.xml[]
+----
+<1> - контейнер данных, который используется фрагментом ниже
+
+.address-fragment.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_fragment_3.xml[]
+----
+<1> - `provided="true"` означает, что контейнер с таким же id должен существовать во включающем экране или фрагменте, т.е. должен быть предоставлен извне
+<2> - UI-компоненты соединены с предоставленным контейнером данных
+
+В XML-элементе, имеющем `provided="true"`, все атрибуты за исключением `id` игнорируются, но могут присутствовать для обеспечения работы инструментов разработки.
+--

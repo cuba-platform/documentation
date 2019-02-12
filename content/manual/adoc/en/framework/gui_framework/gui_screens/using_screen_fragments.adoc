@@ -1,0 +1,124 @@
+:sourcesdir: ../../../../../source
+
+[[using_screen_fragments]]
+===== Using Screen Fragments
+
+In this section, we explain how to define and use <<screen_controllers,screen fragments>>.
+
+'''
+
+<<using_screen_fragment_decl,Declarative usage of a fragment>>
+
+<<using_screen_fragment_prog,Programmatic usage of a fragment>>
+
+<<using_screen_fragment_data,Data components in screen fragments>>
+
+<<using_screen_fragment_provided_data,Provided data containers>>
+
+'''
+
+[[using_screen_fragment_decl]]
+Declarative usage of a fragment::
++
+--
+Suppose we have a fragment for entering an address:
+
+.AddressFragment.java
+[source, java]
+----
+include::{sourcesdir}/gui/screens/address_fragment_1.java[]
+----
+
+.address-fragment.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_fragment_1.xml[]
+----
+
+Then we can include it to another screen using the `fragment` element with the `screen` attribute pointing to the fragment id, specified in its `@UiController` annotation:
+
+.host-screen.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_host_1.xml[]
+----
+
+The `fragment` element can be added to any UI-container of the screen, including the top-level `layout` element.
+--
+
+[[using_screen_fragment_prog]]
+Programmatic usage of a fragment::
++
+--
+The <<using_screen_fragment_decl,same fragment>> can be included in the screen programmatically in a <<screen_InitEvent,InitEvent>> or <<screen_AfterInitEvent,AfterInitEvent>> handler as follows:
+
+.host-screen.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_host_2.xml[]
+----
+
+.HostScreen.java
+[source, java]
+----
+include::{sourcesdir}/gui/screens/address_host_2.java[]
+----
+<1> - inject the `Fragments` bean which is designed to instantiate screen fragments
+<2> - create the fragment's controller by its class
+<3> - get the `Fragment` visual component from the controller and add it to a UI-container
+--
+
+[[using_screen_fragment_data]]
+Data components in screen fragments::
++
+--
+A screen fragment can have its own data containers and loaders, defined in the `data` XML element. At the same time, the framework creates a single instance of <<gui_DataContext,DataContext>> for the screen and all its fragments. Therefore all loaded entities are merged to the same context and their changes are saved when the host screen is committed.
+
+In the following example, we consider usage of own data containers and loaders in a screen fragment.
+
+Suppose we have a `City` entity and in the fragment, instead of the text field, we want to show a drop-down list with available cities. We can define data components in the fragment descriptor as we would in a regular screen:
+
+.address-fragment.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_fragment_2.xml[]
+----
+
+In order to load data in the fragment when the host screen is opened, we need to subscribe to the screen's event:
+
+.AddressFragment.java
+[source, java]
+----
+include::{sourcesdir}/gui/screens/address_fragment_2.java[]
+----
+<1> - subscribing to <<screen_BeforeShowEvent,BeforeShowEvent>> of the host screen
+
+[WARNING]
+====
+The `@LoadDataBeforeShow` annotation does not work for screen fragments.
+====
+--
+
+[[using_screen_fragment_provided_data]]
+Provided data containers::
++
+--
+The next example demonstrates how to use data containers of the host screen in the fragment.
+
+.host-screen.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_host_3.xml[]
+----
+<1> - data container which is used in the fragment below
+
+.address-fragment.xml
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/address_fragment_3.xml[]
+----
+<1> - `provided="true"` means that the container with the same id must exist in a host screen or enclosing fragment, i.e it must be provided from outside
+<2> - UI-components are linked to the provided data container
+
+In the XML element having `provided="true"`, all attributes except `id` are ignored but can be present to provide information for design time tools.
+--
