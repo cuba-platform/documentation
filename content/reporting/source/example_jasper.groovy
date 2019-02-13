@@ -10,23 +10,23 @@ try {
     ltList.each { lt ->
         def count = em.createQuery('''
                 select count(bi) from library$BookInstance bi 
-                where bi.libraryDepartment.id = ?1
-                    and bi.bookPublication.book.literatureType.id = ?2
+                where bi.libraryDepartment = ?1
+                    and bi.bookPublication.book.literatureType = ?2
                                     ''')
-                .setParameter(1, params['library_department'])
-                .setParameter(2, lt)
-                .getSingleResult()
+            .setParameter(1, params['library_department'])
+            .setParameter(2, lt)
+            .getSingleResult()
         def refCount = em.createQuery('''
                 select count(bi) from library$BookInstance bi 
-                where bi.libraryDepartment.id = ?1
-                    and bi.bookPublication.book.literatureType.id = ?2 and bi.isReference = true''')
-                .setParameter(1, params['library_department'])
-                .setParameter(2, lt)
-                .getSingleResult()
+                where bi.libraryDepartment = ?1
+                    and bi.bookPublication.book.literatureType = ?2 and bi.isReference = true''')
+            .setParameter(1, params['library_department'])
+            .setParameter(2, lt)
+            .getSingleResult()
 
-        result.add(['literature_type_name': lt.name,
-                    'books_instances_amount': count,
-                    'reference_books_instances_amount': refCount])
+        result.add(['literature_type_name': lt.name, 
+            'books_instances_amount': count, 
+            'reference_books_instances_amount': refCount])
     }
     return result
 } finally {
