@@ -48,3 +48,53 @@ include::{sourcesdir}/gui/data_loaders/loader_4.java[]
 ----
 
 When <<gui_DataContext,DataContext>> is set for a loader (which is always the case when the loader is defined in XML descriptor), all loaded entities are automatically merged into the data context.
+
+[[gui_data_loader_query_conditions]]
+Query conditions::
++
+--
+Sometimes you need to modify a data loader query at runtime to filter the loaded data at the database level. The simplest way to provide filtering based on parameters entered by users is to connect the <<gui_Filter,Filter>> visual component to the data loader.
+
+Instead of the universal filter or in addition to it, you can create a set of conditions for the loader query. A condition is a set of query fragments with parameters. These fragments are added to the resulting query text _only when all parameters used in the fragments are set for the query_. Conditions are processed on the <<data_store,data store>> level, so they can contain fragments of different query languages supported by data stores. The framework provides conditions for JPQL.
+
+Let's consider creating a set of conditions for filtering a `Customer` entity by two of its attributes: string `name` and boolean `status`.
+
+Loader query conditions can be defined either declaratively in the `<condition>` XML element, or programmatically using the `setCondition()` method. Below is an example of configuring the conditions in XML:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/data_loaders/loader_condition_1.xml[]
+----
+<1> - add the JPQL conditions namespace
+<2> - define the `condition` element inside `query`
+<3> - if you have more than one condition, add `and` or `or` element
+<4> - define a JPQL condition with optional `join` element and mandatory `where` element
+
+Suppose that the screen has two UI components for entering the condition parameters: `nameFilterField` text field and `statusFilterField` check box. In order to refresh the data when a user changes their values, add the following event listeners to the screen controller:
+
+[source, java]
+----
+include::{sourcesdir}/gui/data_loaders/loader_condition_1.java[]
+----
+<1> - notice how we use <<query_case_insensitive>> provided by ORM
+
+As mentioned above, a condition is included in the query only when its parameters are set. So the resulting query executed on the database will depend on what is entered in the UI components:
+
+.Only nameFilterField has a value
+[source]
+----
+select e from demo_Customer e where e.name like :name
+----
+
+.Only statusFilterField has a value
+[source]
+----
+select e from demo_Customer e where e.status = :status
+----
+
+.Both nameFilterField and statusFilterField have values
+[source]
+----
+select e from demo_Customer e where (e.name like :name) and (e.status = :status)
+----
+--
