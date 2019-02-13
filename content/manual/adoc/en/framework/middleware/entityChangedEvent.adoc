@@ -1,0 +1,31 @@
+:sourcesdir: ../../../../source
+
+[[entityChangedEvent]]
+==== EntityChangedEvent
+
+`EntityChangedEvent` is a Spring's `ApplicationEvent` which is sent by the framework on the middle tier when an entity instance is saved to the database. The event can be handled both inside the transaction and after its completion (using https://docs.spring.io/spring/docs/current/spring-framework-reference/data-access.html#transaction-event[@TransactionalEventListener]). The event is sent only for entities annotated with `@PublishEntityChangedEvents`.
+
+`EntityChangedEvent` does not contain the changed entity instance but only its id. Also, the `getOldValue(attributeName)` method returns ids of references instead of objects. So if needed, the developer should reload entities with a required view and other parameters.
+
+Below is an example of handling the `EntityChangedEvent` for a `Customer` entity in the current transaction and after its completion:
+
+[source,java]
+----
+include::{sourcesdir}/middleware/entityChangedEvent_usage_1.java[]
+----
+<1> - this listener is invoked inside the current transaction. Using the `@EventListener` annotation is the same as `@TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)`.
+<2> - changed entity's id.
+<3> - change type: `CREATED`, `UPDATED` or `DELETED`.
+<4> - you can check if a particular attribute has been changed.
+<5> - you can get the old value of a changed attribute.
+<6> - this listener is invoked after the transaction is committed.
+<7> - after transaction commit, the event contains the same information as before commit.
+
+If the listener is invoked inside the transaction, you can roll it back by throwing an exception. Nothing will be saved in the database then. If you don't want any notifications to the user, use `SilentException`.
+
+When handling `EntityChangedEvent` in the current transaction, use <<transactionalDataManager,TransactionalDataManager>> to get the current state of the changed entity from the database. In a listener invoked after transaction commit, use `DataManager` which will create a new transaction to load data.
+
+[TIP]
+=====
+Do not forget to add the `@PublishEntityChangedEvents` annotation to entities for which you want to listen to `EntityChangedEvent`.
+=====
