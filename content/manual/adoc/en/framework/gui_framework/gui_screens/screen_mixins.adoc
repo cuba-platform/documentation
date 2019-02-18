@@ -1,0 +1,102 @@
+:sourcesdir: ../../../../../source
+
+[[screen_mixins]]
+===== Screen Mixins
+
+Mixins enable creating features that can be reused in multiple UI screens without the need to inherit your screens from common base classes. Mixins are implemented using Java interfaces with default methods.
+
+Mixins have the following characteristics:
+
+* A screen can have multiple mixins.
+
+* A mixin interface can subscribe to <<screen_controller_events,screen events>>.
+
+* A mixin can save some state in the screen if needed.
+
+* A mixin can obtain screen components and infrastructure beans like <<gui_dialogs,Dialogs>>, <<gui_notifications,Notifications>>, etc.
+
+* In order to parameterize its behavior, a mixin can rely on screen annotations or introduce abstract methods to be implemented by the screen.
+
+Usage of mixins is normally as simple as implementing specific interfaces in a screen controller. In the example below, the `CustomerEditor` screen acquires functionality of mixins implemented by the `HasComments`, `HasHistory`, `HasAttachments` interfaces:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/mixin_usage_1.java[]
+----
+
+A mixin can use the following classes to work with screen and the infrastructure:
+
+* `com.haulmont.cuba.gui.screen.Extensions` provides static methods for saving and retrieving a state from the screen where the mixin is used, as well as access to `BeanLocator` which in turn allows you to get any Spring managed bean.
+
+* `UiControllerUtils` provides access to the screen's UI and data components.
+
+Below are examples that demonstrate how to create and use mixins.
+
+[[screen_mixin_banner]]
+Banner mixin::
++
+--
+This is a very simple mixin that shows a label on top of the screen.
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/mixin_banner_1.java[]
+----
+<1> - get `BeanLocator`.
+<2> - get factory of UI components.
+<3> - create `Label` and set its properties.
+<4> - add label to the screen's root UI component.
+
+The mixin can be used in a screen as follows:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/mixin_banner_2.java[]
+----
+--
+
+[[screen_mixin_declarative_loader_params]]
+DeclarativeLoaderParameters mixin::
++
+--
+The next mixin helps to establish master-detail relationships between data containers. Normally, you have to subscribe to `ItemChangeEvent` of the master container and set a parameter to the detail's loader, as described in <<gui_data_comp_dep>>. The mixin will do it automatically if the parameter has a special name pointing to the master container.
+
+The mixin will use a state object to pass information between event handlers. It's done mostly for demonstration purposes because we could put all the logic in a single `BeforeShowEvent` handler.
+
+First, let's create a class for the shared state. It contains a single field for storing a set of loaders to be triggered in the `BeforeShowEvent` handler:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/mixin_DeclarativeLoaderParameters_1.java[]
+----
+
+Next, create the mixin interface:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/mixin_DeclarativeLoaderParameters_2.java[]
+----
+<1> - subscribe to <<screen_InitEvent,InitEvent>>.
+<2> - get the `ScreenData` object where all data containers and loaders defined in XML are registered.
+<3> - check if a loader parameter matches the `:container$masterContainerId` pattern.
+<4> - extract the master container id from the parameter name and register a `ItemChangeEvent` listener for this container.
+<5> - reload the detail loader for the new master item.
+<6> - add the master loader to set to trigger it later in the `BeforeShowEvent` handler.
+<7> - create the shared state object and store it in the screen using `Extensions` utility class.
+<8> - subscribe to <<screen_BeforeShowEvent,BeforeShowEvent>>.
+<9> - trigger all master loaders found in the `InitEvent` handler.
+
+In the screen XML descriptor, define master and detail containers and loaders. The detail's loader should have a parameter with the name like `:container$masterContainerId`:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/screens/mixin_DeclarativeLoaderParameters_3.xml[]
+----
+
+In the screen controller, just add the mixin interface, and it will trigger the loaders appropriately:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/mixin_DeclarativeLoaderParameters_4.java[]
+----
+--
