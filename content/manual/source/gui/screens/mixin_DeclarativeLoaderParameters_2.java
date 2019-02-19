@@ -36,20 +36,18 @@ public interface DeclarativeLoaderParameters {
             }
         }
 
-        DeclarativeLoaderParametersExt ext = new DeclarativeLoaderParametersExt(); // <7>
-        ext.setLoadersToLoadBeforeShow(loadersToLoadBeforeShow);
-        Extensions.register(screen, DeclarativeLoaderParametersExt.class, ext);
+        DeclarativeLoaderParametersState state =
+                new DeclarativeLoaderParametersState(loadersToLoadBeforeShow); // <7>
+        Extensions.register(screen, DeclarativeLoaderParametersState.class, state);
     }
 
     @Subscribe
     default void onDeclarativeLoaderParametersBeforeShow(Screen.BeforeShowEvent event) { // <8>
         Screen screen = event.getSource();
-        DeclarativeLoaderParametersExt ext =
-                Extensions.get(screen, DeclarativeLoaderParametersExt.class);
-        if (ext.getLoadersToLoadBeforeShow() != null) {
-            for (DataLoader loader : ext.getLoadersToLoadBeforeShow()) {
-                loader.load(); // <9>
-            }
+        DeclarativeLoaderParametersState state =
+                Extensions.get(screen, DeclarativeLoaderParametersState.class);
+        for (DataLoader loader : state.getLoadersToLoadBeforeShow()) {
+            loader.load(); // <9>
         }
     }
 }
