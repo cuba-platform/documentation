@@ -1,10 +1,10 @@
-public class PivotSampleScreen extends AbstractWindow {
+public class PivotSampleScreen extends Screen {
 
     @Inject
     private PivotTable tipsCustomAggregatorPivotTable;
 
-    @Override
-    public void init(Map<String, Object> params) {
+    @Subscribe
+    protected void onInit(InitEvent event) {
         tipsCustomAggregatorPivotTable.setSortersFunction(
                 new JsFunction("function(attr){if(attr == \"Day\"){return $.pivotUtilities.sortAs([\"Mon\",\"Tue\",\"Wed\",\"Thu\",\"Fri\",\"Sat\",\"Sun\"]);}}"));
 

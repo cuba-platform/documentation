@@ -1,24 +1,25 @@
-package com.company.sampler.web.screens;
+package com.company.sampler.web;
 
-import com.haulmont.charts.gui.amcharts.model.charts.SerialChart;
-import com.haulmont.charts.gui.amcharts.model.data.DataItem;
-import com.haulmont.charts.gui.amcharts.model.data.ListDataProvider;
-import com.haulmont.charts.gui.amcharts.model.data.MapDataItem;
-import com.haulmont.charts.gui.components.charts.Chart;
-import com.haulmont.cuba.gui.components.AbstractWindow;
+import com.haulmont.charts.gui.components.charts.SerialChart;
+import com.haulmont.charts.gui.data.DataItem;
+import com.haulmont.charts.gui.data.ListDataProvider;
+import com.haulmont.charts.gui.data.MapDataItem;
+import com.haulmont.cuba.gui.screen.Screen;
+import com.haulmont.cuba.gui.screen.Subscribe;
+import com.haulmont.cuba.gui.screen.UiController;
+import com.haulmont.cuba.gui.screen.UiDescriptor;
 
 import javax.inject.Inject;
-import java.util.Map;
 
-public class StackedAreaChart extends AbstractWindow {
+@UiController("sampler_StackedareaChart")
+@UiDescriptor("stackedarea-chart.xml")
+public class StackedareaChart extends Screen {
     @Inject
-    private Chart chart;
+    private SerialChart chart;
 
-    @Override
-    public void init(Map<String, Object> params) {
+    @Subscribe
+    private void onInit(InitEvent event) {
         ListDataProvider dataProvider = new ListDataProvider();
-
-        
         dataProvider.addItem(transportCount(1994, 1587, 650, 121));
         dataProvider.addItem(transportCount(1995, 1567, 683, 146));
         dataProvider.addItem(transportCount(1996, 1617, 691, 138));
@@ -39,7 +40,7 @@ public class StackedAreaChart extends AbstractWindow {
         dataProvider.addItem(transportCount(2011, 1180, 285, 87));
         dataProvider.addItem(transportCount(2012, 1159, 277, 71));
 
-        serialChart.setDataProvider(dataProvider);
+        chart.setDataProvider(dataProvider);
     }
 
     private DataItem transportCount(int year, int cars, int motorcycles, int bicycles) {

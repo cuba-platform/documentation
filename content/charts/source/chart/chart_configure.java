@@ -20,4 +20,4 @@ pieChart.setTitleField("description")
                     Color.valueOf("#446493"),
                     Color.valueOf("#5E3D2C"),
                     Color.valueOf("#D0A557")))
-        .setDatasource(valueDescriptionsDs);
+        .setDataProvider(dataProvider);

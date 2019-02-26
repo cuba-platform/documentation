@@ -3,15 +3,15 @@
 [[section_incremental_data_update]]
 ==== Creating Chart with Incremental Data Update
 
-This chart will retrieve data from a datasource, and this data will be updated automatically. When new data is added to the datasource, the chart is not refreshed completely: data points are added on the fly each 2 seconds. This approach will be useful, for example, for creating dynamically updated dashboards.
+This chart will retrieve data from a {main_man_url}/gui_data_containers.html[data container], and this data will be updated automatically. When new data is added to the data container, the chart is not refreshed completely: data points are added on the fly every 2 seconds. This approach will be useful, for example, for creating dynamically updated dashboards.
 
-In this example we will show the dynamic of new orders amounts based on the `Order` entity from the https://github.com/cuba-platform/sample-sales[Sales] sample application.
+In this example we will show the dynamic of new orders amounts based on the `Order` entity from the https://github.com/cuba-platform/sample-sales-cuba7[Sales] sample application.
 
 . Download the *Sales* application and add the *charts* component to it as described in <<chart_project_setup>> section.
 
 . Create a new screen in Studio. Call it *orders-history*, as it will display the history dashboard for new order entries.
 
-. Add the `serialChart` component to the screen layout. To use the incremental data update feature, we have to create the `collectionDatasource` and bind the chart to it. We will not load the data from the database in this example, instead, the sample data will be generated on the fly, so you don't need to create a query.
+. Add the `serialChart` component to the screen layout. To use the incremental data update feature, we have to create a {main_man_url}/gui_collection_container.html[data container] of `CollectionContainer` type and bind the chart to it. We will not load the data from the container in this example, instead, the sample data will be generated on the fly, so you don't need to create a loader.
 +
 Set the `date` property for the category axis and the `amount` property for the value axis.
 +
@@ -20,25 +20,30 @@ Set the `date` property for the category axis and the `amount` property for the 
 include::{sourcesdir}/chart/chart_incremental-update.xml[]
 ----
 
-. We will update the chart on the fly using `timer` - a special UI component that will send HTTP-requests to the server side.
+. We will update the chart on the fly using a {main_man_url}/gui_Timer.html[timer] – a special UI component that will send HTTP-requests to the server side.
 +
-Open the *Properties* tab of the screen designer and add the timer by clicking on the *Timers* button. Set the timer *id*. Let's say the data should be updated each 2 seconds, so set the *delay* to 2000 milliseconds.
-+
-In the *onTimer* field we define the name of Java method - `updateChart`. This method will be invoked each time the timer fires an event. Generate this method in the controller by clicking the *>>* button and click *Apply* to save it.
+* Switch to the *Designer* tab.
+* In the components palette find *Timer* in the *Non-visual components* group.
+* Drag this component to the screen components hierarchy panel.
+* Select the *timer* in the hierarchy panel and go to the *Properties* tab on the properties panel.
+* Set the timer *id*.
+* Let's say the data should be updated every 2 seconds, so set the *delay* to 2000 milliseconds.
+* In the *onTimer* field we define the name of Java method – `updateChart`. This method will be invoked each time the timer fires an event. Generate this method in the controller by clicking the *>>* button.
+* Select *repeating* and *autostart* checkboxes.
 +
 .Creating a timer
 image::chart/chart_incremental-update.png[align="center"]
 
-. Switch to the IDE. Before starting to work on the timer logic, inject necessary dependencies: `timeSource`, `metadata`, and the datasource instance. We will generate a new `Order` instance with random amount value each time the timer event is fired. The new instance is added to the datasource using the `includeItem()` method.
+. Switch to the `OrdersHistory` controller. Before starting to work on the timer logic, inject necessary dependencies: `timeSource`, `metadata` and the data container for the `Order` entity. We will generate a new `Order` instance with random amount value each time the timer event is fired. The new instance is added to the collection data container using the `getMutableItems().add()` method.
 +
-Initialize the chart in the `init()` method using the same logic for creating a random `Order` instance.
+Initialize the chart in the `onInit()` method using the same logic for creating a random `Order` instance.
 +
 [source, java]
 ----
 include::{sourcesdir}/chart/chart_incremental-update.java[]
 ----
 +
-At this stage the chart is already functional, but the datasource size will increase rapidly, so we need to limit the number of items to be displayed.
+At this stage the chart is already functional, but the data container size will increase rapidly, so we need to limit the number of items to be displayed.
 +
 .The data is automatically updated each 2 seconds
 image::chart/chart_incremental-update_2.png[align="center"]
@@ -59,7 +64,7 @@ include::{sourcesdir}/chart/chart_incremental-update_2.java[]
 
 Result::
 
-All the data is sent to the browser incrementally. If you open Chrome developer console on the *Network* tab, you will see that each 2 seconds our web page sends an HTTP request to the backend, and in response to that the backend sends very small JSON message. The JSON contains one `add` and one `remove` operation for the amount value. Thus, we do not re-send all the data.
+All the data is sent to the browser incrementally. If you open Chrome developer console on the *Network* tab, you will see that every 2 seconds our web page sends an HTTP request to the backend, and in response to that the backend sends very small JSON message. The JSON contains one `add` and one `remove` operation for the amount value. Thus, we do not re-send all the data.
 
 .The chart shows only 10 records at a time
 image::chart/chart_incremental-update_3.gif[align="center"]

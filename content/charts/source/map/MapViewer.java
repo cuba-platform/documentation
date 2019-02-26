@@ -1,8 +1,8 @@
 @Inject
 private MapViewer map;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     GeoPoint center = map.createGeoPoint(53.490905, -2.249558);
     map.setCenter(center);
 }

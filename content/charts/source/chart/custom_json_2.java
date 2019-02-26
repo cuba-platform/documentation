@@ -1,16 +1,20 @@
 @Inject
-protected Chart serialChart;
+private SerialChart serialChart;
 
-@Override
-public void init(Map<String, Object> params) {
-    super.init(params);
-
+@Subscribe
+private void onInit(InitEvent event) {
     ListDataProvider serialChartDataProvider = new ListDataProvider();
-    int[] serialChartChartData = {5, 7, 6, 9, 7, 8, 5, 6, 4, 6, 5, 7, 4, 5, 3, 4, 2, 0};
+    int[] serialChartData = {5, 7, 6, 9, 7, 8, 5, 6, 4, 6, 5, 7, 4, 5, 3, 4, 2, 0};
 
-    for (int i = 0; i < redLineChartData.length; i++) {
-        serialChartDataProvider.addItem(graphData(serialChartChartData[i]));
+    for (int i = 0; i < serialChartData.length; i++) {
+        serialChartDataProvider.addItem(graphData(serialChartData[i]));
     }
 
-    serialChartConfiguration.setDataProvider(serialChartDataProvider);
+    serialChart.setDataProvider(serialChartDataProvider);
+}
+
+private DataItem graphData(int value) {
+    MapDataItem item = new MapDataItem();
+    item.add("value", value);
+    return item;
 }
