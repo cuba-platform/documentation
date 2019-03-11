@@ -8,8 +8,9 @@ import com.haulmont.cuba.core.Transaction;
 import javax.inject.Inject;
 import java.util.UUID;
 
-@Component("demo_ApprovalHelper")
+@Component(ApprovalHelper.NAME)
 public class ApprovalHelper {
+    public static final String NAME = "demo_ApprovalHelper";
 
     @Inject
     private Persistence persistence;

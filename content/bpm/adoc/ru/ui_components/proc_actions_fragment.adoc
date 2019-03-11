@@ -1,0 +1,158 @@
+:sourcesdir: ../../../source
+
+[[proc_actions_fragment]]
+=== ProcActionsFragment
+
+`ProcActionsFragment` – фрагмент для работы с процессными действиями. После инициализации во фрагменте автоматически отобразятся:
+
+* кнопка запуска процесса, если процесс не запущен;
+* кнопки, соответствующие выходам из задачи, если процесс запущен, и текущий пользователь имеет активную задачу;
+* кнопка отмены процесса;
+* информация о задаче (имя и дата создания).
+
+Каждому из действий возможно задать предикат, вычисляемый перед выполнением этого действия, что позволяет сделать проверку возможности выполнения действия в настоящее время (например, выполнить коммит экрана и в случае неудачи не выполнять процессное действие). Также можно задать слушатель, который будет выполнен после завершения действия (например, закрыть экран редактирования сущности и отобразить сообщение пользователю).
+
+`ProcActionsFragment` должен быть связан с экземпляром `ProcInstance`. Связывание происходит во время инициализации фрагмента.
+
+Пример инициализации фрагмента:
+
+[source,java]
+----
+include::{sourcesdir}/quickstart/ProcActionsFragmentInitialization.java[]
+----
+
+* Метод `initializer()` возвращает объект, используемый для инициализации фрагмента.
+
+* Метод `setBeforeStartProcessPredicate` устанавливает предикат, который будет вычислен перед выполнением запуска процесса. Если предикат вернет `false`, запуск процесса будет прерван.
+
+* Метод `setAfterStartProcessListener` задает слушатель, который будет вызван после завершения действия запуска процесса.
+
+* Самое главное – метод `init` – принимает два параметра: код процесса и экземпляр сущности. При вызове этого метода происходит поиск объекта `ProcInstance`, связанного с указанным экземпляром сущности и ссылающимся на `ProcDefinition` с указанным кодом. Если `ProcInstance` существует, фрагмент связывается с ним, если нет, то создается новый объект `ProcInstance`.
+
+Самый простой способ проинициализировать `ProcActionsFragment` – использовать метод `standard()`:
+
+[source,java]
+----
+include::{sourcesdir}/quickstart/ProcActionsFragmentStandardInitialization.java[]
+----
+
+Стандартная инициализация делает следующее:
+
+* создает предикаты, которые вызывают коммит редактора сущности перед процессным действием запуска процесса или завершения задачи;
+
+* создает слушатели, показывающие сообщения "Процесс запущен", "Задача завершена" после процессного действия, а также вызывающие повторную инициализацию `ProcActionsFragment`.
+
+Полный список методов, которые можно использовать для работы с фрагментом:
+
+Жизненный цикл процесса::
++
+--
+[[ProcActionsFragment_initializer]]
+* `initializer()` – возвращает экземпляр инициализатора фрагмента.
+
+[[ProcActionsFragment_init]]
+* `init()` – пробует найти экземпляр процесса по переданному коду и ссылке на сущность. Если существующий процесс не найден, создаётся новый. Затем происходит инициализация UI, отображающего действия, доступные для этого процесса и для текущего пользователя.
+--
+
+Конфигурация процесса::
++
+--
+[[ProcActionsFragment_setStartProcessEnabled]]
+* `setStartProcessEnabled()` – устанавливает разрешение или запрет на запуск процесса.
+
+[[ProcActionsFragment_setCancelProcessEnabled]]
+* `setCancelProcessEnabled()` – устанавливает разрешение или запрет на отмену процесса.
+
+[[ProcActionsFragment_setCompleteTaskEnabled]]
+* `setCompleteTaskEnabled()` – устанавливает разрешение или запрет на завершение задачи.
+
+[[ProcActionsFragment_setClaimTaskEnabled]]
+* `setClaimTaskEnabled()` – устанавливает разрешение или запрет на выбор задачи самим пользователем.
+
+[[ProcActionsFragment_setTaskInfoEnabled]]
+* `setTaskInfoEnabled()` – управляет видимостью контейнера, отображающего локализованное имя задачи и дату её начала.
+
+[[ProcActionsFragment_setButtonWidth]]
+* `setButtonWidth()` – устанавливает ширину кнопок управления процессом. По умолчанию кнопки имеют ширину 150 px.
+
+[[ProcActionsFragment_addActionButton]]
+* `addActionButton()` – позволяет добавить к фрагменту дополнительную кнопку, помимо создаваемых автоматически.
+--
+
+Предикаты::
++
+--
+[[ProcActionsFragment_setBeforeStartProcessPredicate]]
+* `setBeforeStartProcessPredicate()` – устанавливает предикат, который должен быть вычислен перед запуском процесса. Если предикат вернёт `false`, запуск процесса будет прерван.
+
+[[ProcActionsFragment_setBeforeCompleteTaskPredicate]]
+* `setBeforeCompleteTaskPredicate()` – устанавливает предикат, который должен быть вычислен перед завершением задачи. Если предикат вернёт `false`, завершение задачи будет прервано.
+
+[[ProcActionsFragment_setBeforeClaimTaskPredicate]]
+* `setBeforeClaimTaskPredicate()` – устанавливает предикат, который должен быть вычислен перед назначением задачи на пользователя. Если предикат вернёт `false`, назначение задачи будет прервано.
+
+[[ProcActionsFragment_setBeforeCancelProcessPredicate]]
+* `setBeforeCancelProcessPredicate()` – устанавливает предикат, который должен быть вычислен перед отменой задачи. Если предикат вернёт `false`, задача не будет отменена.
+--
+
+Слушатели процесса и задач::
++
+--
+[[ProcActionsFragment_setAfterStartProcessListener]]
+* `setAfterStartProcessListener()` – задаёт слушатель, который будет вызван после запуска процесса.
+
+[[ProcActionsFragment_setAfterCompleteTaskListener]]
+* `setAfterCompleteTaskListener()` – задаёт слушатель, который будет вызван после завершения задачи.
+
+[[ProcActionsFragment_setAfterClaimTaskListener]]
+* `setAfterClaimTaskListener()` – задаёт слушатель, который будет вызван после выбора задачи пользователем.
+
+[[ProcActionsFragment_setAfterCancelProcessListener]]
+* `setAfterCancelProcessListener()` – задаёт слушатель, который будет вызван после отмены выполнения процесса.
+--
+
+Поставщики переменных и параметров::
++
+--
+[[ProcActionsFragment_setStartProcessActionProcessVariablesSupplier]]
+* `setStartProcessActionProcessVariablesSupplier()` – задаёт поставщик переменных процесса. Поставщик возвращает мэп переменных процесса, которые должны быть добавлены к экземпляру процесса Activiti при запуске процесса.
+
+[[ProcActionsFragment_setCompleteTaskActionProcessVariablesSupplier]]
+* `setCompleteTaskActionProcessVariablesSupplier()` – задаёт поставщик переменных процесса. Поставщик возвращает мэп переменных процесса, которые должны быть добавлены к экземпляру процесса Activiti при завершении задачи.
+
+[[ProcActionsFragment_setStartProcessActionScreenParametersSupplier]]
+* `setStartProcessActionScreenParametersSupplier()` – задаёт поставщик параметров экрана процессной формы. Поставщик возвращает мэп параметров экрана, которые должны быть переданы в процессную форму, отображаемую с помощью `StartProcessAction`.
+
+[[ProcActionsFragment_setCompleteTaskActionScreenParametersSupplier]]
+* `setCompleteTaskActionScreenParametersSupplier()` – задаёт поставщик параметров экрана процессной формы. Поставщик возвращает мэп параметров экрана, которые должны быть переданы в процессную форму, отображаемую с помощью `CompleteTaskAction`.
+--
+
+'''
+
+ProcActionsFragment API::
+<<ProcActionsFragment_addActionButton,addActionButton>> –
+<<ProcActionsFragment_initializer,initializer>>
+
+Initializer API::
+<<ProcActionsFragment_init,init>> –
+<<ProcActionsFragment_setAfterCancelProcessListener,setAfterCancelProcessListener>> –
+<<ProcActionsFragment_setAfterClaimTaskListener,setAfterClaimTaskListener>> –
+<<ProcActionsFragment_setAfterCompleteTaskListener,setAfterCompleteTaskListener>> –
+<<ProcActionsFragment_setAfterStartProcessListener,setAfterStartProcessListener>> –
+<<ProcActionsFragment_setBeforeCancelProcessPredicate,setBeforeCancelProcessPredicate>> –
+<<ProcActionsFragment_setBeforeClaimTaskPredicate,setBeforeClaimTaskPredicate>> –
+<<ProcActionsFragment_setBeforeCompleteTaskPredicate,setBeforeCompleteTaskPredicate>> –
+<<ProcActionsFragment_setBeforeStartProcessPredicate,setBeforeStartProcessPredicate>> –
+<<ProcActionsFragment_setButtonWidth,setButtonWidth>> –
+<<ProcActionsFragment_setCancelProcessEnabled,setCancelProcessEnabled>> –
+<<ProcActionsFragment_setClaimTaskEnabled,setClaimTaskEnabled>> –
+<<ProcActionsFragment_setCompleteTaskActionProcessVariablesSupplier,setCompleteTaskActionProcessVariablesSupplier>> –
+<<ProcActionsFragment_setCompleteTaskActionScreenParametersSupplier,setCompleteTaskActionScreenParametersSupplier>> –
+<<ProcActionsFragment_setCompleteTaskEnabled,setCompleteTaskEnabled>> –
+<<ProcActionsFragment_setStartProcessActionProcessVariablesSupplier,setStartProcessActionProcessVariablesSupplier>> –
+<<ProcActionsFragment_setStartProcessActionScreenParametersSupplier,setStartProcessActionScreenParametersSupplier>> –
+<<ProcActionsFragment_setStartProcessEnabled,setStartProcessEnabled>> –
+<<ProcActionsFragment_setTaskInfoEnabled,setTaskInfoEnabled>>
+
+'''
+

@@ -1,62 +1,69 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
+<window xmlns="http://schemas.haulmont.com/cuba/screen/window.xsd"
         caption="msg://editorCaption"
-        class="com.company.bpmdemo.web.contract.ContractEdit"
-        datasource="contractDs"
-        focusComponent="fieldGroup"
+        focusComponent="form"
         messagesPack="com.company.bpmdemo.web.contract">
-    <dsContext>
-        <datasource id="contractDs"
-                    class="com.company.bpmdemo.entity.Contract"
-                    view="_local"/>
-        <collectionDatasource id="procAttachmentsDs"
-                              class="com.haulmont.bpm.entity.ProcAttachment"
-                              view="procAttachment-browse">
-            <query>
-                <![CDATA[select a from bpm$ProcAttachment a
-                            where a.procInstance.entity.entityId = :ds$contractDs
-                            order by a.createTs]]>
-            </query>
-        </collectionDatasource>
-    </dsContext>
+    <data>
+        <instance id="contractDc"
+                  class="com.company.bpmdemo.entity.Contract"
+                  view="_local">
+            <loader id="contractDl"/>
+        </instance>
+        <collection id="procAttachmentsDc"
+                    class="com.haulmont.bpm.entity.ProcAttachment"
+                    view="procAttachment-browse">
+            <loader id="procAttachmentsDl">
+                <query><![CDATA[select e from bpm$ProcAttachment e
+                                where e.procInstance.entity.entityId  = :entityId
+                                order by e.createTs]]>
+                </query>
+            </loader>
+        </collection>
+    </data>
     <dialogMode height="600"
                 width="800"/>
-    <layout expand="windowActions"
+    <layout expand="editActions"
             spacing="true">
-        <fieldGroup id="fieldGroup"
-                    datasource="contractDs">
+        <form id="form"
+              dataContainer="contractDc">
             <column width="250px">
-                <field property="number"/>
-                <field property="date"/>
-                <field editable="false"
-                       property="state"/>
+                <textField id="numberField"
+                           property="number"/>
+                <dateField id="dateField"
+                           property="date"/>
+                <textField id="stateField"
+                           property="state"/>
             </column>
-        </fieldGroup>
+        </form>
         <groupBox id="procActionsBox"
                   caption="msg://process"
-                  orientation="vertical"
                   spacing="true"
-                  width="AUTO">
-            <frame id="procActionsFrame"
-                   screen="procActionsFrame"/>
+                  width="AUTO"
+                  orientation="vertical">
+            <fragment id="procActionsFragment"
+                      screen="bpm_ProcActionsFragment"/>
         </groupBox>
         <groupBox caption="msg://attachments"
                   height="300px"
+                  spacing="true"
                   width="700px">
             <table id="attachmentsTable"
-                   height="100%"
+                   dataContainer="procAttachmentsDc"
+                   height="100%" 
                    width="100%">
                 <columns>
                     <column id="file.name"/>
                     <column id="author"/>
                     <column id="type"/>
-                    <column id="comment"
+                    <column id="comment" 
                             maxTextLength="50"/>
                 </columns>
-                <rows datasource="procAttachmentsDs"/>
             </table>
         </groupBox>
-        <frame id="windowActions"
-               screen="extendedEditWindowActions"/>
+        <hbox id="editActions" 
+              spacing="true">
+            <button action="windowCommitAndClose"/>
+            <button action="windowClose"/>
+        </hbox>
     </layout>
 </window>
