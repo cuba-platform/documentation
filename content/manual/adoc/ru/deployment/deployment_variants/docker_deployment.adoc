@@ -1,24 +1,131 @@
 :sourcesdir: ../../../../source
 
 [[docker_deployment]]
-==== Развертывание в Docker
+==== Развертывание с помощью Docker
 
-Данный раздел описывает порядок развертывания приложения CUBA в https://www.docker.com/[Docker®].
+Данный раздел описывает развертывание приложения CUBA в Docker-контейнерах.
 
-[TIP]
-=====
-Это руководство охватывает процесс развертывания проекта с использованием базы данных PostgreSQL.
-=====
+Мы возьмем проект, созданный в результате прохождения раздела <<quick_start>>, мигрируем его на базу данных PostgreSQL, и соберем <<uberjar_deployment,UberJAR>> для запуска в контейнере. В принципе, приложение, собранное в виде WAR-файла также можно использовать в контейнере с сервером Tomcat, но это требует несколько больше конфигурирования, поэтому для целей демонстрации мы ограничимся вариантом UberJAR.
 
-UberJAR – это простейший способ запустить приложение CUBA в режиме эксплуатации. Вы собираете единый all-in-one JAR-файл с помощью задачи Gradle <<build.gradle_buildUberJar>> и запускаете приложение из командной строки, используя команду `java`. Таким образом, нет необходимости использовать специальные веб-серверы или контейнеры сервлетов. Все параметры приложения определяются во время сборки, но могут быть переопределены при запуске.
+Конфигурирование и сборка UberJAR::
++
+--
+Клонируйте проект из https://github.com/cuba-platform/sample-sales-cuba7 и {studio_man_url}/open_project.html[откройте его] в CUBA Studio.
 
-В этом разделе показано, как настроить монолитную и распределенную конфигурации приложений с Docker контейнерами.
+Сначала смените тип базы данных на PostgreSQL:
 
-include::docker_deployment/single_jar_deployment.adoc[]
+. Выберите *CUBA > Project Properties* в главном меню и переключитесь на вкладку *Data Stores*.
+. Выберите *PostgreSQL* в поле *Database type* и нажмите *OK*.
+. Выберите *CUBA > Generate Database Scripts* в главном меню. Studio откроет диалог *Database Scripts* со сгенерированными скриптами. Нажмите *Save and close*.
+. Выберите *CUBA > Create Database* в главном меню. Studio создаст базу данных `sales` на локальном сервере PostgreSQL.
 
-include::docker_deployment/distributed_jar_deployment.adoc[]
+Теперь сконфигурируйте задачу Gradle для сборки UberJAR.
 
-include::docker_deployment/docker_plugin.adoc[]
+. Выберите пункт *CUBA > Deployment > UberJAR Settings* главного меню.
+. Отметьте флажки *Build Uber JAR* и *Single Uber JAR*.
+. Нажмите *Generate* рядом с полем *Logback configuration file*.
+. Нажмите *Generate* рядом с полем *Custom Jetty environment file*. Проверьте, что выбран PostgreSQL и установите значение `postgresql` вместо `localhost` в поле *Database URL*. Это необходимо для работы с базой данных, работающей в отдельном контейнере, который описан ниже.
+. Нажмите *OK*. Studio добавит задачу <<build.gradle_buildUberJar>> в файл `build.gradle`.
+. Для настройки расположения файлов логов, откройте сгенерированный файл `etc/uber-jar-logback.xml` и измените значение свойства `logDir` следующим образом:
++
+[source,xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
++
+Кроме того, убедитесь что конфигурация Logback ограничивает уровень логгера `org.eclipse.jetty` как минимум до `INFO`. Если такого логгера в файле не задано, то добавьте его:
++
+[source,xml]
+----
+<logger name="org.eclipse.jetty" level="INFO"/>
+----
 
-include::docker_deployment/heroku_container.adoc[]
+Запустите задачу сборки JAR-файла:
+
+[source, plain]
+----
+./gradlew buildUberJar
+----
+--
+
+Создание Docker-образа::
++
+--
+Теперь создадим файл `Dockerfile` и соберем образ с нашим приложением.
+
+. Создайте каталог `docker-image` в корне проекта.
+. Скопируйте JAR-файл из `build/distributions/uberJar` в этот каталог.
+. Создайте файл `Dockerfile` со следующими инструкциями:
++
+[source, plain]
+----
+FROM openjdk:8
+
+COPY . /opt/sales
+
+CMD java -Dapp.home=/opt/sales-home -jar /opt/sales/app.jar
+----
+
+Системное свойство Java `app.home` задает <<app_home,домашний каталог приложения>>, в котором хранятся логи приложения и другие файлы, создаваемые приложением. После запуска контейнера мы сможем отобразить данный каталог на каталог хост-компьютера для доступа к логам и другим данным, в том числе файлам, загружаемым в <<file_storage,FileStorage>>.
+
+Теперь соберем образ:
+
+. Откройте терминал в корневом каталоге проекта.
+. Запустите команду сборки, передавая имя образа в опции `-t`, и каталог, в котором находится файл `Dockerfile`:
++
+[source, plain]
+----
+docker build -t sales docker-image
+----
+
+Проверьте, что образ `sales` отображается при выполнении команды `docker images`.
+--
+
+Запуск контейнеров приложения и базы данных::
++
+--
+Приложение готово к запуску в контейнере, но нам необходима база данных PostgreSQL, работающая также в контейнере. Для управления двумя контейнерами - одним с приложением и другим с базой данных, мы будем использовать Docker Compose.
+
+Создайте в корне проекта файл `docker-compose.yml` со следующим содержимым:
+
+[source, plain]
+----
+version: '2'
+
+services:
+  postgres:
+    image: postgres:9
+    environment:
+      - POSTGRES_DB=sales
+      - POSTGRES_USER=cuba
+      - POSTGRES_PASSWORD=cuba
+    volumes:
+      - /Users/me/sales-home:/opt/sales-home
+    ports:
+      - "5433:5432"
+  web:
+    image: sales
+    ports:
+      - "8080:8080"
+----
+
+Обратите внимание на следующие части данного файла:
+
+* Секция `volumes` отображает путь `/opt/sales-home` внутри контейнера, являющийся домашним каталогом приложения, на путь `/Users/me/sales-home` хост-компьютера. Это означает, что логи приложения будут доступны в каталоге `/Users/me/sales-home/logs` хост-компьютера.
+
+* Внутренний порт контейнера 5432, на котором работает PostgreSQL, отображен на порт 5433 хост-компьютера для избежания конфликта с сервером PostgreSQL, работающим на хосте. Используя этот порт, вы можете обращаться к базе данных извне, например, чтобы сделать бэкап:
++
+----
+pg_dump -Fc -h localhost -p 5433 -d sales -U cuba > /Users/me/sales.backup
+----
+
+* Контейнер приложения выставляет порт 8080, так что UI приложения будет доступен по адресу `++http://localhost:8080/app++` на хост-компьютере.
+
+Для запуска приложения и базы данных откройте терминал в каталоге, содержащем файл `docker-compose.yml` и запустите команду:
+
+[source, plain]
+----
+docker-compose up
+----
+--
 
