@@ -6,8 +6,8 @@ private Notifications notifications;
 private void openOtherScreen() {
     screenBuilders.screen(this)
             .withScreenClass(OtherScreen.class)
-            .withAfterCloseListener(e -> {
-                notifications.create().withCaption("Closed").show();
+            .withAfterCloseListener(afterCloseEvent -> {
+                notifications.create().withCaption("Closed " + afterCloseEvent.getScreen()).show();
             })
             .build()
             .show();

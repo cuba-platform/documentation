@@ -13,6 +13,8 @@ A screen can be opened from the <<menu.xml,main menu>>, by <<url_history_navigat
 
 <<screen_parameters,Passing parameters to screens>>
 
+<<screen_return_values,Executing code after close and returning values>>
+
 '''
 
 [[screens_intf]]
@@ -62,9 +64,7 @@ include::{sourcesdir}/gui/screens/screens_3.java[]
 Using the ScreenBuilders bean::
 +
 --
-The `ScreenBuilders` bean allows you to open all kinds of screens with various parameters.
-
-One of the common tasks is to run some code when the opened screen closes. Below is an example of using `withAfterCloseListener()` builder method when opening an arbitrary screen:
+The `ScreenBuilders` bean allows you to open all kinds of screens with various parameters. Below is an example of using it for opening a screen and executing some code after the screen is closed (see more details <<screen_return_values,here>>):
 
 [source, java]
 ----
@@ -186,4 +186,59 @@ Usage of the `ScreenOptions` object is the only way to get parameters if the scr
 ----
 include::{sourcesdir}/gui/screens/passing_options_4.java[]
 ----
+--
+
+[[screen_return_values]]
+Executing code after close and returning values::
++
+--
+Each screen sends `AfterCloseEvent` when it closes. You can add a listener to a screen to be notified when the screen is closed, for example:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/return_values_1.java[]
+----
+
+When using `ScreenBuilders`, the listener can be provided in the `withAfterCloseListener()` method:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/return_values_2.java[]
+----
+
+The event object provides an information about how the screen was closed: its `getCloseAction()` method returns an object with the `CloseAction` interface. The `FrameOwner` interface implemented by screen controllers contains a few constants defining `CloseAction` implementations used by the framework. In the application, you can use these constants or create your own implementations.
+
+Consider a simple custom screen:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/return_values_3.java[]
+----
+<1> - on "OK" button click, set some result state and close the screen with standard `WINDOW_COMMIT_AND_CLOSE_ACTION` action.
+<2> - on "Cancel" button click, close the with a default action.
+
+Now in the `AfterCloseEvent` listener we can analyze how the screen was closed, and read the result value if needed:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/return_values_4.java[]
+----
+
+Another way of returning values from screens is using custom `CloseAction` implementations. Let's rewrite the above example to use the following action class:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/return_values_5.java[]
+----
+
+Then we can use this action when closing the screen:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/return_values_6.java[]
+----
+
+As you can see, when values are returned through a custom `CloseAction`, the caller doesn't have to know the opened screen class because it doesn't invoke methods of the concrete screen controller. So the screen can be created by its string id.
+
+Of course, the same approach for returning values through close actions can be used when opening screens using `ScreenBuilders`.
 --
