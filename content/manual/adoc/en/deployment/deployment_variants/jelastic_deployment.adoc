@@ -3,4 +3,85 @@
 [[jelastic_deployment]]
 ==== Deployment to Jelastic Cloud
 
-Use <<build.gradle_deployWar>> Gradle task to deploy your WAR file to Jelastic.
+Below is an example of building and deployment application to the https://jelastic.com/[Jelastic] cloud.
+
+[TIP]
+====
+Please note that only projects using PostgreSQL or HSQL databases are currently supported.
+====
+
+. First, create a free test account in the https://jelastic.com/[Jelastic] cloud using a web browser.
+. Create a new environment where the application WAR will be deployed:
+* Click *New Environment*.
++
+image::jelasticEnvironment.png[align="center", width=800,height=600]
+
+* Specify the settings in the window that appears: a compatible environment should have Java 8, Tomcat 8 and PostgreSQL 9.1+ (if the project uses PostgreSQL database). In the *Environment Name* field, specify a unique environment name and click *Create*.
+* If the created environment uses PostgreSQL, you will receive an email with the database connection details. Go to the database administration web interface by the link in the email received after the creation of the environment and create an empty database. The database name should be specified later in the custom `context.xml`.
+. Build *Single WAR* file using CUBA Studio:
+* Select *CUBA > Deployment > WAR Settings* in the main menu.
+* Select *Build WAR* checkbox.
+* Set `${app.home}` in the *Application home directory* field.
++
+[source, properties]
+----
+appHome = '..'
+----
+* Select *Include JDBC driver* and *Include Tomcat's context.xml* checkboxes.
+* If your project uses PostgreSQL, press *Generate* button next to the *Custom context.xml path* field. Specify the database user, password, host, and name that you specified earlier when you created database by the web interface from the email.
++
+image::customContextXml.png[align="center"]
+
+* Select *Single WAR for Middleware and Web Client* checkbox.
+* Press *Generate* button next to the *Custom web.xml path* field. Studio will generate a special `web.xml` of the <<build.gradle_buildWar,single WAR>> comprising the Middleware and Web Client application blocks.
++
+image::jelasticWarSettings.png[align="center"]
+
+* Add `${cuba.logDir}` value in the *App properties* field:
++
+[source, properties]
+----
+appProperties = ['cuba.automaticDatabaseUpdate': true,
+'cuba.logDir': '${catalina.base}/logs']
+----
+
+* Click the *OK* button. Studio adds the <<build.gradle_buildWar,buildWar>> task to the `build.gradle` file.
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/jelasticBuildWar.groovy[]
+----
+
+* If your project uses HSQLDB, open the `buildWar` task in the `build.gradle` and add the `hsqlInProcess = true` property  in order to run the embedded HSQL server while deploying the WAR file. Make sure that the `coreContextXmlPath` property is not set.
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/jelasticBuildWarHSQL.groovy[]
+----
+
+* Start build process by running `buildWar` from the command line (provided that you have created the Gradle wrapper beforehand):
++
+[source, plain]
+----
+gradlew buildWar
+----
++
+As a result, the `app.war` file will be created in the `build\distributions\war` project subdirectory.
+
+. Use <<build.gradle_deployWar>> Gradle task to deploy your WAR file to Jelastic.
+
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/jelasticDeployWar.groovy[]
+----
+
+. After the deployment process is completed, your application will be available in the Jelastic cloud. To open it, use a URL like `<environment>.<hostUrl>` in the browser.
++
+For example:
++
+`++http://my-env-1.j.layershift.co.uk++`
++
+You can also open the application using the *Open in Browser* button located on the environments panel in Jelastic.
++
+image::jelasticDeploy.png[align="center"]

@@ -3,4 +3,83 @@
 [[jelastic_deployment]]
 ==== Развертывание в облаке Jelastic
 
-Для развертывания WAR-файла в Jelastic используйте задачу Gradle <<build.gradle_deployWar>>.
+Рассмотрим пример сборки и развёртывания приложения в облаке https://jelastic.com/[Jelastic].
+
+[TIP]
+====
+В данный момент развёртывание в облаке возможно для проектов, использующих в качестве сервера базы данных PostgreSQL или HSQL.
+====
+
+. Создайте бесплатную тестовую учётную запись в облаке https://jelastic.com/[Jelastic] с помощью веб-браузера.
+. Создайте новое окружение, в которое будет развёрнут WAR:
+* Кликните *New Environment*.
++
+image::jelasticEnvironment.png[align="center", width=800,height=600]
+
+* В открывшемся окне задайте настройки: окружение должно иметь Java 8, Tomcat 8 и PostgreSQL 9.1+ (если в проекте используется база данных PostgreSQL). В поле *Environment Name* задайте уникальное имя окружения и нажмите на кнопку *Create*.
+* Если в созданном окружении был использован PostgreSQL, вы получите email с информацией о подключении к БД. Перейдите в административный веб-интерфейс по ссылке в письме, полученном после создания окружения, и создайте пустую базу данных. Выбранное имя базы данных должно быть указано позже в `context.xml`.
+. Соберите единый *Single WAR* файл, используя CUBA Studio:
+* Выберите пункт главного меню *CUBA > Deployment > WAR Settings*.
+* Включите флажок *Build WAR*.
+* Задайте значение `${app.home}` в поле *Application home directory*:
++
+[source, properties]
+----
+appHome = '..'
+----
+
+* Включите флажки *Include JDBC driver* и *Include Tomcat's context.xml*.
+* Если ваш проект использует базу данных PostgreSQL, нажмите на кнопку *Generate* рядом с полем *Custom context.xml path*. Укажите пользователя, пароль, хост и имя базы данных, которые вы указывали ранее при создании через веб-интерфейс из письма.
++
+image::customContextXml.png[align="center"]
+* Установите флажок *Single WAR for Middleware and Web Client*.
+* Нажмите на кнопку *Generate* рядом с полем *Custom web.xml path*. Studio сгенерирует специальный `web.xml` для <<build.gradle_buildWar,единого WAR>>, содержащего блоки Middleware и Web Client.
++
+image::jelasticWarSettings.png[align="center"]
+* Добавьте значение `${cuba.logDir}` в окне *App properties*:
++
+[source, properties]
+----
+appProperties = ['cuba.automaticDatabaseUpdate': true,
+'cuba.logDir': '${catalina.base}/logs']
+----
+
+* Нажмите на кнопку *OK*. В конец файла <<build.gradle,build.gradle>> добавилась задача сборки <<build.gradle_buildWar,buildWar>>:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/jelasticBuildWar.groovy[]
+----
+
+* Если ваш проект использует HSQL, откройте задачу `buildWar` в файле `build.gradle` и добавьте свойство `hsqlInProcess = true`, чтобы запустить встроенный сервер HSQL при развертывании WAR файла. Убедитесь, что свойство `coreContextXmlPath` не задано.
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/jelasticBuildWarHSQL.groovy[]
+----
+
+* Запустите сборку, выбрав `buildWar` через командную строку (подразумевается что Gradle wrapper создан заранее):
++
+[source, plain]
+----
+gradlew buildWar
+----
++
+В результате в подкаталоге `build\distributions\war` проекта будет создан файл `app.war`.
+
+. Для развертывания WAR-файла в Jelastic используйте задачу Gradle <<build.gradle_deployWar, deployWar>>:
++
+[source, groovy]
+----
+include::{sourcesdir}/deployment/jelasticDeployWar.groovy[]
+----
+
+. По завершению процесса развёртывания CUBA-приложение будет доступно в облаке Jelastic. Чтобы его открыть, воспользуйтесь URL вида `<environment>.<hostUrl>` в браузере.
++
+Например:
++
+`++http://my-env-1.j.layershift.co.uk++`
++
+Вы также можете открыть приложение с помощью кнопки *Open in Browser*, расположенной на панели окружений в Jelastic.
++
+image::jelasticDeploy.png[align="center"]
