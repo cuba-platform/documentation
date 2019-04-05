@@ -1,28 +1,32 @@
-import com.haulmont.cuba.gui.components.AbstractWindow;
 import com.haulmont.cuba.gui.components.Button;
 import com.haulmont.cuba.gui.components.HtmlAttributes;
+import com.haulmont.cuba.gui.screen.Screen;
+import com.haulmont.cuba.gui.screen.Subscribe;
+import com.haulmont.cuba.gui.screen.UiController;
+import com.haulmont.cuba.gui.screen.UiDescriptor;
 
 import javax.inject.Inject;
-import java.util.Map;
 
-public class DemoScreen extends AbstractWindow {
+@UiController("demo_DemoScreen")
+@UiDescriptor("demo-screen.xml")
+public class DemoScreen extends Screen {
+
     @Inject
-    protected Button demoBtn;
+    private Button demoButton;
+
     @Inject
     protected HtmlAttributes html;
 
-    @Override
-    public void init(Map<String, Object> params) {
-        super.init(params);
+    @Subscribe
+    private void onBeforeShow(BeforeShowEvent event) {
+        html.setDomAttribute(demoButton, HtmlAttributes.DOM.TITLE, "Hello!");
 
-        html.setDomAttribute(demoBtn, HtmlAttributes.DOM.TITLE, "Hello !");
+        html.setCssProperty(demoButton, HtmlAttributes.CSS.BACKGROUND_COLOR, "red");
+        html.setCssProperty(demoButton, HtmlAttributes.CSS.BACKGROUND_IMAGE, "none");
+        html.setCssProperty(demoButton, HtmlAttributes.CSS.BOX_SHADOW, "none");
+        html.setCssProperty(demoButton, HtmlAttributes.CSS.BORDER_COLOR, "red");
+        html.setCssProperty(demoButton, "color", "white");
 
-        html.setCssProperty(demoBtn, HtmlAttributes.CSS.BACKGROUND_COLOR, "red");
-        html.setCssProperty(demoBtn, HtmlAttributes.CSS.BACKGROUND_IMAGE, "none");
-        html.setCssProperty(demoBtn, HtmlAttributes.CSS.BOX_SHADOW, "none");
-        html.setCssProperty(demoBtn, HtmlAttributes.CSS.BORDER_COLOR, "red");
-        html.setCssProperty(demoBtn, "color", "white");
-
-        html.setCssProperty(demoBtn, HtmlAttributes.CSS.MAX_WIDTH, "400px");
+        html.setCssProperty(demoButton, HtmlAttributes.CSS.MAX_WIDTH, "400px");
     }
 }
