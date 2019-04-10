@@ -3,11 +3,6 @@
 [[screen_extension]]
 ==== Extending Screens
 
-[WARNING]
-====
-This section will be updated before release 7.0
-====
-
 The platform supports creating new <<screen_xml,XML descriptors>> by inheriting them from the existing ones.
 
 XML inheritance is implemented by specifying the parent descriptor path in the `extends` attribute of the root `window` element.
@@ -20,13 +15,13 @@ XML screen elements overriding rules:
 
 ** If the overriding element is a `property`, the corresponding element will be searched by the `name` attribute.
 
-** In other cases, if the overrinding element has the `id` attribute, the corresponding element with the same `id` will be searched for. 
+** In other cases, if the overriding element has the `id` attribute, the corresponding element with the same `id` will be searched for.
 
 ** If the search is successful, the found element is *overridden*.
 
 ** Otherwise, the platform determines how many elements with the provided path and name are contained in the parent descriptor. If there is only one element, it is *overridden*.
 
-** If search yields no result and there is either zero or more than one element with the given path and name in the parent descriptor, a new element is *added*.
+** If the search yields no result and there is either zero or more than one element with the given path and name in the parent descriptor, a new element is *added*.
 
 * The text for the overridden or added element is copied from the extending element. 
 
@@ -40,21 +35,16 @@ XML screen elements overriding rules:
 
 In order to debug the descriptor conversion, you can output the resulting XML to the server log by specifying the `TRACE` level for the `com.haulmont.cuba.gui.xml.XmlInheritanceProcessor` logger in the *Logback* configuration file.
 
-Below is an example descriptor of the `ExtUser` entities browser screen:
+*Extending Legacy Screens*
 
+Legacy screens provide backward compatibility. Consider an example of extending screens of the entity `User`.
+
+Below is an example descriptor of the `ExtUser` entity browser screen:
+
+.ext-user-browse.xml
 [source, xml]
 ----
-<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
-      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
-      extends="/com/haulmont/cuba/gui/app/security/user/browse/user-browse.xml">
-  <layout>
-      <groupTable id="usersTable">
-          <columns>
-              <column id="address" ext:index="2"/>
-          </columns>
-      </groupTable>
-  </layout>
-</window>
+include::{sourcesdir}/extension/ext-user-browse.xml[]
 ----
 
 In this example, the descriptor is inherited from the standard `User` entities browser of the platform. The `address` column is added to the table with index `2`, so it is displayed after `login` and `name`.
@@ -63,38 +53,57 @@ If you register a new screen in <<screens.xml,screens.xml>> with the same identi
 
 [source, xml]
 ----
-<screen id="sec$User.browse"
-      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
-<screen id="sec$User.lookup"
-      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
+include::{sourcesdir}/extension/screens_registration.xml[]
 ----
 
 Similarly, let us create an edit screen:
 
+.ext-user-edit.xml
 [source, xml]
 ----
-<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
-      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
-      extends="/com/haulmont/cuba/gui/app/security/user/edit/user-edit.xml">
-  <layout>
-      <fieldGroup id="fieldGroup">
-          <column id="fieldGroupColumn2">
-              <field property="address" ext:index="4"/>
-          </column>
-      </fieldGroup>
-  </layout>
-</window>
+include::{sourcesdir}/extension/ext-user-edit.xml[]
 ----
 
 Register it in `screens.xml` with the identifier of the parent screen:
 
 [source, xml]
 ----
-<screen id="sec$User.edit"
-      template="com/sample/sales/gui/extuser/extuser-edit.xml"/>
+include::{sourcesdir}/extension/screens_registration2.xml[]
 ----
 
-Once all the abovementioned actions are completed, the application will use `ExtUser` with the corresponding screens instead of the standard `User` entity of the platform.
+Once all the above-mentioned actions are completed, the application will use `ExtUser` with the corresponding screens instead of the standard `User` entity of the platform.
 
-Screen controller can be extended by creating a new class that is inherited from the base screen controller. Class name is specified in the `class` attribute of the root element of the extending XML descriptor; the usual rules of inheriting XML described above will apply.
+Screen controller can be extended by creating a new class that is inherited from the base screen controller. The class name is specified in the `class` attribute of the root element of the extending XML descriptor; the usual rules of inheriting XML described above will apply.
+
+*Extend screens using CUBA Studio*
+
+In this example, we will add an `Excel` button to the customer browser table by extending the screen for the `Customer` entity from the Customer Management component described in <<app_components_sample>>.
+
+. Create a new project in Studio and add the Customer Management component.
+
+. Select *Generic UI* in the project tree and click *New > Screen* in the context menu. Then select the *Extend an existing screen* on the *Screen Templates* tab. In the *Extend Screen* list, select `customer-browse.xml`. The new `ext-customer-browse.xml` and `ExtCustomerBrowse.java` files will be created in the *web* module.
+
+. Open the `ext-customer-browse.xml` and switch to the *Designer* tab. The components of the parent screen are displayed in the designer workspace.
+
+. Select the `customersTable` and add a new `excel` <<gui_Action,action>>.
+
+. Add a button to the `buttonsPanel` linked to the `customersTable.excel` action.
+
+As a result, the `ext-customer-browse.xml` code on the *Text* tab will look as follows:
+
+.ext-customer-browse.xml
+[source, xml]
+----
+include::{sourcesdir}/extension/ext-customer-browse.xml[]
+----
+
+Consider the `ExtCustomerBrowse` screen controller.
+
+.ExtCustomerBrowse.java
+[source, java]
+----
+include::{sourcesdir}/extension/ExtCustomerBrowse.java[]
+----
+
+As the screen identifier `customers_Customer.browse` matches the identifier of a base screen, a new screen will be invoked everywhere instead of the old.
 

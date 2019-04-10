@@ -3,11 +3,6 @@
 [[screen_extension]]
 ==== Расширение экранов
 
-[WARNING]
-====
-Данный раздел будет обновлен перед выходом релиза 7.0
-====
-
 Платформа позволяет создавать новые <<screen_xml,XML-дескрипторы>> экранов путем наследования от существующих.
 
 Наследование XML выполняется путем указания в корневом элементе `window` атрибута `extends`, содержащего путь к базовому дескриптору.
@@ -40,61 +35,75 @@
 
 Для отладки преобразования дескрипторов можно включить вывод в журнал сервера результирующего XML. Делается это путем указания уровня `TRACE` для логгера `com.haulmont.cuba.gui.xml.XmlInheritanceProcessor` в файле конфигурации *Logback*.
 
-Пример XML-дескриптора экрана браузера сущностей `ExtUser`:
+*Расширение устаревших экранов*
 
+Устаревшие экраны обеспечивают обратную совместимость. Рассмотрим пример расширения экранов сущности `User`.
+
+Создайте XML-дескриптор экрана браузера сущностей `ExtUser`:
+
+.ext-user-browse.xml
 [source, xml]
 ----
-<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
-      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
-      extends="/com/haulmont/cuba/gui/app/security/user/browse/user-browse.xml">
-  <layout>
-      <groupTable id="usersTable">
-          <columns>
-              <column id="address" ext:index="2"/>
-          </columns>
-      </groupTable>
-  </layout>
-</window>
+include::{sourcesdir}/extension/ext-user-browse.xml[]
 ----
 
 В данном примере дескриптор унаследован от стандартного браузера сущностей `User` платформы, и в таблицу добавлена колонка `address` с индексом `2`, т.е. отображающаяся после `login` и `name`.
 
-Зарегистрируем новый экран в <<screens.xml,screens.xml>> с теми же идентификаторами, которые использовались для базового экрана. После этого новый экран будет повсеместно вызываться взамен старого.
+Зарегистрируйте новый экран в <<screens.xml,screens.xml>> с теми же идентификаторами, которые использовались для базового экрана. После этого новый экран будет повсеместно вызываться взамен старого.
 
 [source, xml]
 ----
-<screen id="sec$User.browse"
-      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
-<screen id="sec$User.lookup"
-      template="com/sample/sales/gui/extuser/extuser-browse.xml"/>
+include::{sourcesdir}/extension/screens_registration.xml[]
 ----
 
-Аналогично создаем экран редактирования:
+Аналогично создайте экран редактирования:
+
+.ext-user-edit.xml
+[source, xml]
+----
+include::{sourcesdir}/extension/ext-user-edit.xml[]
+----
+
+Зарегистрируйте его в `screens.xml` с идентификатором базового экрана:
 
 [source, xml]
 ----
-<window xmlns="http://schemas.haulmont.com/cuba/window.xsd"
-      xmlns:ext="http://schemas.haulmont.com/cuba/window-ext.xsd"
-      extends="/com/haulmont/cuba/gui/app/security/user/edit/user-edit.xml">
-  <layout>
-      <fieldGroup id="fieldGroup">
-          <column id="fieldGroupColumn2">
-              <field property="address" ext:index="4"/>
-          </column>
-      </fieldGroup>
-  </layout>
-</window>
-----
-
-Регистрируем его в `screens.xml` с идентификатором базового экрана:
-
-[source, xml]
-----
-<screen id="sec$User.edit"
-      template="com/sample/sales/gui/extuser/extuser-edit.xml"/>
+include::{sourcesdir}/extension/screens_registration2.xml[]
 ----
 
 После выполнения описанных выше действий в приложении вместо платформенной сущности `User` будет использоваться `ExtUser` с соответствующими экранами.
 
 Контроллер экрана может быть расширен путем создания нового класса, унаследованного от контроллера базового экрана. Имя класса указывается в атрибуте `class` корневого элемента расширяющего XML дескриптора, при этом выполняются обычные правила наследования XML, описанные выше. 
 
+*Расширение экранов при помощи CUBA Studio*
+
+В этом примере расширим экран для сущности `Customer` из компонента Customer Management, описанного в разделе <<app_components_sample>>: добавим кнопку `Excel` для таблицы браузера покупателей.
+
+. Создайте новый проект в Studio и подключите к нему компонент Customer Management.
+
+. Выберите *New > Screen* в контекстном меню элемента *Generic UI* в дереве проекта. Затем на вкладке *Screen Templates* выберите шаблон *Extend an existing screen*. В списке *Extend Screen* выберите `customer-browse.xml`.
+Новые файлы `ext-customer-browse.xml` и `ExtCustomerBrowse.java` будут созданы в модуле *web*.
+
+. Откройте XML-дескриптор `ext-customer-browse.xml` и перейдите на вкладку *Designer*. В рабочей области будут отображены компоненты родительского экрана.
+
+. Выделите таблицу `customersTable` и добавьте новое <<gui_Action,действие>> `excel`.
+
+. Добавьте кнопку на панель `buttonsPanel`, связанную с действием `customersTable.excel`.
+
+В итоге дескриптор экрана `ext-customer-browse.xml` на вкладке *Text* будет выглядеть следующим образом:
+
+.ext-customer-browse.xml
+[source, xml]
+----
+include::{sourcesdir}/extension/ext-customer-browse.xml[]
+----
+
+Рассмотрим класс контроллера экрана `ExtCustomerBrowse.java`.
+
+.ExtCustomerBrowse.java
+[source, java]
+----
+include::{sourcesdir}/extension/ExtCustomerBrowse.java[]
+----
+
+Так как идентификатор экрана `customers_Customer.browse` совпадает с идентификатором базового экрана, новый экран будет повсеместно вызываться взамен старого.
