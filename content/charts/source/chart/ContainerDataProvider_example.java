@@ -1,15 +1,17 @@
-@Inject
-private SerialChart chart;
+@UiController("sampler_StackedareaChartSample")
+@UiDescriptor("stackedarea-chart-sample.xml")
+@LoadDataBeforeShow
+public class StackedareaChartSample extends Screen {
 
-@Inject
-private CollectionContainer<CountryGrowth> countryGrowthDc;
+    @Inject
+    private CollectionContainer<TransportCount> transportCountsDc;
 
-@Subscribe
-private void onInit(InitEvent event) {
-    List<CountryGrowth> items = new ArrayList<>();
-    items.add(countryGrowth("USA", 3.5, 4.2));
-    //...
-    countryGrowthDc.setItems(items);
-    chart.setDataProvider(new ContainerDataProvider(countryGrowthDc));
-    chart.setCategoryField("country");
+    @Inject
+    private SerialChart stackedArea;
+
+    @Subscribe
+    private void onInit(InitEvent event) {
+        stackedArea.setDataProvider(new ContainerDataProvider(transportCountsDc));
+        stackedArea.setCategoryField("year");
+    }
 }
