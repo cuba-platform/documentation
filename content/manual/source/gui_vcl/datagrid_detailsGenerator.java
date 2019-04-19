@@ -17,12 +17,12 @@ protected Component ordersDataGridDetailsGenerator(Order order) {
     infoLabel.setStyleName("h1");
     infoLabel.setValue("Order info:");
 
-    Component closeButton = createCloseButton(order);
+    Component closeButton = createCloseButton(order); // <1>
     headerBox.add(infoLabel);
     headerBox.add(closeButton);
     headerBox.expand(infoLabel);
 
-    Component content = getContent(order);
+    Component content = getContent(order); // <2>
 
     mainLayout.add(headerBox);
     mainLayout.add(content);
