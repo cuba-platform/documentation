@@ -1,0 +1,1 @@
+textField.setConversionErrorMessage("This field can work only with Integers");
