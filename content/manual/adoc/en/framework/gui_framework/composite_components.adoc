@@ -1,0 +1,171 @@
+:sourcesdir: ../../../../source
+
+[[composite_components]]
+==== Composite Components
+
+A composite component is a component consisting of other components. Like screen fragments, composite components allow you to reuse some presentation layout and logic. We recommend using composite components in the following cases:
+
+* The component functionality can be implemented as a combination of existing Generic UI components. If you need some non-standard features, create a <<own_components, custom component>> by wrapping a Vaadin component or JavaScript library, or use <<jsComponent>>.
+* The component is relatively simple and does not load or save data itself. Otherwise, consider creating a <<using_screen_fragments,screen fragment>>.
+
+The class of a composite component must extend the `CompositeComponent` base class. A composite component must have a single component at the root of the inner components tree. The root component can be obtained using the `CompositeComponent.getComposition()` method.
+
+Inner components are usually created declaratively in an XML descriptor. In this case, the component class should have the `@CompositeDescriptor` annotation which specifies the path to the descriptor file. If the annotation value does not start with `/`, the file is loaded from the component's class package.
+
+Alternatively, the inner components tree can be created programmatically in a `CreateEvent` listener.
+
+`CreateEvent` is sent by the framework when it finishes initialization of the component. At this moment, if an XML descriptor is used by the component, it is loaded and `getComposition()` method returns the root component. This event can be used for any additional initialization of the component or for creating the inner components without XML.
+
+Below we demonstrate creation of Stepper component which is designed to edit integer values in the input field and by clicking on up/down buttons located next to the field.
+
+. <<composite_components_xml,Component layout descriptor>>
+
+. <<composite_components_class,Component implementation class>>
+
+. <<composite_components_loader,Component loader>>
+
+. <<composite_components_registration,Registration of the component>>
+
+. <<composite_components_xsd,Component XSD>>
+
+. <<composite_components_usage,Usage of the component>>
+
+. <<composite_components_style,Custom styling>>
+
+Let's assume the project has `com/company/demo` base package.
+
+[[composite_components_xml]]
+Component layout descriptor::
++
+--
+Create an XML descriptor with the component layout in the `com/company/demo/web/components/stepper/stepper-component.xml` file of the `web` module:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/composite/composite_xml.xml[]
+----
+
+<1> - XSD defines the content of the component descriptor
+<2> - a single root component
+<3> - any number of nested components
+--
+
+[[composite_components_class]]
+Component implementation class::
++
+--
+Create the component implementation class in the same package:
+
+[source, java]
+----
+include::{sourcesdir}/gui/composite/composite_class.java[]
+----
+
+<1> - the `@CompositeDescriptor` annotation specifies the path to the component layout descriptor which is located in the class package.
+<2> - the component class extends `CompositeComponent` parameterized by the type of the root component.
+<3> - our component implements the `Field<Integer>` interface because it is designed to display and edit an integer value.
+<4> - a set of interfaces with default methods to implement standard Generic UI component functionality.
+<5> - name of the component which is used to register the component in `ui-component.xml` file to be recognized by the framework.
+<6> - fields containing references to inner components.
+<7> - component's property which defines the value of a single click to up/down buttons. It has public getter/setter methods and can be assigned in screen XML.
+<8> - component initialization is done in the `CreateEvent` listener.
+--
+
+[[composite_components_loader]]
+Component loader::
++
+--
+Create the component loader which is needed to initialize the component when it is used in screen XML descriptors:
+
+[source, java]
+----
+include::{sourcesdir}/gui/composite/composite_loader.java[]
+----
+
+<1> - loader class must extend `AbstractComponentLoader` parameterized by the class of the component. As our component implements `Field`, use more specific `AbstractFieldLoader` base class.
+<2> - create the component by its name.
+<3> - load the `step` property value from XML if it is specified.
+--
+
+[[composite_components_registration]]
+Registration of the component::
++
+--
+In order to register the component and its loader with the framework, create the `com/company/demo/ui-component.xml` file of the `web` module:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/composite/composite_registration.xml[]
+----
+
+Add the following property to `com/company/demo/web-app.properties`:
+
+[source, properties]
+----
+cuba.web.componentsConfig = +com/company/demo/ui-component.xml
+----
+
+Now the framework will recognize the new component in XML descriptors of application screens.
+--
+
+[[composite_components_xsd]]
+Component XSD::
++
+--
+XSD is required to use the component in screen XML descriptors. Define it in the `com/company/demo/ui-component.xsd` file of the `web` module:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/composite/composite_xsd.xsd[]
+----
+
+<1> - inherit all base field properties.
+<2> - define attribute for the `step` property.
+--
+
+[[composite_components_usage]]
+Usage of the component::
++
+The following example shows how the component can be used in a screen:
+
+--
+[source, xml]
+----
+include::{sourcesdir}/gui/composite/composite_usage.xml[]
+----
+
+<1> - the namespace referencing the component's XSD.
+<2> - the composite component connected to the `limit` attribute of an entity.
+--
+
+[[composite_components_style]]
+Custom styling::
++
+--
+Now let's apply some custom styles to improve the component look.
+
+First, change the root component to `CssLayout` and assign style names to the inner components:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/composite/composite_xml_cssLayout.xml[]
+----
+
+Change the component class accordingly:
+
+[source, java]
+----
+include::{sourcesdir}/gui/composite/composite_class_cssLayout.java[]
+----
+
+Generate theme extension (see {studio_man_url}/#generic_ui_themes[here] how to do it in Studio) and add the following code to the `modules/web/themes/hover/com.company.demo/hover-ext.scss` file:
+
+[source, css]
+----
+include::{sourcesdir}/gui/composite/composite_class_css.css[]
+----
+
+Restart the application server and open the screen. The form with our composite Stepper component should look as follows:
+
+image::gui_composite/stepper_final.png[align="center"]
+--
