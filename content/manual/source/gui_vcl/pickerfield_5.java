@@ -1,12 +1,12 @@
 @Inject
-private LookupScreens lookupScreens;
+private ScreenBuilders screenBuilders;
 @Inject
 private PickerField<Color> pickerField;
 
 @Subscribe("pickerField.lookup")
 protected void onPickerFieldLookupActionPerformed(Action.ActionPerformedEvent event) {
-    lookupScreens.builder(pickerField)
-                 .withScreen("custom-lookup")
+        screenBuilders.lookup(pickerField)
+                 .withScreenClass(CustomColorBrowser.class)
                  .build()
                  .show();
 }
