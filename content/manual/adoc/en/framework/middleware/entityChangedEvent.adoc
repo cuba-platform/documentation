@@ -3,7 +3,12 @@
 [[entityChangedEvent]]
 ==== EntityChangedEvent
 
-`EntityChangedEvent` is a Spring's `ApplicationEvent` which is sent by the framework on the middle tier when an entity instance is saved to the database. The event can be handled both inside the transaction and after its completion (using https://docs.spring.io/spring/docs/current/spring-framework-reference/data-access.html#transaction-event[@TransactionalEventListener]). The event is sent only for entities annotated with `@PublishEntityChangedEvents`.
+`EntityChangedEvent` is a Spring's `ApplicationEvent` which is sent by the framework on the middle tier when an entity instance is saved to the database. The event can be handled both inside the transaction and after its completion (using https://docs.spring.io/spring/docs/current/spring-framework-reference/data-access.html#transaction-event[@TransactionalEventListener]).
+
+[TIP]
+=====
+The event is sent only for entities annotated with `@PublishEntityChangedEvents`. Do not forget to add this annotation to entities for which you want to listen to `EntityChangedEvent`.
+=====
 
 `EntityChangedEvent` does not contain the changed entity instance but only its id. Also, the `getOldValue(attributeName)` method returns ids of references instead of objects. So if needed, the developer should reload entities with a required view and other parameters.
 
@@ -25,7 +30,20 @@ If the listener is invoked inside the transaction, you can roll it back by throw
 
 When handling `EntityChangedEvent` in the current transaction, use <<transactionalDataManager,TransactionalDataManager>> to get the current state of the changed entity from the database. In a listener invoked after transaction commit, use `DataManager` which will create a new transaction to load data.
 
-[TIP]
-=====
-Do not forget to add the `@PublishEntityChangedEvents` annotation to entities for which you want to listen to `EntityChangedEvent`.
-=====
+Below is an example of using `EntityChangedEvent` to update related entities.
+
+Suppose we have `Order`, `OrderLine` and `Product` entities as in the https://www.cuba-platform.com/learn/quickstart/studio/part3/#chapter0[Quick Start Sales Application], but `Product` additionally has `special` boolean attribute and `Order` has `numberOfSpecialProducts` integer attribute which should be recalculated each time an `OrderLine` is created or deleted from the `Order`.
+
+Create the following class with the `@EventListener` method which will be invoked for changed `OrderLine` entities before transaction commit:
+
+[source,java]
+----
+include::{sourcesdir}/middleware/entityChangedEvent_usage_2.java[]
+----
+<1> - if `OrderLine` is not deleted, we can load it from the database by id.
+<2> - `event.getEntityId()` method returns id of the changed `OrderLine`.
+<3> - use a view that contains `OrderLine` together with the `Order` it belongs to. The view must contain the `Order.numberOfSpecialProducts` attribute because we need to update it later.
+<4> - get `Order` from the loaded `OrderLine`.
+<5> - if `OrderLine` has just been deleted, it cannot be loaded from the database, but `event.getChanges()` method returns all attributes of the entity, including identifiers of related entities. So we can load related `Order` by its id.
+<6> - load all `OrderLine` instances for the given `Order`, filter them by `Product.special` and count them. The view must contain `OrderLine` together with the related `Product`.
+<7> - save `Order` after changing its attribute.
