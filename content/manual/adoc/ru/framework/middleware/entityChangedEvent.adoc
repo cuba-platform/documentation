@@ -3,7 +3,12 @@
 [[entityChangedEvent]]
 ==== EntityChangedEvent
 
-`EntityChangedEvent` - это `ApplicationEvent`, который посылается фреймворком на среднем слое, когда некоторый экземпляр сущности сохраняется в базу данных. Данное событие может быть обработано как внутри текущей транзакции, так и после ее завершения (при использовании https://docs.spring.io/spring/docs/current/spring-framework-reference/data-access.html#transaction-event[@TransactionalEventListener]). Событие посылается только если на сущности есть аннотация `@PublishEntityChangedEvents`.
+`EntityChangedEvent` - это `ApplicationEvent`, который посылается фреймворком на среднем слое, когда некоторый экземпляр сущности сохраняется в базу данных. Данное событие может быть обработано как внутри текущей транзакции, так и после ее завершения (при использовании https://docs.spring.io/spring/docs/current/spring-framework-reference/data-access.html#transaction-event[@TransactionalEventListener]).
+
+[TIP]
+=====
+Событие посылается только если на сущности есть аннотация `@PublishEntityChangedEvents`. Не забудьте добавить эту аннотацию классам сущностей, для которых вы хотите обрабатывать `EntityChangedEvent`.
+=====
 
 Объект `EntityChangedEvent` содержит не сам измененный экземпляр сущности, а только его id. Кроме того, метод `getOldValue(attributeName)` возвращает идентификаторы ссылок вместо самих объектов. Поэтому при необходимости, разработчик должен загрузить требуемые сущности с указанием требуемого представления и других параметров.
 
@@ -25,7 +30,20 @@ include::{sourcesdir}/middleware/entityChangedEvent_usage_1.java[]
 
 При обработке `EntityChangedEvent` внутри транзакции, используйте <<transactionalDataManager,TransactionalDataManager>> для загрузки текущего состояния измененной сущности из базы данных. В обработчике, вызываемом после коммита транзакции, можно использовать `DataManager`, который создаст новую транзакцию для загрузки данных.
 
-[TIP]
-=====
-Не забудьте добавить аннотацию `@PublishEntityChangedEvents` классам сущностей, для которых вы хотите обрабатывать `EntityChangedEvent`.
-=====
+Ниже приведен пример использования `EntityChangedEvent` для изменения связанных сущностей.
+
+Предположим, имеются сущности `Order`, `OrderLine` и `Product`, как в примере https://www.cuba-platform.com/learn/quickstart/studio/part3/#chapter0[Quick Start Sales Application], но сущность `Product` дополнительно имеет булевский атрибут `special`, а у сущности `Order` есть атрибут `numberOfSpecialProducts`, который должен быть пересчитан при создании и удалении экземпляров `OrderLine` в составе `Order`.
+
+Создадим следующий класс с методом, аннотированным `@EventListener`, который будет вызываться при изменении сущностей `OrderLine` перед коммитом транзакции:
+
+[source,java]
+----
+include::{sourcesdir}/middleware/entityChangedEvent_usage_2.java[]
+----
+<1> - если экземпляр `OrderLine` не удален, можно загрузить его из БД по идентификатору.
+<2> - метод `event.getEntityId()` возвращает id измененного экземпляра `OrderLine`.
+<3> - используем представление, которое содержит `OrderLine` вместе с `Order`, которому он принадлежит. Представление должно содержать атрибут `Order.numberOfSpecialProducts`, так как его необходимо будет обновить.
+<4> - получаем `Order` из загруженного `OrderLine`.
+<5> - если экземпляр `OrderLine` был только что удален, его нельзя загрузить из БД, но метод `event.getChanges()` возвращает все атрибуты удаленной сущности, включая идентификаторы связанных сущностей. Поэтому можно загрузить связанный `Order` по его id.
+<6> - загружаем все экземпляры `OrderLine` для данного `Order`, отфильтровываем по `Product.special` и считаем их. Представление должно содержать `OrderLine` вместе со связанным `Product`.
+<7> - сохраняем `Order` после изменения его атрибута.
