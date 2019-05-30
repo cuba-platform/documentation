@@ -1,0 +1,1 @@
+String route = urlRouting.getRouteGenerator().getRoute(UserBrowser.class);
