@@ -1,4 +1,4 @@
-= CUBA Platform and Studio Release Notes
+= CUBA Platform Release Notes
 :toc: left
 :toc-title: Table of contents
 :toclevels: 6
@@ -15,7 +15,7 @@
 :lang: en
 :revnumber: 7.1
 :version-label: Version
-:revremark: Copyright (c) 2018 Haulmont
+:revremark: Copyright (c) 2019 Haulmont
 :youtrack: https://youtrack.cuba-platform.com
 :manual: https://doc.cuba-platform.com/manual-{revnumber}
 :studio: https://doc.cuba-platform.com/studio
@@ -30,237 +30,37 @@
 [[overview]]
 == Overview
 
-This document highlights major changes in CUBA Platform and Studio version {revnumber}.
+This document highlights major changes in CUBA Platform version {revnumber}.
 
-[[platform]]
-== Platform
+== All Resolved Issues
 
-=== All Resolved Issues
+//* {githubissueslog}/release_7.0.1.md[Platform 7.0.1 Resolved Issues]
 
-* {githubissueslog}/release_7.0.5.md[Platform 7.0.5 Resolved Issues]
-* {githubissueslog}/release_7.0.4.md[Platform 7.0.4 Resolved Issues]
-* {githubissueslog}/release_7.0.3.md[Platform 7.0.3 Resolved Issues]
-* {githubissueslog}/release_7.0.2.md[Platform 7.0.2 Resolved Issues]
-* {githubissueslog}/release_7.0.1.md[Platform 7.0.1 Resolved Issues]
+[[breaking_changes]]
+== Breaking Changes
 
-[[known_issues]]
-=== Known Issues And Limitations
-
-. CUBA 7.0 does not support the desktop client. You should not migrate your project to this release if you depend on Desktop module.
-
-. Hot-deploy mechanism for UI screens is limited to changes in the existing screens only. If you create a new screen while your application is running this screen will not be hot-deployed. See https://github.com/cuba-platform/cuba/issues/1509[GitHub issue] for details.
-
-. `Tree` UI component has been reworked using `TreeDataGrid`. For now it does not have borders and padding and looks different than old `Tree`.
-
-[[platform_breaking_changes]]
-=== Breaking Changes
-
-. Internet Explorer 8-10 is not supported anymore. Supported web browsers are: Chrome, Firefox 45+, Safari 4.1+, Internet Explorer 11, Microsoft Edge.
-
-. IntelliJ IDEA / Eclipse project files generation (`idea` and `eclipse` Gradle tasks) is not required anymore.
-+
-The framework does not use `idea` / `eclipse` Gradle plugins and you must import the project using the standard IDE mechanisms. In the simplest case you just open `build.gradle` file as a project. See {studio}/open_project.html[Studio User Guide] for detailed instructions.
-
-. CUBA and add-ons (BPM, Charts, FTS, Reports) configuration files have been moved from the classpath root to the root packages of the appropriate application components. For example, `/cuba-persistence.xml` became `/com/haulmont/cuba/persistence.xml`. These changes do not affect properly configured application projects, except in one case: in the test containers, there is a reference to the `test-app.properties` file which is now at `com/haulmont/cuba/testsupport/test-app.properties`. So if you are using middleware integration tests, edit your test container class and replace the reference:
-+
-[source, java]
-----
-public class MyProjectTestContainer extends TestContainer {
-
-    public MyProjectTestContainer() {
-        super();
-        // ...
-        appPropertiesFiles = Arrays.asList(
-                "com/company/myproject/app.properties",
-                "com/haulmont/cuba/testsupport/test-app.properties");
-----
-
-. Old `commons-lang` dependency has been removed, the platform depends on new `commons-lang3` library. You can either migrate usages to `commons-lang3` (simply change imports to use `org.apache.commons.lang3` package) or add explicit dependency `compile('commons-lang:commons-lang:2.6')` to your global module in `build.gradle`.
-
-. Dependency on `groovy-all` package has been removed. Now the framework depends only on `groovy`, `groovy-templates` and `groovy-sql` modules. Add required Groovy modules to your project dependencies if needed.
-
-. Dependency on MyBatis and `com.haulmont.cuba.core.sys.mybatis.UUIDTypeHandler` class have been removed. If you need MyBatis in your project, see the {manual}/myBatis.html[Integration with MyBatis] section for instructions.
-
-. Interfaces `Component.Container`, `Component.HasValue`, `Component.HasFormatter` and others have been extracted from `Component` and moved to `com.haulmont.cuba.gui.components` package. See https://github.com/cuba-platform/cuba/issues/925[GitHub issue] for details. Imports of those interfaces must be changed, e.g. instead of `com.haulmont.cuba.gui.components.Component.HasValue` import `com.haulmont.cuba.gui.components.HasValue` directly.
-
-. Deprecated methods `addListener` and `removeListener` of `Instance` have been removed. Use `addPropertyChangeListener` and `removePropertyChangeListener` instead.
-
-. All `addSomeListener` and `removeSomeListener` methods in UI components now receive `Consumer<E>` where `E` is a type of event object. If you use those methods with a lambda parameter then your code will not require migration. If you implement one of the old listener interfaces (e.g. ValueChangeListener) with a standalone class you will need to implement `Consumer<E>` (e.g. ValueChangeEvent) instead. See https://github.com/cuba-platform/cuba/issues/1108[GitHub issue] for details.
-
-. Regular screens cannot be used in the `frame` element anymore. Previously, such usage generated a warning in the server log. Now only frames/fragments with controllers inherited from `AbstractFrame` or `ScreenFragment` can be used as frames inside another screens.
-
-. `WebWindowManager` class has been replaced with `WebScreens`. If you have extended `WebWindowManager` in your code you will need to migrate your improvements manually.
-
-. Behavior of `Component` methods `isVisible` and `isEnabled` has been changed. Now methods return only value of the component visibility / enabled without taking parent value into consideration. New `isVisibleRecursive` and `isEnabledRecursive` methods are introduced.
-
-. Interface `HasValue` now has type parameter `V` - type of the corresponding value of UI component. Old code that uses untyped UI components, for instance `TextField` or `LookupField` might be broken. You can find default type of the UI component in its interface in `TYPE_DEFAULT` constant. For example (here `TextField` has default type `String`):
-+
-[source, java]
-----
-TypeToken<TextField<String>> TYPE_DEFAULT = new TypeToken<TextField<String>>(){};
-----
-+
-It is highly recommended to set type parameter for UI components explicitly, even default type parameter should be set. For example:
-+
-[source, java]
-----
-@Inject
-protected LookupField<User> userField;
-@Inject
-protected TextField<Long> countField;
-@Inject
-protected Label<String> defaultTypedLabel;
-----
-
-. Method `HasValue.getValue()` does not support auto cast of the return value anymore. You should either cast value manually or use typed UI Component, e.g. `TextField<String>`.
-
-. Widget set file location has been changed. If you have `web-toolkit` module in your project you will need to change references to widget sets in `AppWidgetSet.gwt.xml` file:
-+
-cuba: `com.haulmont.cuba.web.toolkit.ui.WidgetSet` changed to `com.haulmont.cuba.web.widgets.WidgetSet`.
-+
-charts: `com.haulmont.charts.web.toolkit.ui.ChartsWidgetSet` changed to `com.haulmont.charts.web.widgets.ChartsWidgetSet`.
-
-. JQuery is not loaded by default on first page rendering anymore. Add `jquery.js` to dependencies of your UI component class explicitly if it requires JQuery.
-
-. FreeMarker templates are not supported in `caption` and `description` attributes of a window. Now values loaded from XML are treated as simple String values. If you want to use templates in those attributes you can call `com.haulmont.cuba.core.global.TemplateHelper` methods manually from a screen controller.
-
-. Screens declared in `screens.xml` file with `class` attribute do not support `Runnable` interface anymore. You can register only UI controllers that extend `Screen` class. The old behaviour is considered dangerous because a caller that opens such a screen receives `null` from `openWindow` call. Those screens must be changed: you can convert them into Spring beans or if you need to call them only from the menu - use `class` attribute of a menu item.
-
-. Screen agent support has been removed without replacement. You can get `DeviceInfo` using the `DeviceInfoProvider` bean and either create different screens for each device type or open fragments in a screen.
-
-. Old Havana UI theme completely reimplemented on the basis of Halo theme. If you have extended Havana you will need to migrate your SCSS styles accordingly. See https://github.com/cuba-platform/cuba/issues/1067[GitHub issue] for details.
-
-. Property `wordwrap` of `TextArea` has been renamed to `wordWrap`. XML definitions still work, but `wordwrap` is removed from XSD and should not be used anymore.
-
-. `ComponentPalette` has been removed. Use the standard mechanism with `cuba.web.componentsConfig` application property if your application component provides UI components.
-
-. Deprecated `ObjectsCache` classes have been removed as a legacy and undocumented feature.
-
-. Deprecated classes from charts `com.haulmont.charts.gui.amcharts.model.data` package have been removed. Use data items classes from `com.haulmont.charts.gui.data` package instead.
-
-. Charts UI palette - the `ChartComponentPalette` class have been removed. Use the standard application component mechanism or include `charts-web-components.xml` into `cuba.web.componentsConfig` application property explicitly. If you did not use `ChartComponentPalette` then migration actions are not required.
-
-. Class `com.haulmont.cuba.core.app.DataServiceQueryBuilder` has been renamed to `RdbmsQueryBuilder`.
-
-. `com.haulmont.cuba.gui.components.RowsCount.BeforeRefreshEvent` does not have reference to a datasource anymore.
-
-. Validators of UI components are triggered even if the value of UI component is empty.
-
-. If you have defined own password encryption module (not SHA1), set `cuba.legacyPasswordEncryptionModule = <your encryption module>` in the `app.properties` files for all modules. It is necessary to authenticate existing users having empty `SEC_USER.PASSWORD_ENCRYPTION` field in the database.
-
-. By default, the UI components `description` property isn't processed as HTML markup. This can be changed by setting `descriptionAsHtml=true`.
-
-. `BaseAction` does not set caption implicitly (using id as message key) anymore. Now it must be set explicitly.
-
-. `WidgetsTree` UI component has been removed as legacy and undocumented feature.
-
-. Removed `multiSelect` attribute of the `TwinColumn` UI component.
-
-. `TextArea` and `ResizableTextArea` are now different UI components with own XML elements: `<textArea>` and `<resizableTextArea>`. The `<textArea>` element still has `resizableDirection` and `resizable` attributes for backward compatibility, but if you inject the component with `resizable="true"` in a controller, the type of the field must be `ResizableTextArea`, otherwise you will get `ClassCastException`.
-
-. A password storage format for the `cuba.rest.client.secret` application property has been changed. The password encoder should be defined and the default property value is now `{noop}secret` instead of `secret`. If you explicitly defined the `cuba.rest.client.secret` property value in your project you should change its value according to the new format (add `{noop}` before the value. See https://github.com/cuba-platform/cuba/issues/1065#issuecomment-411357276[GitHub issue] for details.
-
-[[premium_addons]]
-=== Former Premium Add-ons
-
-The former premium add-ons (BPM, Charts, Full-Text Search, Reports) - are free and open-source since version 7.0. The source code projects have been moved to GitHub:
-
-* https://github.com/cuba-platform/bpm
-* https://github.com/cuba-platform/charts
-* https://github.com/cuba-platform/fts
-* https://github.com/cuba-platform/reports
-
-The binary artifacts of the addons version 7.0 are published in the main repositories: https://dl.bintray.com/cuba-platform/main and https://repo.cuba-platform.com/content/groups/work, so there is no need to add premium repositories to your `build.gradle` to use the add-ons.
 
 [[gui]]
-=== Generic UI
+== Generic UI
 
-. Generic UI now uses Vaadin 8.
+* Now you can create new visual components by combining existing ones, see {manual}/composite_components.html[Composite Components].
 
-. New API:
-* New {manual}/gui_screens.html[screen API].
-* New {manual}/standard_actions.html[standard actions].
-* New {manual}/gui_dialogs.html[dialogs] and {manual}/gui_notifications.html[notifications] API.
-* New {manual}/gui_data.html[data components] to replace datasources.
-+
-The old screen API, standard actions and datasources are kept for backward compatibility.
-
-. New UI components - {manual}/gui_Form.html[Form], {manual}/gui_TreeDataGrid.html[TreeDataGrid], {manual}/gui_RadioButtonGroup.html[RadioButtonGroup], {manual}/gui_CheckBoxGroup.html[CheckBoxGroup].
-
-. Implemented {manual}/jsComponent.html[JavaScriptComponent] - a simplified way of integration with JavaScript UI components.
-
-. Data aware UI components that implement `HasValue` interface provide typed API. Now you can use them as: `LookupField<User>`, `TextField<Integer>`, `DateField<LocalDate>` etc.
-
-. Introduced new UI components factory - `UiComponents` bean.
-
-. Implemented {manual}/url_history_navigation.html[URL browser history and navigation].
-
-. Implemented single `BeforeCloseEvent` for `Window` with `CloseOriginType`.
-
-. All UI components now support {manual}/gui_attributes.html#gui_attr_contextHelpText[context help].
-
-. All UI component events have the `userOriginated` attribute that indicates whether this event was triggered by user interaction on the client side, or programmatically, on the server side.
-
-. CSS rules for UI components can be set in screen XML using the {manual}/gui_attributes.html#gui_attr_css[css] attribute.
-
-. `Button` supports `ClickEvent` and can be used without an action.
-
-=== IDP Single Sign-On
-
-IDP functionality has been extracted to the https://github.com/cuba-platform/idp-addon[separate application component] that must be added explicitly.
+* The framework now provides infrastructure for writing integration tests on the web tier for testing UI in full-functioning Spring container, see {manual}/integration_tests_client.html[Web Integration Tests].
 
 [[misc]]
-=== Miscellaneous
-
-. Java 8, 9, 10 and 11 can be used to build and run applications.
-
-. It is recommended to use underscore instead of "$" to separate namespace and class in entity names, for example `sales_Customer`.
-
-. BCrypt algorithm is used for password hashing for newly created users. See {manual_app_props}cuba.passwordEncryptionModule[cuba.passwordEncryptionModule] app property.
-
-. `LoginPasswordLoginProvider` of the client blocks sends user's password to the middleware as is (i.e. not hashed as in previous versions). See {manual_app_props}cuba.checkPasswordOnClient[cuba.checkPasswordOnClient] app property for recommendations.
-
-. Web client exception handlers have new base classes, see {manual}/exceptionHandlers.html[Client-Level Exception Handlers]. The old classes have been deprecated and kept for backward compatibility.
+== Miscellaneous
 
 [[upd_dep]]
-=== Updated Dependencies
+== Updated Dependencies
 
 Core framework:
 ----
-com.google.guava = 26.0-jre
-com.sun.mail/javax.mail = 1.6.0
-com.vaadin = 8.6.4-2-cuba
-de.javakaffee/kryo-serializers = 0.42
-javax/javaee-api = 8.0
-org.codehaus.groovy = 2.5.4
-org.dom4j/dom4j = 2.1.0
-org.eclipse.persistence/org.eclipse.persistence.jpa = 2.7.3-1-cuba
-org.eclipse.persistence/org.eclipse.persistence.oracle = 2.7.3
-org.freemarker/freemarker = 2.3.23
-org.glassfish/javax.el = 3.0.1-b10
-org.hibernate.validator/hibernate-validator = 6.0.13.Final
-org.javassist/javassist = 3.24.0-GA
-org.jmockit/jmockit = 1.39
-org.springframework = 5.1.2.RELEASE
-org.springframework.security = 5.1.1.RELEASE
-org.springframework.security.oauth/spring-security-oauth2 = 2.3.4.RELEASE
-org.webjars.bower/jquery-file-upload = 9.22.0.cuba.0
-org.webjars/jquery = 3.3.1
 ----
 
 Full-Text Search add-on:
 ----
-org.apache.lucene = 7.5.0
 ----
 
 Reports add-on:
 ----
-com.haulmont.yarg = 2.1.3
 ----
-
-[[studio]]
-== Studio
-
-All Studio functionality has been moved to the plugin for IntelliJ IDEA. It supports projects based on CUBA 6.10 and 7.0, so you can open an existing project in the new Studio and migrate it to the new framework version. See {studio}[CUBA Studio User Guide] for details.
-
-If you need premium add-ons (Reports, BPM, etc.) for a project based on CUBA 6.10 and you have a subscription, you should set the premium repository access credentials in `~/.gradle/gradle.properties` as described in the {manual}/access_to_repo.html#access_to_premium_repo[documentation]. Studio does not pass the credentials to Gradle.
