@@ -1,9 +1,63 @@
 :sourcesdir: ../../../../source
 
 [[integration_tests_client]]
-==== Client Tier Integration Tests
+==== Web Integration Tests
 
-[WARNING]
-====
-Coming soon.
-====
+Web integration tests run in the Spring container of the Web Client block. This test container works independently from the middleware because the framework automatically creates stubs for all middleware services. The testing infrastructure consists of the following classes located in the `com.haulmont.cuba.web.testsupport` package and nested packages:
+
+* `TestContainer` - a wrapper of the Spring container to be used as a base class for project-specific containers.
+* `TestServiceProxy` - provides default stubs for middleware services. This class can be used to register service mocks specific to a test, see its `mock()` static method.
+* `DataServiceProxy` - default stub for `DataManager`. It contains an implementation for `commit()` method which mimics the behavior of the real data store: makes new entities detached, increments versions, etc. The loading methods return null and empty collections.
+* `TestUiEnvironment` - provides a set of methods to configure and obtain `TestContainer`. Instance of this class should be used in tests as a JUnit Rule.
+* `TestEntityFactory` - convenient factory for creating entity instances for tests. The factory can be obtained from `TestContainer`.
+
+Although the framework provides default stubs for services, you may want to create your own service mocks in tests. To create mocks, you can use any mocking framework by adding it as a dependency as explained in the section <<testing,above>>. Service mocks are registered using the `TestServiceProxy.mock()` method.
+
+[[integration_tests_client_container]]
+Example of web integration test container::
++
+--
+Create `test` directory in the `web` module. Then create project's test container class in an appropriate package of the `test` directory:
+
+[source, java]
+----
+include::{sourcesdir}/development/web_testing_container.java[]
+----
+--
+
+[[integration_tests_client_ex1]]
+Example of UI screen test::
++
+--
+Below is an example of web integration test that checks the state of the edited entity after some user action.
+
+[source, java]
+----
+include::{sourcesdir}/development/web_testing_ex1.java[]
+----
+<1> - define test environment with the shared container and `admin` user in the user session stub.
+<2> - create entity instance in the `new` state.
+<3> - get `Screens` infrastructure object from the environment.
+<4> - open main screen, which is required for opening application screens.
+<5> - create, initialize and open an entity editor screen.
+<6> - get `Button` component.
+<7> - create a click event and invoke the controller's method that reacts on the click.
+--
+
+[[integration_tests_client_ex2]]
+Example of test for loading data in a screen::
++
+--
+Below is an example of web integration test that checks the correctness of loaded data.
+
+[source, java]
+----
+include::{sourcesdir}/development/web_testing_ex2.java[]
+----
+<1> - define data service mock using JMockit framework.
+<2> - define the mock behavior.
+<3> - register the mock.
+<4> - create entity instance in the `detached` state.
+<5> - remove the mock after the test completes.
+<6> - get data container.
+--
