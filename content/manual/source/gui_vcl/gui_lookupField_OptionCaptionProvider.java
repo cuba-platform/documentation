@@ -1,0 +1,1 @@
+lookupField.setOptionCaptionProvider((item) -> item.getLocalizedName());
