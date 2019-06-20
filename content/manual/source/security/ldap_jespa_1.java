@@ -1,4 +1,4 @@
-package com.company.sample.web.auth;
+package com.company.sample.web;
 
 import com.company.sample.config.ActiveDirectoryConfig;
 import com.company.sample.web.sys.DomainAliasesResolver;
@@ -46,8 +46,6 @@ public class JespaAuthProvider extends HttpSecurityService implements LoginProvi
     private GlobalConfig globalConfig;
     @Inject
     private WebAuthConfig webAuthConfig;
-    @Inject
-    private ActiveDirectoryConfig activeDirectoryConfig;
     @Inject
     private DomainAliasesResolver domainAliasesResolver;
     @Inject
@@ -178,7 +176,7 @@ public class JespaAuthProvider extends HttpSecurityService implements LoginProvi
     }
 
     protected void initDomains() {
-        String domainsStr = activeDirectoryConfig.getDomains();
+        String domainsStr = AppContext.getProperty("activeDirectory.domains");
         if (StringUtils.isEmpty(domainsStr)) {
             return;
         }
@@ -244,6 +242,31 @@ public class JespaAuthProvider extends HttpSecurityService implements LoginProvi
             if (name.startsWith("jespa.")) {
                 params.put(name, AppContext.getProperty(name));
             }
+        }
+    }
+
+    public static class DomainInfo {
+
+        private final String bindStr;
+        private final String acctName;
+        private final String acctPassword;
+
+        DomainInfo(String bindStr, String acctName, String acctPassword) {
+            this.acctName = acctName;
+            this.acctPassword = acctPassword;
+            this.bindStr = bindStr;
+        }
+
+        public String getBindStr() {
+            return bindStr;
+        }
+
+        public String getAcctName() {
+            return acctName;
+        }
+
+        public String getAcctPassword() {
+            return acctPassword;
         }
     }
 }
