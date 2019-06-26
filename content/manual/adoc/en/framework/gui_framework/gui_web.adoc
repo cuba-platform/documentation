@@ -1,39 +1,38 @@
 :sourcesdir: ../../../../source
 
 [[gui_web]]
-==== Web Client Infrastructure
+==== Generic UI Infrastructure
 
-Implementation of the generic user interface of the Web Client <<app_tiers,block>> is based on the Vaadin framework. The main classes available in the web client infrastructure are described below.
+This section describes Generic UI infrastructure classes that can be extended in an application.
 
-.Web Client Infrastructure Classes
+.Generic UI Infrastructure Classes
 image::WebClientInfrastructure.svg[align="center"]
 
-* `App` - the central class of the application infrastructure. Contains links to `Connection` and other infrastructure objects. Only one instance of `App` exists for a given HTTP session. You can get a reference to the `App` instance by using the `App.getInstance()` static method. If you want to customize functionality of `App` in your project, create a class extending `DefaultApp` in the root package of your *web* module and register it in <<spring.xml, web-spring.xml>> as the `cuba_App` bean, for example:
+* `AppUI` is a class inherited from `com.vaadin.ui.UI`. There is one instance of this class for each open web browser tab. It refers a `RootWindow` which contains either a login screen or main screen, depending on the connection state. You can get a reference to the `AppUI` for the current browser tab by using the `AppUI.getCurrent()` static method.
++
+If you want to customize functionality of `AppUI` in your project, create a class extending `AppUI` in the *web* module and register it in <<spring.xml, web-spring.xml>> with `cuba_AppUI` id and `prototype` scope, for example:
++
+[source, xml]
+----
+<bean id="cuba_AppUI" class="com.company.sample.web.MyAppUI" scope="prototype"/>
+----
+
+* `Connection` is an interface providing functionality of connecting to middleware and holding a <<userSession,user session>>. `ConnectionImpl` is a standard implementation of this interface.
++
+If you want to customize functionality of `Connection` in your project, create a class extending `ConnectionImpl` in the *web* module and register it in <<spring.xml, web-spring.xml>> with `cuba_Connection` id and `vaadin` scope, for example:
++
+[source, xml]
+----
+<bean id="cuba_Connection" class="com.company.sample.web.MyConnection" scope="vaadin"/>
+----
+
+* `ExceptionHandlers` class contains a collection of <<exceptionHandlers,client-level exception handlers>>.
+
+* `App` contains links to `Connection`, `ExceptionHandlers` and other infrastructure objects. A single instance of this class is created for an HTTP session and stored in its attribute. You can get a reference to the `App` instance by using the `App.getInstance()` static method.
++
+If you want to customize functionality of `App` in your project, create a class extending `DefaultApp` in the *web* module and register it in <<spring.xml, web-spring.xml>> with `cuba_App` id and `vaadin` scope, for example:
 +
 [source, xml]
 ----
 <bean name="cuba_App" class="com.company.sample.web.MyApp" scope="vaadin"/>
 ----
-
-* `Connection` is an interface providing functionality of connecting to middleware and holding a <<userSession,user
-session>>. `ConnectionImpl` is a standard implementation of this interface.
-
-* `ExceptionHandlers` class contains a collection of <<exceptionHandlers,client-level exception handlers>>.
-
-* `AppUI` is a platform class inherited from `com.vaadin.ui.UI` class. There is one instance of this class for each open tab of a web browser. Contains a link to a `TopLevelWindow` implementation – either a login window or main window, depending on the connection state. You can get a reference to the `AppUI` for the current browser tab by using the `AppUI.getCurrent()` static method.
-
-* `AppLoginWindow` – the window displayed before a user logs in. You can customize the login window by extending `AppLoginWindow` or create completely new one by extending <<abstractWindow,AbstractWindow>> class. In Studio, select the *Generic UI > Screens* section of the CUBA project tree and click *New > Screen*. Then select the *Login window* template on the *Legacy Screen Templates* tab. If you override the `init()` method in your class, make sure you invoke `super.init(params)`.
-
-* `AppMainWindow` – main application window displayed after a user logs in. You can customize the main window by extending `AppMainWindow` or create completely new one by extending `AbstractMainWindow` and defining desired layout in XML descriptor. In Studio, select the *Generic UI > Screens* section of the CUBA project tree and click *New > Screen*. Then select the *Main window* template on the *Legacy Screen Templates* tab. If you override the `init()` method in your class, make sure you invoke `super.init(params)`.
-+
-You can control certain main window parameters without redefining the default implementation using the following application properties:
-+
---
-** <<cuba.web.foldersPaneEnabled,cuba.web.foldersPaneEnabled>> - enables creation of <<folders_pane,folders pane>>.
-
-** <<cuba.web.appWindowMode,cuba.web.appWindowMode>> – sets default mode for the main window: tabbed or single screen (`TABBED` or `SINGLE`). Users can change the mode later using *Help* > *Settings* screen.
-
-** <<cuba.web.maxTabCount,cuba.web.maxTabCount>> – when the main window is in the tabbed mode, this property sets the maximum number of tabs that a user can open. The default value is 7.
---
-
-If you want to handle the browser *Back* button, implement the `CubaHistoryControl.HistoryBackHandler` interface in your `TopLevelWindow` (login and/or main windows). Its `onHistoryBackPerformed()` method is invoked instead of standard browser behavior if the <<cuba.web.allowHandleBrowserHistoryBack,cuba.web.allowHandleBrowserHistoryBack>> application property is set to true.
