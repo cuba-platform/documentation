@@ -1,0 +1,55 @@
+:sourcesdir: ../../../../../source
+
+[[gui_DataLoadCoordinator]]
+===== DataLoadCoordinator
+
+++++
+<div class="manual-live-demo-container">
+    <a href="http://files.cuba-platform.com/javadoc/cuba/7.1/com/haulmont/cuba/gui/components/DataLoadCoordinator.html" class="api-docs-btn" target="_blank">API DOCS</a>
+</div>
+++++
+
+`DataLoadCoordinator` facet is designed for declarative linking of data loaders to data containers, visual components and screen events. It can work in two modes:
+
+* In automatic mode, it relies on parameter names with special prefixes. The prefix denotes a component which produces the parameter value and change events. If the loader has no parameters in its query text (although it can have parameters in <<gui_data_loader_query_conditions,query conditions>>), it is refreshed on <<screen_BeforeShowEvent,BeforeShowEvent>> in `Screen` or on <<screenFragment_AttachEvent,AttachEvent>> in `ScreenFragment`.
++
+By default, the parameter prefix is `container_` for data containers and `component_` for visual components.
+
+* In manual mode, the links are specified in the facet markup or via its API.
+
+Semi-automatic mode is also possible, when some links are specified explicitly and the rest is configured automatically.
+
+When using `DataLoadCoordinator` in a screen, the <<LoadDataBeforeShow_annotation,@LoadDataBeforeShow>> annotation on the screen controller has no effect: the loading of data is controlled by the facet and by custom event handlers, if any.
+
+See usage examples below.
+
+. Automatic configuration. The `auto` attribute is set to `true`.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_facets/dataLoadCoordinator_1.xml[]
+----
+<1> - there are no parameters in the query, so the `ownersDl` loader will be triggered on `BeforeShowEvent`.
+<2> - the `ownersDl` loader will also be triggered on `categoryFilterField` component value change.
+<3> - the `ownersDl` loader will also be triggered on `nameFilterField` component value change. As the condition uses the `like` clause, the value will be automatically wrapped in '(?i)% %' to provide the <<datasource_query_case_insensitive,case-insensitive search>>.
+<4> - the `petsDl` is triggered on the `ownersDc` data container item change.
+
+. Manual configuration. The `auto` attribute is absent (or set to `false`), the nested entries define when the data loaders must be triggered.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_facets/dataLoadCoordinator_2.xml[]
+----
+<1> - the `ownersDl` loader will be triggered on `InitEvent`.
+<2> - the `ownersDl` loader will also be triggered on `categoryFilterField` component value change.
+<3> - the `ownersDl` loader will also be triggered on `nameFilterField` component value change. The `likeClause` attribute causes the value to be wrapped in '(?i)% %' to provide the <<datasource_query_case_insensitive,case-insensitive search>>.
+<4> - the `petsDl` is triggered on the `ownersDc` data container item change.
+
+. Semi-automatic configuration. When the `auto` attribute is set to `true` and there are some manually configured triggers, the facet will configure automatically all loaders that have no manual configuration.
++
+[source, xml]
+----
+include::{sourcesdir}/gui_facets/dataLoadCoordinator_3.xml[]
+----
+<1> - the `petsDl` is configured automatically and triggered on the `ownersDc` data container item change.
+<2> - the `ownersDl` loader is configured manually and will be triggered on `InitEvent`.
