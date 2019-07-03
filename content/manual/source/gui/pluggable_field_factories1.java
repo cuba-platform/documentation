@@ -28,11 +28,11 @@ public class SalesComponentGenerationStrategy implements ComponentGenerationStra
         MetaClass orderMetaClass = metadata.getClassNN(Order.class);
 
         // Check the specific field of the Order entity
-        // and that the component is created for the FieldGroup component
+        // and that the component is created for the Form component
         if (orderMetaClass.equals(context.getMetaClass())
                 && "date".equals(property)
                 && context.getComponentClass() != null
-                && FieldGroup.class.isAssignableFrom(context.getComponentClass())) {
+                && Form.class.isAssignableFrom(context.getComponentClass())) {
             DatePicker<Date> datePicker = uiComponents.create(DatePicker.TYPE_DATE);
 
             ValueSource valueSource = context.getValueSource();
