@@ -17,12 +17,12 @@ protected Component ordersDataGridDetailsGenerator(Order order) {
     infoLabel.setStyleName("h1");
     infoLabel.setValue("Order info:");
 
-    Component closeButton = createCloseButton(order); // <1>
+    Component closeButton = createCloseButton(order);
     headerBox.add(infoLabel);
     headerBox.add(closeButton);
     headerBox.expand(infoLabel);
 
-    Component content = getContent(order); // <2>
+    Component content = getContent(order); 
 
     mainLayout.add(headerBox);
     mainLayout.add(content);
@@ -30,3 +30,19 @@ protected Component ordersDataGridDetailsGenerator(Order order) {
 
     return mainLayout;
 }
+
+private Component createCloseButton(Order entity) {
+    Button closeButton = uiComponents.create(Button.class);
+    // ... <1>
+    return closeButton;
+}
+
+private Component getContent(Order entity) {
+    Label<String> content = uiComponents.create(Label.TYPE_STRING);
+    content.setHtmlEnabled(true);
+    StringBuilder sb = new StringBuilder();
+    // ... <2>
+    content.setValue(sb.toString());
+    return content;
+}
+
