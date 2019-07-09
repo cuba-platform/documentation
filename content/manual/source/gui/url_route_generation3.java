@@ -1,4 +1,3 @@
-// default "admin" user
-User admin = ...;
+Customer сustomer = customersTable.getSingleSelected();
 
-String route = urlRouting.getRouteGenerator().getEditorRoute(admin);
+String route = urlRouting.getRouteGenerator().getEditorRoute(сustomer);
