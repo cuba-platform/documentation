@@ -1,13 +1,15 @@
 @Inject
-private KeyValueContainer container;
+private UiComponents uiComponents;
+@Inject
+private InstanceContainer<Customer> customerDc;
 @Inject
 private Form form;
 
 @Subscribe
-protected void onInit(InitEvent event) {
-    Field fooField = (Field) uiComponentsGenerator.generate(
-            new ComponentGenerationContext(container.getEntityMetaClass(), "foo"));
-    fooField.setCaption("Foo");
-    fooField.setValueSource(new ContainerValueSource<>(container, "foo"));
-    form.add(fooField);
+private void onInit(InitEvent event) {
+    TextField<String> emailField = uiComponents.create(TextField.TYPE_STRING);
+    emailField.setCaption("Email");
+    emailField.setWidthFull();
+    emailField.setValueSource(new ContainerValueSource<>(customerDc, "email"));
+    form.add(emailField);
 }
