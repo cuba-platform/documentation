@@ -13,7 +13,9 @@ import java.util.UUID;
 @Component("demo_CustomerChangedListener")
 public class CustomerChangedListener {
 
-    @EventListener // <1>
+    @TransactionalEventListener(
+            phase = TransactionPhase.BEFORE_COMMIT // <1>
+    )
     public void beforeCommit(EntityChangedEvent<Customer, UUID> event) {
         Id<Customer, UUID> entityId = event.getEntityId(); // <2>
         EntityChangedEvent.Type changeType = event.getType(); // <3>
@@ -25,7 +27,9 @@ public class CustomerChangedListener {
         }
     }
 
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT) // <6>
+    @TransactionalEventListener(
+            phase = TransactionPhase.AFTER_COMMIT // <6>
+    )
     public void afterCommit(EntityChangedEvent<Customer, UUID> event) {
         // <7>
     }

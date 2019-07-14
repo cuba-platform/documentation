@@ -17,7 +17,9 @@ public class OrderLineChangedListener {
     @Inject
     private TransactionalDataManager txDm;
 
-    @EventListener
+    @TransactionalEventListener(
+            phase = TransactionPhase.BEFORE_COMMIT
+    )
     public void beforeCommit(EntityChangedEvent<OrderLine, UUID> event) {
         Order order;
         if (event.getType() != EntityChangedEvent.Type.DELETED) { // <1>
