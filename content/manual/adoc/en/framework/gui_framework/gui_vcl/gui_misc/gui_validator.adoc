@@ -7,110 +7,669 @@ Validator is designed to check values entered into visual components.
 
 [WARNING]
 ====
-Validation and input type checking should be differentiated. If a given component (e.g. <<gui_TextField,TextField>>) data type is set to anything different than string (this can happen when binding to an entity attribute or setting `datatype`), then the component will not allow the user to enter a value that does not comply with this data type.  When the component loses focus or when the user presses Enter, the component will show the previous correct value.
+Validation and input type checking should be differentiated. If a given component (e.g., <<gui_TextField,TextField>>) data type is set to anything different than string (this can happen when binding to an entity attribute or setting `datatype`), then the component will not allow the user to enter a value that does not comply with this data type.  When the component loses focus or when the user presses *Enter*, the error notification will be shown to the user.
 
-On the other hand, validation does not act immediately on data entry or focus loss, but rather when the component's `validate()` method is invoked. It means that the component (and the entity attribute that it is linked to) may temporarily contain a value, which does not comply with the conditions of validation. It should not be a problem because the validated fields are typically located in <<screen_edit,edit screens>>, which automatically invoke validation for all their fields before commit. If the component is located not in an edit screen, its `validate()` method should be invoked explicitly in the screen controller.
+On the other hand, validation does not act immediately on data entry or focus loss, but rather when the component's `validate()` method is invoked. It means that the component (and the entity attribute that it is linked to) may temporarily contain a value, which does not comply with the conditions of validation. It should not be a problem because the validated fields are typically located in editor screens, which automatically invoke validation for all their fields before commit. If the component is located not in an edit screen, its `validate()` method should be invoked explicitly in the screen controller.
 ====
 
-In a screen XML-descriptor, a component validator can be defined in a nested `validator` elements. The `validator` element can have the following attributes:
+The framework contains the set of implementations for the most frequently used validators, which can be used in your project:
 
-* `script` − path to a Groovy script performing validation.
+* <<gui_validator_DecimalMaxValidator, DecimalMaxValidator>>
 
-* `class` − name of a Java class implementing the `Field.Validator` interface.
+* <<gui_validator_DecimalMinValidator, DecimalMinValidator>>
 
-Groovy validator scripts and standard classes of Java validators, located in the `com.haulmont.cuba.gui.components.validators` package support `message` attribute − a message displayed to a user when validation fails. The attribute value should contain either a message or a message key from the <<message_packs,messages pack>> of the current screen. For example:
+* <<gui_validator_DigitsValidator, DigitsValidator>>
 
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_1.xml[]
-----
+* <<gui_validator_FutureOrPresentValidator, FutureOrPresentValidator>>
 
-[source, properties]
-----
-include::{sourcesdir}/gui_vcl/validator_1.properties[]
----- 
+* <<gui_validator_FutureValidator, FutureValidator>>
 
-// TODO update screenshot
-Validator can be added using CUBA Studio interface. Below is an example of adding a validator to the `fieldGroup` field:
+* <<gui_validator_MaxValidator, MaxValidator>>
+
+* <<gui_validator_MinValidator, MinValidator>>
+
+* <<gui_validator_NegativeOrZeroValidator, NegativeOrZeroValidator>>
+
+* <<gui_validator_NegativeValidator, NegativeValidator>>
+
+* <<gui_validator_NotBlankValidator, NotBlankValidator>>
+
+* <<gui_validator_NotEmptyValidator, NotEmptyValidator>>
+
+* <<gui_validator_NotNullValidator, NotNullValidator>>
+
+* <<gui_validator_PastOrPresentValidator, PastOrPresentValidator>>
+
+* <<gui_validator_PastValidator, PastValidator>>
+
+* <<gui_validator_PositiveOrZeroValidator, PositiveOrZeroValidator>>
+
+* <<gui_validator_PositiveValidator, PositiveValidator>>
+
+* <<gui_validator_RegexpValidator, RegexpValidator>>
+
+* <<gui_validator_SizeValidator, SizeValidator>>
+
+In a screen XML-descriptor, such component validators can be defined in a nested `validators` element.
+Validator can be added using CUBA Studio interface. Below is an example of adding a validator to the `TextField` component:
 
 image::gui_validator.png[align="center"]
 
-The validation mechanism is selected as follows:
+Each validator is a `Prototype Bean`, and if you want to use validators from Java code, you need to get them using `BeanLocator`.
 
-* If the value of the `script` attribute is not set and the `validator` element itself does not contain text with a Groovy expression, then the system will use a class defined in the `class` attribute as a validator.
-+
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_6.xml[]
-----
+Some of the validators use Groovy string in error message. It means that it is possible to pass parameters to the error message (e.g., `$value`). These parameters take account of user's locale.
 
-* If the `validator` element contains text, it will be used as a Groovy expression and executed using <<scripting,Scripting>>.
-+
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_5.xml[]
-----
+You can use a custom Java class as a validator. It should implement the `Consumer` interface.
 
-* Otherwise, the system will use <<scripting,Scripting>> to run a Groovy script defined in the `script` attribute.
-+
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_7.xml[]
-----
-
-The `value` variable will be passed to a Groovy expression or script. It contains the value entered into a visual component. The expression or the script should return a `boolean` value: `true` − valid, `false` − not valid.
-
-If a Java class is being used as a validator, it should have a default constructor without parameters or a constructor with the following set of parameters: 
-
-* `org.dom4j.Element`, `String` – this constructor will receive the validator XML-element and the message pack name of the screen.
-
-* `org.dom4j.Element` – this constructor will receive the validator XML-element.
+In a screen XML-descriptor, a custom validator can be defined in a nested `validator` element.
 
 [TIP]
 ====
-If the validator is implemented as an internal class, it should be declared with a `static` modifier and its name should be separated by "$", for example:
+If the validator is implemented as an internal class, it should be declared with a `static` modifier, and its name should be separated by "$", for example:
 
 `<validator class="com.sample.sales.gui.AddressEdit$ZipValidator"/>`
 ====
 
-The platform contains the set of implementations for the most frequently used validators (see `com.haulmont.cuba.gui.components.validators` package), which can be used in your project:
-
-* `DateValidator`
-
-* `DoubleValidator`
-
-* `EmailValidator`
-
-* `IntegerValidator`
-
-* `LongValidator`
-
-* `PatternValidator`
-
-* `ScriptValidator`
-
-* `StringValidator`
-
-A validator class can be assigned to a component not only using a screen XML-descriptor, but also programmatically – by submitting a validator instance into the component's `addValidator()` method.
+A validator class can be assigned to a component not only using a screen XML-descriptor but also programmatically – by submitting a validator instance into the component's `addValidator()` method.
 
 Example of creating a validator class for zip codes:
 
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/validator_2.java[]
----- 
+----
 
-Example of using a zip code validator and a standard pattern validator for fields of a <<gui_FieldGroup,FieldGroup>> component:
+Example of using a zip code validator for the <<gui_TextField,TextField>> component:
 
 [source, xml]
 ----
 include::{sourcesdir}/gui_vcl/validator_3.xml[]
----- 
+----
 
-Example of setting a validator programmatically in a screen controller: 
+Example of setting a validator programmatically in a screen controller:
 
 [source, java]
 ----
 include::{sourcesdir}/gui_vcl/validator_4.java[]
----- 
+----
+
+Below we consider predefined validators.
+
+[[gui_validator_DecimalMaxValidator]]
+DecimalMaxValidator::
++
+It checks that value must be less than or equal to the specified maximum.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`, and `String` that represents `BigDecimal` value with the current locale.
++
+It has the following attributes:
++
+--
+* `value` − maximum value (required);
+* `inclusive` − when set to `true`, the value must be less than or equal to the specified maximum value. The default value is `true`;
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` and `$max` keys for formatted output.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.decimalMaxInclusive`
+* `validation.constraints.decimalMax`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMax.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMax.java[]
+----
+
+[[gui_validator_DecimalMinValidator]]
+DecimalMinValidator::
++
+It checks that value must be greater than or equal to the specified minimum.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`, and `String` that represents `BigDecimal` value with the current locale.
++
+It has the following attributes:
++
+--
+* `value` − minimum value (required);
+* `inclusive` − when set to `true`, the value must be greater than or equal to the specified minimum value. The default value is `true`;
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` and `$min` keys for formatted output.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.decimalMinInclusive`
+* `validation.constraints.decimalMin`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMin.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMin.java[]
+----
+
+[[gui_validator_DigitsValidator]]
+DigitsValidator::
+
+It checks that value must be a number within the accepted range.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`, and `String` that represents `BigDecimal` value with the current locale.
++
+It has the following attributes:
++
+--
+* `integer` − count of numbers in the integer part (required);
+* `fraction` − count of numbers in the fraction part (required);
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value`, `$integer`, and `$fraction` keys for formatted output.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.digits`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorDigitsValidator.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorDigitsValidator.java[]
+----
+
+[[gui_validator_FutureOrPresentValidator]]
+FutureOrPresentValidator::
++
+It validates that date or time is in the future or present. It doesn't use Groovy string, so there are no parameters you can pass to the error message.
+Supported types: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+It has the following attributes:
++
+--
+* `checkSeconds` − when set to `true`, the validator should compare date or time with seconds and nanos. The default value is `false`;
+* `message` − a custom message displayed to a user when validation fails.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.futureOrPresent`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorFutureOrPresent.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorFutureOrPresent.java[]
+----
+
+[[gui_validator_FutureValidator]]
+FutureValidator::
++
+It validates that date or time is in the future.
+It doesn't use Groovy string, so there are no parameters you can pass to the error message.
+Supported types: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+It has the following attributes:
++
+--
+* `checkSeconds` − when set to `true`, the validator should compare date or time with seconds and nanos. The default value is `false`;
+* `message` − a custom message displayed to a user when validation fails.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.future`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorFuture.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorFuture.java[]
+----
+
+[[gui_validator_MaxValidator]]
+MaxValidator::
++
+It checks that value must be less than or equal to the specified maximum.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`.
++
+It has the following attributes:
++
+--
+* `value` − maximum value (required);
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` and `$max` keys for formatted output.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.max`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorMax.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorMax.java[]
+----
+
+[[gui_validator_MinValidator]]
+MinValidator::
++
+It checks that value must be greater than or equal to the specified minimum.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`.
++
+It has the following attributes:
++
+--
+* `value` − minimum value (required);
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value`, and `$min` keys for formatted output.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.min`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorMin.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorMin.java[]
+----
+
+[[gui_validator_NegativeOrZeroValidator]]
+NegativeOrZeroValidator::
++
+It checks that value should be a less than or equal 0.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+It has the following attributes:
++
+--
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` key for formatted output. Note, that `Float` doesn't have its own datatype and won't be formatted with the user's locale.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.negativeOrZero`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNegativeOrZero.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNegativeOrZero.java[]
+----
+
+[[gui_validator_NegativeValidator]]
+NegativeValidator::
++
+It checks that value should be strictly less than 0.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+It has the following attributes:
++
+--
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` key for formatted output. Note, that `Float` doesn't have its own datatype and won't be formatted with the user's locale.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.negative`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNegative.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNegative.java[]
+----
+
+[[gui_validator_NotBlankValidator]]
+NotBlankValidator::
++
+It checks that value contains at least one non-whitespace character. It doesn't use Groovy string, so there are no parameters you can pass to the error message.
+Supported type: `String`.
++
+It has the following attributes:
++
+--
+* `message` − a custom message displayed to a user when validation fails.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.notBlank`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.java[]
+----
+
+[[gui_validator_NotEmptyValidator]]
+NotEmptyValidator::
++
+It checks that value is not `null` and not empty.
+Supported types: `Collection` and `String`.
++
+It has the following attributes:
++
+--
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` key for formatted output, only for `String` type.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.notEmpty`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.java[]
+----
+
+[[gui_validator_NotNullValidator]]
+NotNullValidator::
++
+It checks that value is not `null`. It doesn't use Groovy string, so there are no parameters you can pass to the error message.
++
+It has the following attributes:
++
+--
+* `message` − a custom message displayed to a user when validation fails.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.notNull`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNotNull.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNotNull.java[]
+----
+
+[[gui_validator_PastOrPresentValidator]]
+PastOrPresentValidator::
++
+It validates that date or time in the past or present.
+It doesn't use Groovy string, so there are no parameters you can pass to the error message.
+Supported types: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+It has the following attributes:
++
+--
+* `checkSeconds` − when setting to `true`, the validator should compare date or time with seconds and nanos. The default value is `false`;
+* `message` − a custom message displayed to a user when validation fails.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.pastOrPresent`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.java[]
+----
+
+[[gui_validator_PastValidator]]
+PastValidator::
++
+It validates that date or time in the past.
+It doesn't use Groovy string, so there are no parameters you can pass to the error message.
+Supported types: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+It has the following attributes:
++
+--
+* `checkSeconds` − when setting to `true`, the validator should compare date or time with seconds and nanos. The default value is `false`;
+* `message` − a custom message displayed to a user when validation fails.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.past`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.java[]
+----
+
+[[gui_validator_PositiveOrZeroValidator]]
+PositiveOrZeroValidator::
++
+It checks that value should be greater than or equal to 0.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+It has the following attributes:
++
+--
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` key for formatted output. Note, that `Float` doesn't have its own datatype and won't be formatted with the user's locale.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.positiveOrZero`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPositiveOrZero.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPositiveOrZero.java[]
+----
+
+[[gui_validator_PositiveValidator]]
+PositiveValidator::
++
+It checks that value should be strictly greater than 0.
+Supported types: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+It has the following attributes:
++
+--
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` key for formatted output. Note, that `Float` doesn't have its own datatype and won't be formatted with the user's locale.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.positive`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPositive.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPositive.java[]
+----
+
+[[gui_validator_RegexpValidator]]
+RegexpValidator::
++
+It checks that `String` value is matched with specified regular expression.
+Supported type: `String`.
++
+It has the following attributes:
++
+--
+* `regexp` − a regular expression to match (required);
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` key for formatted output.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.regexp`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorRegexp.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorRegexp.java[]
+----
+
+[[gui_validator_SizeValidator]]
+SizeValidator::
++
+It checks that value is in a specific range.
+Supported types: `Collection` and `String`.
++
+It has the following attributes:
++
+--
+* `min` − a minimum value (with inclusive), cannot be less than 0. The default value is 0;
+* `max` − a maximum value (with inclusive), cannot be less than 0. The default value is `Integer.MAX_VALUE`;
+* `message` − a custom message displayed to a user when validation fails. This message can contain `$value` (only for `String` type), `$min`, `$max` keys for formatted output.
+--
++
+Default message keys:
++
+--
+* `validation.constraints.collectionSizeRange`
+* `validation.constraints.sizeRange`
+--
++
+Layout descriptor usage:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorSize.xml[]
+----
+Java code usage:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorSize.java[]
+----
 

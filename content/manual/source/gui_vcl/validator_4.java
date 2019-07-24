@@ -1,10 +1,4 @@
-if (Boolean.TRUE.equals(parameter.getRequired())) {
-    tokenList.addValidator(new Field.Validator() {
-        @Override
-        public void validate(Object value) throws ValidationException {
-            if (value instanceof Collection && CollectionUtils.isEmpty((Collection) value)) {
-                throw new ValidationException(getMessage("paramIsRequiredButEmpty"));
-            }
-        }
-    });
-}
+zipField.addValidator(value -> {
+    if (value != null && value.length() != 6)
+        throw new ValidationException("Zip must be of 6 characters length");
+});

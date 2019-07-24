@@ -1,0 +1,2 @@
+PastOrPresentValidator pastOrPresentValidator = beanLocator.getPrototype(PastOrPresentValidator.NAME);
+numberField.addValidator(pastOrPresentValidator);

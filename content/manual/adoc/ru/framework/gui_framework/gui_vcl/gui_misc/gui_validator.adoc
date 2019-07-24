@@ -7,64 +7,62 @@
 
 [WARNING]
 ====
-Следует отличать валидацию от проверки типа данных. Если для некоторого компонента, например <<gui_TextField,TextField>>, задан тип, отличный от строкового (это происходит при связывании с атрибутом сущности или назначении `datatype`), то компонент не позволяет ввести значение, не удовлетворяющее этому типу - при потере фокуса или нажатии *Enter* компонент отобразит предыдущее значение.
+Следует отличать валидацию от проверки типа данных. Если для некоторого компонента, например <<gui_TextField,TextField>>, задан тип, отличный от строкового (это происходит при связывании с атрибутом сущности или назначении `datatype`), то компонент не позволяет ввести значение, не удовлетворяющее этому типу - при потере фокуса или нажатии *Enter* пользователю будет показано сообщение об ошибке.
 
-Валидация же срабатывает не сразу при вводе или потере компонентом фокуса, а только при вызове у компонента метода `validate()`. Это означает, что компонент (и связанный с ним атрибут сущности) может некоторое время содержать значение, не удовлетворяющее условиям валидации. Это не является проблемой, так как обычно компоненты ввода с валидацией располагаются в <<screen_edit,экране редактирования>>, а он автоматически вызывает валидацию всех своих компонентов перед коммитом. Если же компонент находится не в экране редактирования, то необходимо вызывать его метод `validate()` в контроллере явно.
+Валидация же срабатывает не сразу при вводе или потере компонентом фокуса, а только при вызове у компонента метода `validate()`. Это означает, что компонент (и связанный с ним атрибут сущности) может некоторое время содержать значение, не удовлетворяющее условиям валидации. Это не является проблемой, так как обычно компоненты ввода с валидацией располагаются в экране редактирования, а он автоматически вызывает валидацию всех своих компонентов перед коммитом. Если же компонент находится не в экране редактирования, то необходимо вызывать его метод `validate()` в контроллере явно.
 ====
 
-В XML-дескрипторе экрана валидатор для компонента может быть задан во вложенном элементе `validator`. Возможные атрибуты элемента `validator`:
+Фреймворк уже содержит несколько реализаций наиболее часто используемых валидаторов, которые можно применять в проектах:
 
-* `script` − путь к скрипту Groovy, осуществляющему валидацию.
+* <<gui_validator_DecimalMaxValidator, DecimalMaxValidator>>
 
-* `class` − имя класса Java, реализующего интерфейс `Field.Validator`.
+* <<gui_validator_DecimalMinValidator, DecimalMinValidator>>
 
-Groovy-валидатор и стандартные классы Java-валидаторов, расположенные в пакете `com.haulmont.cuba.gui.components.validators` поддерживают атрибут `message` − сообщение, выводимое пользователю в случае ошибки валидации. Атрибут должен содержать сообщение или ключ в пакете сообщений экрана, например:
+* <<gui_validator_DigitsValidator, DigitsValidator>>
 
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_1.xml[]
-----
+* <<gui_validator_FutureOrPresentValidator, FutureOrPresentValidator>>
 
-[source, properties]
-----
-include::{sourcesdir}/gui_vcl/validator_1.properties[]
----- 
+* <<gui_validator_FutureValidator, FutureValidator>>
 
-// TODO update Studio flow
-Валидатор можно установить с помощью интерфейса CUBA Studio. Пример добавления валидатора к полю `fieldGroup`:
+* <<gui_validator_MaxValidator, MaxValidator>>
+
+* <<gui_validator_MinValidator, MinValidator>>
+
+* <<gui_validator_NegativeOrZeroValidator, NegativeOrZeroValidator>>
+
+* <<gui_validator_NegativeValidator, NegativeValidator>>
+
+* <<gui_validator_NotBlankValidator, NotBlankValidator>>
+
+* <<gui_validator_NotEmptyValidator, NotEmptyValidator>>
+
+* <<gui_validator_NotNullValidator, NotNullValidator>>
+
+* <<gui_validator_PastOrPresentValidator, PastOrPresentValidator>>
+
+* <<gui_validator_PastValidator, PastValidator>>
+
+* <<gui_validator_PositiveOrZeroValidator, PositiveOrZeroValidator>>
+
+* <<gui_validator_PositiveValidator, PositiveValidator>>
+
+* <<gui_validator_RegexpValidator, RegexpValidator>>
+
+* <<gui_validator_SizeValidator, SizeValidator>>
+
+В XML-дескрипторе экрана такие валидаторы для компонента задаются во вложенном элементе `validators`.
+
+Валидатор можно установить с помощью интерфейса CUBA Studio. Пример добавления валидатора к компоненту `TextField`:
 
 image::gui_validator.png[align="center"]
 
-Выбор механизма валидации осуществляется следующим образом:
+Каждый валидатор является `Prototype` бином, и если вы хотите использовать валидаторы из Java-кода, вы можете загрузить их с помощью `BeanLocator`.
 
-* Если не указано значение атрибута `script`, и сам элемент `validator` не содержит текста выражения Groovy, то в качестве валидатора используется класс, указанный в атрибуте `class`.
-+
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_6.xml[]
-----
+Некоторые валидаторы используют Groovy в сообщении об ошибке. Это означает, что в сообщение об ошибке можно передать параметры (например, `$value`). Эти параметры учитывают языковую локаль пользователя.
 
-* Если элемент `validator` содержит текст, то он будет использован как выражение Groovy и выполнен с помощью <<scripting,Scripting>>.
-+
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_5.xml[]
-----
+В качестве валидатора можно использовать кастомный Java-класс, реализующий интерфейс `Consumer`.
 
-* В противном случае с помощью <<scripting,Scripting>> будет выполнен скрипт Groovy, указанный в атрибуте `script`.
-+
-[source, xml]
-----
-include::{sourcesdir}/gui_vcl/validator_7.xml[]
-----
-
-В выражение или скрипт Groovy будет передана одна переменная `value`, содержащая значение, введенное в визуальном компоненте. Выражение или скрипт должны вернуть `boolean` значение: `true` − valid, `false` − not valid.
-
-Если в качестве валидатора используется класс Java, то он должен иметь либо дефолтный конструктор без параметров, либо конструктор со следующим набором параметров: 
-
-* `org.dom4j.Element`, `String` - в этот конструктор будут переданы XML-элемент валидатора и имя пакета сообщений экрана.
-
-* `org.dom4j.Element` - в этот конструктор будет передан XML-элемент валидатора.
+В XML-дескрипторе экрана кастомный валидатор для компонента задается во вложенном элементе `validator`.
 
 [TIP]
 ====
@@ -76,24 +74,6 @@ include::{sourcesdir}/gui_vcl/validator_7.xml[]
 ----
 ====
 
-Платформа уже содержит несколько реализаций наиболее часто используемых валидаторов (см. пакет `com.haulmont.cuba.gui.components.validators`), которые можно применять в проектах:
-
-* `DateValidator`
-
-* `DoubleValidator`
-
-* `EmailValidator`
-
-* `IntegerValidator`
-
-* `LongValidator`
-
-* `PatternValidator`
-
-* `ScriptValidator`
-
-* `StringValidator`
-
 Валидатор-класс можно назначить компоненту не только в XML-дескрипторе экрана, но и программно, передавая экземпляр валидатора в метод `addValidator()` компонента.
 
 Пример создания класса валидатора почтового индекса: 
@@ -103,7 +83,7 @@ include::{sourcesdir}/gui_vcl/validator_7.xml[]
 include::{sourcesdir}/gui_vcl/validator_2.java[]
 ---- 
 
-Использование валидатора почтового индекса и стандартного валидатора по шаблону в полях компонента <<gui_FieldGroup,FieldGroup>>: 
+Использование валидатора почтового индекса для текстового поля <<gui_TextField,TextField>>:
 
 [source, xml]
 ----
@@ -116,4 +96,584 @@ include::{sourcesdir}/gui_vcl/validator_3.xml[]
 ----
 include::{sourcesdir}/gui_vcl/validator_4.java[]
 ---- 
+
+Ниже мы рассмотрим предопределенные валидаторы.
+
+[[gui_validator_DecimalMaxValidator]]
+DecimalMaxValidator::
++
+Проверяет, что значение должно быть меньше или равно указанному максимальному значению.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer` и `String`, представляющий значение `BigDecimal` с текущей локалью.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `value` − максимальное значение (обязательный атрибут);
+* `inclusive` − если атрибут установлен в `true`, вводимое значение должно быть меньше или равно указанному максимальному значению. Значение по умолчанию − `true`;
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменные `$value` и `$max` для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.decimalMaxInclusive`
+* `validation.constraints.decimalMax`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMax.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMax.java[]
+----
+
+[[gui_validator_DecimalMinValidator]]
+DecimalMinValidator::
++
+Проверяет, что значение должно быть больше или равно указанному минимальному значению.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer` и `String`, представляющий значение `BigDecimal` с текущей локалью.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `value` − минимальное значение (обязательный атрибут);
+* `inclusive` − если атрибут установлен в `true`, вводимое значение должно быть больше или равно указанному минимальному значению. Значение по умолчанию − `true`;
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменные `$value` и `$min` для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.decimalMinInclusive`
+* `validation.constraints.decimalMin`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMin.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorDecimalMin.java[]
+----
+
+[[gui_validator_DigitsValidator]]
+DigitsValidator::
+
+Проверяет, что значение должно быть числом в пределах обозначенного диапазона.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer` и `String`, представляющий значение `BigDecimal` с текущей локалью.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `integer` − количество чисел в целочисленной части (обязательный атрибут);
+* `fraction` − количество чисел в дробной части (обязательный атрибут);
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменные `$value`, `$integer` и `$fraction` для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.digits`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorDigitsValidator.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorDigitsValidator.java[]
+----
+
+[[gui_validator_FutureOrPresentValidator]]
+FutureOrPresentValidator::
++
+Проверяет, что дата или время находится в будущем или настоящем. Валидатор не использует Groovy, поэтому нет параметров, которые вы можете передать в сообщение об ошибке.
+Поддерживаемые типы: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `checkSeconds` − если установлено значение `true`, валидатор должен сравнить дату или время с секундами и наносекундами. Значение по умолчанию − `false`;
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.futureOrPresent`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorFutureOrPresent.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorFutureOrPresent.java[]
+----
+
+[[gui_validator_FutureValidator]]
+FutureValidator::
++
+Проверяет, что дата или время находится в будущем.
+Валидатор не использует Groovy, поэтому нет параметров, которые вы можете передать в сообщение об ошибке.
+Поддерживаемые типы: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `checkSeconds` − если установлено значение `true`, валидатор должен сравнить дату или время с секундами и наносекундами. Значение по умолчанию − `false`;
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.future`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorFuture.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorFuture.java[]
+----
+
+[[gui_validator_MaxValidator]]
+MaxValidator::
++
+Проверяет, что значение должно быть меньше или равно указанному максимальному значению.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `value` − максимальное значение (обязательный атрибут);
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменные `$value` и `$max` для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.max`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorMax.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorMax.java[]
+----
+
+[[gui_validator_MinValidator]]
+MinValidator::
++
+Проверяет, что значение должно быть больше или равно указанному минимальному значению.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `value` − минимальное значение (обязательный атрибут);
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменные `$value` и `$min` для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.min`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorMin.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorMin.java[]
+----
+
+[[gui_validator_NegativeOrZeroValidator]]
+NegativeOrZeroValidator::
++
+Проверяет, что значение должно быть меньше или равно 0.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменную `$value` для форматированного вывода. Обратите внимание, что `Float` не имеет своего собственного типа данных и не будет отформатирован с пользовательской локалью.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.negativeOrZero`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNegativeOrZero.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNegativeOrZero.java[]
+----
+
+[[gui_validator_NegativeValidator]]
+NegativeValidator::
++
+Проверяет, что значение должно быть строго меньше 0.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменную `$value` для форматированного вывода. Обратите внимание, что `Float` не имеет своего собственного типа данных и не будет отформатирован с пользовательской локалью.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.negative`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNegative.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNegative.java[]
+----
+
+[[gui_validator_NotBlankValidator]]
+NotBlankValidator::
++
+Проверяет, что значение содержит по крайней мере один символ без пробела. Валидатор не использует Groovy, поэтому нет параметров, которые вы можете передать в сообщение об ошибке.
+Поддерживаемый тип: `String`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.notBlank`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.java[]
+----
+
+[[gui_validator_NotEmptyValidator]]
+NotEmptyValidator::
++
+Проверяет, что значение не пустое и не `null`.
+Поддерживаемые типы: `Collection` и `String`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменную `$value` (только типа `String`) для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.notEmpty`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNotBlank.java[]
+----
+
+[[gui_validator_NotNullValidator]]
+NotNullValidator::
++
+Проверяет, что значение не `null`. Валидатор не использует Groovy, поэтому нет параметров, которые вы можете передать в сообщение об ошибке.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.notNull`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorNotNull.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorNotNull.java[]
+----
+
+[[gui_validator_PastOrPresentValidator]]
+PastOrPresentValidator::
++
+Проверяет, что дата или время находится в прошлом или настоящем.
+Валидатор не использует Groovy, поэтому нет параметров, которые вы можете передать в сообщение об ошибке.
+Поддерживаемые типы: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `checkSeconds` − если установлено значение `true`, валидатор должен сравнить дату или время с секундами и наносекундами. Значение по умолчанию − `false`;
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.pastOrPresent`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.java[]
+----
+
+[[gui_validator_PastValidator]]
+PastValidator::
++
+Проверяет, что дата или время находится в прошлом.
+Валидатор не использует Groovy, поэтому нет параметров, которые вы можете передать в сообщение об ошибке.
+Поддерживаемые типы: `java.util.Date`, `LocalDate`, `LocalDateTime`, `LocalTime`, `OffsetDateTime`, `OffsetTime`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `checkSeconds` − если установлено значение `true`, валидатор должен сравнить дату или время с секундами и наносекундами. Значение по умолчанию − `false`;
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.past`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPastOrPresent.java[]
+----
+
+[[gui_validator_PositiveOrZeroValidator]]
+PositiveOrZeroValidator::
++
+Проверяет, что значение должно быть больше или равно 0.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменную `$value` для форматированного вывода. Обратите внимание, что `Float` не имеет своего собственного типа данных и не будет отформатирован с пользовательской локалью.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.positiveOrZero`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPositiveOrZero.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPositiveOrZero.java[]
+----
+
+[[gui_validator_PositiveValidator]]
+PositiveValidator::
++
+Проверяет, что значение должно быть строго больше 0.
+Поддерживаемые типы: `BigDecimal`, `BigInteger`, `Long`, `Integer`, `Double`, `Float`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменную `$value` для форматированного вывода. Обратите внимание, что `Float` не имеет своего собственного типа данных и не будет отформатирован с пользовательской локалью.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.positive`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorPositive.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorPositive.java[]
+----
+
+[[gui_validator_RegexpValidator]]
+RegexpValidator::
++
+Проверяет, что строковое значение соответствует указанному регулярному выражению.
+Поддерживаемый тип: `String`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `regexp` − регулярное выражение для проверки соответствия (обязательный атрибут);
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменную `$value` для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.regexp`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorRegexp.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorRegexp.java[]
+----
+
+[[gui_validator_SizeValidator]]
+SizeValidator::
++
+Проверяет, что значение находится в определенном диапазоне.
+Поддерживаемые типы: `Collection` and `String`.
++
+Валидатор имеет следующие атрибуты:
++
+--
+* `min` − минимальное значение (включительно), не может быть меньше 0. Значение по умолчанию − 0;
+* `max` − максимальное значение (включительно), не может быть меньше 0. Значение по умолчанию − `Integer.MAX_VALUE`;
+* `message` − сообщение, выводимое пользователю в случае ошибки валидации. Это сообщение может содержать переменные `$value` (только для типа `String`), `$min`, `$max` для форматированного вывода.
+--
++
+Ключи сообщения по умолчанию:
++
+--
+* `validation.constraints.collectionSizeRange`
+* `validation.constraints.sizeRange`
+--
++
+Использование в XML-дескрипторе:
++
+[source, xml]
+----
+include::{sourcesdir}/gui_vcl/validatorSize.xml[]
+----
+Использование в Java коде:
++
+[source, java]
+----
+include::{sourcesdir}/gui_vcl/validatorSize.java[]
+----
 

@@ -1,0 +1,2 @@
+NegativeOrZeroValidator negativeOrZeroValidator = beanLocator.getPrototype(NegativeOrZeroValidator.NAME);
+numberField.addValidator(negativeOrZeroValidator);

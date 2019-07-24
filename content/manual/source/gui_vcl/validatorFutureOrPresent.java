@@ -1,0 +1,2 @@
+FutureOrPresentValidator futureOrPresentValidator = beanLocator.getPrototype(FutureOrPresentValidator.NAME);
+dateField.addValidator(futureOrPresentValidator);
