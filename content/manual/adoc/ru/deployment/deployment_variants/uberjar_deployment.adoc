@@ -90,6 +90,57 @@ include::{sourcesdir}/deployment/log_dir_1.xml[]
 ----
 --
 
+Задание свойств приложения на этапе развертывания::
++
+--
+Возможен вариант задания свойств приложения уже в среде развертывания.
+Таким образом могут указываться значения, недоступные на момент сборки (например по соображениям безопасности).
+Примеры ниже представлены для проекта с названием "sample" и префиксом модулей по умолчанию "app".
+
+1) Проделать изменения в файлах `web.xml` для всех веб-приложений проекта. Изменить третью строчку в servlet context параметре `appPropertiesConfig`.
+Указать путь к файлу `local.app.properties` относительно домашнего каталога приложения в следующем формате:
+[source,plain]
+----
+"file:${app.home}/web-application-name/conf/local.app.properties"
+----
+Например, для модуля `app-core` нужно отредактировать файл `modules/core/web/WEB-INF/web.xml`
+и проставить следующее содержимое в `appPropertiesConfig`:
+[source, xml]
+----
+include::{sourcesdir}/deployment/uberjar-local-app-context-param.xml[]
+----
+
+2) Создать файлы `local.app.properties` в домашнем каталоге приложения
+и заполнить их необходимыми значениями:
+[source,plain]
+----
+admin@server:/opt/app_home$ cat app/conf/local.app.properties
+cuba.web.loginDialogDefaultUser=<disabled>
+cuba.web.loginDialogDefaultPassword=<disabled>
+
+admin@server:/opt/app_home$ cat app-core/conf/local.app.properties
+cuba.userSessionExpirationTimeoutSec = 7200
+----
+
+3) Убедиться, что при запуске приложения указывается корректный путь к домашнему каталогу приложения:
+[source,plain]
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
+
+4) Проверить логи запуска. Должны появиться следующие сообщения, по одному для каждого веб-приложения:
+[source,plain]
+----
+14:49:44.875 INFO  c.h.c.c.s.AbstractWebAppContextLoader   - Loading
+app properties from file:/opt/app_home/app-core/conf/local.app.properties
+...
+14:49:49.339 INFO  c.h.c.c.s.AbstractWebAppContextLoader   - Loading
+app properties from file:/opt/app_home/app/conf/local.app.properties
+...
+----
+
+--
+
 Остановка приложения::
 +
 --

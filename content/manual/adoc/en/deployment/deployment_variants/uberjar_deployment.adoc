@@ -91,6 +91,57 @@ include::{sourcesdir}/deployment/log_dir_1.xml[]
 ----
 --
 
+Specifying deployment-time application properties::
++
+--
+It is possible to set application properties in the deployment environment,
+specifying values which are not available at the time when the application is built (e.g. for security reasons).
+Examples below are presented for the project named "sample" with default module prefix "app".
+
+1) Modify `web.xml` for all web applications of your project. Change 3rd line in the `appPropertiesConfig` servlet context parameter value.
+Specify path to the `local.app.properties` file relative to the application home directory in the following format:
+[source,plain]
+----
+"file:${app.home}/web-application-name/conf/local.app.properties"
+----
+For example, for the `app-core` module you need to modify `modules/core/web/WEB-INF/web.xml` file
+and set the following content to the `appPropertiesConfig`:
+[source, xml]
+----
+include::{sourcesdir}/deployment/uberjar-local-app-context-param.xml[]
+----
+
+2) Create `local.app.properties` files in the application home folder
+and fill them with necessary values:
+[source,plain]
+----
+admin@server:/opt/app_home$ cat app/conf/local.app.properties
+cuba.web.loginDialogDefaultUser=<disabled>
+cuba.web.loginDialogDefaultPassword=<disabled>
+
+admin@server:/opt/app_home$ cat app-core/conf/local.app.properties
+cuba.userSessionExpirationTimeoutSec = 7200
+----
+
+3) Ensure that you specify correct application home directory when starting the application:
+[source,plain]
+----
+java -Dapp.home=/opt/app_home -jar app.jar
+----
+
+4) Check startup logs. You should see the following lines, one for every web application:
+[source,plain]
+----
+14:49:44.875 INFO  c.h.c.c.s.AbstractWebAppContextLoader   - Loading
+app properties from file:/opt/app_home/app-core/conf/local.app.properties
+...
+14:49:49.339 INFO  c.h.c.c.s.AbstractWebAppContextLoader   - Loading
+app properties from file:/opt/app_home/app/conf/local.app.properties
+...
+----
+
+--
+
 Stopping an application::
 +
 --
