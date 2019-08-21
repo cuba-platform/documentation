@@ -3,7 +3,7 @@ private FileUploadField uploadField;
 @Inject
 private FileUploadingAPI fileUploadingAPI;
 @Inject
-private DataSupplier dataSupplier;
+private DataManager dataManager;
 @Inject
 private Notifications notifications;
 
@@ -24,7 +24,7 @@ protected void onInit(InitEvent event) {
         } catch (FileStorageException e) {
             throw new RuntimeException("Error saving file to FileStorage", e);
         }
-        dataSupplier.commit(fd); <4>
+        dataManager.commit(fd); <4>
         notifications.create()
                 .withCaption("Uploaded file: " + uploadField.getFileName())
                 .show();
