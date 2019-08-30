@@ -13,7 +13,7 @@ private Actions actions;
 protected void onInit(InitEvent event) {
     carsTable.addGeneratedColumn("color", entity -> {
         LookupPickerField<Color> field = uiComponents.create(LookupPickerField.NAME);
-        field.setValueSource(new ContainerValueSource<>(carsDc, "color"));
+        field.setValueSource(new ContainerValueSource<>(carsTable.getInstanceContainer(entity), "color"));
         field.setOptions(new ContainerOptions<>(colorsDc));
         field.addAction(actions.create(LookupAction.class));
         field.addAction(actions.create(OpenAction.class));
