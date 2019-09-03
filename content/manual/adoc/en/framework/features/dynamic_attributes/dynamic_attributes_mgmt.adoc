@@ -32,29 +32,68 @@ Location of the attributes in the **DynamicAttributesPanel** of the entity edito
 
 image::dynamic_attributes_location_rezult.png[align="center"]
 
-Dynamic attribute editor enables setting the name, system code, value type and the default value of the attribute.
+Dynamic attribute editor enables setting the name, system code, description, value type, the default value of the attribute and the validation script.
 
 .Dynamic Attribute Editor
 image::runtimePropertyEditor.png[align="center"]
 
-For all value types, except `Boolean`, there is a *Width* field available to set up the field width in `FieldGroup` in pixels or as a percentage. If the *Width* field is empty, its assumed value is 100%.
+For all value types, except `Boolean`, there is a *Width* field available to set up the field width in `Form` in pixels or as a percentage. If the *Width* field is empty, its assumed value is 100%.
 
-For all value types, except `Boolean` and `Enumeration`, there is also an *Is* *collection* checkbox available. It allows you to create multi-valued dynamic attributes of a selected type.
+For all value types, except `Boolean`, there is also an *Is collection* checkbox available. It allows you to create multi-valued dynamic attributes of a selected type.
 
-Localization is supported for all types of dynamic attributes:
+For all numeric value types: `Double`, `Fixed-point number`, `Integer` – the following fields are available:
 
-.Dynamic Attribute Localization
-image::runtimePropertyLocalization.png[align="center"]
+* *Minimum value* – when you enter an attribute value, it checks that the value must be greater than or equal to the specified minimum value.
+* *Maximum value* – when you enter an attribute value, it checks that the value must be less than or equal to the specified maximum value.
+
+For the `Fixed-point number` value type, the *Number format pattern* field is available in which you can specify a format pattern. The pattern is set according to the rules described in https://docs.oracle.com/javase/8/docs/api/java/text/DecimalFormat.html[DecimalFormat].
+
+For all value types, you can specify a script in the *Validation script* field to validate the value entered by the user. The validation logic is set in the Groovy script. If Groovy validation fails, the script should return an error message. Otherwise, the script should return nothing or may return `null`. The checked value is available in the script in the `value` variable. The error message uses a Groovy string; the `$value` key can be used in the message to generate the result.
+
+For example:
+
+[source, groovy]
+----
+include::{sourcesdir}/features/dynamicAttrValidation.groovy[]
+----
 
 For the `Enumeration` value type, the set of named values is defined in the *Enumeration* field via the list editor.
 
 .Dynamic Attribute Editor for `Enumeration` type
 image::runtimePropertyEnum.png[align="center"]
 
-Each enumeration value can also be localized to the languages, available for the application.
+Each enumeration value can be localized to the languages, available for the application.
 
 .Dynamic Attribute Localization for `Enumeration` type
 image::runtimePropertyEnumLocalization.png[align="center"]
+
+Consider the *Calculated values and options* tab. In the *Attribute depends on* field, you can specify which attributes the current attribute depends on. When changing the value of one of these attributes, either the script for calculating the attribute value or the script for calculating the list of possible values will be recalculated.
+
+The Groovy script for calculating the attribute value is specified in the *Recalculation value script* field. The script must return a new parameter value. The following variables are passed to the script:
+
+* `entity` – the edited entity;
+* `dynamicAttributes` – a map where the `key` – the attribute code, `value` – the value of the dynamic attribute.
+
+.Recalculation value script
+image::dynamic_attributes_recalculation.png[align="center"]
+
+The script can be set as follows, using the map `dynamicAttributes`:
+
+[source, groovy]
+----
+include::{sourcesdir}/features/dynamicAttrValidationRecalculation.groovy[]
+----
+
+The script will be evaluated each time the value of one of the attributes on which the attribute depends is changed.
+
+If the script is defined, the attribute input field will be non-editable.
+
+Recalculation works only with the following web components: <<gui_Form,Form>>, <<categorized_entity,DynamicAttributesPanel>>.
+
+Localization is supported for all types of dynamic attributes:
+
+.Dynamic Attribute Localization
+image::runtimePropertyLocalization.png[align="center"]
 
 A dynamic attribute also has visibility settings, which define the screens where it should be displayed. By default, the attribute is invisible on any screen.
 

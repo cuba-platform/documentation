@@ -1,0 +1,1 @@
+if (dynamicAttributes['PassengerNumberofseats'] > 9) return 'Bus' else return 'Passenger car'

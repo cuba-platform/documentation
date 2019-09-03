@@ -1,0 +1,1 @@
+if (!value.startsWith("correctValue")) return "the value '\$value' is incorrect"
