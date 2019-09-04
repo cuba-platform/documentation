@@ -1,6 +1,4 @@
-LoadContext lc = new LoadContext(Car.class).setId(id);
-lc.setLoadDynamicAttributes(true);
-Entity entity = dataManager.load(lc);
+Car entity = dataManager.load(Car.class).id(carId).dynamicAttributes(true).one;
 
 Double capacity = entity.getValue("+loadCapacity");
 entity.setValue("+loadCapacity", capacity + 10);
