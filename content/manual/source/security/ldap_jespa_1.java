@@ -49,10 +49,10 @@ public class JespaAuthProvider extends HttpSecurityService implements LoginProvi
     @Inject
     private DomainAliasesResolver domainAliasesResolver;
     @Inject
-    protected AuthenticationService authenticationService;
+    private AuthenticationService authenticationService;
 
-    protected static Map<String, DomainInfo> domains = new HashMap<>();
-    protected static String defaultDomain;
+    private static Map<String, DomainInfo> domains = new HashMap<>();
+    private static String defaultDomain;
 
     @PostConstruct
     public void init() throws ServletException {
@@ -138,7 +138,7 @@ public class JespaAuthProvider extends HttpSecurityService implements LoginProvi
         }
         trustedCredentials.setSessionAttributes(targetSessionAttributes);
 
-        return authenticationService.login(credentials);
+        return authenticationService.login(trustedCredentials);
     }
 
     @Override
@@ -175,7 +175,7 @@ public class JespaAuthProvider extends HttpSecurityService implements LoginProvi
         super.doFilter(request, response, chain);
     }
 
-    protected void initDomains() {
+    private void initDomains() {
         String domainsStr = AppContext.getProperty("activeDirectory.domains");
         if (StringUtils.isEmpty(domainsStr)) {
             return;
