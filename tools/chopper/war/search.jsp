@@ -52,7 +52,7 @@ long start = System.currentTimeMillis();
             <input type="submit" class="submit" value="">
             </div>
                  <div class="radiobuttons">
-                      case
+                      Case:
                       <span class="radio-container">
                            <input name="caseSensitive" type="radio" class="radiobutton" value="yes" <%= caseSensitive ? "checked": "" %>>
                            <span class="round"></span>
