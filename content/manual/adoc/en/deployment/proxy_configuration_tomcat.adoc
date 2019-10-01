@@ -3,31 +3,20 @@
 [[proxy_configuration_tomcat]]
 === Proxy Configuration for Tomcat
 
-For integration tasks, you may need a proxy server. This part describes the configuration of Nginx HTTP-server as a proxy for CUBA application.
+For integration tasks you may need a proxy server. This part describes the configuration of Nginx HTTP-server as a proxy for CUBA application.
 
 [TIP]
 ====
 If you set up a proxy, do not forget to set <<cuba.webAppUrl,cuba.webAppUrl>> value.
 ====
 
-NGINX::
-
-For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 16.04.
-
-. <<direct_proxy,Direct Proxy>>
-. <<redirect_to_path,Redirect to Path>>
-
-For example, your web application works on `++http://localhost:8080/app++`.
-
-[TIP]
-====
-<<tomcat_for_proxy,Tomcat>> should be configured as well.
-====
-
 [[tomcat_for_proxy]]
 Tomcat Setup::
 +
 --
+If Tomcat is used behind a proxy server - it should be configured as well,
+so that Tomcat can properly dispatch proxy server's headers.
+
 First, add `Valve` to Tomcat configuration `conf/server.xml`, copy and paste the following code:
 
 [source,xml]
@@ -35,20 +24,35 @@ First, add `Valve` to Tomcat configuration `conf/server.xml`, copy and paste the
 <Valve className="org.apache.catalina.valves.RemoteIpValve"
         remoteIpHeader="X-Forwarded-For"
         requestAttributesEnabled="true"
-        internalProxies="127\.0\.0\.1"  />
+        internalProxies="127\.0\.0\.1"/>
 ----
 
-and restart Tomcat:
+There is another setting you should consider to change in the `conf/server.xml` file - `AccessLogValve` pattern attribute.
+Add `%{x-forwarded-for}i` to the pattern, so that Tomcat access log records both original source IP address and IP address(-es) of proxy server(s):
+----
+<Valve className="org.apache.catalina.valves.AccessLogValve"
+    ...
+    pattern="%h %{x-forwarded-for}i %l %u %t &quot;%r&quot; %s %b" />
+----
+
+Then restart Tomcat:
 
 [source,plain]
 ----
 sudo service tomcat8 restart
 ----
 
-This is required to dispatch Nginx headers by Tomcat without modifying the web application.
+NGINX::
+
+For Nginx there are 2 configurations described below. All examples were tested on Ubuntu 18.04.
+
+. <<direct_proxy,Direct Proxy>>
+. <<redirect_to_path,Redirect to Path>>
+
+For example, your web application works on `++http://localhost:8080/app++`.
 
 [[install_nginx]]
-Then install Nginx:
+Run command to install Nginx:
 
 [source,plain]
 ----
@@ -115,6 +119,6 @@ Now you can access your site via `++http://localhost++`.
 
 [TIP]
 ====
-Please note, that similar deployment instructions are valid for <<proxy_configuration_uberjar,Jetty>>, `WildFly` etc. In such cases, you may need an additional configuration of those servers.
+Please note that similar deployment instructions are valid for <<proxy_configuration_uberjar,Jetty>>, `WildFly` etc. You may need an additional configuration of those servers.
 ====
 

@@ -1,6 +1,6 @@
 :sourcesdir: ../../../source
 
-[[proxy_configuration]]
+[[proxy_configuration_tomcat]]
 === Конфигурация прокси для Tomcat
 
 Для задач интеграции может потребоваться прокси-сервер. В этом разделе описывается конфигурация HTTP-сервера Nginx в качестве прокси для приложения на платформе CUBA.
@@ -10,24 +10,13 @@
 Если вы настраиваете прокси, то не забудьте задать значение в параметре <<cuba.webAppUrl,cuba.webAppUrl>>.
 ====
 
-NGINX::
-
-Для Nginx предлагается 2 конфигурации проксирования, описанные ниже. Все примеры подготовлены и проверены на Ubuntu 16.04.
-
-. <<direct_proxy,Прямое проксирование>>
-. <<redirect_to_path,Проксирование с перенаправлением>>
-
-К примеру, ваше веб-приложение работает по ссылке `++http://localhost:8080/app++`.
-
-[TIP]
-====
-Кроме Nginx следует настроить еще и <<tomcat_for_proxy,Tomcat>>.
-====
-
 [[tomcat_for_proxy]]
 Настройка Tomcat::
 +
 --
+В случаях, когда Tomcat используется за прокси-сервером - его тоже нужно донастроить.
+Это необходимо, чтобы Tomcat мог обработать заголовки от прокси-сервера.
+
 Сначала добавьте в конфигурационный файл Tomcat `conf/server.xml` следующий код:
 
 [source,xml]
@@ -35,20 +24,35 @@ NGINX::
 <Valve className="org.apache.catalina.valves.RemoteIpValve"
         remoteIpHeader="X-Forwarded-For"
         requestAttributesEnabled="true"
-        internalProxies="127\.0\.0\.1"  />
+        internalProxies="127\.0\.0\.1"/>
 ----
 
-и перезапустите Tomcat:
+Есть еще одна настройка, которую вы можете поменять в файле `conf/server.xml` - это атрибут `pattern` элемента `AccessLogValve`.
+Добавьте `%{x-forwarded-for}i` в атрибут `pattern`, чтобы в Tomcat access log записывались и IP-адреса прокси-серверов, и изначальный IP-адрес источника запроса.
+----
+<Valve className="org.apache.catalina.valves.AccessLogValve"
+    ...
+    pattern="%h %{x-forwarded-for}i %l %u %t &quot;%r&quot; %s %b" />
+----
+
+Затем перезапустите Tomcat:
 
 [source,plain]
 ----
 sudo service tomcat8 restart
 ----
 
-Это требуется для того, чтобы Tomcat мог обрабатывать заголовки от Nginx без модификации веб-приложения.
+NGINX::
+
+Для Nginx предлагается 2 конфигурации проксирования, описанные ниже. Примеры подготовлены и проверены на Ubuntu 18.04.
+
+. <<direct_proxy,Прямое проксирование>>
+. <<redirect_to_path,Проксирование с перенаправлением>>
+
+К примеру, ваше веб-приложение работает по ссылке `++http://localhost:8080/app++`.
 
 [[install_nginx]]
-Затем установите Nginx:
+Установите Nginx:
 
 [source,plain]
 ----
@@ -115,6 +119,6 @@ sudo service nginx restart
 
 [TIP]
 ====
-Обратите внимание, что аналогичные инструкции развертывания прокси справедливы для конфигураций <<proxy_configuration_uberjar,Jetty>>, WildFly и др. В таких случаях вам может понадобиться дополнительная конфигурация этих серверов.
+Обратите внимание, что похожие инструкции развертывания прокси справедливы для конфигураций <<proxy_configuration_uberjar,Jetty>>, WildFly и др. Вам может понадобиться дополнительно настроить эти сервера.
 ====
 
