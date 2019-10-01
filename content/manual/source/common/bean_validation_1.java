@@ -1,5 +1,5 @@
 @Table(name = "DEMO_CUSTOMER")
-@Entity(name = "demo$Customer")
+@Entity(name = "demo_Customer")
 public class Customer extends StandardEntity {
 
     @Size(min = 3) // length of value must be longer then 3 characters

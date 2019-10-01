@@ -1,1 +1,1 @@
-String route = urlRouting.getRouteGenerator().getRoute("demo$Customer.browse");
+String route = urlRouting.getRouteGenerator().getRoute("demo_Customer.browse");

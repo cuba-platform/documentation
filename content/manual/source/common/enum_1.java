@@ -1,4 +1,4 @@
-@Entity(name = "sales$Customer")
+@Entity(name = "sales_Customer")
 @Table(name = "SALES_CUSTOMER")
 public class Customer extends StandardEntity {
 

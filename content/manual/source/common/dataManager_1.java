@@ -9,7 +9,7 @@ private Book loadBookById(UUID bookId) {
 
 private List<BookPublication> loadBookPublications(UUID bookId) {
     LoadContext<BookPublication> loadContext = LoadContext.create(BookPublication.class)
-            .setQuery(LoadContext.createQuery("select p from library$BookPublication p where p.book.id = :bookId")
+            .setQuery(LoadContext.createQuery("select p from library_BookPublication p where p.book.id = :bookId")
                 .setParameter("bookId", bookId))
             .setView("bookPublication.full");
     return dataManager.loadList(loadContext);

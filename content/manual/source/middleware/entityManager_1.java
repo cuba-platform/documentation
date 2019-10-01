@@ -13,7 +13,7 @@ public class SalesServiceBean implements SalesService {
             EntityManager em = persistence.getEntityManager();
             // create and execute Query
             Query query = em.createQuery(
-                    "select sum(o.amount) from sample$Order o where o.customer.id = :customerId");
+                    "select sum(o.amount) from sample_Order o where o.customer.id = :customerId");
             query.setParameter("customerId", customerId);
             result = (BigDecimal) query.getFirstResult();
             // commit transaction

@@ -1,4 +1,4 @@
-@Entity(name = "sales$ExtUser")
+@Entity(name = "sales_ExtUser")
 @Extends(User.class)
 public class ExtUser extends User {
 

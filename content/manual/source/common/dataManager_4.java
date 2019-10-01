@@ -7,7 +7,7 @@ private Book loadBookById(UUID bookId) {
 
 private List<BookPublication> loadBookPublications(UUID bookId) {
     return dataManager.load(BookPublication.class)
-        .query("select p from library$BookPublication p where p.book.id = :bookId")
+        .query("select p from library_BookPublication p where p.book.id = :bookId")
         .parameter("bookId", bookId)
         .view("bookPublication.full")
         .list();

@@ -7,7 +7,7 @@ public class SalesCalculator {
 
     public BigDecimal calculateSales(UUID customerId) {
         Query query = persistence.getEntityManager().createQuery(
-                "select sum(o.amount) from sample$Order o where o.customer.id = :customerId");
+                "select sum(o.amount) from sample_Order o where o.customer.id = :customerId");
         query.setParameter("customerId", customerId);
         return (BigDecimal) query.getFirstResult();
     }

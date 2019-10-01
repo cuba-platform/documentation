@@ -1,6 +1,6 @@
 @CheckTaskFeasibility(groups = UiCrossFieldChecks.class)
 @Table(name = "DEMO_TASK")
-@Entity(name = "demo$Task")
+@Entity(name = "demo_Task")
 public class Task extends StandardEntity {
 
     @Future
