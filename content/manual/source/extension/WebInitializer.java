@@ -6,7 +6,8 @@ public class WebInitializer {
  
     @EventListener
     public void initializeHttpServlet(ServletContextInitializedEvent e) {
-        Servlet myServlet = servletRegistrationManager.createServlet(e.getApplicationContext(), "com.demo.comp.MyHttpServlet");
+        Servlet myServlet = servletRegistrationManager.createServlet(
+                e.getApplicationContext(), "com.demo.comp.MyHttpServlet");
  
         e.getSource().addServlet("my_servlet", myServlet)
                 .addMapping("/myservlet/");
