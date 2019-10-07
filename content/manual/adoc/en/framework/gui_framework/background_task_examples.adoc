@@ -1,0 +1,76 @@
+:sourcesdir: ../../../../source
+
+[[background_task_examples]]
+===== Background Task Usage Examples
+
+[[background_task_example_BackgroundWorkProgressWindow]]
+Display and control background task operation with BackgroundWorkProgressWindow::
++
+--
+Often when launching a background task one needs to display a simple UI:
+[loweralpha]
+. to show to the user that requested action is in the process of execution,
+. to allow user to abort requested long operation,
+. to show operation progress if progress percent can be determined.
+
+Platform satisfies these needs with `BackgroundWorkWindow` and `BackgroundWorkProgressWindow` utility classes.
+These classes have static methods allowing to associate background task with a modal window that has a title, description, progress bar and optional `Cancel` button.
+The difference between two classes is that `BackgroundWorkProgressWindow` uses determinate progress bar, and it should be used in case if you can estimate progress of the task.
+Conversely, `BackgroundWorkWindow` should be used for tasks of indeterminate duration.
+
+Consider the following development task as an example:
+
+- A given screen contains a table displaying a list of students, with multi-selection enabled.
+- When the user presses a button, the system should send reminder emails to selected students, without blocking UI and with an ability to cancel the operation.
+
+image::gui_bg_tasks/bg-task-emails.png[align="center"]
+
+Sample implementation:
+[source, java]
+----
+include::{sourcesdir}/gui/backgroundtasks_sample_emails.java[]
+----
+<1> - launch the task and show modal progress window
+<2> - set dialog options: total number of elements for progress bar, user can cancel a task, show progress percent
+<3> - task progress unit is `Integer` (number of processed table items), and result type is `Void` because this task doesn't produce result
+<4> - selected table items are saved into a variable which is initialized in the task constructor. This is necessary because `run()` method is executed in a background thread and cannot access UI components.
+<5> - set timeout to 10 minutes
+<6> - periodically check `isCancelled()` so that the task can stop immediately after the user pressed `Cancel` dialog button
+<7> - update progress bar position after every email sent
+
+--
+
+[[background_task_example_BackgroundTaskWrapper]]
+Periodically refresh screen data in the background using Timer and BackgroundTaskWrapper::
++
+--
+`BackgroundTaskWrapper` is a tiny utility wrapper around `BackgroundWorker`. It provides simple API for cases when background tasks of the same type get started, restarted and cancelled repetitively.
+
+As a usage example, consider the following development task:
+
+- A rank monitoring screen needs to display and automatically update some data.
+- Data is loaded slowly and therefore it should be loaded in the background.
+- Show time of the latest data update on the screen.
+- Data is filtered with simple filter (checkbox).
+
+image::gui_bg_tasks/bg-ranks-ok.png[align="center"]
+
+- If data refresh fails for some reason, the screen should indicate this fact to the user:
+
+image::gui_bg_tasks/bg-ranks-error.png[align="center"]
+
+Sample implementation:
+[source, java]
+----
+include::{sourcesdir}/gui/backgroundtasks_sample_ranks.java[]
+----
+<1> - initialize `BackgroundTaskWrapper` instance with no-arg constructor; for every iteration a new task instance will be supplied
+<2> - immediately trigger a background data refresh after checkbox value has changed
+<3> - every timer tick triggers a data refresh in the background
+<4> - task publishes no progress so progress unit is `Void`; task produces result of type `List<Rank>`
+<5> - checkbox state is saved into a variable which is initialized in the task constructor. This is necessary because `run()` method is executed in a background thread and cannot access UI components.
+<6> - call custom service to load data (this is the long operation to be executed in the background)
+<7> - apply successfully obtained result to screen's components
+<8> - update UI in the special case if data loading timed out: show notification in the screen corner
+<9> - inform user that data loading has failed with exception by showing notification
+--
