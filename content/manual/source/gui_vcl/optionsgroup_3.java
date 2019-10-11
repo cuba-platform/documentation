@@ -1,12 +1,12 @@
 @Inject
-protected OptionsGroup numberOfSeatsField;
+private OptionsGroup<Integer, Integer> optionsGroupWithList;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     List<Integer> list = new ArrayList<>();
     list.add(2);
     list.add(4);
     list.add(5);
     list.add(7);
-    numberOfSeatsField.setOptionsList(list);
+    optionsGroupWithList.setOptionsList(list);
 }
