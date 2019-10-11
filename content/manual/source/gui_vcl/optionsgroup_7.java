@@ -1,7 +1,7 @@
 @Inject
 protected OptionsGroup roleTypesField;
 
-@Override
-public void init(Map<String, Object> params) {
+@Subscribe
+protected void onInit(InitEvent event) {
     roleTypesField.setOptionsList(Arrays.asList(RoleType.values()));
 }
