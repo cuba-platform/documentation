@@ -22,6 +22,9 @@ public class TaskEdit extends StandardEditor<Task> {
     private Notifications notifications;
 
     @Inject
+    private Metadata metadata;    
+
+    @Inject
     private Messages messages;
 
     @Inject
@@ -109,6 +112,15 @@ public class TaskEdit extends StandardEditor<Task> {
                     taskDl.load();
                 })
                 .init(PROCESS_CODE, getEditedEntity());
+    }
+
+    private ProcActor createProcActor(String procRoleCode, ProcInstance procInstance, User user) {
+        ProcActor initiatorProcActor = metadata.create(ProcActor.class);
+        initiatorProcActor.setUser(user);
+        ProcRole initiatorProcRole = bpmEntitiesService.findProcRole(PROCESS_CODE, procRoleCode, View.MINIMAL);
+        initiatorProcActor.setProcRole(initiatorProcRole);
+        initiatorProcActor.setProcInstance(procInstance);
+        return initiatorProcActor;
     }
 
     /**
