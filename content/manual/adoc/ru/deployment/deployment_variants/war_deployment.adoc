@@ -3,9 +3,15 @@
 [[war_deployment]]
 ==== Развертывание WAR в Jetty
 
-Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Jetty*. Предполагается, что приложение использует СУБД PostgreSQL.
+Рассмотрим пример сборки WAR-файлов и их развертывания на сервере *Jetty*.
 
-. Используйте окно *Deployment > WAR Settings* в Studio или вручную добавьте в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
+Мы будем использовать следующую структуру каталогов:
+
+* `C:\work\jetty-home\` - дистрибутив Jetty;
+* `C:\work\jetty-base\` - директория конфигурации Jetty, в ней хранятся конфигурационные файлы Jetty, дополнительные библиотеки и веб-приложения.
+* `C:\work\app_home\` - <<app_home,домашний каталог>> CUBA приложения.
+
+. Используйте диалог *Дерево проектов CUBA > Project > Deployment > WAR Settings* в Studio или вручную добавьте в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
 +
 [source, groovy]
 ----
@@ -23,9 +29,14 @@ gradlew buildWar
 +
 В результате в подкаталоге `build\distributions\war` проекта будут созданы файлы `app-core.war` и `app.war`.
 
-. Создайте домашний каталог приложения на сервере, например, `c:\work\app_home`.
-
-. Загрузите и установите сервер Jetty, например в каталог `c:\work\jetty-home`. Данный пример тестировался на версии `jetty-distribution-9.3.6.v20151106.zip`.
+. Создайте <<app_home,домашний каталог приложения>> на сервере, например, `c:\work\app_home`.
+. Скопируйте файл `logback.xml` из локального сервера Tomcat (под-каталог проекта `deploy/tomcat/conf`) в домашний каталог приложения (`c:\work\app_home`) и отредактируйте свойство `logDir` в этом файле:
++
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
+. Загрузите и установите сервер Jetty, например в каталог `c:\work\jetty-home`. Данный пример тестировался на версии `jetty-distribution-9.4.22.v20191022.zip`.
 
 . Создайте каталог `c:\work\jetty-base`, откройте в нем командную строку и выполните:
 +
@@ -34,7 +45,7 @@ gradlew buildWar
 java -jar c:\work\jetty-home\start.jar --add-to-start=http,jndi,deploy,plus,ext,resources
 ----
 
-. Создайте файл `c:\work\jetty-base\app-jetty.xml` следующего содержания (для БД PostgreSQL с именем `test`):
+. Создайте файл `c:\work\jetty-base\app-jetty.xml`, содержащий определение пула соединений к базе данных. Содержимое файла для БД PostgreSQL должно основываться на следующем шаблоне:
 +
 [source, xml]
 ----
@@ -48,23 +59,23 @@ include::{sourcesdir}/deployment/warDeployment_2.xml[]
 include::{sourcesdir}/deployment/warDeployment_5.xml[]
 ----
 
-. Дополнительно (в частности, для MS SQL) может потребоваться скачать следующие JAR-файлы и добавить их в папку `c:\work\jetty-base\lib\ext`:
+. Скачайте следующие JAR-файлы, необходимые для функционирования пула соединений к БД и скопируйте их в папку `c:\work\jetty-base\lib\ext`. Два из них можно взять из проектного под-каталога `deploy\tomcat\shared\lib`:
 +
 [source, plain]
 ----
-commons-pool2-2.4.2.jar
-commons-dbcp2-2.1.1.jar
+commons-pool2-2.6.2.jar
+commons-dbcp2-2.7.0.jar
 commons-logging-1.2.jar
 ----
 
-. Добавьте следующий текст в начало файла `c:\work\jetty-base\start.ini`:
+. Скопируйте файл `start.ini` из дистрибутива Jetty в каталог `c:\work\jetty-base`. Добавьте следующий текст в начало файла `c:\work\jetty-base\start.ini`:
 +
 [source, plain]
 ----
 include::{sourcesdir}/deployment/warDeployment_3.ini[]
 ----
 
-. Скопируйте JDBC-драйвер используемой базы данных в каталог `c:\work\jetty-base\lib\ext`. Файл драйвера можно взять из каталога `lib` CUBA Studio, либо из каталога `build\tomcat\lib` проекта. В случае PostgreSQL это файл `postgresql-9.1-901.jdbc4.jar`.
+. Скопируйте JDBC-драйвер используемой базы данных в каталог `c:\work\jetty-base\lib\ext`. Файл драйвера можно взять из каталога `deploy\tomcat\lib` проекта. В случае PostgreSQL это файл `postgresql-42.2.5.jar`.
 
 . Скопируйте файлы WAR в каталог `c:\work\jetty-base\webapps`.
 
