@@ -1,0 +1,77 @@
+:sourcesdir: ../../../../../source
+
+[[db_schema_connection]]
+===== Connecting to a Non-Default Database Schema
+
+PostgreSQL and Microsoft SQL Server support connection to a specific database schema. By default, the schema is `public` on PostgreSQL and `dbo` on SQL Server.
+
+PostgreSQL::
++
+--
+If you are using Studio, add the `currentSchema` connection parameter to the *Connection params* field in the *Data Store Properties* window. Studio will automatically update project files according to your data source configuration method. Otherwise, specify the connection parameter manually as described below.
+
+If you configure the data source in the application, add the full URL property, for example:
+
+[source,properties]
+----
+cuba.dataSource.jdbcUrl = jdbc:postgresql://localhost/demo?currentSchema=my_schema
+----
+
+If you obtain the data source from JNDI, add the `currentSchema` parameter to the connection URL in the data source definition (for Tomcat it is in `context.xml`) and to the `connectionParams` property of the <<build.gradle_createDb,createDb>> and <<build.gradle_updateDb,updateDb>> Gradle tasks, for example:
+
+[source, groovy]
+----
+include::{sourcesdir}/database/db_schema_connection_1.groovy[]
+----
+
+Now you can update or re-create the database, and all tables will be created in the specified schema.
+--
+
+Microsoft SQL Server::
++
+--
+On Microsoft SQL Server, providing a connection property is not enough, you have to link the schema with the database user. Below is an example of creating a new database and using a non-default schema in it.
+
+* Create a login:
++
+[source, sql]
+----
+create login JohnDoe with password='saPass1'
+----
+
+* Create a new database:
++
+[source, sql]
+----
+create database my_db
+----
+
+* Connect to the new database as `sa`, create a schema, then create a user and give him owner rights:
++
+[source, sql]
+----
+create schema my_schema
+
+create user JohnDoe for login JohnDoe with default_schema = my_schema
+
+exec sp_addrolemember 'db_owner', 'JohnDoe'
+----
+
+If you are using Studio, add the `currentSchema` connection parameter to the *Connection params* field in the *Data Store Properties* window. Studio will automatically update project files according to your data source configuration method. Otherwise, specify the connection parameter manually as described below.
+
+If you configure the data source in the application, add the full URL property, for example:
+
+[source,properties]
+----
+cuba.dataSource.jdbcUrl = jdbc:sqlserver://localhost;databaseName=demo;currentSchema=my_schema
+----
+
+If you obtain the data source from JNDI, add the `currentSchema` parameter to the connection URL in the data source definition (for Tomcat it is in `context.xml`) and to the `connectionParams` property of the <<build.gradle_createDb,createDb>> and <<build.gradle_updateDb,updateDb>> Gradle tasks.
+
+[source, groovy]
+----
+include::{sourcesdir}/database/db_schema_connection_2.groovy[]
+----
+
+Keep in mind, that you cannot re-create the SQL Server database from Studio or by executing `createDb` in the command line, because non-default schema requires association with a user. But if you run *Update Database* in Studio or `updateDb` in the command line, all required tables will be created in the existing database and specified schema.
+--

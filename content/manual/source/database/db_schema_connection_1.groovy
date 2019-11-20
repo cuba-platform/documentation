@@ -1,8 +1,8 @@
 task createDb(dependsOn: assembleDbScripts, type: CubaDbCreation) {
     dbms = 'postgres'
     host = 'localhost'
-    dbName = 'my_db'
+    dbName = 'demo'
     connectionParams = '?currentSchema=my_schema'
-    dbUser = 'cuba'
-    dbPassword = 'cuba'
+    dbUser = 'postgres'
+    dbPassword = 'postgres'
 }

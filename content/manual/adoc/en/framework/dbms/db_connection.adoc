@@ -1,0 +1,94 @@
+:sourcesdir: ../../../../source
+
+[[db_connection]]
+==== Connecting to Databases
+
+CUBA application obtains connections to a database through JDBC `DataSource`. A data source can be configured in the application or obtained from JNDI. The method of obtaining the data source is specified by the `cuba.dataSourceProvider` application property: it can be either `application` or `jndi`.
+
+You can easily configure connections for the main and additional data stores using CUBA Studio, see its {studio_man_url}/#data_stores[documentation]. The information below can be helpful for troubleshooting and for defining parameters not available in Studio, e.g. connection pool settings.
+
+[[db_connection_app]]
+Configuring a Data Source in the Application::
++
+--
+++++
+<div class="manual-since-container">
+    <a href="http://files.cuba-platform.com/cuba/release-notes/7.2/" class="since-btn" target="_blank">
+        <span class="since-btn-caption">Since</span><span class="since-btn-version">7.2</span>
+    </a>
+</div>
+++++
+
+When the data source is configured in the application, the framework creates a connection pool using https://github.com/brettwooldridge/HikariCP[HikariCP]. Both the connection parameters and the pool settings are configured using <<app_properties,application properties>> located in the `app.properties` file of the `core` module. This is the recommended way if you don't need a specific connection pool provided by an application server.
+
+The following application properties define the database type and connection parameters:
+
+* `cuba.dbmsType` - defines the <<dbms_types,DBMS type>>.
+* `cuba.dataSourceProvider` - `application` value indicates that the data source must be configured using application properties.
+* `cuba.dataSource.username` - the database user name.
+* `cuba.dataSource.password` - the database user password.
+* `cuba.dataSource.dbName` - the database name.
+* `cuba.dataSource.host` - the database host.
+* `cuba.dataSource.port` - optional parameter, sets the database port if it is non-standard for the selected DBMS type.
+* `cuba.dataSource.jdbcUrl` - optional parameter, sets the full JDBC URL if some additional connection parameters need to be passed. Note that all separate properties described above are still required for database migration <<db_update_gradle,tasks>>.
+
+In order to configure connection pool settings, specify the HikariCP properties prefixed with `cuba.dataSource.`, for example `cuba.dataSource.maximumPoolSize` or `cuba.dataSource.connectionTimeout`. See the full list of supported parameters and their default values in the HikariCP https://github.com/brettwooldridge/HikariCP#frequently-used[documentation].
+
+If your application uses additional <<data_store,data stores>>, you should define the same set of parameters for each data store. The data store name is added to the second part of each property name:
+
+For example:
+[source, properties]
+----
+include::{sourcesdir}/dbms/db_connection_1.properties[]
+----
+
+Besides, for each additional data store, the `spring.xml` file of the `core` module must contain a definition of the `CubaDataSourceFactoryBean` bean with the appropriate `storeName` parameter. For example:
+
+[source,xml]
+----
+include::{sourcesdir}/dbms/db_connection_2.xml[]
+----
+
+If you configure the data source in the application, the database migration Gradle tasks may have no parameters, as they will be obtained from the same set of application properties. This is an additional benefit of configuring data sources in the application. For example:
+
+[source,groovy]
+----
+include::{sourcesdir}/dbms/db_connection_3.groovy[]
+----
+--
+
+[[db_connection_jndi]]
+Obtaining a Data Source from JNDI::
++
+--
+If you want to use a data source provided by an application server via JNDI, define the following application properties in the `app.properties` file of the `core` module:
+
+* `cuba.dbmsType` - defines the <<dbms_types,DBMS type>>.
+* `cuba.dataSourceProvider` - `jndi` value indicates that the data source must be obtained from JNDI.
+
+The JNDI name of the data source is specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property, which is `java:comp/env/jdbc/CubaDS` by default. For additional data stores, specify the same properties adding the data store name.
+
+For example:
+[source, properties]
+----
+include::{sourcesdir}/dbms/db_connection_4.properties[]
+----
+
+Besides, for each additional data store, the `spring.xml` file of the `core` module must contain a definition of the `CubaDataSourceFactoryBean` bean with the appropriate `storeName` and `jndiNameAppProperty` parameters. For example:
+
+[source,xml]
+----
+include::{sourcesdir}/dbms/db_connection_5.xml[]
+----
+
+Data sources provided via JNDI are configured in a way specific to the application server. In Tomcat, it is done in the <<context.xml>> file. CUBA Studio writes connection parameters into `modules/core/web/META-INF/context.xml` and use this file in the <<fast_deployment,standard deployment>> process when developing the application.
+
+If the data source is configured in `context.xml`, the database migration Gradle tasks must have own parameters defining the database connection, for example:
+
+[source,groovy]
+----
+include::{sourcesdir}/dbms/db_connection_6.groovy[]
+----
+--
+
+include::db_connection/db_schema_connection.adoc[]

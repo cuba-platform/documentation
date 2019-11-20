@@ -9,33 +9,39 @@ An entity can belong only to a single data store. You can display entities from 
 
 The platform contains a single implementation of the `DataStore` interface called `RdbmsStore`. It is designed to work with relational databases through the <<orm,ORM>> layer. You can implement `DataStore` in your project to provide integration, for example, with a non-relational database or an external system having REST interface.
 
-In any CUBA application, there is always the main data store which contains system and security entities and where the users log in. When we mention a database in this manual, we always mean the main data store if not explicitly stated otherwise. The main data store must be a relational database connected through a JDBC data source. The main data source is located in JNDI and should have a name specified in the <<cuba.dataSourceJndiName,cuba.dataSourceJndiName>> application property, which is `jdbc/CubaDS` by default.
+In any CUBA application, there is always the main data store which contains system and security entities and where the users log in. When we mention a database in this manual, we always mean the main data store if not explicitly stated otherwise. The main data store must be a relational database connected through a JDBC data source. An additional data store can be any implementation of the `DataStore` interface.
 
-Additional data store names should be specified in the <<cuba.additionalStores,cuba.additionalStores>> application property. If the additional store is `RdbmsStore`, you should provide the following properties for it:
+[TIP]
+====
+CUBA Studio allows you to set up additional data stores, see the {studio_man_url}/#data_stores[documentation]. It automatically creates all required application properties and JDBC data sources, as well as maintains additional `persistence.xml` files. After setting up a data store, you can select it for an entity in the *Data store* field of the entity designer. You will also be able to select a data store when using the *Generate Model* wizard for creation of new entities mapped to an existing database schema.
+====
 
-* `cuba.dataSourceJndiName_{store_name}` - JNDI name of the corresponding JDBC data source.
-* `cuba.dbmsType_{store_name}` - type of the data store DBMS.
-* `cuba.persistenceConfig_{store_name}` - location of the data store `persistence.xml` file.
+The information below can help you in troubleshooting or if you don't use Studio.
 
-If you implement the `DataStore` interface in your project, specify the name of the implementation bean in the `cuba.storeImpl_{store_name}` application property.
+Additional data store names are specified in the <<cuba.additionalStores,cuba.additionalStores>> application property. If the additional store is `RdbmsStore`, the following properties should be defined for it:
 
-For example, if you need to work with two additional data stores: `db1` (a PostgreSQL database) and `mem1` (an in-memory storage implemented by some project bean), specify the following application properties in the `app.properties` file of your *core* module:
+* `cuba.dbmsType_<store_name>` - type of the data store DBMS.
+* `cuba.persistenceConfig_<store_name>` - location of the data store `persistence.xml` file.
+* `cuba.dataSource...` - connection parameters as described in <<db_connection>>.
+
+If you implement the `DataStore` interface in your project, the name of the implementation bean must be specified in the `cuba.storeImpl_<store_name>` application property.
+
+For example, if you work with two additional data stores: `db1` (a PostgreSQL database) and `mem1` (a custom in-memory storage implemented by some project bean), the following application properties must be specified in the `app.properties` file of your `core` module:
 
 [source,properties]
 ----
 cuba.additionalStores = db1, mem1
-cuba.dataSourceJndiName_db1 = jdbc/db1
+
+# RdbmsStore for Postgres database with data source obtained from JNDI
 cuba.dbmsType_db1 = postgres
 cuba.persistenceConfig_db1 = com/company/sample/db1-persistence.xml
+cuba.dataSourceJndiName_db1 = jdbc/db1
+
+# Custom store
 cuba.storeImpl_mem1 = sample_InMemoryStore
 ----
 
 The `cuba.additionalStores` and `cuba.persistenceConfig_db1` properties should also be specified in the property files of all used application blocks (`web-app.properties`, `portal-app.properties`, etc.).
-
-[TIP]
-====
-CUBA Studio allows you to set up additional data stores on the *Data Stores* tab of the *CUBA Project Properties* window. It automatically creates all required application properties and JDBC data sources, as well as maintains additional `persistence.xml` files. After that, you can select a data store for an entity in the *Data store* field of the entity designer. You will also be able to select a data store when using the *Generate Model* wizard for creation of new entities mapped to an existing database schema.
-====
 
 [[cross_datastore_ref]]
 References between entities from different data stores::
