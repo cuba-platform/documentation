@@ -35,205 +35,28 @@ This document highlights major changes in CUBA Platform version {revnumber}.
 
 == All Resolved Issues
 
-* {githubissueslog}/release_7.1.2.md[Platform 7.1.2 Resolved Issues]
-* {githubissueslog}/release_7.1.1.md[Platform 7.1.1 Resolved Issues]
-* {githubissueslog}/release_7.1.0.md[Platform 7.1.0 Resolved Issues]
+* {githubissueslog}/release_7.2.0.md[Platform 7.2.0 Resolved Issues]
 
 [[breaking_changes]]
 == Breaking Changes
 
-. `PERIOD` column of the `SYS_SCHEDULED_TASK` table has been renamed to `PERIOD_`. If you create scheduled tasks in the database initialization scripts, fix the scripts to use the new column name.
-
-. Removed previously deprecated `LoginService` and `LoginWorker` classes. Use corresponding methods of `AuthenticationService` and `TrustedClientService`:
-** `LoginService.login()` -> `AuthenticationService.login()` with `LoginPasswordCredentials`
-** `LoginService.loginTrusted()` -> `AuthenticationService.login()` with `TrustedClientCredentials`
-** `LoginService.loginByRememberMe()` -> `AuthenticationService.login()` with `RememberMeCredentials`
-** `LoginService.loginByRememberMe()` -> `AuthenticationService.login()` with `RememberMeCredentials`
-** `LoginService.substituteUser()` -> `AuthenticationService.substituteUser()`
-** `LoginService.getSession()` -> `TrustedClientService.findSession()`
-** `LoginService.getSystemSession()` -> `TrustedClientService.getSystemSession()`
-
-. Removed previously deprecated `CubaAuthProvider` interface, its implementations and `cuba.web.externalAuthentication` and `cuba.web.externalAuthenticationProviderClass` application properties. Use events, `LoginProvider` and `HttpRequestFilter` as explained in the {manual}/web_login.html[documentation].
-
-. In `Table` and `GroupTable` interfaces, removed previously deprecated methods that manipulate with columns:
-+
-[source, java]
-----
-// removed from Table
-void setColumnCaption(String columnId, String caption);
-void setColumnCaption(Table.Column column, String caption);
-void setColumnDescription(String columnId, String description);
-void setColumnDescription(Table.Column column, String description);
-void setColumnCollapsed(String columnId, boolean collapsed);
-void setColumnCollapsed(Table.Column column, boolean collapsed);
-void setColumnWidth(String columnId, int width);
-void setColumnWidth(Table.Column column, int width);
-void setColumnAlignment(String columnId, ColumnAlignment alignment);
-void setColumnAlignment(Column column, ColumnAlignment alignment);
-void addAggregationProperty(String columnId, AggregationInfo.Type type);
-void addAggregationProperty(Column columnId, AggregationInfo.Type type);
-void removeAggregationProperty(String columnId);
-void setColumnSortable(String columnId, boolean sortable);
-boolean getColumnSortable(String columnId);
-void setColumnSortable(Column column, boolean sortable);
-boolean getColumnSortable(Column column);
-void setColumnCaptionAsHtml(String columnId, boolean captionAsHtml);
-void setColumnCaptionAsHtml(Table.Column column, boolean captionAsHtml);
-boolean getColumnCaptionAsHtml(String columnId);
-boolean getColumnCaptionAsHtml(Table.Column column);
-
-// removed from GroupTable
-boolean getColumnGroupAllowed(String columnId);
-void setColumnGroupAllowed(String columnId, boolean allowed);
-boolean getColumnGroupAllowed(Table.Column column);
-void setColumnGroupAllowed(Table.Column column, boolean allowed);
-----
-+
-Instead of the removed methods, use the following approach:
-+
-[source, java]
-----
-Table.Column<Foo> numberColumn = fooTable.getColumn("number"); // get Column object by column id
-numberColumn.setCaption("Num"); // invoke Column's methods
-----
-
-. `DataContext.PostCommitEvent` is now sent _after_ merging of committed entities back to the screen's data context, see the https://github.com/cuba-platform/cuba/issues/1981[corresponding issue].
-
-. The REST API functionality has been moved to the https://github.com/cuba-platform/restapi[REST API] add-on, see its {restapi}[documentation]. The Studio migration procedure includes the add-on in the project if the project contains some REST configuration files or Frontend UI module. Otherwise, the REST servlet and filter are removed from `web.xml` of the `web` module.
-
-. Due to moving REST API to the add-on, {manual}/health_check_url.html[health check] URL for web client has changed to `/dispatch/health`, for example `\http://localhost:8080/app/dispatch/health`. If you include the REST API add-on in the project, you will have `/rest/health` endpoints for both web and portal blocks as in previous versions. The portal module has no its own health check endpoint.
-
-. The legacy REST API v1 functionality has been moved to the https://github.com/cuba-platform/jpawebapi[JPA Web API] add-on. Studio does not provide any automatic migration, so use the installation instructions in README if you need this functionality in the project.
-
-. _Application Log_ and _History_ menu items have been removed from the default main menu. If you need them, add the following elements to `web-menu.xml` of your project:
-+
-[source, xml]
-----
-<item id="logWindow" class="com.haulmont.cuba.web.log.LogWindowLauncher" insertAfter="settings"/>
-<item id="sec$ScreenHistory.browse" insertAfter="settings"/>
-----
-
 [[gui]]
 == Generic UI
-
-. Now you can create new visual components by combining existing ones, see {manual}/composite_components.html[Composite Components].
-
-. The concept of non-visual components has been generalized and made extendable, see {manual}/gui_facets.html[Non-Visual Components]. Along with {manual}/gui_Timer.html[Timer], the framework now provides new useful non-visual components: {manual}/gui_ClipboardTrigger.html[ClipboardTrigger] and `DataLoadCoordinator`.
-
-. The {manual}/gui_DataLoadCoordinator.html[DataLoadCoordinator] component is designed for declarative linking of data loaders to data containers, visual components and screen events. You can use this component instead of writing event handlers in Java.
-
-. The {manual}/gui_Form.html[Form] component can now contain generic fields defined with the `field` element. The framework will choose an appropriate visual component on the basis of the corresponding entity attribute and existing component generation strategies.
-
-. Introduced {manual}/gui_dialogs.html#gui_input_dialog[input dialog] which allows you to construct input forms using API. It can be used instead of creating screens for trivial data input.
-
-. Now you can make some screens of your application available to non-authenticated users, see {manual}/gui_anonymous_access.html[Anonymous Access to Screens].
-
-. Standard login and main screens have been reworked using the new screens API, see details in {manual}/gui_root_screens.html[Root Screens]. The main screen has the layout with side menu, so it is used by default for new projects. For projects, migrated from previous versions of the framework, the Studio migration procedure adds the following application properties to `web-app.properties`:
-+
-----
-cuba.web.loginScreenId = loginWindow
-cuba.web.mainScreenId = mainWindow
-----
-+
-It ensures the migrated project uses the legacy login and main screens. If you want to switch to the new screens, remove these properties.
-
-. Logout button shown on the standard main screen has been replaced with the `UserActionsButton` component. If the user is not authenticated, the component allows the user to go to login screen; when authenticated, the component provides actions to show the *Settings* screen or to log out.
-
-. Added ability to generate URL to an application screen, see {manual}/url_routes_generator.html[URL Routes Generator].
-
-. If a screen controller has public setters to accept parameters, they can be passed from the main menu, see {manual}/menu.xml.html#menu.xml_screen_properties[menu.xml].
-
-. If a screen fragment controller has public setters to accept parameters, they can be specified in the host screen XML, see {manual}/using_screen_fragments.html#using_screen_fragment_params[Passing parameters to fragments].
-
-. Screen fragments now send attach/detach lifecycle event when a fragment is added/removed to the host screen, see {manual}/screen_fragment_events.html[ScreenFragment Events]. Also, when a fragment is created programmatically, you don't need to invoke its `init()` method anymore, because all fragment's lifecycle events will be sent automatically when the fragment is added to a screen.
-
-. Sorting of UI tables by entity attributes can now be {manual}/gui_data_comp_sort.html[customized].
-
-. Added `PreLoadEvent` and `PostLoadEvent` to {manual}/gui_data_loaders.html[Data Loaders].
-
-. Introduced the `DynamicAttributesPanel` visual component which is designed for displaying {manual}/categorized_entity.html[categorized entities] with dynamic attributes in screens based on the new API.
-
-. Columns of the `Table` component now have the {manual}/gui_Table.html#gui_Table_column_expandRatio[expandRatio] attribute.
-
-. Generic filter is now applied immediately after changing its conditions or other parameters. You can control this feature using the filter's {manual}/gui_Filter.html#gui_filter_immediately[applyImmediately] attribute or globally using the {manual_app_props}cuba.gui.genericFilterApplyImmediately[cuba.gui.genericFilterApplyImmediately] application property. The Studio migration procedure sets this property to `false` to not change user experience for existing applications.
-
-. Functionality of the {manual}/html_attributes.html[HtmlAttributes] bean has been extended and now it allows you to manipulate with nested HTML elements.
-
-. In order to simplify migration from version 6 of the framework, we have restored the undocumented ability to use legacy API screens as frames. It is now supported for subclasses of `AbstractWindow`, `AbstractLookup` and `EntityCombinedScreen` (`AbstractEditor` is not supported). The `init()` method of the screen is invoked, `ready()` is not, as before.
-
-. The framework now provides infrastructure for writing integration tests on the web tier for testing UI in full-functioning Spring container, see {manual}/integration_tests_client.html[Web Integration Tests].
 
 [[misc]]
 == Miscellaneous
 
-. Significant improvements have been made in dynamic attributes: a new type - fixed-point number; custom validators; auto-calculated and dependent attributes. See {manual}/dynamic_attributes_mgmt.html[Managing Dynamic Attributes] for details.
-
-. The framework now performs some startup checks of your environment and data model:
-* A warning is logged in case of the following environment problems:
-** Java version is lower than 8,
-** {manual}/work_dir.html[work] or {manual}/temp_dir.html[temp] directories have no read/write access,
-** unable to connect to the main data store (additional data stores are checked if you set the {manual_app_props}cuba.checkConnectionToAdditionalDataStoresOnStartup[cuba.checkConnectionToAdditionalDataStoresOnStartup] app property to `true`),
-** there is no `SEC_USER` table in the main data store;
-* If a local attribute is annotated with `@Basic(fetch = FetchType.LAZY)`, the fetch type is switched to `EAGER` and a warning is logged;
-* If a reference attribute is annotated with `@ManyToOne(fetch = FetchType.EAGER)` (or a similar reference annotation with `EAGER` fetch type), the fetch type is switched to `LAZY` and a warning is logged;
-* If an entity is not properly enhanced, an exception is thrown and the application doesn't start at all. If you have any trouble with this check, set the `cuba.disableEntityEnhancementCheck` application property to `false` to disable it.
-
-. Introduced {manual}/entityPersistingEvent.html[EntityPersistingEvent] which can be used to initialize attributes of a new entity instance before persisting it in the database.
-
-. `DataManager` can now perform {manual}/bean_validation_running.html#bean_validation_in_DataManager[bean validation] of saved entity instances. Use {manual}/app_properties_reference.html#cuba.dataManagerBeanValidation[cuba.dataManagerBeanValidation] property to control whether the validation is performed by default.
+. Now you can configure connections to databases using application properties, see {manual}/db_connection.html[Connecting to Databases]. This method simplifies the overall configuration, because `app.properties` files define all settings including the data source parameters. Also, it makes your WAR file completely independent of the application server environment.
 +
-When you upgrade an existing project to CUBA 7.1, the Studio migration procedure sets this property to `false` to switch off the validation.
-
-. `DataManager` now uses `_base` view by default (previously it was `_local`). So when you execute a request without specifying a view, like
-`dataManager.load(Person.class).id(someId).one()`, you will get the result entity with fetched local attributes and attributes specified in `@NamePattern`. If `@NamePattern` contains reference attributes, more data will be fetched than before.
-
-. Introduced `LoadContext.setIds()` method which accepts a collection of entity identifiers. It is used by `DataManager.loadList()` method in higher priority than passed query or single id. The fluent interface also has methods accepting multiple ids:
-+
-[source,java]
-----
-dataManager.load(Customer.class).ids(customer1Id, customer2Id).list();
-
-List<UUID> idList = Arrays.asList(customer1Id, customer2Id);
-dataManager.load(Customer.class).ids(idList).list();
-----
-
-. `@JmxBean` annotation can be used for registration of a {manual}/jmx_beans_creation.html[JMX bean] instead of registering it in `spring.xml`.
-
-. {manual}/query.html#query_hints[Query hints] can be used for database-specific optimization of query execution. Hints can be passed to `Query` and `LoadContext`.
+Getting data sources from JNDI is supported as before, so no migration is required for existing projects.
 
 [[upd_dep]]
 == Updated Dependencies
 
 Core framework:
 ----
-com.google.guava/guava = 27.1-jre
-com.microsoft.sqlserver/mssql-jdbc = 7.2.1.jre8
-commons-codec/commons-codec = 1.12
-commons-fileupload/commons-fileupload = 1.4
-mysql/mysql-connector-java = 8.0.15
-org.apache.commons/commons-collections4 = 4.3
-org.apache.commons/commons-compress = 1.18
-org.apache.commons/commons-dbcp2 = 2.6.0
-org.apache.commons/commons-lang3 = 3.9
-org.apache.commons/commons-pool2 = 2.6.2
-org.apache.commons/commons-text = 1.6
-org.apache.httpcomponents/fluent-hc = 4.5.8
-org.apache.httpcomponents/httpclient = 4.5.8
-org.apache.httpcomponents/httpcore = 4.4.11
-org.apache.httpcomponents/httpmime = 4.5.8
-org.aspectj/aspectjrt = 1.9.2
-org.aspectj/aspectjweaver = 1.9.2
-org.codehaus.groovy = 2.5.6
-org.eclipse.persistence/org.eclipse.persistence.jpa = 2.7.3-6-cuba
-org.freemarker/freemarker = 2.3.28
-org.hibernate.validator/hibernate-validator = 6.0.16.Final
-org.hsqldb/hsqldb = 2.4.1
-org.jgroups/jgroups = 3.6.17.Final
-org.postgresql/postgresql = 42.2.5
-org.spockframework/spock-core = 1.3-groovy-2.5
 ----
 
 Reports add-on:
 ----
-com.haulmont.yarg = 2.1.5
 ----
