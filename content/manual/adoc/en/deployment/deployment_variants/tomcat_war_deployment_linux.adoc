@@ -3,9 +3,9 @@
 [[tomcat_war_deployment_linux]]
 ==== WAR deployment to Tomcat Linux Service
 
-The example below has been tested on Ubuntu 16.04
+The example below has been developed for and tested on Ubuntu 18.04.
 
-. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>. You can also specify a different `context.xml` file to setup the connection to the production database:
+. Use the CUBA project tree > *Project* > *Deployment* > *WAR Settings* dialog in Studio or just manually add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>. You can specify a separate `war-context.xml` project file to specify connection settings to the production database or provide that file later on the server:
 +
 --
 [source, groovy]
@@ -13,40 +13,77 @@ The example below has been tested on Ubuntu 16.04
 include::{sourcesdir}/deployment/warDeployment_2_linux.groovy[]
 ----
 
-If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999, the task definition should be as follows:
+If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999 and you build separate WARs, the task definition should be as follows:
 
 [source, groovy]
 ----
-include::{sourcesdir}/deployment/warDeployment_3.groovy[]
+include::{sourcesdir}/deployment/warDeployment_3_linux.groovy[]
 ----
 --
 
-. Run the `buildWar` gradle task. As a result, `app.war` file will be generated in the `build/distibutions` directory of your project.
+. Run the `buildWar` gradle task. As a result, `app.war` file (or several files if you build separate WARs) will be generated in the `build/distributions` directory of your project.
 +
 [source, plain]
 ----
 gradlew buildWar
 ----
 
-. Install Tomcat 8 Linux Service:
+. Install Tomcat 8 package:
 +
 [source, plain]
 ----
 sudo apt-get install tomcat8
 ----
 
-. Copy the generated `app.war` file to the empty `/var/lib/tomcat8/webapps` directory of the server.
+. Copy the generated `app.war` file to the `/var/lib/tomcat8/webapps` directory of the server. You can also remove the `/var/lib/tomcat8/webapps/ROOT` sample webapp folder if it exists.
 +
 [TIP]
 ====
 Tomcat service runs from `tomcat8` user by default. The owner of `webapps` folder is `tomcat8` as well.
 ====
 
+. Create the <<app_home,application home>> directory, e.g. `/opt/app_home` and make the Tomcat server user (`tomcat8`) to be the owner of this folder:
++
+[source, plain]
+----
+sudo mkdir /opt/app_home
+sudo chown tomcat8:tomcat8 /opt/app_home
+----
+
 . Create configuration file `/usr/share/tomcat8/bin/setenv.sh` with the following text:
 +
 [source,plain]
 ----
-export CATALINA_OPTS="$CATALINA_OPTS -Xmx1024m"
+CATALINA_OPTS="$CATALINA_OPTS -Xmx1024m"
+CATALINA_OPTS="$CATALINA_OPTS -Dapp.home=/opt/app_home"
+----
++
+If you experience slow startup of Tomcat installed in a virtual machine (VPS), add an additional line to the  `setenv.sh` file:
++
+[source, plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Djava.security.egd=file:/dev/./urandom"
+----
+
+. If you want to provide production database connection properties with a local file on the server, you can create a file in the `/var/lib/tomcat8/conf/Catalina/localhost/` folder. The name of the file depends on the WAR file name, e.g. `app.xml` for single WAR and `app-core.xml` if separate WAR files are deployed. Copy contents of the `context.xml` to this file.
+
+. With the default configuration all application log messages are appended to the `/var/lib/tomcat8/logs/catalina.out` file. You have two options how to customize logging configuration of the application:
+
+* Create the logback configuration file in the project. Specify path to this file for the `logbackConfigurationFile` parameter of the <<build.gradle_buildWar, buildWar>> task (manually or with the help of Studio *WAR Settings* dialog).
+* Create the logging configuration file on the production server.
++
+Copy the `logback.xml` file from the development Tomcat (`deploy/tomcat/conf` project sub-folder) to the <<app_home,application home>> directory and edit the `logDir` property in this file:
++
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
++
+Add the following line to the `setenv.sh` script to specify path to the logging configuration file:
++
+[source,plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Dlogback.configurationFile=/opt/app_home/logback.xml"
 ----
 
 . Restart the Tomcat service:

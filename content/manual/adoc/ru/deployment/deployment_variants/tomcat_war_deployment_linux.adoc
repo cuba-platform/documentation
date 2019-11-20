@@ -1,0 +1,97 @@
+:sourcesdir: ../../../../source
+
+[[tomcat_war_deployment_linux]]
+==== Развертывание WAR в Tomcat Linux Service
+
+Инструкция ниже разработана и проверена для Ubuntu 18.04.
+
+. Откройте диалог в Studio: дерево проектов CUBA > *Project* > *Deployment* > *WAR Settings*, или просто вручную добавьте задачу <<build.gradle_buildWar, buildWar>> в конец скрипта сборки <<build.gradle,build.gradle>>. Вы можете указать отдельный файл проекта `war-context.xml` для указания настроек подключения к базе данных, или предоставить этот файл позже на сервере:
++
+--
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_2_linux.groovy[]
+----
+
+Если параметры конечного сервера отличаются от тех, что установлены на локальном Tomcat, используемом для <<fast_deployment,быстрого развертывания>>, укажите соответствующие свойства приложения. Например, если конечный сервер запущен на порту 9999 и вы используете сборку раздельных WAR файлов, то определение задачи должно выглядеть следующим образом:
+
+[source, groovy]
+----
+include::{sourcesdir}/deployment/warDeployment_3_linux.groovy[]
+----
+--
+
+. Запустите Gradle задачу `buildWar`. В результате, файл `app.war` (или несколько файлов, если вы настроили сборку раздельных WAR) будет собран в каталоге `build/distributions` вашего проекта.
++
+[source, plain]
+----
+gradlew buildWar
+----
+
+. Установите пакет Tomcat 8:
++
+[source, plain]
+----
+sudo apt-get install tomcat8
+----
+
+. Скопируйте сборку `app.war` в каталог `/var/lib/tomcat8/webapps` сервера. Вы также можете удалить каталог `/var/lib/tomcat8/webapps/ROOT` с примером веб-приложения, если он существует.
++
+[TIP]
+====
+Служба Tomcat по умолчанию работает от пользователя `tomcat8`. Владелец каталога `webapps` - также `tomcat8`.
+====
+
+. Создайте <<app_home,домашний каталог приложения>>, например `/opt/app_home` и сделайте пользователя, под которым работает Tomcat (`tomcat8`), владельцем этого каталога:
++
+[source, plain]
+----
+sudo mkdir /opt/app_home
+sudo chown tomcat8:tomcat8 /opt/app_home
+----
+
+. Создайте конфигурационный файл `/usr/share/tomcat8/bin/setenv.sh` со следующим содержимым:
++
+[source,plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Xmx1024m"
+CATALINA_OPTS="$CATALINA_OPTS -Dapp.home=/opt/app_home"
+----
++
+Если вы наблюдаете медленный запуск Tomcat, установленного на виртуальной машине (VPS), добавьте дополнительную строчку в скрипт `setenv.sh`:
++
+[source, plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Djava.security.egd=file:/dev/./urandom"
+----
+
+. Если вы хотите предоставить параметры подключения к БД через локальный файл на сервере, создайте файл в каталоге `/var/lib/tomcat8/conf/Catalina/localhost/`. Название файла зависит от названия WAR-сборки, например `app.xml` для single WAR, или `app-core.xml`, если собираются раздельные WAR-файлы. Скопируйте содержимое `context.xml` в этот файл.
+
+. При использовании настроек по умолчанию, все журнальные сообщения приложения попадают в файл `/var/lib/tomcat8/logs/catalina.out`. У вас есть два варианта, как кастомизировать настройки журналов:
+
+* Создать файл конфигурации logback в вашем проекте. Укажите путь к этому файлу в параметре `logbackConfigurationFile` задачи <<build.gradle_buildWar, buildWar>> (вручную или с помощью диалога Studio *WAR Settings*).
+* Создать файл с настройками журналирования на конечном сервере.
++
+Скопируйте файл `logback.xml` из локального Tomcat (под-папка `deploy/tomcat/conf` проекта) в <<app_home,домашний каталог приложения>> и поменяйте свойство `logDir` в этом файле:
++
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
++
+Добавьте следующую строчку в скрипт `setenv.sh`, чтобы указать путь к настройкам журналирования:
++
+[source,plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Dlogback.configurationFile=/opt/app_home/logback.xml"
+----
+
+. Перезапустите службу Tomcat:
++
+[source, plain]
+----
+sudo service tomcat8 restart
+----
+
+. Откройте `++http://localhost:8080/app++` в вашем веб-браузере.
+
