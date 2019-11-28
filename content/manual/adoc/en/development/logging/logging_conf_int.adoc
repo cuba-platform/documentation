@@ -1,0 +1,36 @@
+:sourcesdir: ../../../../source
+
+[[logging_conf_int]]
+==== Logging Configuration Internals
+
+++++
+<div class="manual-since-container">
+    <a href="http://files.cuba-platform.com/cuba/release-notes/7.2/" class="since-btn" target="_blank">
+        <span class="since-btn-caption">Since</span><span class="since-btn-version">7.2</span>
+    </a>
+</div>
+++++
+
+This section explains internal working of the Logback configuration, which can be useful for troubleshooting.
+
+The platform provides the `LogbackConfigurator` class that hooks into standard Logback initialization https://logback.qos.ch/manual/configuration.html#auto_configuration[procedure] as an implementation of `Configurator`. This configurator performs the following steps to find a source of the configuration:
+
+* Looks for `logback.xml` in the application home (i.e. a directory specified by the `app.home` system property).
+* If not found, looks for `app-logback.xml` on classpath root.
+* If nothing found, performs the basic configuration: output to console with WARN threshold.
+
+Keep in mind, that this procedure comes into play only if there is no `logback.xml` on the classpath root.
+
+The `setupTomcat` Gradle task creates `logback.xml` in `deploy/app_home` directory, so the initialization procedure explained above takes it on the first step. As a result, any development environment gets a default logback config writing logs to `deploy/app_home/logs` directory.
+
+The `deploy` Gradle task copies `etc/logback.xml` project file (if it exists) to `deploy/app_home`, so developers can create and customize the logback config in the project and it will be used automatically in development Tomcat.
+
+The `buildWar` and `buildUberJar` tasks can create `app-logback.xml` in classpath root (which is `/WEB-INF/classes` for WAR and `/` for UberJAR) from one of the following source files:
+
+* From `logbackConfigurationFile` task parameter if it is specified.
+
+* From `logback.xml` in `cuba-gradle-plugin` if `useDefaultLogbackConfiguration` task parameter is set to true (which is default).
+
+If `logbackConfigurationFile` is not specified and `useDefaultLogbackConfiguration` is set to false, no any logback config is created in the archive.
+
+Due to `LogbackConfigurator` initialization procedure and provided that there is no `logback.xml` in the classpath root, the configuration embedded into WAR/UberJAR can be overridden by `logback.xml` file in the application home directory. It enables customization of logging in production environment without rebuilding WAR/UberJAR.

@@ -1,7 +1,6 @@
 task buildWar(type: CubaWarBuilding) {
     appProperties = ['cuba.automaticDatabaseUpdate' : true]
     singleWar = false
-    appHome = '${app.home}'
     doAfter = {
         copy {
             from 'jboss-deployment-structure.xml'

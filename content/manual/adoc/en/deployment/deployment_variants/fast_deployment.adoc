@@ -1,62 +1,77 @@
 :sourcesdir: ../../../../source
 
 [[fast_deployment]]
-==== Fast Deployment in Tomcat
+==== Fast Deployment
 
 Fast deployment is used by default when developing an application, as it provides minimum time for building, installation and starting the application. This option can also be used in production.
 
-Fast deployment is performed using the <<build.gradle_deploy,deploy>> task that is declared for *core* and *web* modules in the `build.gradle` file. Before the first execution of `deploy`, a local Tomcat server should be set up and initialized using the <<build.gradle_setupTomcat,setupTomcat>> task.
+Fast deployment is performed when you run/debug your application in Studio or click *CUBA > Build Tasks > Deploy*. Under the hood, Studio executes the <<build.gradle_deploy,deploy>> task that is declared for `core` and `web` modules in the `build.gradle` file. Before the first execution of `deploy`, it also runs the <<build.gradle_setupTomcat,setupTomcat>> task to install and initialize the local Tomcat server. You can run these tasks outside Studio as well.
 
 [WARNING]
 ====
 Please make sure your environment does not contain `CATALINA_HOME`, `CATALINA_BASE` and `CLASSPATH` variables. They may cause problems starting Tomcat without any reflection in logs. Reboot your computer after removing the variables.
 ====
 
-As result of fast deployment, the following structure is created in the directory that is specified by the `cuba.tomcat.dir` property of the `build.gradle` script (only important directories and files are listed below):
+Fast deployment creates the following structure in the `deploy` directory (only important directories and files are shown below):
 
 [source, plain]
 ----
-bin/
-    setenv.bat, setenv.sh
-    startup.bat, startup.sh
-    debug.bat, debug.sh
-    shutdown.bat, shutdown.sh
+deploy/
+    app_home/
+        app/
+            conf/
+            temp/
+            work/
+        app-core/
+            conf/
+            temp/
+            work/
+        logs/
+            app.log
+        local.app.properties
+        logback.xml
 
-conf/
-    catalina.properties
-    server.xml
-    logback.xml
-    logging.properties
-    Catalina/
-        localhost/
-    app/
-    app-core/
-
-lib/
-    hsqldb-2.2.9.jar
-
-logs/
-    app.log
-
-shared/
-    lib/
-
-temp/
-    app/
-    app-core/
-
-webapps/
-    app/
-    app-core/
-
-work/
-    app/
-    app-core/
+    tomcat/
+        bin/
+            setenv.bat, setenv.sh
+            startup.bat, startup.sh
+            debug.bat, debug.sh
+            shutdown.bat, shutdown.sh
+        conf/
+            catalina.properties
+            server.xml
+            logging.properties
+            Catalina/
+                localhost/
+        lib/
+            hsqldb-2.4.1.jar
+        logs/
+        shared/
+            lib/
+        webapps/
+            app/
+            app-core/
 ----
 
-* `bin` – the directory that contains tools to start and stop the Tomcat server:
+* `deploy/app_home` - <<app_home,application home>> directory.
 
-** `setenv.bat`, `setenv.sh` – the scripts that set environment variables. These scripts should be used for setting JVM memory parameters, specifying a configuration file for <<logging_setup_tomcat,logging>>, configuring <<jmx_remote_access,access to JMX>>, parameters to <<debug_setup,connect the debugger>>.
+** `app/conf`, `app-core/conf` - web client and the middleware applications <<conf_dir,configuration directories>>.
+
+** `app/temp`, `app-core/temp` – web client and the middleware applications <<temp_dir,temporary directories>>.
+
+** `app/work`, `app-core/work` – web client and the middleware applications <<work_dir,work directories>>.
+
+** `logs` - the logs directory. The main log file of the application is `app.log` by default.
+
+** `local.app.properties` - a file where you can set application properties for this particular deployment.
+
+** `logback.xml` - <<logging,logging>> configuration.
+
+* `deploy/tomcat` - local Tomcat directory.
+
+** `bin` – the directory that contains scripts to start and stop the Tomcat server:
+
+*** `setenv.bat`, `setenv.sh` – the scripts that set environment variables. These scripts should be used for setting JVM memory parameters, configuring <<jmx_remote_access,access to JMX>>, parameters to <<debug_setup,connect the debugger>>.
 +
 [TIP]
 ====
@@ -68,7 +83,7 @@ CATALINA_OPTS="$CATALINA_OPTS -Djava.security.egd=file:/dev/./urandom"
 ----
 ====
 
-** `startup.bat`, `startup.sh` – the scripts that start Tomcat. The server starts in a separate console window on *Windows* and in the background on **nix*.
+*** `startup.bat`, `startup.sh` – the scripts that start Tomcat. The server starts in a separate console window on Windows and in the background on Unix-like operating systems.
 +
 To start the server in the current console window, use the following commands instead of `++startup.*++`:
 +
@@ -76,48 +91,51 @@ To start the server in the current console window, use the following commands in
 +
 `$ ./catalina.sh run`
 
-** `debug.bat`, `debug.sh` – the scripts that are similar to `++startup.*++`, but start Tomcat with an ability to connect the debugger. These scripts are launched when running the <<build.gradle_start,start>> the task of the build script.
+*** `debug.bat`, `debug.sh` – the scripts that are similar to `++startup.*++`, but start Tomcat with an ability to connect the debugger. These scripts are launched when running the <<build.gradle_start,start>> the task of the build script.
 
-** `shutdown.bat`, `shutdown.sh` – the scripts that stop Tomcat.
+*** `shutdown.bat`, `shutdown.sh` – the scripts that stop Tomcat.
 
-* `conf` – the directory that contains configuration files of Tomcat and its deployed applications.
+** `conf` – the directory that contains Tomcat configuration files.
 
-** `catalina.properties` – the Tomcat properties. To load shared libraries from the `shared/lib` directory (see below), this file should contain the following line:
+*** `catalina.properties` – the Tomcat properties. To load shared libraries from the `shared/lib` directory (see below), this file should contain the following line:
 +
 [source,plain]
 ----
 shared.loader=${catalina.home}/shared/lib/*.jar
 ----
 
-** `server.xml` – Tomcat configuration descriptor.
+*** `server.xml` – Tomcat configuration.
 
-** `logback.xml` – application <<logging_setup_tomcat,logging>> configuration descriptor.
+*** `logging.properties` – Tomcat logging configuration.
 
-** `logging.properties` – Tomcat server logging configuration descriptor.
-
-** `Catalina/localhost` – in this directory, <<context.xml,context.xml>> application deployment descriptors can be placed. Descriptors located in this directory take precedence over the descriptors in the `META-INF` directories of the application. This approach is often convenient for the production environment. For example, with this descriptor, it is possible to specify the database connection parameters that are different from those specified in the application itself.
+*** `Catalina/localhost` – in this directory, <<context.xml,context.xml>> application deployment descriptors can be placed. Descriptors located in this directory take precedence over the descriptors in the `META-INF` directories of the application. This approach is often convenient for the production environment. For example, with this descriptor, it is possible to specify the database connection parameters that are different from those specified in the application itself.
 +
 Server-specific deployment descriptor should have the application name and the `.xml` extension. So, to create this descriptor, for example, for the `app-core` application, copy the contents of the `webapps/app-core/META-INF/context.xml` file to the `conf/Catalina/localhost/app-core.xml` file.
 
-** `app` – web client application <<conf_dir,configuration directory>>.
+** `lib` – directory of the libraries that are loaded by the server's _common classloader_. These libraries are available for both the server and all web applications deployed in it. In particular, this directory should have JDBC drivers of the utilized databases (`hsqldb-XYZ.jar`, `postgresql-XYZ.jar`, etc.)
 
-** `app-core` – middleware application <<conf_dir,configuration directory>>.
+** `logs` – Tomcat logs directory.
 
-* `lib` – directory of the libraries that are loaded by the server's _common classloader_. These libraries are available for both the server and all web applications deployed in it. In particular, this directory should have JDBC drivers of the utilized databases (`hsqldb-XYZ.jar`, `postgresql-XYZ.jar`, etc.)
-
-* `logs` – application and server <<logging,logs>> directory. The main log file of the application is `app.log` (see <<logging_setup_tomcat>>).
-
-* `shared/lib` – directory of libraries that are available to all deployed applications. These libraries classes are loaded by the server's special _shared classloader_. Its usage is configured in the `conf/catalina.properties` file as described above.
+** `shared/lib` – directory of libraries that are available to all deployed applications. Classes of these libraries are loaded by the server's special _shared classloader_. Its usage is configured in the `conf/catalina.properties` file as described above.
 +
 The <<build.gradle_deploy,deploy>> task of the build script copies all libraries not listed in the `jarNames` parameter, i.e. not specific for the given application, into this directory.
 
-* `temp/app`, `temp/app-core` – web client and the middleware applications <<temp_dir,temporary directories>>.
-
-* `webapps` – web application directories. Each application is located in its own subdirectory in the _exploded WAR_ format.
+** `webapps` – web application directories. Each application is located in its own subdirectory in the _exploded WAR_ format.
 +
 The <<build.gradle_deploy,deploy>> task of the build script create application subdirectories with the names specified in the `appName` parameters and, among other things, copy the libraries listed in the `jarNames` parameter to the `WEB-INF/lib` subdirectory for each application.
 
-* `work/app`, `work/app-core` – web client and the middleware applications <<work_dir,work directories>>.
+The paths to Tomcat and application home can be specified in `cuba.tomcat.dir` and `cuba.appHome` properties of `build.gradle`, for example:
+
+[source,groovy]
+----
+cuba {
+    // ...
+    tomcat {
+        dir = "$project.rootDir/some_path/tomcat"
+    }
+    appHome = "$project.rootDir/some_path/app_home"
+}
+----
 
 include::fast_deployment/tomcat_in_prod.adoc[]
 

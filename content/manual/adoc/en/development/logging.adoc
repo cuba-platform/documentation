@@ -12,9 +12,91 @@ To output to the log, use *SLF4J* API: get a logger for the current class and in
 include::{sourcesdir}/development/logging_1.java[]
 ----
 
-Logs for the Middleware, Web Client and Web Portal <<app_tiers,blocks>> are configured at the application server level; in <<fast_deployment,fast deployment>> mode the server is Tomcat.
+Logging configuration::
++
+--
+Logging configuration is defined in the `logback.xml` file.
 
-include::logging/logging_setup_tomcat.adoc[]
+* At development stage, you can find this file in the `deploy/app_home` directory of your project after performing <<fast_deployment>>. Log files are created in the `deploy/app_home/logs` directory.
++
+Note that the `deploy` directory is excluded from version control and can be removed and recreated at any time, so your changes in the `deploy/app_home/logback.xml` file can be easily lost.
++
+If you want to make persistent changes in your development logging configuration, create `etc/logback.xml` (you can copy the content from original `deploy/app_home/logback.xml` and change it appropriately). This file will be copied to `deploy/app_home` each time you run the application in Studio or execute `deploy` Gradle task:
++
+[source]
+----
+my_project/
+    deploy/
+        app_home/
+            logback.xml
+    ...
+    etc/
+        logback.xml - if exists, will be automatically copied to deploy/app_home
+----
+
+* When creating WAR or UberJAR archives, you can provide `logback.xml` by specifying the relative path to it in the `logbackConfigurationFile` parameter of the <<build.gradle_buildWar,buildWar>> and <<build.gradle_buildUberJar,buildUberJar>> tasks. If you don't specify this parameter, a default configuration with output to the console will be embedded into WAR/UberJar.
++
+Note that `etc/logback.xml` created for development environment will not be used by default for WAR/UberJar, you have to specify a file explicitly, for example:
++
+[source]
+----
+my_project/
+    etc/
+        logback.xml
+        war-logback.xml
+----
++
+.build.gradle
+[source,groovy]
+----
+task buildWar(type: CubaWarBuilding) {
+    // ...
+    logbackConfigurationFile = 'etc/war-logback.xml'
+}
+----
+
+* In a production environment, you can override the logging configuration embedded into WAR or UberJAR simply by providing a `logback.xml` file in the <<app_home,application home>> directory.
++
+[WARNING]
+====
+The `logback.xml` file in the application home will be recognized only if you provide the `app.home` Java system property in the command line. It won't work if the application home is set automatically to `tomcat/work/app_home` or `~/.app_home`.
+====
+--
+
+logback.xml structure::
++
+--
+The `logback.xml` file has the following structure:
+
+* `appender` elements define the "output device" for the log. The main appenders are `FILE` and `CONSOLE`. The `level` parameter of `ThresholdFilter` defines the message threshold. By default, it is `DEBUG` for a file and `INFO` for console. It means that `ERROR`, `WARN`, `INFO` and `DEBUG` messages are written to a file, while `ERROR`, `WARN` and `INFO` are written to console.
++
+The path to the log file for the file appender is defined in the nested `file` element.
+
+* `logger` elements define the logger parameters that are used to print messages from the program code. Logger names are hierarchical, i.e. the settings of the `com.company.sample` logger have effect on the `com.company.sample.core.CustomerServiceBean` and `com.company.sample.web.CustomerBrowse` loggers, if the loggers do not explicitly override the settings with their own values.
++
+Minimum logging level is defined by the `level` attribute. For example, if the level is `INFO`, then `DEBUG` and `TRACE` messages will not be logged. Note that message logging is also affected by the level threshold set in the appender.
+
+You can quickly change logger levels and appender thresholds for a running server using the *Administration > Server Log* screen available in the web client. Any changes to the logging settings are effective only during the server runtime and are not saved to a file. The screen also enables viewing and loading log files from the server <<log_dir,logs folder>>.
+--
+
+Log message format::
++
+--
+The platform automatically adds the following information to the messages written to the file-based log:
+
+* _application_ – the name of the web application that has logged the message. This information enables identifying messages from different application blocks (Middleware, Web Client), since they are written into the same file.
+
+* _user_ – the login name of the user who invoked the code logging the message. This helps to track activity of a certain user in the log. If the code that logged a message was not invoked within a specific user session, the user information is not added.
+
+For example, the following message has been written to the log by the code of the Middleware block (`app-core`), running under the `admin` user:
+
+[source, log]
+----
+16:12:20.498 DEBUG [http-nio-8080-exec-7/app-core/admin] com.haulmont.cuba.core.app.DataManagerBean - loadList: ...
+----
+--
 
 include::logging/logging_useful_loggers.adoc[]
+
+include::logging/logging_conf_int.adoc[]
 
