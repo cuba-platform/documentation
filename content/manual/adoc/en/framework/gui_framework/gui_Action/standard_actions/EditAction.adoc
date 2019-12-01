@@ -1,0 +1,78 @@
+:sourcesdir: ../../../../../../source
+
+[[EditAction]]
+====== EditAction
+
+Edit action is designed to edit entity instances by opening the entity edit screen. It is implemented by `com.haulmont.cuba.gui.actions.list.EditAction` class and should be defined in XML using `type="edit"` action's attribute.
+
+The action has common parameters that can be configured by XML attributes of the `action` element, see <<declarative_actions>> for details. In this section, we describe parameters specific to the `EditAction` class.
+
+The following parameters can be set both in XML and in Java:
+
+* `openMode` - the editor screen opening mode as a value of the `OpenMode` enum: `NEW_TAB`, `DIALOG`, etc. By default, edit action opens the editor in `THIS_TAB` mode.
+
+* `screenId` - string id of the editor screen to use. By default, edit action uses either a screen, annotated with `@PrimaryEditorScreen`, or having identifier of the form `<entity_name>.edit`, e.g. `demo_Customer.edit`.
+
+* `screenClass` - Java class of the editor screen controller to use. It has higher priority than `screenId`.
+
+For example, if you want to open a specific editor screen as a dialog, you can configure the action in XML:
+
+[source,xml]
+----
+include::{sourcesdir}/gui/std_actions/edit/01.xml[]
+----
+
+Alternatively, you can inject the action into the screen controller and configure it using setters:
+
+[source,java]
+----
+include::{sourcesdir}/gui/std_actions/edit/02.java[]
+----
+
+Now let's consider parameters that can be configured only in Java code. In order to generate correctly annotated method stubs for these parameters, use *Handler* tab of the *Component Inspector* tool window in Studio.
+
+* `screenOptionsSupplier` - a handler that returns `ScreenOptions` object to be passed to the opened editor screen. For example:
++
+[source,java]
+----
+include::{sourcesdir}/gui/std_actions/edit/03.java[]
+----
++
+The returned `ScreenOptions` object will be available in the `InitEvent` of the opened screen.
+
+* `screenConfigurer` - a handler that accepts the editor screen and can initialize it before opening. For example:
++
+[source,java]
+----
+include::{sourcesdir}/gui/std_actions/edit/04.java[]
+----
++
+Note that screen configurer comes into play when the screen is already initialized but not yet shown, i.e. after its `InitEvent` and `AfterInitEvent` and before `BeforeShowEvent` are sent.
+
+* `afterCommitHandler` - a handler that is invoked after the edited entity instance is committed in the editor screen. It accepts the updated entity. For example:
++
+[source,java]
+----
+include::{sourcesdir}/gui/std_actions/edit/07.java[]
+----
+
+* `afterCloseHandler` - a handler that is invoked after the editor screen is closed. `AfterCloseEvent` is passed to the handler. For example:
++
+[source,java]
+----
+include::{sourcesdir}/gui/std_actions/edit/08.java[]
+----
+
+If you want to perform some checks or interact with the user before the action is executed, subscribe to the action's `ActionPerformedEvent` and invoke `execute()` method of the action when needed. The action will be invoked with all parameters that you defined for it. In the example below, we show a confirmation dialog before executing the action:
+
+[source,java]
+----
+include::{sourcesdir}/gui/std_actions/edit/09.java[]
+----
+
+You can also subscribe to `ActionPerformedEvent` and instead of invoking the action's `execute()` method, use `ScreenBuilders` API directly to open the edited screen. In this case, you are ignoring all specific action parameters and behavior and using only its common parameters like caption, icon, etc. For example:
+
+[source,java]
+----
+include::{sourcesdir}/gui/std_actions/edit/10.java[]
+----

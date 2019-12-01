@@ -3,45 +3,78 @@
 [[standard_actions]]
 ===== Standard Actions
 
-Standard <<gui_Action,actions>> are provided by the framework to solve common tasks, such as invocation of an edit screen for an entity selected in a table. A standard action can be declared in screen XML descriptor by specifying its type in the `type` attribute, for example:
+Standard <<gui_Action,actions>> are provided by the framework to solve common tasks, such as invocation of an edit screen for an entity selected in a table. A standard action should be declared in the screen XML descriptor by specifying its type in the `type` attribute.
 
+There are two categories of standard actions:
+
+* List actions work with collections of entities that are displayed in tables or trees. These are <<CreateAction>>, <<EditAction>>.
++
+When a list action is added to a table, tree or data grid, it can be invoked from the component's context menu item and by its predefined keyboard shortcut. Usually, the action is also invoked by a button added to the buttons panel.
++
 [source, xml]
 ----
 include::{sourcesdir}/gui/std_actions/std_actions_1.xml[]
 ----
 
-The standard action configures itself depending on its type and owning component. It may or may not require additional parameters.
-
-There are two categories of standard actions:
-
-* <<std_list_actions,Actions over collections>> of entities that are displayed in tables or trees.
-
-* <<std_picker_actions,Picker field actions>>.
-
-You can create similar actions or override existing standard types in your project.
-
-For example, imagine that you need an action that would show the instance name of the currently selected entity in a table, and you would like to use this action in multiple screens by specifying its type only. Below are the steps to create such action.
-
-. Create an action class and add the `@ActionType` annotation with the desired type name:
+* Picker field actions work with the content of the field. These are <<LookupAction>>, <<OpenAction>>.
 +
+When a picker action is added to the picker field component, it is automatically represented by a button inside the field.
++
+[source, xml]
+----
+include::{sourcesdir}/gui/std_actions/std_actions_1_1.xml[]
+----
+
+Each standard action is implemented by a class annotated with `@ActionType("<some_type>")`. The class defines the action's default parameters and behavior.
+
+You can specify any basic action XML attributes to override default parameters: caption, icon, shortcut, etc. For example:
+
+[source,xml]
+----
+<action id="create" type="create" caption="Create customer" icon="USER_PLUS"/>
+----
+
+Since CUBA 7.2, standard actions have additional properties that can be set in XML or using setters in Java. In XML, additional properties are configured using the nested `<properties>` element, where each `<property>` element corresponds to a setter existing in this action class:
+
+[source,xml]
+----
+include::{sourcesdir}/gui/std_actions/std_actions_3.xml[]
+----
+
+The same can be done in Java controller:
+
+[source,java]
+----
+@Named("customersTable.create")
+private CreateAction createAction;
+
+@Subscribe
+public void onInit(InitEvent event) {
+    createAction.setOpenMode(OpenMode.DIALOG);
+    createAction.setScreenClass(CustomerEdit.class);
+}
+----
+
+If a setter accepts a functional interface, you can install a handler method in the screen controller. For example, `CreateAction` has `setAfterCommitHandler(Consumer)` method which is used to set a handler to be invoked after the created entity is committed. Then you can provide the handler as follows:
+
 [source, java]
 ----
-include::{sourcesdir}/gui/std_actions/std_actions_2.java[]
+include::{sourcesdir}/gui/std_actions/std_actions_3.java[]
 ----
 
-. In the `web-spring.xml` file, add `<gui:actions>` element with the `base-packages` attribute pointing to a package where to find your annotated actions:
-+
-[source, xml]
-----
-include::{sourcesdir}/gui/std_actions/std_actions_2_1.xml[]
-----
+See the next sections for detailed description of the actions provided by the framework and the <<custom_action_types>> section for how to create your own action types or override the existing ones.
 
-. Now you can use the action in screen descriptors by specifying its type:
-+
-[source, xml]
-----
-include::{sourcesdir}/gui/std_actions/std_actions_2_2.xml[]
-----
+include::standard_actions/CreateAction.adoc[]
+
+include::standard_actions/EditAction.adoc[]
+
+include::standard_actions/ViewAction.adoc[]
+
+include::standard_actions/RemoveAction.adoc[]
+
+include::standard_actions/LookupAction.adoc[]
+
+include::standard_actions/OpenAction.adoc[]
 
 include::standard_actions/std_list_actions.adoc[]
 
