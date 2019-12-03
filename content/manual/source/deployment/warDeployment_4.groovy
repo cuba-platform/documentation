@@ -1,7 +1,7 @@
 task buildWar(type: CubaWarBuilding) {
-    singleWar = false
+    singleWar = true
     includeContextXml = true
     includeJdbcDriver = true
     appProperties = ['cuba.automaticDatabaseUpdate': true]
-    coreContextXmlPath = 'modules/core/web/META-INF/production-context.xml'
+    coreContextXmlPath = 'modules/core/web/META-INF/war-context.xml'
 }

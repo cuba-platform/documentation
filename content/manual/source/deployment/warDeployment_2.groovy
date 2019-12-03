@@ -1,5 +1,5 @@
 task buildWar(type: CubaWarBuilding) {
-    singleWar = false
+    singleWar = true
     includeContextXml = true
     includeJdbcDriver = true
     appProperties = ['cuba.automaticDatabaseUpdate': true]
