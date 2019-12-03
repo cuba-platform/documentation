@@ -1,5 +1,5 @@
 task buildWar(type: CubaWarBuilding) {
-    appHome = './app_home'
+    appHome = '${app.home}'
     singleWar = false
     includeContextXml = true
     includeJdbcDriver = true
