@@ -1,3 +1,6 @@
+@Named("customersTable.view")
+private ViewAction customersTableView;
+
 @Subscribe("customersTable.view")
 public void onCustomersTableView(Action.ActionPerformedEvent event) {
     dialogs.createOptionDialog()

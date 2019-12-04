@@ -1,3 +1,6 @@
+@Named("customersTable.remove")
+private RemoveAction customersTableRemove;
+
 @Subscribe("customersTable.remove")
 public void onCustomersTableRemove(Action.ActionPerformedEvent event) {
     customersTableRemove.setConfirmation(false);

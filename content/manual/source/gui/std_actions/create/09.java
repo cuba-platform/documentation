@@ -1,3 +1,6 @@
+@Named("customersTable.create")
+private CreateAction customersTableCreate;
+
 @Subscribe("customersTable.create")
 public void onCustomersTableCreate(Action.ActionPerformedEvent event) {
     dialogs.createOptionDialog()
