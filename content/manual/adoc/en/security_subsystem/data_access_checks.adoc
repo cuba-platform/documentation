@@ -1,0 +1,132 @@
+:sourcesdir: ../../../source
+
+[[data_access_checks]]
+=== Data Access Checks
+
+The following table explains how data access <<permissions,permissions>> and <<constraints,constraints>> are used by different mechanisms of the framework.
+
+[cols="2,1,1,1,1,1"]
+|===
+|
+|Entity Operations
+|Entity Attributes
+|Read Constraint +
+checked in database <<data_access_checks_read_db,(1)>>
+|Read Constraint +
+checked in memory <<data_access_checks_read_mem,(2)>>
+| Create/Update/Delete +
+Constraints
+
+// ------------------
+| EntityManager
+|No
+|No
+|No
+|No
+|No
+
+// ------------------
+|DataManager on middle tier
+|No +
+Yes <<data_access_checks_entity,(3)>> <<data_access_checks_mw,(4)>>
+|No +
+Yes <<data_access_checks_attr,(5)>>
+|Yes
+|No +
+Yes <<data_access_checks_mw,(4)>>
+|No +
+Yes <<data_access_checks_mw,(4)>>
+
+// ------------------
+|DataManager.secure on middle tier
+
+DataManager on client tier
+|Yes <<data_access_checks_entity,(3)>>
+|No +
+Yes <<data_access_checks_attr,(5)>>
+|Yes
+|Yes
+|Yes
+
+// ------------------
+|Generic UI data-aware components
+|Yes
+|Yes
+|- <<data_access_checks_ui,(6)>>
+|- <<data_access_checks_ui,(6)>>
+|- <<data_access_checks_ui,(6)>>
+
+// ------------------
+|REST API `/entities`
+|Yes
+|Yes
+|Yes
+|Yes
+|Yes
+
+// ------------------
+|REST API `/queries`
+|Yes
+|Yes
+|Yes
+|Yes
+|- <<data_access_checks_rest_queries,(7)>>
+
+// ------------------
+|REST API `/services`
+|Yes
+|Yes
+|- <<data_access_checks_rest_serv,(8)>>
+|- <<data_access_checks_rest_serv,(8)>>
+|- <<data_access_checks_rest_serv,(8)>>
+|===
+
+Notes:
+
+[[data_access_checks_read_db]]
+1) Read constraint checked in database affects only the root entity.
+
+[source,java]
+----
+// order is loaded only if it satisfies constraints on the Order entity
+Order order = dataManager.load(Order.class).viewProperties("date", "amount", "customer.name").one();
+// related customer is loaded regardless of database-checked constraints on Customer entity
+assert order.getCustomer() != null;
+----
+
+[[data_access_checks_read_mem]]
+2) Read constraint checked in memory affects the root entity and all linked entities in the loaded graph.
+
+[source,java]
+----
+// order is loaded only if it satisfies constraints on the Order entity
+Order order = dataManager.load(Order.class).viewProperties("date", "amount", "customer.name").one();
+// related customer is not null only if it satisfies in-memory-checked constraints on Customer entity
+if (order.getCustomer() != null) ...
+----
+
+[[data_access_checks_entity]]
+3) Entity operation check in DataManager is performed for the root entity only.
+
+[source,java]
+----
+// loading Order
+Order order = dataManager.load(Order.class).viewProperties("date", "amount", "customer.name").one();
+// related customer is loaded even if the user has no permission to read the Customer entity
+assert order.getCustomer() != null;
+----
+
+[[data_access_checks_mw]]
+4) DataManager checks entity operation permissions and in-memory constraints on middle tier only if you set <<cuba.dataManagerChecksSecurityOnMiddleware,cuba.dataManagerChecksSecurityOnMiddleware>> property to true.
+
+[[data_access_checks_attr]]
+5) DataManager checks entity attribute permissions only if you set <<cuba.entityAttributePermissionChecking,cuba.entityAttributePermissionChecking>> to true.
+
+[[data_access_checks_ui]]
+6) UI components do not check constraints themselves, but when data is loaded through standard mechanisms, the constraints are applied by DataManager. As a result, if an entity instance is filtered out by constraints, the corresponding UI component is shown but it is empty. Also, it is possible to link any action based on the `ItemTrackingAction` class with a certain constraint, so the action is enabled only if the constraint check for the selected entity instance is successful.
+
+[[data_access_checks_rest_queries]]
+7) REST queries are read-only.
+
+[[data_access_checks_rest_serv]]
+8) REST service method parameters and results are not checked for compliance to access group constraints. The service behavior with respect to constraints is defined by how it loads and saves data, for example whether it uses `DataManager` or `DataManager.secure()`.

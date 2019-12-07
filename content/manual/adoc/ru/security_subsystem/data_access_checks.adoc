@@ -1,0 +1,132 @@
+:sourcesdir: ../../../source
+
+[[data_access_checks]]
+=== Проверки доступа к данным
+
+Таблица ниже поясняет, как <<permissions,разрешения>> и <<constraints,ограничения>> доступа к данным используются различными механизмами фреймворка.
+
+[cols="2,1,1,1,1,1"]
+|===
+|
+|Entity Operations
+|Entity Attributes
+|Read Constraint +
+checked in database <<data_access_checks_read_db,(1)>>
+|Read Constraint +
+checked in memory <<data_access_checks_read_mem,(2)>>
+| Create/Update/Delete +
+Constraints
+
+// ------------------
+| EntityManager
+|Нет
+|Нет
+|Нет
+|Нет
+|Нет
+
+// ------------------
+|DataManager on middle tier
+|Нет +
+Да <<data_access_checks_entity,(3)>> <<data_access_checks_mw,(4)>>
+|Нет +
+Да <<data_access_checks_attr,(5)>>
+|Да
+|Нет +
+Да <<data_access_checks_mw,(4)>>
+|Нет +
+Да <<data_access_checks_mw,(4)>>
+
+// ------------------
+|DataManager.secure on middle tier
+
+DataManager on client tier
+|Да <<data_access_checks_entity,(3)>>
+|Нет +
+Да <<data_access_checks_attr,(5)>>
+|Да
+|Да
+|Да
+
+// ------------------
+|Generic UI data-aware components
+|Да
+|Да
+|- <<data_access_checks_ui,(6)>>
+|- <<data_access_checks_ui,(6)>>
+|- <<data_access_checks_ui,(6)>>
+
+// ------------------
+|REST API `/entities`
+|Да
+|Да
+|Да
+|Да
+|Да
+
+// ------------------
+|REST API `/queries`
+|Да
+|Да
+|Да
+|Да
+|- <<data_access_checks_rest_queries,(7)>>
+
+// ------------------
+|REST API `/services`
+|Да
+|Да
+|- <<data_access_checks_rest_serv,(8)>>
+|- <<data_access_checks_rest_serv,(8)>>
+|- <<data_access_checks_rest_serv,(8)>>
+|===
+
+Замечания:
+
+[[data_access_checks_read_db]]
+1) Ограничения чтения с проверкой в базе данных влияют только на корневую сущность.
+
+[source,java]
+----
+// order is loaded only if it satisfies constraints on the Order entity
+Order order = dataManager.load(Order.class).viewProperties("date", "amount", "customer.name").one();
+// related customer is loaded regardless of database-checked constraints on Customer entity
+assert order.getCustomer() != null;
+----
+
+[[data_access_checks_read_mem]]
+2) Ограничения чтения с проверкой в памяти влияют и на корневую сущность, и на все связанные сущности в загруженном графе.
+
+[source,java]
+----
+// order is loaded only if it satisfies constraints on the Order entity
+Order order = dataManager.load(Order.class).viewProperties("date", "amount", "customer.name").one();
+// related customer is not null only if it satisfies in-memory-checked constraints on Customer entity
+if (order.getCustomer() != null) ...
+----
+
+[[data_access_checks_entity]]
+3) Разрешения на операцию c сущностью в DataManager проверяются только для корневой сущности.
+
+[source,java]
+----
+// loading Order
+Order order = dataManager.load(Order.class).viewProperties("date", "amount", "customer.name").one();
+// related customer is loaded even if the user has no permission to read the Customer entity
+assert order.getCustomer() != null;
+----
+
+[[data_access_checks_mw]]
+4) DataManager проверяет разрешения на операцию c сущностью и in-memory ограничения на среднем слое только если свойство приложения <<cuba.dataManagerChecksSecurityOnMiddleware,cuba.dataManagerChecksSecurityOnMiddleware>> установлено в true.
+
+[[data_access_checks_attr]]
+5) DataManager проверяет разрешения на атрибуты сущности только если свойство приложения <<cuba.entityAttributePermissionChecking,cuba.entityAttributePermissionChecking>> установлено в true.
+
+[[data_access_checks_ui]]
+6) UI-компоненты не проверяют ограничения сами, но когда данные загружаются стандартным способом, ограничения налагаются в DataManager. В результате, если некоторый экземпляр сущности отфильтрован ограничениями, соответвующий UI-компонент отображается, но он пустой. Кроме того, любое действие, унаследованное от класса `ItemTrackingAction`, можно связать с ограничением определенного типа, так что действие будет доступным только когда проверка ограничения выполнена успешно.
+
+[[data_access_checks_rest_queries]]
+7) REST-запросы выполняют только чтение данных.
+
+[[data_access_checks_rest_serv]]
+8) Параметры и результаты методов REST-сервисов не проверяются на соответствие ограничениям. Поведение сервиса в отношении ограничений определяется тем, как он читает и сохраняет данные, например, использует ли он `DataManager` или `DataManager.secure()`.
