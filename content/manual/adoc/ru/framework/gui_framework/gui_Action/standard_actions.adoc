@@ -3,47 +3,98 @@
 [[standard_actions]]
 ===== Стандартные действия
 
-Стандартные <<gui_Action,действия>>, предлагаемые платформой, предназначены для решения типовых задач, таких как вызов экрана редактирования для сущности, выбранной в таблице. Стандартные действия можно объявлять в XML-дескрипторе экрана, просто указав их тип в атрибуте `type`, к примеру:
+Стандартные <<gui_Action,действия>>, предлагаемые платформой, предназначены для решения типовых задач, таких как вызов экрана редактирования для сущности, выбранной в таблице. Стандартные действия объявляются в XML-дескрипторе экрана с указанием их типа в атрибуте `type`.
 
+Существует два вида стандартных действий:
+
+[[standard_list_actions]]
+* Действия с коллекцией сущностей, отображаемой в таблице или дереве. Это <<CreateAction>>, <<EditAction>>, <<ViewAction>>, <<RemoveAction>>, <<AddAction>>, <<ExcludeAction>>, <<RefreshAction>>, <<ExcelAction>>, <<BulkEditAction>>.
++
+Когда действие с коллекцией добавлено в таблицу или дерево, оно может быть вызвано из контекстного меню данного компонента или с помощью предустановленной горячей клавиши. Обычно для вызова действия используется также кнопка, добавленная в панель кнопок.
++
 [source, xml]
 ----
 include::{sourcesdir}/gui/std_actions/std_actions_1.xml[]
 ----
 
-Конфигурация стандартного действия зависит от его типа и вызывающего компонента. В некоторых случаях стандартные действия могут требовать определения дополнительных параметров, в других случаях их можно использовать как есть.
-
-Существует два вида стандартных действий:
-
-* <<std_list_actions,Действия с коллекцией>> сущностей, отображаемой в таблице или дереве.
-
-* <<std_picker_actions,Действия поля выбора>> экземпляра сущности.
-
-В своих проектах вы можете создавать похожие действия или переопределять существующие стандартные типы.
-
-Предположим, что вы хотите создать действие, которое бы показывало имя экземпляра текущей сущности, выбранной в таблице, и использовать это действие в различных экранах, указывая только его тип. Чтобы это сделать, необходимо выполнить следующие шаги:
-
-. Создайте для действия отдельный класс с аннотацией `@ActionType`, в которой укажите желаемое имя типа:
+[[standard_picker_actions]]
+* Действия поля выбора экземпляра сущности. Это <<LookupAction>>, <<OpenAction>>, <<OpenCompositionAction>>, <<ClearAction>>.
 +
+Когда такое действие добавляется в компонент, оно автоматически отображается кнопкой внутри поля.
++
+[source, xml]
+----
+include::{sourcesdir}/gui/std_actions/std_actions_1_1.xml[]
+----
+
+Каждое стандартное действие реализуется классом, аннотированным `@ActionType("<some_type>")`. Класс задает свойства и поведение действия по умолчанию.
+
+Для переопределения общих свойств действий можно задать XML-атрибуты элемента `action`, такие как `caption`, `icon`, `shortcut` и др., например:
+
+[source,xml]
+----
+<action id="create" type="create" caption="Create customer" icon="USER_PLUS"/>
+----
+
+Начиная с CUBA 7.2 стандартные действия имеют дополнительные свойства, которые можно устанавливать в XML, или используя сеттеры в Java. В XML дополнительные свойства конфигурируются во вложенном элементе `<properties>`, где каждый элемент `<property>` соответствует сеттеру, имеющемуся в классе данного действия:
+
+[source,xml]
+----
+include::{sourcesdir}/gui/std_actions/std_actions_3.xml[]
+----
+
+То же самое можно сделать в контроллере на Java:
+
+[source,java]
+----
+@Named("customersTable.create")
+private CreateAction createAction;
+
+@Subscribe
+public void onInit(InitEvent event) {
+    createAction.setOpenMode(OpenMode.DIALOG);
+    createAction.setScreenClass(CustomerEdit.class);
+}
+----
+
+Если сеттер принимает функциональный интерфейс, то в контроллере можно создать соответствующий метод-обработчик. Например, `CreateAction` имеет метод `setAfterCommitHandler(Consumer)`, который используется для установки обработчика, вызываемого после коммита созданной сущности. Тогда обработчик можно задать следующим образом:
+
 [source, java]
 ----
-include::{sourcesdir}/gui/std_actions/std_actions_2.java[]
+include::{sourcesdir}/gui/std_actions/std_actions_3.java[]
 ----
 
-. В файле `web-spring.xml` добавьте элемент `<gui:actions>`, и в его атрибуте `base-packages` укажите пакет, в котором нужно искать ваши аннотированные действия:
-+
-[source, xml]
-----
-include::{sourcesdir}/gui/std_actions/std_actions_2_1.xml[]
-----
+Во всех действиях имеется обработчик `enabledRule`, который позволяет управлять состоянием "enabled" действия в зависимости от некоторых условий. В примере ниже данный обработчик запрещает RemoveAction для некоторых сущностей:
 
-. Теперь вы можете использовать действие в дескрипторах экрана, просто указывая его тип:
-+
-[source, xml]
+[source, java]
 ----
-include::{sourcesdir}/gui/std_actions/std_actions_2_2.xml[]
+include::{sourcesdir}/gui/std_actions/std_actions_4.java[]
 ----
 
-include::standard_actions/std_list_actions.adoc[]
+В следующих разделах приведено детальное описание действий, предоставляемых фреймворком. В разделе <<custom_action_types>> объясняется, как создать собственные типы действий или переопределить существующие.
 
-include::standard_actions/std_picker_actions.adoc[]
+include::standard_actions/AddAction.adoc[]
 
+include::standard_actions/BulkEditAction.adoc[]
+
+include::standard_actions/ClearAction.adoc[]
+
+include::standard_actions/CreateAction.adoc[]
+
+include::standard_actions/EditAction.adoc[]
+
+include::standard_actions/ExcelAction.adoc[]
+
+include::standard_actions/ExcludeAction.adoc[]
+
+include::standard_actions/LookupAction.adoc[]
+
+include::standard_actions/OpenAction.adoc[]
+
+include::standard_actions/OpenCompositionAction.adoc[]
+
+include::standard_actions/RefreshAction.adoc[]
+
+include::standard_actions/RemoveAction.adoc[]
+
+include::standard_actions/ViewAction.adoc[]

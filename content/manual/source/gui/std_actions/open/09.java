@@ -1,8 +1,8 @@
 @Named("customerField.open")
 private OpenAction customerFieldOpen;
 
-@Subscribe("customersTable.edit")
-public void onCustomersTableEdit(Action.ActionPerformedEvent event) {
+@Subscribe("customerField.open")
+public void onCustomerFieldOpen(Action.ActionPerformedEvent event) {
     dialogs.createOptionDialog()
             .withCaption("Please confirm")
             .withMessage("Do you really want to open the customer?")
