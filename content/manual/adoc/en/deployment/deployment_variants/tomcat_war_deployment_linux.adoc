@@ -2,59 +2,155 @@
 
 [[tomcat_war_deployment_linux]]
 ==== WAR deployment to Tomcat Linux Service
-
-The example below has been tested on Ubuntu 16.04
-
-. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>. You can also specify a different `context.xml` file to setup the connection to the production database:
-+
 --
+The example below has been developed for and tested on Ubuntu 18.04, with tomcat9 and tomcat8 packages.
+
+. Use the CUBA project tree > *Project* > *Deployment* > *WAR Settings* dialog in Studio or just manually add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>. You can specify a separate `war-context.xml` project file to specify connection settings to the production database or provide that file later on the server:
++
 [source, groovy]
 ----
 include::{sourcesdir}/deployment/warDeployment_2_linux.groovy[]
 ----
-
-If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999, the task definition should be as follows:
-
++
+If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999 and you build separate WARs, the task definition should be as follows:
++
 [source, groovy]
 ----
-include::{sourcesdir}/deployment/warDeployment_3.groovy[]
+include::{sourcesdir}/deployment/warDeployment_3_linux.groovy[]
 ----
---
 
-. Run the `buildWar` gradle task. As a result, `app.war` file will be generated in the `build/distibutions` directory of your project.
+. Run the `buildWar` gradle task. As a result, `app.war` file (or several files if you build separate WARs) will be generated in the `build/distributions` directory of your project.
 +
 [source, plain]
 ----
 gradlew buildWar
 ----
 
-. Install Tomcat 8 Linux Service:
+. Install Tomcat 9 package:
 +
 [source, plain]
 ----
-sudo apt-get install tomcat8
+sudo apt install tomcat9
 ----
 
-. Copy the generated `app.war` file to the empty `/var/lib/tomcat8/webapps` directory of the server.
+. Copy the generated `app.war` file to the `/var/lib/tomcat9/webapps` directory of the server. You can also remove the `/var/lib/tomcat9/webapps/ROOT` sample webapp folder if it exists.
 +
 [TIP]
 ====
-Tomcat service runs from `tomcat8` user by default. The owner of `webapps` folder is `tomcat8` as well.
+Tomcat 9 service runs from `tomcat` user by default. The owner of `webapps` folder is `tomcat` as well.
 ====
 
-. Create configuration file `/usr/share/tomcat8/bin/setenv.sh` with the following text:
+. Create the <<app_home,application home>> directory, e.g. `/opt/app_home` and make the Tomcat server user (`tomcat`) to be the owner of this folder:
++
+[source, plain]
+----
+sudo mkdir /opt/app_home
+sudo chown tomcat:tomcat /opt/app_home
+----
+
+. Tomcat 9 service (unlike earlier versions of the Tomcat Debian package) is sandboxed by systemd and has limited write access to the file system. You can read more about this in the `/usr/share/doc/tomcat9/README.Debian` file. It is necessary to modify systemd configuration to allow Tomcat service write access to the application home folder:
++
+.. Create the `override.conf` file in the `/etc/systemd/system/tomcat9.service.d/` directory:
 +
 [source,plain]
 ----
-export CATALINA_OPTS="$CATALINA_OPTS -Xmx1024m"
+sudo mkdir /etc/systemd/system/tomcat9.service.d/
+sudo nano /etc/systemd/system/tomcat9.service.d/override.conf
+----
++
+.. The contents of the `override.conf` file are the following:
++
+[source,plain]
+----
+[Service]
+ReadWritePaths=/opt/app_home/
+----
++
+.. Reload systemd configuration by invoking:
++
+[source,plain]
+----
+sudo systemctl daemon-reload
+----
++
+. Create configuration file `/usr/share/tomcat9/bin/setenv.sh` with the following text:
++
+[source,plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Xmx1024m"
+CATALINA_OPTS="$CATALINA_OPTS -Dapp.home=/opt/app_home"
+----
++
+If you experience slow startup of Tomcat installed in a virtual machine (VPS), add an additional line to the  `setenv.sh` file:
++
+[source, plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Djava.security.egd=file:/dev/./urandom"
+----
+
+. If you want to provide production database connection properties with a local file on the server, you can create a file in the `/var/lib/tomcat9/conf/Catalina/localhost/` folder. The name of the file depends on the WAR file name, e.g. `app.xml` for single WAR and `app-core.xml` if separate WAR files are deployed. Copy contents of the `context.xml` to this file.
+
+. With the default configuration all application log messages are appended to the `/var/log/syslog` system journal. You have two options how to customize logging configuration of the application:
+
+* Create the logback configuration file in the project. Specify path to this file for the `logbackConfigurationFile` parameter of the <<build.gradle_buildWar, buildWar>> task (manually or with the help of Studio *WAR Settings* dialog).
+* Create the logging configuration file on the production server.
++
+Copy the `logback.xml` file from the development Tomcat (`deploy/tomcat/conf` project sub-folder) to the <<app_home,application home>> directory and edit the `logDir` property in this file:
++
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
++
+Add the following line to the `setenv.sh` script to specify path to the logging configuration file:
++
+[source,plain]
+----
+CATALINA_OPTS="$CATALINA_OPTS -Dlogback.configurationFile=/opt/app_home/logback.xml"
 ----
 
 . Restart the Tomcat service:
 +
 [source, plain]
 ----
-sudo service tomcat8 restart
+sudo systemctl restart tomcat9
 ----
 
 . Open `++http://localhost:8080/app++` in your web browser.
+--
 
+Differences when using tomcat8 package::
++
+--
+CUBA supports deployment to both Tomcat 9 and Tomcat 8.5 versions. Please note the following differences when deploying to Tomcat 8.5:
+
+* Tomcat 8.5 is provided by the `tomcat8` package
+* User name is `tomcat8`
+* Tomcat base directory is `/var/lib/tomcat8`
+* Tomcat home directory is `/usr/share/tomcat8`
+* Tomcat service does not use systemd sandboxing, so no need to change systemd settings.
+* Standard output and stderr messages are appended to the `/var/lib/tomcat8/logs/catalina.out` file.
+--
+
+Troubleshooting LibreOffice reporting integration when using tomcat9 package::
++
+--
+You may experience problems when deploying to the *tomcat9* package and using LibreOffice integration with the *Reporting* add-on. Error may be diagnosed with this message:
+[source, plain]
+----
+2019-12-04 09:52:37.015 DEBUG [OOServer: ERR] com.haulmont.yarg.formatters.impl.doc.connector.OOServer - ERR: (process:10403): dconf-CRITICAL **: 09:52:37.014: unable to create directory '/.cache/dconf': Read-only file system.  dconf will not work properly.
+----
+This error is caused by the home directory of the `tomcat` user pointing to a non-writable location. It can be fixed by changing `tomcat` user home directory to the `/var/lib/tomcat9/work` value:
+[source, plain]
+----
+# bad value
+echo ~tomcat
+/
+
+# fix
+sudo systemctl stop tomcat9
+sudo usermod -d /var/lib/tomcat9/work tomcat
+sudo systemctl start tomcat9
+----
+
+--

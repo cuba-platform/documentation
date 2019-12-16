@@ -1,10 +1,12 @@
-public class ExtAppMainWindow extends AppMainWindow {
-
+public class ExtMainScreen extends MainScreen implements Window.HasFoldersPane {
+    
     @Inject
     private Notifications notifications;
+    @Inject
+    private AppMenu mainMenu;
 
     @Subscribe
-    protected void onInit(InitEvent event) {
+    public void onInit(InitEvent event) {
         AppMenu.MenuItem item = mainMenu.createMenuItem("shop", "Shop");
         AppMenu.MenuItem subItem = mainMenu.createMenuItem("customer", "Customers", null, menuItem -> {
             notifications.create()

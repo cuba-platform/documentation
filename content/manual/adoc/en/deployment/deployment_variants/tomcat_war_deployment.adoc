@@ -3,7 +3,7 @@
 [[tomcat_war_deployment]]
 ==== WAR deployment to Tomcat Windows Service
 
-. Add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>:
+. Use the CUBA project tree > *Project* > *Deployment* > *WAR Settings* dialog in Studio or just manually add the <<build.gradle_buildWar, buildWar>> task to the end of <<build.gradle,build.gradle>>:
 +
 --
 [source, groovy]
@@ -11,40 +11,60 @@
 include::{sourcesdir}/deployment/warDeployment_2.groovy[]
 ----
 
-If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999, the task definition should be as follows:
+If the target server parameters differ from what you have on the local Tomcat used for <<fast_deployment,fast deployment>>, provide appropriate application properties. For example, if the target server runs on port 9999 and you build separate WARs, the task definition should be as follows:
 
 [source, groovy]
 ----
 include::{sourcesdir}/deployment/warDeployment_3.groovy[]
 ----
-
-You can also specify a different `context.xml` file to setup the connection to the production database, for example:
+You can also specify a separate `context.xml` file to setup the connection to the production database or provide that file later on the server:
 
 [source, groovy]
 ----
 include::{sourcesdir}/deployment/warDeployment_4.groovy[]
 ----
 --
-
-. Run the `buildWar` Gradle task. As a result, `app.war` and `app-core.war` files will be generated in the `build/distributions` directory of your project.
+. Run the `buildWar` Gradle task. As a result, `app.war` file (or several files if you build separate WARs) will be generated in the `build/distributions` directory of your project.
 +
 [source, plain]
 ----
 gradlew buildWar
 ----
+. Create the <<app_home,application home>> directory, e.g. `C:\app_home`.
 
-. Download and run Tomcat 8 Windows Service Installer.
+. Download and install the Tomcat 9 Windows Service Installer from the https://tomcat.apache.org/download-90.cgi[Apache Tomcat official site].
 
-. Go to the `bin` directory of the installed server and run `tomcat8w.exe` with the administrative rights.
-Set *Maximum memory pool* to 1024MB on the *Java* tab. Then go to the *General* tab and restart the service.
+. Go to the `bin` directory of the installed server and run `tomcat9w.exe` with the administrative rights in order to set Tomcat service settings:
+.. Set *Maximum memory pool* to 1024MB on the *Java* tab.
+.. Instruct Tomcat to use UTF-8 encoding by adding `-Dfile.encoding=UTF-8` to the _Java Options_ field.
+.. Specify application home folder by adding the `-Dapp.home=c:/app_home` to the _Java Options_ field.
 +
-image::tomcatPropeties.jpg[align="center"]
+image::tomcat-service-settings.png[align="center"]
 
-. Add `-Dfile.encoding=UTF-8` to the _Java Options_ field.
+. If you want to provide production database connection properties with a local file on the server, you can create a file in the `conf\Catalina\localhost` subfolder of the Tomcat server. The name of the file depends on the WAR file name, e.g. `app.xml` for single WAR and `app-core.xml` if separate WAR files are deployed. Copy contents of the `context.xml` to this file.
 
-. Copy the generated `app.war` and `app-core.war` files to the `webapps` directory of the server.
+. With the default configuration all application log messages are appended to the `logs/tomcat9-stdout.log` file. You have two options how to customize logging configuration of the application:
 
-. Start the Tomcat service.
+* Create the logback configuration file in the project. Specify path to this file for the `logbackConfigurationFile` parameter of the <<build.gradle_buildWar, buildWar>> task (manually or with the help of Studio *WAR Settings* dialog).
+* Create the logging configuration file on the production server.
++
+Copy the `logback.xml` file from the development Tomcat (`deploy/tomcat/conf` project sub-folder) to the <<app_home,application home>> directory and edit the `logDir` property in this file:
++
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
++
+Add the following line to the _Java Options_ field in the Tomcat 9 Windows Service settings window to specify path to the logging configuration file:
++
+[source,plain]
+----
+-Dlogback.configurationFile=C:/app_home/logback.xml
+----
+
+. Copy the generated WAR file(s) to the `webapps` directory of the Tomcat server.
+
+. Restart the Tomcat service.
 
 . Open `++http://localhost:8080/app++` in your web browser.
 

@@ -3,7 +3,7 @@
 [[tomcat_war_deployment]]
 ==== Развертывание WAR в Tomcat Windows Service
 
-. Добавьте в конец <<build.gradle,build.gradle>> задачу сборки <<build.gradle_buildWar,buildWar>>:
+. Откройте диалог в Studio: дерево проектов CUBA > *Project* > *Deployment* > *WAR Settings*, или просто вручную добавьте задачу <<build.gradle_buildWar, buildWar>> в конец скрипта сборки <<build.gradle,build.gradle>>.:
 +
 --
 [source, groovy]
@@ -11,14 +11,14 @@
 include::{sourcesdir}/deployment/warDeployment_2.groovy[]
 ----
 
-Если параметры сервера отличаются от параметров локального Tomcat, используемого для <<fast_deployment,быстрого развертывания>>, укажите соответствующие свойства приложения:
+Если параметры сервера отличаются от параметров локального Tomcat, используемого для <<fast_deployment,быстрого развертывания>>, укажите соответствующие свойства приложения. Например, если конечный сервер запущен на порту 9999 и вы используете сборку раздельных WAR файлов, то определение задачи должно выглядеть следующим образом:
 
 [source, groovy]
 ----
 include::{sourcesdir}/deployment/warDeployment_3.groovy[]
 ----
 
-Можно также указать отдельный `context.xml` для настройки соединения с production БД, например:
+Вы можете указать отдельный файл проекта `war-context.xml` для указания настроек подключения к базе данных, или предоставить этот файл позже на сервере:
 
 [source, groovy]
 ----
@@ -26,25 +26,46 @@ include::{sourcesdir}/deployment/warDeployment_4.groovy[]
 ----
 --
 
-. Запустите задачу `buildWar`. В результате, в каталоге `build/distibutions` проекта будут сгенерированы файлы `app.war` и `app-core.war`.
+. Запустите задачу `buildWar`. В результате, файл `app.war` (или несколько файлов, если вы настроили сборку раздельных WAR) будет собран в каталоге `build/distributions` вашего проекта.
 +
 [source, plain]
 ----
 gradlew buildWar
 ----
 
-. Скачайте и установите Tomcat 8 Windows Service Installer.
+. Скачайте и установите Tomcat 9 Windows Service Installer с https://tomcat.apache.org/download-90.cgi[официального сайта Apache Tomcat].
 
-. После установки, перейдите в подкаталог `bin` установленного сервера и запустите `tomcat8w.exe` от имени администратора.
-На вкладке *Java* установите параметр *Maximum memory pool* 1024MB. Перейдите на вкладку *General* и запустите сервис.
+. После завершения установки, перейдите в подкаталог `bin` установленного сервера и запустите `tomcat9w.exe` от имени администратора, чтобы поменять настройки службы Tomcat:
+.. На вкладке *Java* установите параметр *Maximum memory pool* 1024MB.
+.. Укажите для Tomcat использовать кодировку UTF-8, добавив строку `-Dfile.encoding=UTF-8` в поле _Java Options_.
+.. Укажите домашний каталог приложения, добавив строку `-Dapp.home=c:/app_home` в поле _Java Options_.
 +
-image::tomcatPropeties.jpg[align="center"]
+image::tomcat-service-settings.png[align="center"]
 
-. Пропишите `-Dfile.encoding=UTF-8` в поле _Java Options_.
+. Если вы хотите предоставить параметры подключения к БД через локальный файл на сервере, создайте файл в подкаталоге `conf/Catalina/localhost` каталога Tomcat. Название файла зависит от названия WAR-сборки, например `app.xml` для single WAR, или `app-core.xml`, если собираются раздельные WAR-файлы. Скопируйте содержимое `context.xml` в этот файл.
 
-. Скопируйте сгенерированные файлы `app.war` и `app-core.war` в подкаталог `webapps` сервера.
+. При использовании настроек по умолчанию, все журнальные сообщения приложения попадают в файл `logs/tomcat9-stdout.log`. У вас есть два варианта, как кастомизировать настройки журналов:
 
-. Запустите сервис Tomcat.
+* Создать файл конфигурации logback в вашем проекте. Укажите путь к этому файлу в параметре `logbackConfigurationFile` задачи <<build.gradle_buildWar, buildWar>> (вручную или с помощью диалога Studio *WAR Settings*).
+* Создать файл с настройками журналирования на конечном сервере.
++
+Скопируйте файл `logback.xml` из локального Tomcat (под-папка `deploy/tomcat/conf` проекта) в <<app_home,домашний каталог приложения>> и поменяйте свойство `logDir` в этом файле:
++
+[source, xml]
+----
+<property name="logDir" value="${app.home}/logs"/>
+----
++
+Добавьте следующую строчку в поле _Java Options_ окна настроек Windows-службы Tomcat 9, чтобы указать путь к настройкам журналирования:
++
+[source,plain]
+----
+-Dlogback.configurationFile=C:/app_home/logback.xml
+----
+
+. Скопируйте сгенерированный WAR файл(-ы) в подкаталог `webapps` сервера Tomcat.
+
+. Перезапустите службу Tomcat.
 
 . Откройте `++http://localhost:8080/app++` в браузере.
 
