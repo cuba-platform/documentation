@@ -1,11 +1,11 @@
 @Inject
 private Notifications notifications;
 @Inject
-private UiComponents uiComponents;
+private Facets facets;
 
 @Subscribe
 protected void onInit(InitEvent event) {
-    Timer helloTimer = uiComponents.create(Timer.NAME);
+    Timer helloTimer = facets.create(Timer.class);
     getWindow().addFacet(helloTimer); <1>
     helloTimer.setId("helloTimer"); <2>
     helloTimer.setDelay(5000);
