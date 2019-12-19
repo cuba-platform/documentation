@@ -1,9 +1,9 @@
 :sourcesdir: ../../../../../source
 
 [[views_creation]]
-===== Views Creation
+===== Creating Views
 
-A view can be created in two possible ways: 
+You can create views as follows:
 
 * *Programmatically* – by creating a `View` instance, for example:
 +
@@ -14,11 +14,21 @@ include::{sourcesdir}/common/views_1.java[]
 +
 Typically, this way can be appropriate for creating views that are used in a single piece of business logic.
 
-* *Declaratively* – by creating an XML descriptor and deploying it to `ViewRepository`. `View` instances are created and cached when the XML descriptor is deployed. Further on, the required view can be retrieved in any part of the application code by a call to `ViewRepository` providing the entity class and the view name.
+* *Declaratively in screens* - by defining an inline view right in the screen's XML, see an example in <<gui_data_comp_decl>>. This is the recommended way for loading data in Generic UI screens for projects based on CUBA 7.2+.
 
-Let us consider in details the declarative way for creation and working with views.
+* *Declaratively in the shared repository* – by defining a view in the <<views.xml>> file of the project. The `views.xml` file is deployed on the application start, created `View` instances are cached in `ViewRepository`. Further on, the required view can be retrieved in any part of the application code by a call to `ViewRepository` providing the entity class and the view name.
 
-`ViewRepository` is a Spring bean, accessible to all application blocks. The reference to `ViewRepository` can be obtained using injection or through the <<metadata,Metadata>> infrastructure interface. `ViewRepository.getView()` methods are used to retrieve view instances from the repository. `deployViews()` methods from `AbstractViewRepository` basic implementation are used to deploy XML descriptors to the repository.
+Below is an example of the XML view declaration which provides loading of all local attributes of the `Order` entity, associated `Customer` and the `Items` collection:
+
+[source, xml]
+----
+include::{sourcesdir}/common/views_2.xml[]
+----
+
+Working with the shared views repository::
++
+--
+`ViewRepository` is a Spring bean, accessible to all application blocks. The reference to `ViewRepository` can be obtained using injection or through the `AppBeans` static methods. Use `ViewRepository.getView()` methods to retrieve view instances from the repository.
 
 Three views named `++_local++`, `++_minimal++` and `_base` are available in the views repository for each entity by default:
 
@@ -28,27 +38,22 @@ Three views named `++_local++`, `++_minimal++` and `_base` are available in the 
 
 * `_base` includes all local non-system attributes and attributes defined by `@NamePattern` (effectively `_minimal` + `_local`).
 
-The detailed structure of view XML descriptors is explained <<views.xml, here>>.
+CUBA Studio automatically creates and maintains a single <<views.xml,views.xml>> file in your project. However, you can create multiple view descriptor files as follows:
 
-The example below shows a view descriptor for the `Order` entity which provides loading of all local attributes, associated `Customer` and the `Items` collection:
+* The `global` module must contain the `views.xml` file with all view descriptors that should be globally accessible (i.e. on all application tiers) into it. This file should be registered in the <<cuba.viewsConfig,cuba.viewsConfig>> application property of all blocks, i.e. in `app.properties` of the `core` module, `web-app.properties` of the `web` module, etc. This is what Studio does for you by default.
 
-[source, xml]
-----
-include::{sourcesdir}/common/views_2.xml[]
-----
-
-The recommended way of grouping and deployment of view descriptors is as follows: 
-
-* Create <<views.xml>> file in the `src` root of the *global* module and place all view descriptors that should be globally accessible (i.e. on all application tiers) into it.
-
-* Register this file in the <<cuba.viewsConfig,cuba.viewsConfig>> application property of all blocks, i.e. in `app.properties` of the *core* module, `web-app.properties` of the *web* module, etc. This will ensure automatic deployment of the views upon application startup into the repository.
-
-* If there are views which are used only in one application block, they can be specified in the similar file of this block, for example, `web-views.xml`, and registered in <<cuba.viewsConfig,cuba.viewsConfig>> property of this block only.
+* If you have a large number of shared views, you can put them in multiple files, e.g. into standard `views.xml` and additional `foo-views.xml`, `bar-views.xml`. Register all your files in the `cuba.viewsConfig` application property:
 +
+----
+cuba.viewsConfig = +com/company/sales/views.xml com/company/sales/foo-views.xml com/company/sales/bar-views.xml
+----
+
+* If there are views which are used only in one application block, they can be defined in the similar file of this block, for example, `web-views.xml`, and registered in `cuba.viewsConfig` property of this block only.
+
 If the repository contains a view with certain name for some entity, an attempt to deploy another view with this name for the same entity will be ignored. If you need to replace the existing view in the repository with a new one and guarantee its deployment, specify `overwrite = "true"` attribute for it.
 
 [TIP]
 ====
-It is recommended to give descriptive names to the views. For example, not just "browse", but "customerBrowse". It simplifies the search of views in XML descriptors.
+It is recommended to give descriptive names to the shared views. For example, not just "browse", but "customer-browse". It simplifies the search of views in XML descriptors.
 ====
-
+--
