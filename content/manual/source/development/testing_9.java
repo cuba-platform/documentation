@@ -1,8 +1,5 @@
-public class MyTestContainer extends TestContainer {
+public class DemoTestContainer extends TestContainer {
 
     static {
-        System.setProperty("logback.configurationFile", "my-test-logback.xml");
+        System.setProperty("logback.configurationFile", "com/company/demo/my-test-logback.xml");
     }
-
-    // ...
-}

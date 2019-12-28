@@ -1,4 +1,4 @@
-public class MyTestContainer extends TestContainer {
+public class DemoTestContainer extends TestContainer {
     // ...
 
     @Override

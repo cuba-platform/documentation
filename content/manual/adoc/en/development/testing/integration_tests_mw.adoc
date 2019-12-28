@@ -5,30 +5,45 @@
 
 Middleware integration tests run in a fully functional Spring container connected to the database. In such tests, you can run code on all layers of the middleware, from services down to ORM.
 
-In order to configure and start the middleware Spring container in tests, create a subclass of the `com.haulmont.cuba.testsupport.TestContainer` base class in your project and use its instance in tests as a JUnit Rule.
+Right after creating a new project in Studio, you can find two classes in the base package of the `core` module: a test container class and a sample test. The test container class launches the middleware Spring container which is set up for tests. The sample test makes use of it and demonstrates how to test some operations with an entity.
 
-Below is an example of the container class and an integration test for the Sales project described in <<quick_start>>. All classes must be located in the `test` directory of the `core` module.
+Let's consider the generated test container class and how it should be adapted to your needs.
+
+The class must extend `TestContainer` provided by CUBA. In the constructor, you should add <<app_components_recipes,application components>> (add-ons) used in your project to the `appComponents` list. Also, you can specify additional application properties files in the `appPropertiesFiles` list.
+
+The `initDbProperties()` method performs initialization of the database connection properties. In the generated test container, it tries to find the <<db_connection,connection properties>> regardless of whether they are defined in application properties or in <<context.xml,context.xml>>. If you keep the method implementation as is, your tests will work against your main data store even if you change its type or how the JDBC DataSource is defined.
+
+There is a disadvantage of using the same database for tests and for the application: the data entered manually may interfere with test data and break test execution. To avoid this, you can set up a separate database and use it only for tests. We recommend using a test database of the same type as your main database in order to use the same set of <<db_scripts,database migration scripts>>. Below is an example of setting up a test database on local PostgreSQL.
+
+First, implement the `initDbProperties()` method as follows:
 
 [source, java]
 ----
-include::{sourcesdir}/development/testing_3.java[]
+public class DemoTestContainer extends TestContainer {
+    // ...
+    private void initDbProperties() {
+        dbDriver = "org.postgresql.Driver";
+        dbUrl = "jdbc:postgresql://localhost/demo_test";
+        dbUser = "cuba";
+        dbPassword = "cuba";
+    }
 ----
 
-An example of the custom `test-app.properties` file:
-
-[source, properties]
-----
-include::{sourcesdir}/development/testing_11.properties[]
-----
-
-We recommend using a separate test database, which can be created, for example, by the following Gradle <<build.gradle_createDb, task>> defined in `build.gradle`:
+Then add the <<build.gradle_createDb, test database creation task>> to `build.gradle`:
 
 [source, groovy]
 ----
 include::{sourcesdir}/development/testing_4.groovy[]
 ----
 
-The test container should be used in test classes as a JUnit rule specified by the `@ClassRule` annotation:
+Before running tests, create the test database by executing the task:
+
+[source]
+----
+./gradlew createTestDb
+----
+
+The test container should be used in test classes as a JUnit 5 extension specified by the `@RegisterExtension` annotation:
 
 [source, java]
 ----
@@ -38,7 +53,7 @@ include::{sourcesdir}/development/testing_5.java[]
 Useful container methods::
 +
 --
-The `TestContainer` class contains the following methods that can be used in the test code (see the `CustomerLoadTest` example above):
+The `TestContainer` class has the following methods that can be used in the test code (see the `CustomerTest` example above):
 
 * `persistence()` – returns the reference to the <<persistence,Persistence>> interface.
 
@@ -50,13 +65,13 @@ The `TestContainer` class contains the following methods that can be used in the
 Logging::
 +
 --
-The test container sets up logging according to the `test-logback.xml` file provided by the platform. It is contained in the root of the `cuba-core-tests` artifact.
+The test container sets up logging according to the `test-logback.xml` file provided by the platform.
 
 If you want to configure logging levels for your tests, do the following:
 
-* Copy `test-logback.xml` from the platform artifact to the root of the `test` folder of your project's `core` module, e.g. as `my-test-logback.xml`.
+* Create `my-test-logback.xml` file in the `test` folder of your project's `core` module.
 
-* Configure appenders and loggers in `my-test-logback.xml`.
+* Configure appenders and loggers in `my-test-logback.xml`. You can take the default content from the `test-logback.xml` file located inside the `cuba-core-tests` artifact.
 
 * Add a static initializer to your test container to specify the location of your logback configuration file in the `logback.configurationFile` system property:
 +

@@ -1,8 +1,9 @@
 configure(coreModule) {
-...
-    task createTestDb(dependsOn: assemble, description: 'Creates local Postgres database for tests', type: CubaDbCreation) {
+    // ...
+    task createTestDb(dependsOn: assembleDbScripts, type: CubaDbCreation) {
         dbms = 'postgres'
-        dbName = 'sales_test'
+        host = 'localhost'
+        dbName = 'demo_test'
         dbUser = 'cuba'
         dbPassword = 'cuba'
     }

@@ -1,7 +1,8 @@
-package com.company.sales.web.customer;
+package com.company.demo.customer;
 
-import com.company.sales.entity.Customer;
-import com.company.sales.web.SalesWebTestContainer;
+import com.company.demo.DemoWebTestContainer;
+import com.company.demo.entity.Customer;
+import com.company.demo.web.screens.customer.CustomerEdit;
 import com.haulmont.cuba.gui.Screens;
 import com.haulmont.cuba.gui.components.Button;
 import com.haulmont.cuba.gui.screen.OpenMode;
@@ -9,23 +10,24 @@ import com.haulmont.cuba.web.app.main.MainScreen;
 import com.haulmont.cuba.web.testsupport.TestEntityFactory;
 import com.haulmont.cuba.web.testsupport.TestEntityState;
 import com.haulmont.cuba.web.testsupport.TestUiEnvironment;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.util.Collections;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 public class CustomerEditInteractionTest {
 
-    @Rule
-    public TestUiEnvironment environment =
-            new TestUiEnvironment(SalesWebTestContainer.Common.INSTANCE).withUserLogin("admin"); // <1>
+    @RegisterExtension
+    TestUiEnvironment environment =
+            new TestUiEnvironment(DemoWebTestContainer.Common.INSTANCE).withUserLogin("admin"); // <1>
 
     private Customer customer;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         TestEntityFactory<Customer> customersFactory =
                 environment.getContainer().getEntityFactory(Customer.class, TestEntityState.NEW);

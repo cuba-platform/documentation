@@ -1,7 +1,8 @@
-package com.company.sales.web.customer;
+package com.company.demo.customer;
 
-import com.company.sales.entity.Customer;
-import com.company.sales.web.SalesWebTestContainer;
+import com.company.demo.DemoWebTestContainer;
+import com.company.demo.entity.Customer;
+import com.company.demo.web.screens.customer.CustomerEdit;
 import com.haulmont.cuba.core.app.DataService;
 import com.haulmont.cuba.core.entity.Entity;
 import com.haulmont.cuba.core.global.LoadContext;
@@ -17,31 +18,31 @@ import com.haulmont.cuba.web.testsupport.proxy.TestServiceProxy;
 import mockit.Delegate;
 import mockit.Expectations;
 import mockit.Mocked;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CustomerEditLoadDataTest {
 
-    @Rule
-    public TestUiEnvironment environment =
-            new TestUiEnvironment(SalesWebTestContainer.Common.INSTANCE).withUserLogin("admin");
+    @RegisterExtension
+    TestUiEnvironment environment =
+            new TestUiEnvironment(DemoWebTestContainer.Common.INSTANCE).withUserLogin("admin"); // <1>
 
     @Mocked
     private DataService dataService; // <1>
 
     private Customer customer;
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {
         new Expectations() {{ // <2>
             dataService.load((LoadContext<? extends Entity>) any);
             result = new Delegate() {
                 Entity load(LoadContext lc) {
-                    if ("sales_Customer".equals(lc.getEntityMetaClass())) {
+                    if ("demo_Customer".equals(lc.getEntityMetaClass())) {
                         return customer;
                     } else
                         return null;
@@ -58,7 +59,7 @@ public class CustomerEditLoadDataTest {
                 "name", "Homer", "email", "homer@simpson.com"); // <4>
     }
 
-    @After
+    @AfterEach
     public void tearDown() throws Exception {
         TestServiceProxy.clear(); // <5>
     }

@@ -1,21 +1,20 @@
-package com.company.sales.web;
+package com.company.demo;
 
 import com.haulmont.cuba.web.testsupport.TestContainer;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
-public class SalesWebTestContainer extends TestContainer {
+public class DemoWebTestContainer extends TestContainer {
 
-    public SalesWebTestContainer() {
-        appComponents = new ArrayList<>(Arrays.asList(
+    public DemoWebTestContainer() {
+        appComponents = Arrays.asList(
                 "com.haulmont.cuba"
                 // add CUBA add-ons and custom app components here
-        ));
+        );
         appPropertiesFiles = Arrays.asList(
                 // List the files defined in your web.xml
                 // in appPropertiesConfig context parameter of the web module
-                "com/company/sales/web-app.properties",
+                "com/company/demo/web-app.properties",
                 // Add this file which is located in CUBA and defines some properties
                 // specifically for test environment. You can replace it with your own
                 // or add another one in the end.
@@ -23,10 +22,10 @@ public class SalesWebTestContainer extends TestContainer {
         );
     }
 
-    public static class Common extends SalesWebTestContainer {
+    public static class Common extends DemoWebTestContainer {
 
         // A common singleton instance of the test container which is initialized once for all tests
-        public static final SalesWebTestContainer.Common INSTANCE = new SalesWebTestContainer.Common();
+        public static final DemoWebTestContainer.Common INSTANCE = new DemoWebTestContainer.Common();
 
         private static volatile boolean initialized;
 

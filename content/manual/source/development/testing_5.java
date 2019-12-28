@@ -1,47 +1,41 @@
-package com.company.sales;
+package com.company.demo.core;
 
-import com.company.sales.entity.Customer;
-import com.haulmont.cuba.core.global.*;
-import org.junit.Before;
-import org.junit.ClassRule;
-import org.junit.Test;
+import com.company.demo.DemoTestContainer;
+import com.company.demo.entity.Customer;
+import com.haulmont.cuba.core.entity.contracts.Id;
+import com.haulmont.cuba.core.global.AppBeans;
+import com.haulmont.cuba.core.global.DataManager;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class CustomerTest {
 
     // Using the common singleton instance of the test container which is initialized once for all tests
-    @ClassRule
-    public static SalesTestContainer cont = SalesTestContainer.Common.INSTANCE;
+    @RegisterExtension
+    static DemoTestContainer cont = DemoTestContainer.Common.INSTANCE;
 
-    private Metadata metadata;
+    static DataManager dataManager;
 
-    @Before
-    public void setUp() throws Exception {
-        metadata = cont.metadata();
+    @BeforeAll
+    static void beforeAll() {
+        // Get a bean from the container
+        dataManager = AppBeans.get(DataManager.class);
     }
 
     @Test
-    public void testCreateCustomer() throws Exception {
-        // Get a managed bean (or service) from container
-        DataManager dataManager = AppBeans.get(DataManager.class);
+    void testCreateLoadRemove() {
+        Customer customer = cont.metadata().create(Customer.class);
+        customer.setName("c1");
 
-        // Create new Customer
-        Customer customer = metadata.create(Customer.class);
-        customer.setName("Test customer");
+        Customer committedCustomer = dataManager.commit(customer);
+        assertEquals(customer, committedCustomer);
 
-        // Save the customer to the database
-        dataManager.commit(customer);
+        Customer loadedCustomer = dataManager.load(Id.of(customer)).one();
+        assertEquals(customer, loadedCustomer);
 
-        // Load the customer by ID
-        Customer loaded = dataManager.load(
-                LoadContext.create(Customer.class).setId(customer.getId()).setView(View.LOCAL));
-
-        assertNotNull(loaded);
-        assertEquals(customer.getName(), loaded.getName());
-
-        // Remove the customer
-        dataManager.remove(loaded);
+        dataManager.remove(loadedCustomer);
     }
 }
