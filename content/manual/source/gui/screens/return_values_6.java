@@ -1,16 +1,19 @@
-@Inject
-private Screens screens;
-@Inject
-private Notifications notifications;
+package com.company.demo.web.screens;
 
-private void openOtherScreen() {
-    Screen otherScreen = screens.create("demo_OtherScreen", OpenMode.THIS_TAB);
-    otherScreen.addAfterCloseListener(afterCloseEvent -> {
-        CloseAction closeAction = afterCloseEvent.getCloseAction();
-        if (closeAction instanceof MyCloseAction) {
-            String result = ((MyCloseAction) closeAction).getResult();
-            notifications.create().withCaption("Result: " + result).show();
-        }
-    });
-    otherScreen.show();
+import com.haulmont.cuba.gui.components.Button;
+import com.haulmont.cuba.gui.screen.*;
+
+@UiController("demo_OtherScreen2")
+@UiDescriptor("other-screen.xml")
+public class OtherScreen2 extends Screen {
+
+    @Subscribe("okBtn")
+    public void onOkBtnClick(Button.ClickEvent event) {
+        close(new MyCloseAction("Done")); // <1>
+    }
+
+    @Subscribe("cancelBtn")
+    public void onCancelBtnClick(Button.ClickEvent event) {
+        closeWithDefaultAction(); // <2>
+    }
 }

@@ -8,7 +8,7 @@ private void openOtherScreen() {
                 .withScreenClass(OtherScreen.class)
                 .withAfterCloseListener(afterCloseEvent -> {
                     OtherScreen otherScreen = afterCloseEvent.getScreen();
-                    if (afterCloseEvent.getCloseAction().equals(WINDOW_COMMIT_AND_CLOSE_ACTION)) {
+                    if (afterCloseEvent.closedWith(StandardOutcome.COMMIT)) {
                         String result = otherScreen.getResult();
                         notifications.create().withCaption("Result: " + result).show();
                     }

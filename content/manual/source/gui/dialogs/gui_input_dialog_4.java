@@ -19,7 +19,7 @@ private void onShowDialogBtnClick(Button.ClickEvent event) {
             })
             .withActions(DialogActions.OK_CANCEL)
             .withCloseListener(closeEvent -> {
-                if (closeEvent.getCloseAction().equals(InputDialog.INPUT_DIALOG_OK_ACTION)) {
+                if (closeEvent.closedWith(DialogOutcome.OK)) {
                     String name = closeEvent.getValue("name");
                     Customer customer = closeEvent.getValue("customer");
                     // process entered values...

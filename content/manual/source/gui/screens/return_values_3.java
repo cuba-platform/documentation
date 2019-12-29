@@ -14,13 +14,13 @@ public class OtherScreen extends Screen {
     }
 
     @Subscribe("okBtn")
-    private void onOkBtnClick(Button.ClickEvent event) {
+    public void onOkBtnClick(Button.ClickEvent event) {
         result = "Done";
-        close(WINDOW_COMMIT_AND_CLOSE_ACTION); // <1>
+        close(StandardOutcome.COMMIT); // <1>
     }
 
     @Subscribe("cancelBtn")
-    private void onCancelBtnClick(Button.ClickEvent event) {
-        closeWithDefaultAction(); // <2>
+    public void onCancelBtnClick(Button.ClickEvent event) {
+        close(StandardOutcome.CLOSE); // <2>
     }
 }
