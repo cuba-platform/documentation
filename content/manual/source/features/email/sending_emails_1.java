@@ -1,27 +1,30 @@
-public class NewsItemEdit extends AbstractEditor<NewsItem> {
+@UiController("sample_NewsItem.edit")
+@UiDescriptor("news-item-edit.xml")
+@EditedEntityContainer("newsItemDc")
+@LoadDataBeforeShow
+public class NewsItemEdit extends StandardEditor<NewsItem> {
 
-    // Indicates that a new item was created in this editor
-    private boolean justCreated;
+    private boolean justCreated; // <1>
 
     @Inject
     protected EmailService emailService;
+	
+    @Inject
+    protected Dialogs dialogs;
 
-    // This method is invoked when a new item is initialized
-    @Override
-    protected void initNewItem(NewsItem item) {
+    @Subscribe
+    public void onInitEntity(InitEntityEvent<NewsItem> event) { // <2>
         justCreated = true;
     }
 
-    // This method is invoked after the screen commit
-    @Override
-    protected boolean postCommit(boolean committed, boolean close) {
-        if (committed && justCreated) {
-            // If a new entity was saved to the database, ask a user about sending an email
-            showOptionDialog(
-                    "Email",
-                    "Send the news item by email?",
-                    MessageType.CONFIRMATION,
-                    new Action[] {
+    @Subscribe(target = Target.DATA_CONTEXT)
+    public void onPostCommit(DataContext.PostCommitEvent event) { // <3>
+        if (justCreated) {
+            dialogs.createOptionDialog() // <4>
+                    .withCaption("Email")
+                    .withMessage("Send the news item by email?")
+                    .withType(Dialogs.MessageType.CONFIRMATION)
+                    .withActions(
                             new DialogAction(DialogAction.Type.YES) {
                                 @Override
                                 public void actionPerform(Component component) {
@@ -29,21 +32,19 @@ public class NewsItemEdit extends AbstractEditor<NewsItem> {
                                 }
                             },
                             new DialogAction(DialogAction.Type.NO)
-                    }
-            );
+                    )
+                    .show();
         }
-        return super.postCommit(committed, close);
     }
 
-    // Queues an email for sending asynchronously
-    private void sendByEmail() {
-        NewsItem newsItem = getItem();
+    private void sendByEmail() { // <5>
+        NewsItem newsItem = getEditedEntity();
         EmailInfo emailInfo = new EmailInfo(
-                "john.doe@company.com,jane.roe@company.com", // recipients
-                newsItem.getCaption(), // subject
-                null, // the "from" address will be taken from the "cuba.email.fromAddress" app property
-                "com/company/demo/templates/news_item.txt", // body template
-                Collections.singletonMap("newsItem", newsItem) // template parameters
+                "john.doe@company.com,jane.roe@company.com", // <6>
+                newsItem.getCaption(), // <7>
+                null, // <8>
+                "com/company/demo/templates/news_item.txt", // <9>
+                Collections.singletonMap("newsItem", newsItem) // <10>
         );
         emailService.sendEmailAsync(emailInfo);
     }
