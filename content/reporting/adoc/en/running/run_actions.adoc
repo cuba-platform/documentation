@@ -3,138 +3,106 @@
 [[run_actions]]
 === Running Reports from Screens
 
-You can run reports from arbitrary screens using special actions and associated buttons or component context menu items. In such case report <<permissions, availability>> in this screen will also be checked in addition to user role.
+You can run reports from arbitrary screens using special actions and associated buttons or component context menu items. In this case, the <<permissions, availability>> of the report directly in this screen is checked in addition to a user role.
 
 Action types and examples of their use are provided below.
 
-* `com.haulmont.reports.gui.actions.RunReportAction` – action showing the list of all available reports. When a user selects a report from the list, the parameters input form is displayed (if any were defined) and the report is run.
+[[run_report_action]]
+* `com.haulmont.reports.gui.actions.list.RunReportAction` – a {main_man_url}/standard_actions.html[standard action] that displays the list of all available reports. It should be defined for a `Button` or a list component (`Table`, `DataGrid`, etc.).
 +
-Below is an example of using the action together with a button declared in the screen XML descriptor:
-
-** XML-descriptor
+Below is an example of using the declarative action for the `GroupTable`:
 +
 [source, xml]
 ----
-<layout>
-    <groupTable id="booksTable">
-        ...
-        <buttonsPanel id="buttonsPanel">
-            ...
-            <button id="reportButton"
-                    icon="PRINT"/>
-        </buttonsPanel>
-    </groupTable>
+include::{sourcesdir}/run_actions_example1.xml[]
 ----
-
-** Controller
+<1> - the `type` attribute defines a specific `runReport` action type, provided by the framework.
++
+Example of programmatically creating the action together with a button declared in the screen XML descriptor:
 +
 [source, java]
 ----
-@Inject
-private Button reportButton;
-
-@Subscribe
-private void onInit(InitEvent event) {
-    reportButton.setAction(new RunReportAction("report"));
-}
+include::{sourcesdir}/run_actions_example2.java[]
 ----
-
-** messages.properties
 +
-[source]
-----
-report = Report
-----
+When the action is performed, a modal **Report Run** dialog will open where reports related to the current screen will be displayed. When a user selects a report from the list, the parameters input form is displayed (if any were defined) and the report is run.
 
-* `com.haulmont.reports.gui.actions.TablePrintFormAction` – an action associated with a table displaying a list of entity instances. The action only selects reports having an external parameter of the *Entity* or the *List of entities* type and where the parameter entity type matches the entity type displayed by the table. If only one report is available as a result of selection, it is invoked immediately. If several reports are available, their list is offered to the user for selection.
+[[list_print_form_action]]
+* `com.haulmont.reports.gui.actions.list.ListPrintFormAction` – a {main_man_url}/standard_actions.html[standard action] for printing reports for entity instances associated with a list component (`Table`, `DataGrid`, etc.).
++
+The action only selects reports having an external parameter of the *Entity* or the *List of entities* type and where the parameter entity type matches the entity type displayed by the list component. If only one report is available as a result of selection, it is invoked immediately. If several reports are available, their list is offered to the user for selection.
 +
 The external parameter value is passed to the report using the following rules:
 
-** If the parameter has the *List of entities* type, the list of instances currently selected in the table is passed into it.
+** If the parameter has the *List of entities* type, the list of instances currently selected in the list component is passed into it.
 
-** If the parameter has the *Entity* type, and the table has a single instance selected (one row is highlighted), then this instance is passed into the report.
+** If the parameter has the *Entity* type, and the list component has a single instance selected (one row is highlighted), then this instance is passed into the report.
 
-** If the parameter is of the *Entity* type, and the table has several rows selected, then the report runs several times according to the number of selected instances. After execution, the user gets a single ZIP archive containing all generated reports.
+** If the parameter is of the *Entity* type, and the list component has several rows selected, then the report runs several times according to the number of selected instances. After execution, the user gets a single ZIP archive containing all generated reports.
 +
-Below is an example of using the action in a button and the table context menu:
-
-** XML descriptor
+Below is an example of using the declarative action for the `GroupTable`:
 +
 [source, xml]
 ----
-<layout>
-    <groupTable id="booksTable">
-        ...
-        <buttonsPanel id="buttonsPanel">
-            ...
-            <button id="reportButton"
-                    icon="PRINT"/>
-        </buttonsPanel>
-    </groupTable>
+include::{sourcesdir}/run_actions_example5.xml[]
 ----
-
-** Controller
+<1> - the `type` attribute defines a specific `listPrintForm` action type, provided by the framework.
++
+Example of programmatically creating the action together with a button declared in the screen XML descriptor:
 +
 [source, java]
 ----
-@Inject
- private Button reportButton;
-
-@Inject
-private GroupTable<Book> booksTable;
-
-@Subscribe
-private void onInit(InitEvent event) {
-    TablePrintFormAction action = new TablePrintFormAction("report", booksTable);
-    booksTable.addAction(action);
-    reportButton.setAction(action);
-}
+include::{sourcesdir}/run_actions_example6.java[]
 ----
-
-** messages.properties
 +
-[source, groovy]
-----
-report = Report
-----
+When the action is performed, if no entities were selected from the list component, a confirmation window will be displayed.
++
+.A confirmation window
+image::run_actions_listPrint_confirmation.png[align="center"]
++
+After that, the modal **Run reports** dialog will open where reports related to the current screen will be displayed. From this modal screen, the user can run some report for the selected entity.
 
+[[editor_print_form_action]]
 * `com.haulmont.reports.gui.actions.EditorPrintFormAction` – an action associated with an entity editor screen. The action only selects reports having an external parameter of the *Entity* or the *List of entities* type and where the parameter entity type matches the edited entity type. If only one report is available as a result of selection, it is invoked immediately. If several reports are available, their list is offered to user for selection.
 +
 The external parameter value – edited entity instance – is passed into the report. If the parameter has the *List of entities* type, then a list containing a single item is passed.
 +
 Below is an example of using the action in a button located near the standard *OK* and *Cancel* buttons:
-
++
+--
 ** XML descriptor
 +
 [source, xml]
 ----
-<layout expand="editActions" spacing="true">
-    ...
-    <hbox id="editActions" spacing="true">
-        <button action="windowCommitAndClose"/>
-        <button action="windowClose"/>
-        <button id="reportButton" icon="PRINT"/>
-    </hbox>
-</layout>
+include::{sourcesdir}/run_actions_example7.xml[]
 ----
 
 ** Controller
 +
 [source, java]
 ----
-@Inject
-private Button reportButton;
-
-@Subscribe
-private void onBeforeShow(BeforeShowEvent event) {
-    reportButton.setAction(new EditorPrintFormAction("report", this, null));
-}
+include::{sourcesdir}/run_actions_example8.java[]
 ----
+--
 
-** messages.properties
+[[execution_history_action]]
+* `com.haulmont.reports.gui.actions.list.ExecutionHistoryAction` – a {main_man_url}/standard_actions.html[standard action] for displaying the report <<execution_history,execution history>>. It should be defined for a `Button` or a list component (`Table`, `DataGrid`, etc.).
 +
-[source, groovy]
+To view the report execution history set the <<reporting.executionHistory.enabled,reporting.executionHistory.enabled>> application property to `true` in the **Administration > Application Properties** screen.
++
+Below is an example of using the declarative action for the `GroupTable`:
++
+[source, xml]
 ----
-report = Report
+include::{sourcesdir}/run_actions_example3.xml[]
 ----
-
+<1> - the `type` attribute defines a specific `executionHistory` action type, provided by the framework.
++
+Example of programmatically creating the action together with a button declared in the screen XML descriptor:
++
+[source, java]
+----
+include::{sourcesdir}/run_actions_example4.java[]
+----
++
+When the action is performed, a modal **Execution history** dialog will open where reports related to the current screen will be displayed. After clicking on the **Execution History** button, the execution history for the selected reports will be displayed. If no reports have been selected, then execution history will be displayed for all reports associated with the screen.

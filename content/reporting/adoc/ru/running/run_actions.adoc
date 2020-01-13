@@ -7,136 +7,105 @@
 
 Рассмотрим типы действий и примеры их использования.
 
-* `com.haulmont.reports.gui.actions.RunReportAction` – действие, отображающее список всех доступных отчётов. При выборе пользователем отчёта из списка отображается форма ввода параметров (если они заданы), и отчёт запускается на исполнение.
+[[run_report_action]]
+* `com.haulmont.reports.gui.actions.list.RunReportAction` – {main_man_url}/standard_actions.html[стандартное действие], отображающее список всех доступных отчётов. Действие определяется для компонента `Button` или для компонента-списка (`Table`, `DataGrid` и так далее).
 +
-Пример использования действия совместно с кнопкой, объявленной в XML-дескрипторе экрана:
-
-** XML-дескриптор
+Пример декларативного объявления действия для `GroupTable`:
 +
 [source, xml]
 ----
-<layout>
-    <groupTable id="booksTable">
-        ...
-        <buttonsPanel id="buttonsPanel">
-            ...          
-            <button id="reportButton"
-                    icon="PRINT"/>
-        </buttonsPanel>
-    </groupTable>
+include::{sourcesdir}/run_actions_example1.xml[]
 ----
-
-** Контроллер
+<1> - в атрибуте `type` задаётся тип действия `runReport`, предоставляемый фреймворком.
++
+Пример программного создания действия для кнопки, объявленной в XML-дескрипторе экрана:
 +
 [source, java]
 ----
-@Inject
-private Button reportButton;
-
-@Subscribe
-private void onInit(InitEvent event) {
-    reportButton.setAction(new RunReportAction("report"));
-}
+include::{sourcesdir}/run_actions_example2.java[]
 ----
-
-** messages.properties
 +
-[source, properties]
-----
-report = Report
-----
+При выполнении действия `RunReportAction` откроется модальное окно **Run Reports**, в котором будут отображаться отчёты, доступные для текущего экрана. При выборе пользователем отчёта из списка отображается форма ввода параметров (если они заданы), и отчёт запускается на исполнение.
 
-* `com.haulmont.reports.gui.actions.TablePrintFormAction` – действие, связанное с таблицей, отображающей список экземпляров сущности. Действие отбирает только те отчёты, которые имеют внешний параметр типа *Entity* или *List of entities*, и тип сущности параметра совпадает с типом сущности, отображаемой таблицей. Если в результате отбора доступен только один отчёт, он сразу запускается на выполнение. Если доступно несколько отчётов, их список предлагается пользователю.
+[[list_print_form_action]]
+* `com.haulmont.reports.gui.actions.list.ListPrintFormAction` – {main_man_url}/standard_actions.html[стандартное действие] для печати отчётов для экземпляров сущностей, определённое для компонента-списка (`Table`, `DataGrid` и так далее).
++
+Действие отбирает только те отчёты, которые имеют внешний параметр типа *Entity* или *List of entities*, и тип сущности параметра совпадает с типом сущности, отображаемой компонентом-списком. Если в результате отбора доступен только один отчёт, он сразу запускается на исполнение. Если доступно несколько отчётов, их список предлагается пользователю.
 +
 --
 В отчёт передается значение внешнего параметра по следующим правилам:
 
-** Если параметр типа *List of entities*, то в него передается список выбранных в данный момент в таблице экземпляров.
+** Если параметр типа *List of entities*, то в него передаются выбранные в данный момент в компоненте-списке экземпляры сущности.
 
-** Если параметр типа *Entity*, и в таблице выбран один экземпляр (выделена одна строка), то в отчёт передается этот экземпляр.
+** Если параметр типа *Entity*, и в компоненте-списке выбран один экземпляр (выделена одна строка), то в отчёт передается этот экземпляр.
 
-** Если параметр типа *Entity*, а в таблице выделено несколько строк, то отчёт выполняется несколько раз по числу выбранных экземпляров. После выполнения пользователю возвращается один ZIP архив, в котором находятся все сформированные отчёты.
+** Если параметр типа *Entity*, а в компоненте-списке выделено несколько строк, то отчёт исполняется несколько раз по числу выбранных экземпляров. После выполнения пользователю возвращается один ZIP архив, в котором находятся все сформированные отчёты.
 --
 +
-Пример использования с кнопкой и контекстным меню таблицы:
-
-** XML-дескриптор
+Пример декларативного объявления действия для `GroupTable`:
 +
 [source, xml]
 ----
-<layout>
-    <groupTable id="booksTable">
-        ...
-        <buttonsPanel id="buttonsPanel">
-            ...          
-            <button id="reportButton"
-                    icon="PRINT"/>
-        </buttonsPanel>
-    </groupTable>
+include::{sourcesdir}/run_actions_example5.xml[]
 ----
-
-** Контроллер
+<1> - в атрибуте `type` задаётся тип действия `listPrintForm`, предоставляемый фреймворком.
++
+Пример программного создания действия для кнопки, объявленной в XML-дескрипторе экрана:
 +
 [source, java]
 ----
-@Inject
- private Button reportButton;
-
-@Inject
-private GroupTable<Book> booksTable;
-
-@Subscribe
-private void onInit(InitEvent event) {
-    TablePrintFormAction action = new TablePrintFormAction("report", booksTable);
-    booksTable.addAction(action);
-    reportButton.setAction(action);
-}
+include::{sourcesdir}/run_actions_example6.java[]
 ----
-
-** messages.properties
 +
-[source, properties]
-----
-report = Report
-----
+Если в компоненте-списке не было выбрано ни одной сущности, то при выполнении действия `ListPrintFormAction` появится окно подтверждения:
++
+.Окно подтверждения
+image::run_actions_listPrint_confirmation.png[align="center"]
++
+После этого откроется модальное окно **Run reports**, в котором отображаются отчёты, относящиеся к текущему экрану. С этого экрана пользователь может запустить некоторый отчёт для выбранной сущности.
 
+[[editor_print_form_action]]
 * `com.haulmont.reports.gui.actions.EditorPrintFormAction` – действие, связанное с экраном редактирования экземпляра сущности. Действие отбирает только те отчёты, которые имеют внешний параметр типа *Entity* или *List of entities*, и тип сущности параметра совпадает с типом редактируемой сущности. Если в результате отбора доступен только один отчёт, он сразу запускается на выполнение. Если доступно несколько отчётов, их список предлагается пользователю.
 +
 В отчёт передается значение внешнего параметра – экземпляр редактируемой сущности. Если тип параметра – *List of entities*, то передается список из одного элемента.
 +
 Пример использования с кнопкой, размещенной рядом со стандартными кнопками *OK* и *Cancel*:
-
++
+--
 ** XML-дескриптор
-
++
 [source, xml]
 ----
-<layout expand="editActions" spacing="true">
-    ...
-    <hbox id="editActions" spacing="true">
-        <button action="windowCommitAndClose"/>
-        <button action="windowClose"/>
-        <button id="reportButton" icon="PRINT"/>
-    </hbox>
-</layout>
+include::{sourcesdir}/run_actions_example7.xml[]
 ----
 
 ** Контроллер
 +
 [source, java]
 ----
-@Inject
-private Button reportButton;
-
-@Subscribe
-private void onBeforeShow(BeforeShowEvent event) {
-    reportButton.setAction(new EditorPrintFormAction("report", this, null));
-}
+include::{sourcesdir}/run_actions_example8.java[]
 ----
+--
 
-** messages.properties
+[[execution_history_action]]
+* `com.haulmont.reports.gui.actions.list.ExecutionHistoryAction` – {main_man_url}/standard_actions.html[стандартное действие] для отображения <<execution_history,истории исполнения>> отчёта. Действие определяется для компонента `Button` или для компонента-списка (`Table`, `DataGrid` и так далее).
 +
-[source, properties]
+Для просмотра истории задайте свойству <<reporting.executionHistory.enabled,reporting.executionHistory.enabled>> значение `true` в экране **Administration > Application Properties**.
++
+Пример декларативного объявления действия для `GroupTable`:
++
+[source, xml]
 ----
-report = Report
+include::{sourcesdir}/run_actions_example3.xml[]
 ----
+<1> - в атрибуте `type` задаётся тип действия `executionHistory`, предоставляемый фреймворком.
++
+Пример программного создания действия для кнопки, объявленной в XML-дескрипторе экрана:
++
+[source, java]
+----
+include::{sourcesdir}/run_actions_example4.java[]
+----
++
+При выполнении действия `ExecutionHistoryAction` откроется модальное окно **Execution history**, в котором будут отображаться отчёты, доступные для текущего экрана. При выборе пользователем отчёта из списка отображается экран просмотра истории исполнения выбранного отчёта. Если в списке отчётов ни один отчёт не был выбран, то в экране просмотра будет отображена история исполнения всех отчётов, связанных с экраном.
 
