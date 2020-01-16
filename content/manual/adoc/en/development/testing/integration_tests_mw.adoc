@@ -9,31 +9,38 @@ Right after creating a new project in Studio, you can find two classes in the ba
 
 Let's consider the generated test container class and how it should be adapted to your needs.
 
-The class must extend `TestContainer` provided by CUBA. In the constructor, you should add <<app_components_recipes,application components>> (add-ons) used in your project to the `appComponents` list. Also, you can specify additional application properties files in the `appPropertiesFiles` list.
+The class must extend `TestContainer` provided by CUBA. In the constructor, you should do the following:
 
-The `initDbProperties()` method performs initialization of the database connection properties. In the generated test container, it tries to find the <<db_connection,connection properties>> regardless of whether they are defined in application properties or in <<context.xml,context.xml>>. If you keep the method implementation as is, your tests will work against your main data store even if you change its type or how the JDBC DataSource is defined.
+* Add <<app_components_recipes,application components>> (add-ons) used in your project to the `appComponents` list.
+* If needed, specify additional application properties files in the `appPropertiesFiles` list.
+* Invoke the `autoConfigureDataSource()` method to initialize the test data source using the information from application properties or <<context.xml,context.xml>>.
+
+The generated test container provides connection to the same database as used by the application, so your tests will work against your main data store even if you change its type or how the JDBC DataSource is defined.
 
 There is a disadvantage of using the same database for tests and for the application: the data entered manually may interfere with test data and break test execution. To avoid this, you can set up a separate database and use it only for tests. We recommend using a test database of the same type as your main database in order to use the same set of <<db_scripts,database migration scripts>>. Below is an example of setting up a test database on local PostgreSQL.
 
-First, implement the `initDbProperties()` method as follows:
-
-[source, java]
-----
-public class DemoTestContainer extends TestContainer {
-    // ...
-    private void initDbProperties() {
-        dbDriver = "org.postgresql.Driver";
-        dbUrl = "jdbc:postgresql://localhost/demo_test";
-        dbUser = "cuba";
-        dbPassword = "cuba";
-    }
-----
-
-Then add the <<build.gradle_createDb, test database creation task>> to `build.gradle`:
+First, add the test database creation <<build.gradle_createDb,task>> to `build.gradle`:
 
 [source, groovy]
 ----
 include::{sourcesdir}/development/testing_4.groovy[]
+----
+
+Then create the `test-app.properties` file in the base package of the test sources root (e.g. `modules/core/test/com/company/demo/test-app.properties`) and specify the test database connection properties:
+
+[source,properties]
+----
+cuba.dataSource.host = localhost
+cuba.dataSource.dbName = demo_test
+cuba.dataSource.username = cuba
+cuba.dataSource.password = cuba
+----
+
+Add this file to the `appPropertiesFiles` list of the test container:
+
+[source,java]
+----
+include::{sourcesdir}/development/testing_1.java[]
 ----
 
 Before running tests, create the test database by executing the task:
@@ -60,6 +67,8 @@ The `TestContainer` class has the following methods that can be used in the test
 * `metadata()` – returns the reference to the <<metadata,Metadata>> interface.
 
 * `deleteRecord()` – this set of overloaded methods is aimed to be used in `@After` methods to clean up the database after tests.
+
+Besides, you can obtain any bean using the `AppBeans.get()` static method as shown in the example above.
 --
 
 Logging::
@@ -85,14 +94,7 @@ include::{sourcesdir}/development/testing_9.java[]
 Additional Data Stores::
 +
 --
-If your project uses <<data_store,additional data stores>>, you should create corresponding JDBC data sources in your test container. For example, if you have `mydb` datastore which is a PostgreSQL database, add the following method to the test container class:
-
-[source, java]
-----
-include::{sourcesdir}/development/testing_10.java[]
-----
-
-Also, if the additional database type is different from the main one, you should add its driver as the `testRuntime` dependency to the `core` module in `build.gradle`, for example:
+If your project uses <<data_store,additional data stores>> and the additional database type is different from the main one, you should add its driver as the `testRuntime` dependency to the `core` module in `build.gradle`, for example:
 
 [source, java]
 ----
