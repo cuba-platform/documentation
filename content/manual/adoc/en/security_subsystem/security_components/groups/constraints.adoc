@@ -3,38 +3,40 @@
 [[constraints]]
 ===== Constraints
 
-Constraints restrict user access to entity instances. Unlike the permissions which are applied to _classes_ of entities, constraints are applied to _particular entity instances_ that do not match the constraint conditions. Constraints can be set for creation, reading, updating and deletion. Besides, one can add custom constraints not related to CRUD actions.
+Constraints allow you to configure _row-level access control_, i.e. to manage access to particular rows of data. Unlike <<permissions,permissions>> which affect the whole types of entities, constraints affect particular entity instances. Constraints can be set for reading, creating, updating and deletion, so the framework will filter out some entities when loading or disable entity operations for an instance if it matches a constraint. Besides, one can add custom constraints not related to CRUD actions.
 
 [TIP]
 ====
-A user gets the constraints list from all groups starting with their own one, and up the hierarchy. Thus, the following principle is implemented: the lower the users are in the groups hierarchy, the more constraints they have.
+A user gets the set of constraints from all groups starting with their own one, and up the hierarchy. Therefore, the lower the users are in the groups hierarchy, the more constraints they have.
 ====
 
 Note that constraints are checked for all operations performed from the client tier through the standard <<dataManager,DataManager>>. If an entity does not match the constraints conditions during creation, modification or deletion, the `RowLevelSecurityException` is thrown. See also the <<data_access_checks>> section for how security constraints are used by different mechanisms of the framework.
 
-There are three types of constraint check: check in database, check in memory, check in database and in memory.
+There are two types of constraints: checked in database and checked in memory.
 
-. For the constraints with check in database, conditions are specified using <<jpql,JPQL>> expression fragments. These fragments are appended to all entity instance selection queries. So the entities not matching the conditions are filtered on the database level. Constraints with database check can be used only for the read operation.
+. For the constraints checked in database, conditions are specified using <<jpql,JPQL>> expression fragments. These fragments are appended to all entity selection queries, so the entities not matching the conditions are filtered on the database level. Constraints checked in database can be used only for the read operation and affect only root entities of the loaded object graphs.
 
-. For the constraints with check in memory, the conditions are specified using Groovy expressions. The expressions are executed for every entity in the checked graph of objects, and if the entity does not match the conditions, it is filtered from the graph.
+. For the constraints checked in memory, the conditions are specified using Java code (if the constraint is defined at design time) or Groovy expressions (if the constraint is defined at run time). The expressions are executed for every entity in the checked graph of objects, and if the entity does not match the conditions, it is filtered out from the graph.
 
-. The constraints with check in database and in memory are combination of previous two types.
+[[constraints_design_time]]
+Defining constraints at design time::
++
+--
+Constraints can be defined in a class extending `AnnotatedAccessGroupDefinition` that is used to define the <<groups,access group>>. The class must be located in the `core` module. Below is an example of an access group that defines a few constraints for the `Customer` and `Order` entities:
 
-In order to create a constraint, open the *Access Groups* screen, select a group to create the constraint for, go to the *Constraints* tab and click *Create*:
+[source,java]
+----
+include::{sourcesdir}/security/constraints_1.java[]
+----
+<1> - load only customers with `grade` attribute equals `B` (corresponds to the `Grade.BRONZE` enum value).
+<2> - load only orders for customers with `grade` attribute equals `B`.
+<3> - in-memory constraint that filters out customers with `grade` other than `Grade.BRONZE` from loaded object graphs.
+<4> - in-memory constraint that allows to work with orders for customers only with `grade == Grade.BRONZE`.
+<5> - in-memory constraint that allows to modify or delete only orders with `amount < 100`.
 
-image::constraint_edit.png[align="center"]
+Consider the following rules when writing JPQL constraints:
 
-Select an entity from the *Entity Name* drop-down list, operation type from the *Operation Type* drop-down list, check type from the *Check type* drop-down list. Depending on selected check type, you have to set JPQL conditions in the *Join Clause* and *Where Clause* fields and/or Groovy condition in the *Groovy Script* field. You can use the *Constraint Wizard*, which enables visual creation of the JPQL and Groovy conditions.
-When you select custom operation type, the required *Code* field appears, and you should set a specific code, which will be used to identify the constraint.
-
-[TIP]
-====
-The JPQL editor in the *Join Clause* and *Where Clause* fields supports autocompletion for entity names and their attributes. In order to invoke autocompletion, press *Ctrl+Space*. If the invocation is made after the period symbol, an entity attributes list matching the context will be shown, otherwise – a list of all data model entities.
-====
-
-The following JPQL constraint rules apply:
-
-* The `{E}` string should be used as an alias of the entity being extracted. On execution of the query, it will be replaced with a real alias, specified in the query.
+* The `{E}` string should be used as an alias of the entity being loaded. On execution of the query, it will be replaced with a real alias specified in the query.
 
 * The following predefined constants can be used in JPQL parameters:
 
@@ -46,31 +48,38 @@ The following JPQL constraint rules apply:
 
 ** `session$XYZ` – arbitrary attribute of the current <<userSession,user session>>, where XYZ is the attribute name.
 
-* The *Where Clause* field content is added to the `where` query clause using `and` condition. Adding `where` word is not needed, as it will be added automatically.
+* The `where` attribute value is added to the `where` query clause using `and` condition. Adding `where` word is not needed, as it will be added automatically.
 
-* The *Join Clause* field content is added to the `from` query clause. It should begin with a comma, `join` or `left join`.
+* The `join` attribute value is added to the `from` query clause. It should begin with a comma, `join` or `left join`.
+--
 
-The simplest constraint example is shown on the figure above: users with this constraint will see only `ref$Car` entity instances that have VIN starting with '00'.
+[[constraints_run_time]]
+Defining constraints at run time::
++
+--
+In order to create a constraint, open the *Access Groups* screen, select a group to create the constraint for, and go to the *Constraints* tab. The constraint edit screen contains the *Constraint Wizard* which helps to construct simple JPQL and Groovy expressions with entity attributes. When you select *Custom* as an operation type, the required *Code* field appears and you should set a code which will be used to identify the constraint.
 
-Another common example: if an entity refers to the `User` entity with many-to-many association, and you want the users to see only the instances they are referred to, you can use the `member of` JPQL operator in the *Where Clause*:
+The JPQL editor in the *Join Clause* and *Where Clause* fields supports auto-completion for entity names and their attributes. In order to invoke auto-completion, press *Ctrl+Space*. If the invocation is made after the period symbol, an entity attributes list matching the context will be shown, otherwise – a list of all data model entities.
 
-[source, java]
-----
-(select u from sec$User u where u.id = :session$userId) member of {E}.users
-----
-
-For an in-memory constraint, the `userSession` variable of the `UserSession` type is passed to the Groovy script. So you can use it to get attributes of the current user session, for example:
+In in-memory Groovy constraints, use `{E}` placeholder as a variable containing the checked entity instance. Besides, the `userSession` variable of the `UserSession` type is passed to the script. The following example shows a constraint checking that the entity is created by the current user:
 
 [source, java]
 ----
 include::{sourcesdir}/security/constraints_2.groovy[]
 ----
 
+When a constraint is violated, a notification is shown to the user. Notification caption and message for each constraint can be localized: see *Localization* button on the *Constraints* tab of the *Access Groups* screen.
+--
+
+[[checking_constraints]]
+Checking constraints in application code::
++
+--
 A developer can check the constraints conditions for the particular entity using the following methods of the `Security` interface:
 
 * `isPermitted(Entity, ConstraintOperationType)` - to check constraints by the operation type.
 
-* `isPermitted(Entity, String)` - to check constraints by the string code.
+* `isPermitted(Entity, String)` - to check custom constraints by the constraint code.
 
 Also, it is possible to link any any action based on the `ItemTrackingAction` class with a certain constraint. The `constraintOperationType` attribute should be set for the `action` XML element or using the `setConstraintOperationType()` method. Be aware that the constraint code will be executed on the client tier, so it must not use middleware classes.
 
@@ -79,9 +88,4 @@ Example:
 ----
 include::{sourcesdir}/security/constraints_1.xml[]
 ----
-
-[TIP]
-====
-When a constraint is violated, a notification is shown to the user. Notification caption and message for each constraint can be localized: see *Localization* button on the *Constraints* tab of the *Access Groups* screen.
-====
-
+--

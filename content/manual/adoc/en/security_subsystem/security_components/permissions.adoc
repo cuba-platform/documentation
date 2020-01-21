@@ -3,73 +3,70 @@
 [[permissions]]
 ==== Permissions
 
-The _permission_ determines the user's right to any system object or functionality, such as screen, entity operation, etc. The permission can either grant the user the right to the object, or revoke it (in essence, it is actually a _prohibition_).
+_Permissions_ determine the user's right to application objects and functions, such as UI screens or entity operations. With regards to permissions, these objects are called _targets_.
+
+Permissions are granted to users by assigning <<roles,roles>> to them.
 
 [TIP]
 ====
-By default, the user has the right to an object, unless explicitly denied by a permission.
+Users have no rights to a target, unless an appropriate permission is given to them by a role. So users without roles have no any rights and cannot access the system through the Generic UI and REST API.
 ====
 
-The permissions are granted by the `sec$Permission` entity instances and contain the following attributes:
+There are the following types of permissions differentiated by targets:
 
-* `type` – permission type: determines the object type the permission is imposed on.
-
-* `target` – permission object: determines the specific object the permission is imposed on. The format of the attribute depends on the permission type.
-
-* `value` – permission value. The value range depends on the permission type.
-
-The permission types are described below:
-
-* `PermissionType.SCREEN` – screen permission.
+Screen permissions::
 +
-The screen identifier should be specified in the `target` attribute; the `value` attribute can be 0 or 1 (the screen is denied or allowed, respectively).
+The screen permissions are checked by the framework when building the main menu and creating screens using the `create()` method of the `Screens` interface.
 +
-The screen permissions are checked when building the system main menu and with each invocation of the `openWindow()`, `openEditor()`, `openLookup()` methods of the <<abstractFrame,Frame>> interfaces.
-+
-To check the screen permission in the application code, use the `isScreenPermitted()` method of the <<security,Security>> interface.
+To check screen permissions in the application code, use the `isScreenPermitted()` method of the <<security,Security>> interface.
 
-* `++PermissionType.ENTITY_OP++` – entity operation permission.
-+
-The entity name should be specified in the `target` attribute, followed by a colon, and then an operation type: `create`, `read`, `update`, `delete`. For example: `*library_Book:delete*`. The `value` attribute can be 0 or 1 (the operation is denied or allowed, respectively).
+Entity operation permissions::
 +
 See the <<data_access_checks>> section for how entity operation permissions are used by different mechanisms of the framework.
 +
-To check the entity operation permission in the application code, use the `isEntityOpPermitted()` method of the <<security,Security>> interface.
+To check entity operation permissions in the application code, use the `isEntityOpPermitted()` method of the <<security,Security>> interface.
 
-* `++PermissionType.ENTITY_ATTR++` – entity attribute permission.
-+
-The entity name should be specified in the `target` attribute, followed by a colon, and then an attribute name. For example: `*library_Book:name*`. The `value` attribute can be 0, 1 or 2 (the attribute is hidden, read-only or read-write, respectively).
+Entity attribute permissions::
 +
 See the <<data_access_checks>> section for how entity attribute permissions are used by different mechanisms of the framework.
 +
-To check the entity attribute permission in the application code, use the `isEntityAttrPermitted()` method of the <<security,Security>> interface.
+To check entity attribute permissions in the application code, use the `isEntityAttrPermitted()` method of the <<security,Security>> interface.
 
-* `PermissionType.SPECIFIC` – permission on an arbitrary named functionality. Specific permissions can be used instead of roles for binary permitting/denying some project-specific functionality, as roles are designed for aggregating permissions.
+Specific permissions::
 +
-The functionality identifier should be specified in the `target` attribute; the `value` attribute can be 0 or 1 (denied or allowed, respectively).
+These are permissions on arbitrary named functionality. Specific permissions for the project are set in the <<permissions.xml,permissions.xml>> configuration file.
 +
-Specific permissions for this project are set in the configuration file <<permissions.xml,permissions.xml>>.
-+
-For example:
+An example of checking a specific permission :
 +
 [source, java]
 ----
 @Inject
 private Security security;
 
-private void calculateBalance() {
+public void calculateBalance() {
     if (!security.isSpecificPermitted("myapp.calculateBalance"))
         return;
-    ...
+    // ...
 }
 ----
 
-* `PermissionType.UI` – arbitrary screen component permission.
+Screen component permissions::
 +
-The screen identifier should be specified in the `target` attribute, followed by a colon, and then a component path. The format of the component path is described in the next section.
+--
+Screen component permissions allow you to hide or make read-only particular UI components of a screen, regardless of whether they are bound to entities or not. Screen component permissions are applied by the framework after sending <<screen_AfterInitEvent,AfterInitEvent>> and before <<screen_BeforeShowEvent,BeforeShowEvent>>.
 
 [TIP]
 ====
-To check permissions, instead of directly using methods of the `UserSession` class, it is recommended to use the same methods of <<security,Security>> interface that works with possible entity <<entity_extension,extension>>.
+The screen component permissions differ from other permission types in that they actually only restrict rights to their targets. Until you define a target component and a hidden/read-only permission for it, the component is fully available to the user.
 ====
 
+The target component is specified by its path in the screen according to the following rules:
+
+* If the component belongs to the screen, simply specify the component identifier.
+
+* If the component belongs to the fragment that is embedded within the screen, specify the fragment identifier, and then the component identifier separated by period.
+
+* If configuring permission for the <<gui_TabSheet>> tab or the <<gui_Form>> field, specify the component identifier, and then the tab or field identifier in square brackets.
+
+* To configure permission for an <<gui_Action,action>>, specify the component, holding the action, and then the action identifier in angle brackets. For example: `customersTable<changeGrade>`.
+--
