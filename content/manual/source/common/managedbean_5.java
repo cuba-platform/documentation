@@ -19,6 +19,6 @@ public class OrderServiceBean implements OrderService {
     @Override
     public BigDecimal calculateTotals(Order order) {
         Order entity = persistence.getEntityManager().merge(order);
-        orderWorker.calculateTotals(entity);
+        return orderWorker.calculateTotals(entity);
     }
 }
