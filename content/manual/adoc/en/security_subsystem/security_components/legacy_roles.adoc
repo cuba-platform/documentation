@@ -3,26 +3,37 @@
 [[legacy_roles]]
 ==== Legacy Roles and Permissions
 
-Before CUBA 7.2, the method of calculating effective permissions was different. A permission could be granted either explicitly by specifying "allow/deny" for a target, or by a role of a certain type, e.g. "Denying" role gave "deny" permissions to all targets except entity attributes. If a target took no explicit permission or permission by a role type, it was fully available to the user. As a result, a user without roles at all had all rights to the system.
+Before CUBA 7.2, the method of calculating effective permissions was different:
+
+. There were two types of permissions: "allow" and "deny".
+. If no role assigned a denying permission to a target, it was allowed.
+. A permission could be granted either explicitly by specifying "allow/deny" for a target, or by a role of a certain type, e.g. "Denying" role gave "deny" permissions to all targets except entity attributes. If a target took no explicit permission or permission by a role type, it was fully available to the user. As a result, a user without roles at all had all rights to the system.
 
 It was recommended to give regular users first a "Denying" role, and then a set of roles with explicit allowing permissions. Now the denying role is not needed because users have no rights to a target, unless an appropriate permission is given to them by a role.
 
 Also, in the previous versions, there were no <<security_scope,security scopes>>, so all roles affected both Generic UI and REST API clients.
 
-If you are migrating to CUBA 7.2 from a previous version and want to keep your existing security configuration, follow the steps below to switch the security subsystem to the legacy behavior.
+The security behavior is controlled by a few application properties with default values corresponding to the new behavior. If you are migrating to CUBA 7.2 from a previous version, Studio adds the properties shown below to switch to the legacy behavior and keep your existing security configuration. If you want to take advantage of the new features (e.g. design-time roles) and reconfigure your security, remove these properties.
 
-In `core` module, set properties for legacy permissions calculation method and using <<default-permission-values.xml>> configuration file:
+In the `core` module, the properties for legacy security policy, using <<default-permission-values.xml>> configuration file and ignoring the new `system-minimal` role are set:
 
 .app.properties
 [source,properties]
 ----
-cuba.security.undefinedAccessPolicy = ALLOW
+cuba.security.rolesPolicyVersion = 1
 cuba.security.defaultPermissionValuesConfigEnabled = true
+cuba.security.minimalRoleIsDefault = false
 ----
 
-If your project uses the REST API add-on, add the following property in the `web` module to set REST security scope to the same value as used by the Generic UI:
+If your project uses the REST API add-on, the following property is set in the `web` and `portal` modules to set REST security scope to the same value as used by the Generic UI:
 
 .web-app.properties
+[source,properties]
+----
+cuba.rest.securityScope = GENERIC_UI
+----
+
+.portal-app.properties
 [source,properties]
 ----
 cuba.rest.securityScope = GENERIC_UI

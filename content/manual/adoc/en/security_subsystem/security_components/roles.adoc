@@ -5,16 +5,11 @@
 
 A role combines a set of <<permissions,permissions>> that can be granted to users.
 
-The user may have multiple roles, in which case a logical sum (OR) is computed from all of the assigned roles. For example, if a user has roles A and B where role A denies X and role B allows X, then X will be allowed.
+The user may have multiple roles, in which case a logical sum (OR) is computed from all of the assigned roles. For example, if a user has roles A and B where role A does not grant a permission to X and role B allows X, then X will be allowed.
 
-Each role grants permissions on all targets (except screen components) in one of two ways:
+A role can grant permissions to individual targets, as well as to the whole categories of targets: screens, entity operations, entity attributes, specific permissions. For example, you can easily give the Read permission to all entities and the View permission to all their attributes.
 
-* Explicitly: by specifying a permission for a given target.
-* By default: if no permission is specified for a target explicitly, the permission on the target is given by a default value specified for the whole permission type.
-
-For example, in an application with X and Y screens, if a role specifies "allow" permission for the X screen and "deny" default permission for all screens, then the resulting permissions will be "allow" for X and "deny" for Y.
-
-The screen component permissions are a notable exception to the above rules: they have no default values and can be defined only explicitly. Also, if no role defines a permission to a screen component, it is fully available to the user.
+The screen component permissions are a notable exception to the above rules: they can be defined only for a concrete component, and if no role defines a permission to a component, it is fully available to the user.
 
 A role can be "default" with regards to users, which means that it is assigned to new users automatically. It allows you to grant a certain set of permissions to each new user by default.
 
@@ -28,6 +23,18 @@ The recommended way to define a role is to create a class extending `AnnotatedRo
 ----
 include::{sourcesdir}/security/roles_1.java[]
 ----
+
+The annotations can be specified multiple times. For example, the following role gives read-only access to all entities and their attributes, allows to modify customer's `grade` and `comments` attributes, allows to create/update order entity and all its attributes:
+
+[source,java]
+----
+include::{sourcesdir}/security/roles_2.java[]
+----
+
+[WARNING]
+====
+You can create roles at design time only if the <<cuba.security.rolesPolicyVersion,cuba.security.rolesPolicyVersion>> application property is set to 2, which is the default for new projects created with CUBA 7.2 or newer. If you are migrating from an earlier version, see <<legacy_roles>>.
+====
 --
 
 [[roles_run_time]]
@@ -36,15 +43,23 @@ Defining roles at run time::
 --
 The framework contains UI that allows you to define roles in the running application, see *Administration > Roles*. Roles created at run time can be modified or removed. Roles defined at design time are read-only.
 
-On the upper part of the role editor screen you can define common role parameters and default permission values. The bottom part of the screen contains tabs for defining explicit permission values.
+On the upper part of the role editor screen you can define common role parameters. The bottom part of the screen contains tabs for defining permissions.
 
 * The *Screens* tab configures screen permissions. The tree reflects the structure of the application's main menu. In order to set permissions for a screen not accessible through the main menu (for example, an entity edit screen), find it in the *Other screens* which is the last tree element.
++
+*Allow all screens* checkbox enables all screens at once. It is an equivalent of `@ScreenAccess(screenIds = "*")`.
 
 * The *Entities* tab configures entity operation permissions. The *Assigned only* checkbox is selected by default, so that the table contains only the entities that have explicit permissions in this role. Therefore, the table for a new role will be empty. In order to add permissions, uncheck *Assigned only* and click *Apply*. The entity list can be filtered by entering a part of an entity name in the *Entity* field and clicking *Apply*. The *System level* checkbox enables viewing and selecting system entities marked with the `@SystemLevel` annotation, which are not shown by default.
++
+Use *Allow all entities* panel to enable operations for all entities. It is an equivalent of `@EntityAccess(entityName = "*", ...)`.
 
 * The *Attributes* tab configures entity attribute permissions. The *Permissions* column in the entity table shows the list of the attributes that have explicit permissions. Entity list can be managed similarly to the list in the *Entities* tab.
++
+Use *Allow all attributes* panel to enable viewing or modification of all attributes for all entities. If you want to enable all attributes for a specific entity, select the "++*++" checkbox at the bottom of the *Permissions* panel for this entity. The same can be achieved using the "*" wildcard in the `entityName` and `view/modify` attributes of the `@EntityAttributeAccess` annotation.
 
 * The *Specific* tab configures specific permissions. The <<permissions.xml,permissions.xml>> configuration file defines the names of specific permissions used in the project.
++
+*Allow all specific permissions* checkbox is an equivalent of `@SpecificAccess(permissions = "*")`.
 
 * The *UI* tab configures UI screen component permissions. In order to create a permission, select the desired screen in the *Screen* drop-down list, specify the component path in the *Component* field, and click *Add*. Follow the rules described in the <<permissions>> sections when specifying the target component. You can use the *Components tree* button to see the screen components structure: select a component in the tree and click *Copy id to path* in the context menu.
 --

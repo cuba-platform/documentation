@@ -79,6 +79,38 @@ public class ExtLoginScreen extends LoginScreen {
 
 . Due to introducing {manual}/roles.html#security_scope[security scopes], the `cuba.anonymousSessionId` application property has been removed. Now anonymous sessions for all scopes are created with random identifiers.
 
+. The following changes have been made in the `UserSession` class:
+
+.. In the constructors, the collection of `Role` has been replaced with the collection of `RoleDefinition`.
+
+.. The `addPermission()` and `removePermission()` methods have been removed. The direct replacement for these methods is the manipulation with explicit permissions maps obtained from `UserSession`, for example:
++
+[source,java]
+----
+RoleDefinition joinedRole = userSession.getJoinedRole();
+Map<String, Integer> screenExplicitPermissions = joinedRole.screenPermissions().getExplicitPermissions();
+screenExplicitPermissions.put("demo_Customer.browse", 1);
+----
++
+Another option is to create a new `RoleDefinition` using `BasicRoleDefinition.builder()` and then join with existing roles using `RoleDefinitionsJoiner`:
++
+[source,java]
+----
+RoleDefinition joinedRole = RoleDefinitionsJoiner.join(userSession.getJoinedRole(), myRole);
+userSession.setJoinedRole(joinedRole);
+----
+
+.. The following methods have been removed: `getConstraints(entityName)`, `hasConstraints()`, `addConstraint()`, `removeConstraint()`. To find a particular constraint, use `getConstraints().findConstraintsByEntity()`. To add or remove constraints, use `AccessConstraintsBuilder`:
++
+[source,java]
+----
+ConstraintsContainer constraintsContainer = AccessConstraintsBuilder.create()
+                    .join(userSession.getConstraints())
+                    .withJpql(MyEntity.class, "{E}.createdBy = :session$userLogin")
+                    .build();
+userSession.setConstraints(constraintsContainer);
+----
+
 . When using {manual}/folders_pane.html[Folders Panel], the _Add to set_ action and button do not appear automatically in the tables linked to the generic filter. If you need this action, add it explicitly as described in the {manual}/record_set.html[Record Sets] section.
 
 . Amazon S3 {manual}/file_storage.html[file storage] implementation has been moved to a separate add-on. See the add-on https://github.com/cuba-platform/cuba-aws[README] for details.
@@ -102,9 +134,7 @@ public class ExtLoginScreen extends LoginScreen {
 
 . The security subsystem {manual}/permissions.html[permissions] and {manual}/roles.html[roles] have been reworked to provide "denied by default" model instead of the previous "allowed by default". Newly created with CUBA 7.2 projects will use the new model by default. If you migrate a project from the previous CUBA version, Studio will add the application properties explained in {manual}/legacy_roles.html[Legacy Roles and Permissions] to keep your existing security configuration intact.
 
-. Role types ("Super", "Denying", etc.) have been replaced with default permissions for different categories, see the _Default permissions_ group box in the role edit screen and `@DefaultScreenAccess`, `@DefaultEntityAccess`, `@DefaultEntityAttributeAccess`, `@DefaultSpecificAccess` annotations. When upgrading to CUBA 7.2 from a previous version, your set of roles will be automatically updated by the database migration scripts to convert role types to default permissions.
-
-. Now security {manual}/roles.html[roles] and {manual}/groups.html[access groups] together with permissions and constraints can be defined at design time using annotated Java classes. It makes the access control more robust and eliminates difficulties with transferring the configuration between application instances (e.g. from the development environment to production).
+. Now security {manual}/roles.html[roles] and {manual}/groups.html[access groups] together with permissions and constraints can be defined at design time using annotated Java classes. It makes the access control more robust and eliminates difficulties with transferring the configuration between application instances (e.g. from the development environment to production). Please note that design-time roles will work only in new projects created with CUBA 7.2. If you are migrating from a previous version and want to create roles at design time, you have to remove the properties explained in {manual}/legacy_roles.html[Legacy Roles and Permissions] and reconfigure all your existing roles and permissions.
 
 . {manual}/roles.html#security_scope[Security scopes] have been introduced to allow you to define different sets of roles for users logging in through different clients. The motivation behind this feature is that REST API clients should normally have more restrictions than Generic UI, because Generic UI is more safe by its nature.
 
