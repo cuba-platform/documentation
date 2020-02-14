@@ -22,8 +22,6 @@ image::local_admins_groups.png[align="center"]
 Способ решения задачи:
 
 * Задать для группы `*Departments*` следующие ограничения:
-+
-image::local_admins_constraints.png[align="center"]
 
 ** Для сущности `sec$Group`:
 +
@@ -49,24 +47,29 @@ image::local_admins_constraints.png[align="center"]
 +
 Это ограничение не позволяет пользователям видеть других пользователей, входящих в группы выше своей собственной.
 
-** Для сущности `sec$Role`:
+** Для сущности `sec$Role` (ограничение на Groovy проверяемое в памяти):
 +
 [source, jpql]
 ----
-({E}.description is null or {E}.description not like '[hide]')
+!['system-full-access', 'Some Role to Hide 1', 'Some Role to Hide 2'].contains({E}.name)
 ----
 +
-Данное ограничение не позволяет пользователям видеть роли, в атрибуте `description` которых записана строка `*[hide]*`.
+Данное ограничение не позволяет пользователям видеть и получать нежелательные роли.
 
-* Создать роль, которая запретит редактирование ролей и разрешений:
+* Создать роль `Department Administrator` для локальных администраторов:
+
+** На вкладке *Screens* разрешите следующие экраны:
 +
-image::local_admins_role.png[align="center"]
+`Administration`, `Users`, `Access Groups`, `Roles`, `sec$Group.edit`, `sec$Group.lookup`, `sec$Role.lookup`, `sec$User.changePassword`, `sec$User.copySettings`, `sec$User.edit`, `sec$User.lookup`, `sec$User.newPasswords`, `sec$User.resetPasswords`, `sec$UserSubstitution.edit`.
 
-** Установите флажок *Default role*.
+** На вкладке *Entities* разрешите все операции для сущностей `sec$Group`, `sec$User`, `sec$UserRole` и операцию *Read* для сущности `sec$Role` (для добавления разрешений на объект `sec$UserRole` установите флажок *System level*).
 
-** В поле *Description* добавьте строку `*[hide]*`.
+** На вкладке *Attributes* разрешите "*" для сущностей `sec$Group`, `sec$User` и `sec$Role`.
 
-** На вкладке *Entities* запретите операции *create*, *update*, *delete* для сущностей `sec$Role` и `sec$Permission` (для добавления разрешений на объект `sec$Permission` установите флажок *System level*).
-+
-Все создаваемые пользователи, включая локальных администраторов, будут получать роль `*local_user*`. Эта роль невидима для пользователей группы `*Departments*`, поэтому даже локальные администраторы не смогут ее с себя снять. В результате они смогут оперировать только существующими ролями, созданными для них глобальным администратором. Разумеется, эти роли не должны отменять запрещений, введенных ролью `*local_user*`.
+* Создайте локальных администраторов в группах их отделов как показано на скриншоте выше и назначьте им роль `Department Administrator`.
 
+В результате, когда локальный администратор входит в систему, он видит только группу своего отдела и вложенные группы:
+
+image::local_admins_res.png[align="center"]
+
+Локальному администратору доступно создание новых пользователей и назначение им имеющихся ролей, кроме перечисленных в ограничении.

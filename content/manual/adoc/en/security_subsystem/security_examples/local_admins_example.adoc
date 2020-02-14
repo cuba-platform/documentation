@@ -3,9 +3,7 @@
 [[local_admins_example]]
 ==== Creating Local Administrators
 
-*TODO fix*
-
-The hierarchical structure of <<groups,access groups>> combined with the <<constraints,constraints>> inheritance enables creating _local administrators_, by delegating creation and configuration of users and their rights under organization departments.
+The hierarchical structure of <<groups,access groups>> combined with the <<constraints,constraints>> inheritance enables creating _local administrators_, by delegating creation and configuration of users and their rights to organization departments.
 
 The local administrators have access to the security subsystem screens; however, they only see the users and groups in their access group and below. Local administrators can create subgroups and users and <<roles,assign>> roles available in the system, however, they will have at least the same constraints as the administrator who created them.
 
@@ -24,8 +22,6 @@ Problem:
 Solution:
 
 * Add the following constraints for the `*Departments*` group:
-+
-image::local_admins_constraints.png[align="center"]
 
 ** For the `sec$Group` entity:
 +
@@ -51,26 +47,31 @@ With this constraint, the users will not be able to see the groups higher than t
 +
 With this constraint, the users will not be able to see the users in groups higher than their own.
 
-** For the `sec$Role` entity:
+** For the `sec$Role` entity (a Groovy constraint checked in memory):
 +
 [source, plain]
 ----
-({E}.description is null or {E}.description not like '[hide]')
+!['system-full-access', 'Some Role to Hide 1', 'Some Role to Hide 2'].contains({E}.name)
 ----
 +
-With this constraint, the users will not be able to view the roles that have the `*[hide]*` string in the `description` attribute.
+With this constraint, the users will not be able to view and assign unwanted roles.
 
-* Create a role that denies editing roles and permissions:
+* Create the `Department Administrator` role for local administrators:
 +
 --
-image::local_admins_role.png[align="center"]
+** On the *Screens* tab, allow the following screens:
++
+`Administration`, `Users`, `Access Groups`, `Roles`, `sec$Group.edit`, `sec$Group.lookup`, `sec$Role.lookup`, `sec$User.changePassword`, `sec$User.copySettings`, `sec$User.edit`, `sec$User.lookup`, `sec$User.newPasswords`, `sec$User.resetPasswords`, `sec$UserSubstitution.edit`.
 
-** Select the *Default* role checkbox:
+** On the *Entities* tab, allow all operations for `sec$Group`, `sec$User`, `sec$UserRole` entities and allow the *Read* operation for the `sec$Role` entity (to add permissions for the `sec$UserRole` object, select the *System level* checkbox).
 
-** Add the `*[hide]*` string to the *Description* field.
-
-** In the *Entities* tab, deny *create*, *update* and *delete* operations for the `sec$Role` and `sec$Permission` entities (to add permissions for the `sec$Permission` object, select the *System level* checkbox).
-
-All created users, including the local administrators, will get the `*local_user*` role. This role is invisible to the users in the `*Departments*` group, so even the local administrators are unable to unassign this role from themselves. Local administrators can only operate on the existing roles that have been created for them by the global administrator. Obviously, the roles available to department users should not remove restrictions imposed by the `*local_user*` role.
+** On the *Attributes* tab, select "*" for `sec$Group`, `sec$User` and `sec$Role` entities.
 --
 
+* Create local administrators in their departments as shown on the screenshot above and assign the `Department Administrator` role to them.
+
+As a result, when local administrators log in to the system, they see only their department group and nested groups:
+
+image::local_admins_res.png[align="center"]
+
+The local administrator can create new users and assign to them existing roles except listed in the constraint.
