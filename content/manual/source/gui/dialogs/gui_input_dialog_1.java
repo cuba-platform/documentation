@@ -20,7 +20,7 @@ private void onShowDialogBtnClick(Button.ClickEvent event) {
                 if (closeEvent.closedWith(DialogOutcome.OK)) { // <6>
                     String name = closeEvent.getValue("name"); // <7>
                     Double quantity = closeEvent.getValue("quantity");
-                    Customer customer = closeEvent.getValue("customer");
+                    Optional<Customer> customer = closeEvent.getOptional("customer"); // <8>
                     Status status = closeEvent.getValue("status");
                     // process entered values...
                 }
