@@ -2,12 +2,30 @@
 
 # cuba-platform/cuba
 
+* [#2728 Add logo icon in SVG format](https://github.com/cuba-platform/cuba/issues/2728) \
+    `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2726 Incorrect exception when user login to the app and has no permission to see screen from URL path](https://github.com/cuba-platform/cuba/issues/2726) \
+    `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2724 Update credits.xml](https://github.com/cuba-platform/cuba/issues/2724) \
+    `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2722 FTS field inaccurate placement in collapsible side-menu ](https://github.com/cuba-platform/cuba/issues/2722) \
+    `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2721 Default role checkbox in Roles table should be disabled for design-time roles](https://github.com/cuba-platform/cuba/issues/2721) \
+    `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2713 ScreenComponentAccess annotation has wrong attributes](https://github.com/cuba-platform/cuba/issues/2713) \
+    `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2709 Collapsed side menu should affect SideMenu styles only when contains SideMenu component](https://github.com/cuba-platform/cuba/issues/2709) \
+    `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2703 Provide built-in sanitization mechanism for UI components](https://github.com/cuba-platform/cuba/issues/2703) \
+    `severity: major` `state: fixed` `type: security` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2698 Introduce a constant for modal window header font size](https://github.com/cuba-platform/cuba/issues/2698) \
     `state: fixed` `type: enhancement` `ver: 7.1.5` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2688 Disable unnecessary filter settings for search/application folder](https://github.com/cuba-platform/cuba/issues/2688) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2685 Automatic database update creates SYS_DB_CHANGELOG table in a additional datastore](https://github.com/cuba-platform/cuba/issues/2685) \
     `state: fixed` `type: bug` `type: regression` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2683 Provide setRowHeight method for Tree component](https://github.com/cuba-platform/cuba/issues/2683) \
+    `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2679 New security roles policy](https://github.com/cuba-platform/cuba/issues/2679) \
     `comp: security` `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2678 Application fails to start if additional datastore is inaccessible](https://github.com/cuba-platform/cuba/issues/2678) \
@@ -20,8 +38,12 @@
     `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2663 Parameterize types of RemoveAction and ExcludeAction](https://github.com/cuba-platform/cuba/issues/2663) \
     `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2662 Support for Java 8 Date/Time API in DatatypeFormatter](https://github.com/cuba-platform/cuba/issues/2662) \
+    `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2657 Add deprecation annotations to legacy GUI interfaces](https://github.com/cuba-platform/cuba/issues/2657) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2646 RefreshAction doesn't clear modified state of DataContext](https://github.com/cuba-platform/cuba/issues/2646) \
+    `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2638 Display effective permissions for any user](https://github.com/cuba-platform/cuba/issues/2638) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2637 Default role permissions](https://github.com/cuba-platform/cuba/issues/2637) \
@@ -69,7 +91,7 @@
 * [#2569 Unfetched attribute errors with lookup actions](https://github.com/cuba-platform/cuba/issues/2569) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#2564 Add a way to disable automatic suggestions in SourceCodeEditor after a dot is typed](https://github.com/cuba-platform/cuba/issues/2564) \
-    `state: fixed` `type: enhancement` `ver: 7.2.0` 
+    `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2563 Add check if @MappedSuperclass persistent classes are enhanced on app start](https://github.com/cuba-platform/cuba/issues/2563) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#2560 Fix IllegalArgumentException in folder import](https://github.com/cuba-platform/cuba/pull/2560) \
@@ -154,6 +176,8 @@
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#2429 User-friendly handling of optimistic lock exceptions](https://github.com/cuba-platform/cuba/issues/2429) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
+* [#2427 Design time security groups and constraints](https://github.com/cuba-platform/cuba/issues/2427) \
+    `breaking-changes` `important` `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2423 ButtonsPanel has scrollbar in Edge and IE11](https://github.com/cuba-platform/cuba/issues/2423) \
     `state: fixed` `type: regression` `ver: 7.2.0` 
 * [#2422 Implement validators for TokenList in XML descriptor](https://github.com/cuba-platform/cuba/issues/2422) \
@@ -250,6 +274,8 @@
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#2177 Show file name button when value binding connected](https://github.com/cuba-platform/cuba/issues/2177) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
+* [#2172 Design-time security](https://github.com/cuba-platform/cuba/issues/2172) \
+    `breaking-changes` `comp: security` `important` `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2168 Add ability to set item descriptions in Table](https://github.com/cuba-platform/cuba/issues/2168) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#2166 Allow setting the first day of week for Calendar](https://github.com/cuba-platform/cuba/issues/2166) \
@@ -286,6 +312,8 @@
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#1833 Notifications, dialogs and screen builders in XML](https://github.com/cuba-platform/cuba/issues/1833) \
     `important` `type: enhancement` `ver: 7.2.0` 
+* [#1784 Embedded attributes should be read-only if the standard entity with this attribute has read-only permission](https://github.com/cuba-platform/cuba/issues/1784) \
+    `comp: security` `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#1704 DataGrid generated columns that correspond to an Entity attribute must be sortable](https://github.com/cuba-platform/cuba/issues/1704) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#1643 Usability degradation of 'IN' filter in CUBA 6.8.13](https://github.com/cuba-platform/cuba/issues/1643) \
@@ -350,6 +378,8 @@
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#273 Unable to add tab with null child component](https://github.com/cuba-platform/cuba/issues/273) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
+* [#250 SSO integration with SAML](https://github.com/cuba-platform/cuba/issues/250) \
+    `comp: security` `state: won't fix` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#240 Dynamic attributes should support both Date and DateTime datatypes](https://github.com/cuba-platform/cuba/issues/240) \
     `comp: dynamic attr` `state: fixed` `type: enhancement` `ver: 7.1.0` `ver: 7.2.0` 
 * [#236 Exception in TableModelAdapter](https://github.com/cuba-platform/cuba/issues/236) \
@@ -377,6 +407,10 @@
 
 # cuba-platform/cuba-gradle-plugin
 
+* [#129 Fix buildWar and buildUberJar tasks for new frontend](https://github.com/cuba-platform/cuba-gradle-plugin/issues/129) \
+    `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
+* [#128 CreateDb fails if currentSchema of the main connection is defined](https://github.com/cuba-platform/cuba-gradle-plugin/issues/128) \
+    `severity: major` `state: fixed` `type: bug` `ver: 7.2.0` 
 * [#126 Dependencies of uberJar type must be declared only on top level](https://github.com/cuba-platform/cuba-gradle-plugin/issues/126) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#124 Uber Jar task goes to an infinite loop with OutOfMemory error](https://github.com/cuba-platform/cuba-gradle-plugin/issues/124) \
@@ -402,6 +436,8 @@
 
 # cuba-platform/reports
 
+* [#250 Create predefined design-time roles for Reports](https://github.com/cuba-platform/reports/issues/250) \
+    `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#242 Update YARG version to 2.2.5](https://github.com/cuba-platform/reports/issues/242) \
     `ver: 7.2.0` `ver: 7.3.0` 
 * [#241 Incorrect formatter name generation](https://github.com/cuba-platform/reports/issues/241) \
@@ -460,6 +496,8 @@
 
 # cuba-platform/fts
 
+* [#71 Create predefined design-time roles for FTS](https://github.com/cuba-platform/fts/issues/71) \
+    `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#66 Full-Text Search Details action in table and datagrid](https://github.com/cuba-platform/fts/issues/66) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
 * [#65 Display FTS tooltips in DataGrid component](https://github.com/cuba-platform/fts/issues/65) \
@@ -468,6 +506,8 @@
     `state: fixed` `type: bug` `ver: 7.2.0` 
 * [#63 For linked entities FTS results window should display an attribute name](https://github.com/cuba-platform/fts/issues/63) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` 
+* [#62 Optimize memory consumption on search operations](https://github.com/cuba-platform/fts/issues/62) \
+    `state: fixed` `type: performance` `ver: 7.2.0` 
 * [#61 Limit the length of the hit information](https://github.com/cuba-platform/fts/issues/61) \
     `state: fixed` `type: performance` `ver: 7.2.0` 
 * [#59 Fts cannot find roles after reindexing](https://github.com/cuba-platform/fts/issues/59) \
@@ -479,6 +519,8 @@
 
 # cuba-platform/bpm
 
+* [#57 Specify CHAR length for VARCHAR2 columns in the ORACLE scripts](https://github.com/cuba-platform/bpm/issues/57) \
+    `severity: minor` `state: fixed` `ver: 7.2.0` 
 * [#55 JPQL queries with view may cause unexpected database flushes](https://github.com/cuba-platform/bpm/issues/55) \
     `ver: 7.2.0` 
 
