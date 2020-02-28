@@ -20,6 +20,8 @@
     `severity: major` `state: fixed` `type: security` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2698 Introduce a constant for modal window header font size](https://github.com/cuba-platform/cuba/issues/2698) \
     `state: fixed` `type: enhancement` `ver: 7.1.5` `ver: 7.2.0` `ver: 7.3.0` 
+* [#2695 Declarative DataGrid icon renderer dosn't work](https://github.com/cuba-platform/cuba/issues/2695) \
+    `state: fixed` `type: bug` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2688 Disable unnecessary filter settings for search/application folder](https://github.com/cuba-platform/cuba/issues/2688) \
     `state: fixed` `type: enhancement` `ver: 7.2.0` `ver: 7.3.0` 
 * [#2685 Automatic database update creates SYS_DB_CHANGELOG table in a additional datastore](https://github.com/cuba-platform/cuba/issues/2685) \
