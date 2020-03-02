@@ -1,8 +1,5 @@
 @Inject
-private TextField<BigDecimal> textField;
-
-@Inject
-private Slider<Integer> slider;
+private TextField<Integer> textField;
 
 @Subscribe("slider")
 private void onSliderValueChange(HasValue.ValueChangeEvent<Integer> event) {
