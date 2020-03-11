@@ -19,12 +19,52 @@
 .The execution history screen
 image::report_execution_history.png[align="center"]
 
-"Report name" и "Report code" являются денормализованными полями, которые запоминаются во время исполнения для сохранения данных даже после удаления отчёта. Флаг "Cancelled" означает, что пользователь запустил отчёт в фоновом режиме, а затем отменил его.
+Флаг "Cancelled" означает, что пользователь запустил отчёт в фоновом режиме, а затем отменил его.
 
 История исполнения записывается также для отчётов, которые еще не сохранены в БД, но запущены из редактора отчётов (по нажатию на кнопку *Run*).
 
-include::execution_history/history_output_documents.adoc[]
+[[history_output_documents]]
 
-include::execution_history/execution_history_cleanup.adoc[]
+Выходные документы::
++
+--
+Механизм предусматривает возможность сохранения выходных документов –  файлов результатов отчётов –  в {main_man_url}/file_storage.html[хранилище файлов]. Эта функция использует дисковое пространство для хранения файлов; она настраивается отдельно и по умолчанию отключена. Для ее включения определите свойство <<reporting.executionHistory.saveOutputDocument,reporting.executionHistory.saveOutputDocument>> в экране *Administration > Application Properties*:
 
-include::execution_history/execution_history_protection.adoc[]
+[source, properties]
+----
+reporting.executionHistory.saveOutputDocument = true
+----
+
+Теперь, если в таблице просмотра истории выбрана запись, кнопка *Download document* становится доступной. При нажатии на кнопку скачивается документ, представляющий собой файл результата отчёта.
+
+Отчёты с типом вывода <<template_chart,chart>>, <<pivotTable_output,pivot table>> и <<table_output,table>> не имеют результирующих файлов, поэтому история исполнения таких отчётов не сохраняет никаких документов.
+
+Если вы вызываете запуск отчёта программно с помощью метода `createAndSaveReport()`, он сохраняет другую копию того же выходного документа в хранилище файлов. Эти два файла помещаются в хранилище независимо друг от друга.
+--
+
+[[execution_history_cleanup]]
+Удаление истории::
++
+--
+Чтобы регулярно удалять ненужные данные, вы можете настроить процедуру очистки истории исполнения.
+
+* Создайте и активируйте {main_man_url}/scheduled_tasks_cuba.html[назначенное задание]. Перейдите в экран *Administration > Scheduled Tasks* вашего приложения. Создайте новую задачу и установите ей следующие параметры:
+
+** *Bean Name* = `reporting_ExecutionHistoryRecorder`
+** *Method Name* = `cleanupHistory()`
+** *Cron* = nightly, например, `0 0 1 * * *`
+** *Singleton* – да (этот параметр важен только при эксплуатации кластера серверов middleware)
++
+Сохраните задачу и нажмите на ней *Activate*.
+
++
+Если вы ранее не настраивали выполнение назначенных заданий для данного приложения, то на данном этапе ничего не произойдет – новая задача не начнет выполняться, пока вы не запустите весь механизм назначенных заданий с помощью свойства {main_man_url}/app_properties_reference.html#cuba.schedulingActive[cuba.schedulingActive].
+
+* Настройте конфигурационные параметры:
+
+** <<reporting.executionHistory.cleanup.days,reporting.executionHistory.cleanup.days>> – по умолчанию 730 дней.
+** <<reporting.executionHistory.cleanup.itemsPerReport,reporting.executionHistory.cleanup.itemsPerReport>> – по умолчанию 1000.
+
++
+Когда история исполнения очищается, связанные выходные документы удаляются из хранилища файлов.
+--

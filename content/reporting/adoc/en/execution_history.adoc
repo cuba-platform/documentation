@@ -18,12 +18,51 @@ If no reports were selected in the *Reports* table, the execution history of all
 .The execution history screen
 image::report_execution_history.png[align="center"]
 
-"Report name" and "Report code" are denormalization fields, remembered at the execution time to keep data even after the report is deleted. "Cancelled" flag means that the user launched the report as a background task, and then canceled it.
+"Cancelled" flag means that the user launched the report as a background task, and then canceled it.
 
 Execution history is also recorded even for reports which are not yet saved to the database, but launched from the report editor (by clicking the *Run* button).
 
-include::execution_history/history_output_documents.adoc[]
+[[history_output_documents]]
+Output documents::
++
+--
+The mechanism provides an ability to save output documents – report results files – in the {main_man_url}/file_storage.html[file storage]. This feature consumes a file storage disk space; it is configured separately and is disabled by default. To enable it, define the <<reporting.executionHistory.saveOutputDocument,reporting.executionHistory.saveOutputDocument>> application property in the *Administration > Application Properties* screen:
 
-include::execution_history/execution_history_cleanup.adoc[]
+[source, properties]
+----
+reporting.executionHistory.saveOutputDocument = true
+----
 
-include::execution_history/execution_history_protection.adoc[]
+Now, if you select an item in the execution history table, the *Download document* button becomes available. Click the button to download a document that is a report result file.
+
+Reports with output types <<template_chart,chart>>, <<pivotTable_output,pivot table>>, and <<table_output,table>> do not have result files, so the execution history of such reports does not save any output documents.
+
+If you run the report programmatically using the `createAndSaveReport()` method, it saves another copy of the same result document to the file storage. These two files are put to the file storage independently.
+--
+
+[[execution_history_cleanup]]
+Cleanup the history::
++
+--
+You can configure the execution history cleanup procedure to regularly remove unnecessary data.
+
+* Create and activate a {main_man_url}/scheduled_tasks_cuba.html[scheduled task]. Go to the *Administration > Scheduled Tasks* screen of your application. Create a new task and set the following parameters:
+
+** *Bean Name* = `reporting_ExecutionHistoryRecorder`
+** *Method Name* = `cleanupHistory()`
+** *Cron* = nightly, e.g. `0 0 1 * * *`
+** *Singleton* – yes (this is important only for a cluster of middleware servers)
++
+Save the task and click *Activate* on it.
+
++
+If you did not set up the execution of the scheduled tasks for this project before, nothing would happen on this stage – the task will not be executed until you start the whole scheduling mechanism with the {main_man_url}/app_properties_reference.html#cuba.schedulingActive[cuba.schedulingActive] application property.
+
+* Set up the configuration properties:
+
+** <<reporting.executionHistory.cleanup.days,reporting.executionHistory.cleanup.days>> – 730 days by default.
+** <<reporting.executionHistory.cleanup.itemsPerReport,reporting.executionHistory.cleanup.itemsPerReport>> – 1000 by default.
+
++
+When the report execution history is cleaned up, the associated output document is also deleted from the file storage.
+--
