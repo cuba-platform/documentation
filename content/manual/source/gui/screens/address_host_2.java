@@ -11,6 +11,6 @@ public class HostScreen extends Screen {
     @Subscribe
     private void onInit(InitEvent event) {
         AddressFragment addressFragment = fragments.create(this, AddressFragment.class); // <2>
-        addressBox.add(addressFragment.getFragment()); // <4>
+        addressBox.add(addressFragment.getFragment()); // <3>
     }
 }
