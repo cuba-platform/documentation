@@ -1,4 +1,8 @@
-protected void initTableColumns() {
-    Formatter<BigDecimal> currencyFormatter = new CurrencyFormatter(generalConfiguration);
-    table.getColumn("totalPrice").setFormatter(currencyFormatter);
+@Inject
+private GroupTable<Order> ordersTable;
+
+@Subscribe
+public void onInit(InitEvent event) {
+    Function currencyFormatter = new CurrencyFormatter();
+    ordersTable.getColumn("totalPrice").setFormatter(currencyFormatter);
 }
