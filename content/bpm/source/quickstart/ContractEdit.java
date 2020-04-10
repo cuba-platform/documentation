@@ -1,4 +1,4 @@
-package com.company.bpmdemo.web.contract;
+package com.company.bpmdemo.web.screens.contract;
 
 import com.haulmont.bpm.entity.ProcAttachment;
 import com.haulmont.bpm.gui.procactionsfragment.ProcActionsFragment;
@@ -12,7 +12,7 @@ import com.company.bpmdemo.entity.Contract;
 
 import javax.inject.Inject;
 
-@UiController("demo_Contract.edit")
+@UiController("bpmdemo_Contract.edit")
 @UiDescriptor("contract-edit.xml")
 @EditedEntityContainer("contractDc")
 public class ContractEdit extends StandardEditor<Contract> {
