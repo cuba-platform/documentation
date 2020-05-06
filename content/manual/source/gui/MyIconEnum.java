@@ -1,12 +1,12 @@
-import com.haulmont.cuba.gui.icons.Icons;
+public enum MyIcon implements Icons.Icon {
 
-public enum IcoMoonIcon implements Icons.Icon {
-    HEADPHONES("ico-moon:HEADPHONES"),
-    SPINNER("ico-moon:SPINNER");
+    COOL_ICON("icons/cool-icon.png"), // <1>
+
+    OK("icons/my-ok.png"); // <2>
 
     protected String source;
 
-    IcoMoonIcon(String source) {
+    MyIcon(String source) {
         this.source = source;
     }
 

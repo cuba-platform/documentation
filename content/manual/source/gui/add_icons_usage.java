@@ -1,1 +1,1 @@
-spinnerBtn.setIconFromSet("ico-moon:SPINNER");
+spinnerBtn.setIconFromSet(IcoMoonIcon.SPINNER);
