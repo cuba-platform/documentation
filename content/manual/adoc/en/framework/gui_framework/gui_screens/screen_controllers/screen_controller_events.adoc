@@ -10,84 +10,188 @@ This section describes the screen lifecycle events that can be handled in contro
 See https://www.cuba-platform.com/guides/decouple-business-logic-with-app-events#cuba_ui_events[Decouple Business Logic with Application Events] guide to learn examples of using events on the UI layer.
 ====
 
+'''
+
+<<screen_InitEvent,InitEvent>>
+
+<<screen_AfterInitEvent,AfterInitEvent>>
+
+<<screen_InitEntityEvent,InitEntityEvent>>
+
+<<screen_BeforeShowEvent,BeforeShowEvent>>
+
+<<screen_AfterShowEvent,AfterShowEvent>>
+
+<<screen_BeforeCommitChangesEvent,BeforeCommitChangesEvent>>
+
+<<screen_AfterCommitChangesEvent,AfterCommitChangesEvent>>
+
+<<screen_BeforeCloseEvent,BeforeCloseEvent>>
+
+<<screen_AfterCloseEvent,AfterCloseEvent>>
+
+<<screen_AfterDetachEvent,AfterDetachEvent>>
+
+<<screen_UrlParamsChangedEvent,UrlParamsChangedEvent>>
+
+'''
+
 [[screen_InitEvent]]
-* `InitEvent` is sent when the screen controller and all its declaratively defined components are created, and dependency injection is completed. Nested fragments are not initialized yet. Some visual components are not fully initialized, for example buttons are not linked with actions.
+InitEvent::
 +
+--
+`InitEvent` is sent when the screen controller and all its declaratively defined components are created, and dependency injection is completed. Nested fragments are not initialized yet. Some visual components are not fully initialized, for example buttons are not linked with actions.
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/screen_InitEvent.java[]
 ----
+--
 
 [[screen_AfterInitEvent]]
-* `AfterInitEvent` is sent when the screen controller and all its declaratively defined components are created, dependency injection is completed, and all components have completed their internal initialization procedures. Nested screen fragments (if any) have sent their `InitEvent` and `AfterInitEvent`. In this event listener, you can create visual and data components and perform additional initialization if it depends on initialized nested fragments.
+AfterInitEvent::
++
+--
+`AfterInitEvent` is sent when the screen controller and all its declaratively defined components are created, dependency injection is completed, and all components have completed their internal initialization procedures. Nested screen fragments (if any) have sent their `InitEvent` and `AfterInitEvent`. In this event listener, you can create visual and data components and perform additional initialization if it depends on initialized nested fragments.
+--
 
 [[screen_InitEntityEvent]]
-* `InitEntityEvent` is sent in screens inherited from `StandardEditor` and `MasterDetailScreen` before the new entity instance is set to edited entity container.
+InitEntityEvent::
 +
+--
+`InitEntityEvent` is sent in screens inherited from `StandardEditor` and `MasterDetailScreen` before the new entity instance is set to edited entity container.
+
 [TIP]
 ====
 See https://www.cuba-platform.com/guides/initial-entity-values#internal_initialization_via_initentityevent[Initial Entity Values] guide to learn an example of using internal initialization via `InitEntityEvent`.
 ====
-+
+
 Use this event listener to initialize default values in the new entity instance, for example:
-+
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/screen_InitEntityEvent.java[]
 ----
+--
 
 [[screen_BeforeShowEvent]]
-* `BeforeShowEvent` is sent right before the screen is shown, i.e. it is not added to the application UI yet. Security restrictions are applied to UI components. Saved component settings are not yet applied to UI components. Data is not loaded yet for screens annotated with `@LoadDataBeforeShow`. In this event listener, you can load data, check permissions and modify UI components. For example:
+BeforeShowEvent::
 +
+--
+`BeforeShowEvent` is sent right before the screen is shown, i.e. it is not added to the application UI yet. Security restrictions are applied to UI components. Saved component settings are not yet applied to UI components. Data is not loaded yet for screens annotated with `@LoadDataBeforeShow`. In this event listener, you can load data, check permissions and modify UI components. For example:
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/screen_BeforeShowEvent.java[]
 ----
+--
 
 [[screen_AfterShowEvent]]
-* `AfterShowEvent` is sent right after the screen is shown, i.e. when it is added to the application UI. Saved component settings are applied to UI components. In this event listener, you can show notifications, dialogs or other screens. For example:
+AfterShowEvent::
 +
+--
+`AfterShowEvent` is sent right after the screen is shown, i.e. when it is added to the application UI. Saved component settings are applied to UI components. In this event listener, you can show notifications, dialogs or other screens. For example:
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/screen_AfterShowEvent.java[]
 ----
+--
+
+[[screen_BeforeCommitChangesEvent]]
+BeforeCommitChangesEvent::
++
+--
+`BeforeCommitChangesEvent` is sent in screens inherited from `StandardEditor` and `MasterDetailScreen` before saving of changed data by the `commitChanges()` method. In this event listener, you can check any conditions, interact with the user and abort or resume the save operation using the `preventCommit()` and `resume()` methods of the event object.
+
+Let's consider some use cases.
+
+. Abort the save operation with a notification:
++
+[source, java]
+----
+include::{sourcesdir}/gui/screens/screen_BeforeCommitChangesEvent_1.java[]
+----
+
+. Abort saving, show a dialog and resume after confirmation by the user:
++
+[source, java]
+----
+include::{sourcesdir}/gui/screens/screen_BeforeCommitChangesEvent_2.java[]
+----
+
+. Abort saving, show a dialog and retry `commitChanges()` after confirmation by the user:
++
+[source, java]
+----
+include::{sourcesdir}/gui/screens/screen_BeforeCommitChangesEvent_3.java[]
+----
+--
+
+[[screen_AfterCommitChangesEvent]]
+AfterCommitChangesEvent::
++
+--
+`AfterCommitChangesEvent` is sent in screens inherited from `StandardEditor` and `MasterDetailScreen` after saving of changed data by the `commitChanges()` method. Usage example:
+
+[source, java]
+----
+include::{sourcesdir}/gui/screens/screen_AfterCommitChangesEvent.java[]
+----
+--
 
 [[screen_BeforeCloseEvent]]
-* `BeforeCloseEvent` is sent right before the screen is closed by its `close(CloseAction)` method. The screen is still displayed and fully functional. Component settings are not saved yet. In this event listener, you can check any conditions and prevent screen closing using the `preventWindowClose()` method of the event, for example:
+BeforeCloseEvent::
 +
+--
+`BeforeCloseEvent` is sent right before the screen is closed by its `close(CloseAction)` method. The screen is still displayed and fully functional. Component settings are not saved yet. In this event listener, you can check any conditions and prevent screen closing using the `preventWindowClose()` method of the event, for example:
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/screen_BeforeCloseEvent.java[]
 ----
-+
+
 There is also an event with the same name but defined in the `Window` interface. It is sent before the screen is closed by an external (relative to the controller) action, like clicking on the button in the window tab or by pressing the Esc key. The way the window is closed can be obtained using the `getCloseOrigin()` method which returns a value implementing the `CloseOrigin` interface. Its default implementation `CloseOriginType` has three values:
-+
+
 ** `BREADCRUMBS` - the screen is closed by clicking on the breadcrumbs link.
 ** `CLOSE_BUTTON` - the screen is closed by the close button in the window header or by the window tab close button or context menu actions: Close, Close All, Close Others.
 ** `SHORTCUT` - the screen is closed by the keyboard shortcut defined in the <<shortcuts,cuba.gui.closeShortcut>> application property.
-+
+
 You can subscribe to `Window.BeforeCloseEvent` by specifying `Target.FRAME` in the `@Subscribe` annotation:
-+
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/window_BeforeCloseEvent.java[]
 ----
+--
 
 [[screen_AfterCloseEvent]]
-* `AfterCloseEvent` is sent after the screen is closed by its `close(CloseAction)` method and after `Screen.AfterDetachEvent`. Component settings are saved. In this event listener, you can show notifications or dialogs after closing the screen, for example:
+AfterCloseEvent::
 +
+--
+`AfterCloseEvent` is sent after the screen is closed by its `close(CloseAction)` method and after `Screen.AfterDetachEvent`. Component settings are saved. In this event listener, you can show notifications or dialogs after closing the screen, for example:
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/screen_AfterCloseEvent.java[]
 ----
+--
 
 [[screen_AfterDetachEvent]]
-* `AfterDetachEvent` is sent after the screen is removed from the application UI when it is closed by the user or when the user logs out. This event listener can be used for releasing resources acquired by the screen. Note that this event is not sent on HTTP session expiration.
+AfterDetachEvent::
++
+--
+`AfterDetachEvent` is sent after the screen is removed from the application UI when it is closed by the user or when the user logs out. This event listener can be used for releasing resources acquired by the screen. Note that this event is not sent on HTTP session expiration.
+--
 
 [[screen_UrlParamsChangedEvent]]
-* `UrlParamsChangedEvent` is sent when browser URL parameters corresponding to opened screen are changed. It is fired before the screen is shown, which enables to do some preparatory work. In this event listener, you can load some data or change screen controls state depending on new parameters:
+UrlParamsChangedEvent::
 +
+--
+`UrlParamsChangedEvent` is sent when browser URL parameters corresponding to opened screen are changed. It is fired before the screen is shown, which enables to do some preparatory work. In this event listener, you can load some data or change screen controls state depending on new parameters:
+
 [source, java]
 ----
 include::{sourcesdir}/gui/screens/screen_UrlParamsChangedEvent.java[]
 ----
+--
