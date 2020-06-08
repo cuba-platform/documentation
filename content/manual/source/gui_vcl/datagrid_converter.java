@@ -21,7 +21,7 @@ protected void onInit(InitEvent event) {
         usersGrid.createRenderer(DataGrid.HtmlRenderer.class),
         (Function<Boolean, String>) hasEmailValue -> {
             return BooleanUtils.isTrue(hasEmailValue)
-                    ? FontAwesome.CHECK_SQUARE_O.getHtml()
-                    : FontAwesome.SQUARE_O.getHtml();
+                    ? FontAwesome.PLUS_SQUARE.getHtml()
+                    : FontAwesome.MINUS_SQUARE.getHtml();
         });
 }
