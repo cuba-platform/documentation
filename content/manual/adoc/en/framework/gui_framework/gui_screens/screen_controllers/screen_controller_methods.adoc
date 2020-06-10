@@ -3,42 +3,73 @@
 [[screen_controller_methods]]
 ====== Screen Controller Methods
 
-In your code you can call the following methods of the screen controllers:
+In this section, we describe some methods of screen controller base classes that can be invoked or overridden in the application code.
 
-[[screen_close]]
-* `close()` - requests closing of the screen caused by the given action or, in case of editor or lookup screen, an outcome. The close action passed as a parameter is propagated to <<screen_BeforeCloseEvent,BeforeCloseEvent>> and <<screen_AfterCloseEvent,AfterCloseEvent>>. Thus, the information about the reason why the window was closed can be obtained from the code that initiated the closing event.
+[[screen_methods]]
+Methods of all screens::
 +
 --
-It is recommended to use the following constants for closing edit screens: `++Window.COMMIT_ACTION_ID++` after committing changes, `++Window.CLOSE_ACTION_ID++` – without committing changes.
+* `show()` - shows the screen. This method is usually used after creating the screen as described in the <<opening_screens>> section.
 
-If any of the data containers contains unsaved changes, a dialog with a corresponding message will be displayed before the screen is closed. You can adjust the notification type using the <<cuba.gui.useSaveConfirmation,cuba.gui.useSaveConfirmation>> application property.
+* `close()` - closes the screen with the passed `StandardOutcome` enum value or a `CloseAction` object. For example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/screens/screen_methods_1.java[]
+----
++
+The parameter value is propagated to <<screen_BeforeCloseEvent,BeforeCloseEvent>> and <<screen_AfterCloseEvent,AfterCloseEvent>>, so the information about the reason why the screen was closed can be obtained in the listeners. For more information on using these listeners see <<screen_return_values,Executing code after close and returning values>>.
 
-The `close()` method returns `Status.SUCCESS` status if the screen is closed successfully and `++Status.FAIL++` – if closing procedure was interrupted.
+* `getScreenData()` - returns the `ScreenData` object that serves as a registry for all <<gui_data,data components>> defined in the screen XML descriptor. You can use its `loadAll()` method to trigger all data loaders of the screen:
++
+[source, java]
+----
+include::{sourcesdir}/gui/screens/screen_methods_2.java[]
+----
 
-For the examples on standard actions and outcomes, see <<screen_return_values,Executing code after close and returning values>>.
+* `getSettings()` - returns the `Settings` object that can be used to read or write custom settings associated with the screen for the current user.
+
+* `saveSettings()` - saves the screen settings represented by the `Settings` object. This method is called automatically if <<cuba.gui.manualScreenSettingsSaving,cuba.gui.manualScreenSettingsSaving>> application property is set to false (which is the default).
 --
 
-[[screen_closeWithDefaultAction]]
-* `closeWithDefaultAction()` - closes the screen with `++Window.CLOSE_ACTION_ID++`.
-
-[[screen_closeWithCommit]]
-* `closeWithCommit()` - tries to validate and commit data. If the data id committed successfully, then closes the screen with `++Window.COMMIT_ACTION_ID++` action. May show validation errors or open an additional dialog before closing the screen.
-
-[[screen_closeWithDiscard]]
-* `closeWithDiscard()` - ignores the unsaved changes and closes the screen with `++Window.CLOSE_ACTION_ID++` action.
-
-[[screen_getEditedEntity]]
-* `getEditedEntity()` -  returns an instance of the entity being edited, which is set in the main data container of the screen (i.e. an `InstanceContainer` defined in the <<EditedEntityContainer_annotation,@EditedEntityContainer>> annotation).
-
-[[screen_validateAdditionalRules]]
-Screen validation::
+[[standardEditor_methods]]
+Methods of StandardEditor::
 +
 --
-For additional screen validation, you can implement the `validateAdditionalRules()` template method.
-The method stores validation errors information in a `ValidationErrors` object which is passed to it. Afterwards this information is displayed together with the errors of standard validation. For example:
+* `getEditedEntity()` - when the screen is shown, returns an instance of the entity being edited. It's the instance which is set in the data container  specified in the <<EditedEntityContainer_annotation,@EditedEntityContainer>> annotation.
++
+In <<screen_InitEvent,InitEvent>> and <<screen_AfterInitEvent,AfterInitEvent>> listeners, this method returns null. In <<screen_BeforeShowEvent,BeforeShowEvent>> listener, this method returns the instance passed to the screen for editing (later in the screen opening process the entity is reloaded and a different instance is set to the data container).
+
+The following methods can be used to close the edit screen:
+
+* `closeWithCommit()` - validates and saves data, then closes the screen with `StandardOutcome.COMMIT`.
+
+* `closeWithDiscard()` - ignores any unsaved changes and closes the screen with `StandardOutcome.DISCARD`.
+
+If the screen has unsaved changes in <<gui_DataContext,DataContext>>, a dialog with a corresponding message will be displayed before the screen is closed. You can adjust the notification type using the <<cuba.gui.useSaveConfirmation,cuba.gui.useSaveConfirmation>> application property. If you use the `closeWithDiscard()` or `close(StandardOutcome.DISCARD)` methods, unsaved changes are ignored without any message.
+
+* `commitChanges()` - saves changes without closing the screen. You can call this method from a custom event listener or override the default `windowCommit` action listener to perform some operations after the data has been saved, for example:
++
+[source, java]
+----
+include::{sourcesdir}/gui/screens/screen_methods_3.java[]
+----
++
+The default implementation of the `commit()` method shows a notification about successful commit. You can switch it off using the `setShowSaveNotification(false)` method on screen initialization.
+
+* `validateAdditionalRules()` method can be overridden for additional validation before saving changes. The method should store the information about validation errors in the `ValidationErrors` object which is passed to it. Afterwards this information is displayed together with the errors of standard validation. For example:
 
 [source, java]
 ----
-include::{sourcesdir}/gui/screens/screen_methods.java[]
+include::{sourcesdir}/gui/screens/screen_methods_4.java[]
 ----
+--
+
+[[masterDetailScreen_methods]]
+Methods of MasterDetailScreen::
++
+--
+* `getEditedEntity()` - when the screen is in edit mode, returns an instance of the entity being edited. It's the instance which is set in the data container of the `form` component. If the screen is not in edit mode, the method throws `IllegalStateException`.
+
+* `validateAdditionalRules()` method can be overridden for additional validation on saving changes as described above for `StandardEditor`.
 --
