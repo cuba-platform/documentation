@@ -11,7 +11,7 @@ public void onInit(InitEvent event) {
     customersDataGridNameRenderer.setRendererClickListener(clickableTextRendererClickEvent -> {
         notifications.create()
                 .withType(Notifications.NotificationType.TRAY)
-                .withCaption("ButtonRenderer")
+                .withCaption("ClickableTextRenderer")
                 .withDescription("Column id: " + clickableTextRendererClickEvent.getColumnId())
                 .show();
     });
