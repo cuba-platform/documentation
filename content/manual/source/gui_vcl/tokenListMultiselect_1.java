@@ -1,6 +1,9 @@
-@Override
-public void init(Map<String, Object> params) {
-    if (WindowParams.MULTI_SELECT.getBool(getContext())) {
-        usersTable.setMultiSelect(true);
+public class ProductsList extends StandardLookup {
+    @Inject
+    private GroupTable<Product> productsTable;
+
+    @Override
+    public void setLookupComponentMultiSelect(boolean multiSelect) {
+        productsTable.setMultiSelect(multiSelect);
     }
 }
