@@ -31,7 +31,7 @@ In order to produce HTML from AsciiDoc, we use [Asciidoctor](https://asciidoctor
 
 4. If you want to generate PDF, install Asciidoctor PDF:
 
-        gem install asciidoctor-pdf
+        gem install asciidoctor-pdf -v 1.5.2
 
 This is enough to build the documentation with the existing visual theme. If you want to change the theme, see the __Building Theme__ section below.
 
