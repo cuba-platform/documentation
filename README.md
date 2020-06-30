@@ -28,15 +28,10 @@ In order to produce HTML from AsciiDoc, we use [Asciidoctor](https://asciidoctor
 3. Install coderay for code highlighting:
 
         gem install coderay
-4. If want to generate PDF, install Asciidoctor PDF and  (Optional for PDF generate):
+
+4. If you want to generate PDF, install Asciidoctor PDF:
 
         gem install asciidoctor-pdf
-        gem install prawn-gmagick 
-
-`prawn-gmagick` should depend on the `graphicsmagick`, so need to install it such as use brew on Mac `rew install graphicsmagick`
-This package is used to convert some PNG images, or will get some WARN message like:
-
-> could not embed image xxx; PNG uses unsupported interlace method; install prawn-gmagick gem to add support
 
 This is enough to build the documentation with the existing visual theme. If you want to change the theme, see the __Building Theme__ section below.
 
@@ -50,7 +45,7 @@ __{purpose}__ can be one of the following:
 * `chop` - build multi-page document.
 * `war` - build a WAR file. The resulting WAR file will have a name corresponding to the document name and a version which is set by the `ext.docVersion` property defined in `build.gradle`, for example `manual-7.0.war`.
 * `deploy` - deploy WAR to Tomcat (installed by the `setupTomcat` task, see below).
-* `pdf` - if want to generate append pdf at end of task (current only support manual)
+* `pdf` - generate PDF.
 
 __{doc}__ is the document name (`Manual`, `Bpm`, etc.)
 
@@ -86,15 +81,11 @@ If you get an error like
 
 then try to uninstall gem `sass-3.5.0.pre.rc.1` and install `3.4.22`. Perhaps you should also reinstall all the other gems. 
 
-### About PDF generate
+### Notes on PDF Generation
 
-The PDF generate is based on the [Asciidoctor PDF](https://asciidoctor.org/docs/asciidoctor-pdf/). This tool is used to generate the main entry adoc file.
+The PDF generation is based on the [Asciidoctor PDF](https://asciidoctor.org/docs/asciidoctor-pdf/).
 
-In order to keep current path configuration in the main entry adco file, the image folder should be relocated to right place. so the build script copy all necessary source file to the build folder and make all source folder to right relative path.
-
-The second thing need to introduce is the Image in the table. Because there are 2 use cases: Scaling and Visual Component, we have image in the table.
-
-There is an issue for the image in the table without specify the width: <https://github.com/asciidoctor/asciidoctor-pdf/issues/830>. So we add `,pdfwidth=xxin` to these images. This parameter is only useful for PDF generate without affecting HTML generation based on test.
+Due to the issue <https://github.com/asciidoctor/asciidoctor-pdf/issues/830> images in table cells should have `pdfwidth=xxin` attribute.
 
 ## Viewing Documentation Locally
 
