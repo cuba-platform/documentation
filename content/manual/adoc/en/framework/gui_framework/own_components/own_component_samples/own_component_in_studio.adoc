@@ -2,8 +2,492 @@
 
 [[own_component_in_studio]]
 ====== Support for Custom Visual Components in CUBA Studio
+--
+{studio_man_url}/#screen_descriptor[Screen Designer] of the CUBA Studio allows developers to integrate a custom UI component implemented in an add-on or project by adding special *UI component metadata* annotations to the component's definition.
 
-[WARNING]
+[TIP]
 ====
-Coming soon.
+Custom UI components are supported in the CUBA Studio starting from Studio version `14.0` and platform version `7.2.5`.
 ====
+
+Support for the UI component in the Screen Designer includes the following features:
+
+* Displaying component item in the Palette panel.
+* Scaffolding XML code for the component when it is added from the Palette. Automatically adding XSD namespace import if it is configured.
+* Displaying icon corresponding to the added component in the Hierarchy panel.
+* Displaying and editing component's properties in the Inspector panel. Scaffolding XML tag attributes when component's properties are modified.
+* Providing suggestions for property values.
+* Validating property values.
+* Displaying component stub in the Layout Preview panel.
+* Providing links to the web documentation if it is provided.
+
+'''
+<<component_metadata_prerequisites,Prerequisites>>
+
+<<component_metadata_stepper_sample,Stepper Sample Project>>
+
+<<component_metadata_annotation_list,Metadata annotation list>>
+
+<<component_metadata_component_definition,UI component definition>>
+
+<<component_metadata_facet_definition,Facet (non-visual component) definition>>
+
+<<component_metadata_properties,Standard component properties>>
+
+<<component_metadata_property_types,Component property types>>
+
+<<component_metadata_bean_validation,Component property validation>>
+
+<<component_metadata_subelement_collection,Defining sub-element metadata with @StudioCollection>>
+
+<<component_metadata_subelement_group,Defining sub-element metadata with @StudioElementGroup and @StudioElement>>
+
+<<component_metadata_embedded_pojo,Declaring tag attributes extracted into a POJO with @StudioEmbedded>>
+
+<<component_metadata_component_handlers,Support for Events and Install Delegates>>
+
+<<component_metadata_generic_types,Support for Generic Type Parameters>>
+
+<<component_metadata_other_examples,Other examples of annotated components>>
+
+'''
+
+--
+
+[[component_metadata_prerequisites]]
+Prerequisites::
+--
+Note that the result of the Screen Designer's work is the scaffolded XML code in the screen descriptor. However, for the custom component to be successfully loaded from the XML in the running application, the following additional code should be implemented in your project:
+
+* Component interface is created.
+* Component loader is implemented.
+* Component and its loader are registered in the `cuba-ui-component.xml` file.
+* Optional: defined the XML schema describing the structure and restrictions on component definition in the screen descriptor.
+
+These steps are described in the <<vaadin_addon_sample_gui>> section.
+
+--
+
+[[component_metadata_stepper_sample]]
+Stepper Sample Project::
+--
+Fully implemented example of custom UI component with metadata annotations can be found in the *Stepper* Vaadin addon integration sample. Its source code can be found here: https://github.com/cuba-labs/vaadin-stepper-addon-integration.
+
+The files you should pay attention to:
+
+* UI metadata annotations have been added to the component interface: `com.company.demo.web.gui.components.Stepper`
+* Component palette icons (`stepper.svg` and `stepper_dark.svg`) are placed to the `modules/web/src/com/company/demo/web/gui/components/icons` folder.
+* The `customer-edit.xml` screen descriptor uses `stepper` component in the layout.
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/Stepper.java[]
+----
+
+If you open the `customer-edit.xml` screen in the Screen Designer, you will see how the component has been integrated into designer's panels.
+
+The Component Palette panel contains Stepper component:
+
+image::ui_component/metadata/palette.png[align="center"]
+
+The Component Hierarchy panel displays component along with other components in the tree:
+
+image::ui_component/metadata/hierarchy.png[align="center"]
+
+The Component Inspector panel displays and provides editing for the component properties:
+
+image::ui_component/metadata/inspector.png[align="center"]
+
+Finally, the layout preview panel displays component in the shape of text field:
+
+image::ui_component/metadata/preview.png[align="center"]
+
+Now let's take a look at annotations and attributes that should be added to the component interface in order to achieve such integration.
+--
+
+[[component_metadata_annotation_list]]
+Metadata annotation list::
+--
+All UI metadata annotations and related classes are located in the `com.haulmont.cuba.gui.meta` package. UI metadata annotations are supported for the following types of UI elements:
+
+* <<gui_components,Visual Components>> - marked with `@StudioComponent`.
+* <<gui_facets,Facets>> or Non-Visual Components - marked with `@StudioFacet`.
+* <<gui_Action,Actions>> - marked with `@StudioAction`. Action annotations are described in the <<custom_action_types,Custom Action Types>> section.
+
+Full list of annotations is the following:
+
+* `@StudioComponent` - indicates that the annotated UI component interface should be available in the Screen Designer. Provides necessary attributes for panels of the Screen Designer. The annotated interface must be a direct or indirect subclass of the `com.haulmont.cuba.gui.components.Component`.
+* `@StudioFacet` - indicates that the annotated interface should be available in the Screen Designer as a facet (non-visual component). Provides necessary attributes for panels of the Screen Designer. The annotated interface must be a direct or indirect sub-interface of the `com.haulmont.cuba.gui.components.Facet`.
+* `@StudioProperty` - indicates that the annotated setter method should be shown in the Inspector panel as the property of the UI component or Facet.
+* `@StudioProperties` - declares additional properties and property groups of the UI component or Facet. Can be used to declare additional properties not related to component property setter methods, to override inherited properties and to validate semantically connected pairs of properties.
+* `@PropertiesGroup` - declares a property group: list of dependent properties that must be used only together or mutually exclusive.
+* `@StudioElementsGroup` - indicates that the annotated setter method should be shown in the Screen Designer as a nested group of elements of the UI component or Facet, e.g. columns, actions or property map.
+* `@StudioElement` - indicates that the annotated class or interface should be available in the Screen Designer as a part of the UI Component or Facet, e.g. column, action or property map.
+* `@StudioEmbedded` - used for cases when a set of component parameters is extracted <<component_metadata_embedded_pojo,into a separate POJO>>.
+* `@StudioCollection` - declares metadata for sub-elements that should be shown in the Screen Designer as a nested group of elements of the UI component or Facet, e.g. columns, actions, fields.
+--
+
+[[component_metadata_component_definition]]
+UI component definition::
+--
+Declaring that UI component should become available in the Screen Designer is performed by marking the component interface with the `com.haulmont.cuba.gui.meta.StudioComponent` annotation.
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/ComponentDefinition.java[]
+----
+
+The `@StudioComponent` annotation has the following attributes:
+
+* `caption` - component caption displayed in the Palette panel.
+* `description` - description of the component displayed as a mouse-over tooltip in the Palette panel.
+* `category` - category in the Palette panel (Containers, Components etc) where the component will be placed to.
+* `icon` - path to the component icon used in the Palette and Hierarchy panels, SVG or PNG format, relative to the component module root. Note that component icon may have two variants: for light and dark IDE themes. File name of the dark icon variant is determined by adding the `_dark` postfix to the icon file name, for example: `stepper.svg` and `stepper_dark.svg`.
+* `xmlElement` - name of the XML tag that will be added to the screen descriptor XML when the component is added to the screen.
+* `xmlns` - XML namespace required for the component. When the component is added to the screen, Studio automatically adds namespace import to the root element of the screen descriptor.
+* `xmlnsAlias` - XML namespace alias required for the component. E.g. if the namespace alias is `track` and the XML tag name is `googleTracker` then the component will be added to the screen as `<track:googleTracker/>` tag.
+* `defaultProperty` - name of the default component property, it will be automatically selected in the Inspector panel when the component is selected in the layout.
+* `unsupportedProperties` - the list of properties that are inherited from the component parent interfaces but are not actually supported by the component. These properties will be hidden from the Inspector panel.
+* `canvasBehavior` - defines behaviour how the UI component will look like on the layout preview panel. Possible options are:
+** `COMPONENT` - the component is displayed in the preview as a simple box with an icon.
+** `INPUT_FIELD` - the component is displayed in the preview as a text field.
+** `CONTAINER` - the component is displayed in the preview as a component container.
+* `canvasIcon` - path to the icon displayed in the preview as a placeholder if the `canvasBehaviour` attribute has `COMPONENT` value. Icon file should be in SVG or PNG format. The `icon` property is used if this value is not specified.
+* `canvasIconSize` - size of the icon displayed in the preview as a placeholder. Possible values are:
+** `SMALL` - small icon.
+** `LARGE` - the icon is large, and the component `id` is displayed under the icon.
+* `containerType` - type of the container layout if the `canvasBehaviour` attribute has `CONTAINER` value.
+* `documentationURL` - specifies URL pointing to the documentation page for the UI component. Used by the *CUBA Documentation* action in the Screen Designer. If the path to the documentation is version dependent, use the `%VERSION%` as a placeholder. It will be replaced with the minor version (e.g. `1.2`) of the library containing the UI component.
+--
+
+[[component_metadata_facet_definition]]
+Facet (non-visual component) definition::
+--
+Declaring that custom <<gui_facets,facet>> should become available in the Screen Designer is performed by marking the facet interface with the `com.haulmont.cuba.gui.meta.StudioFacet` annotation.
+
+The attributes of the `@StudioFacet` annotation are similar to the attributes of the `@StudioComponent` annotation described in the previous section.
+
+Example:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/Facet.java[]
+----
+
+--
+
+[[component_metadata_properties]]
+Standard component properties::
+--
+Component properties are declared by using two annotations:
+
+* `@StudioProperty` - indicates that the annotated method (setter, setXxx) should be shown in the Inspector panel as a UI component property.
+* `@StudioProperties` - defines additional XML properties and property groups of a UI component declared on an interface definition.
+
+Example:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/StandardProperties.java[]
+----
+
+The setter method can be annotated with `@StudioProperty` without any additional data:
+
+* the name and the caption of the property should be inferred from setter name.
+* the type of the property should be inferred from setter parameter.
+
+The `@StudioProperty` annotation has the following attributes:
+
+* `name` - name of the property.
+* `type` - defines which content is stored in the property, e.g. it can be a string, an entity name or a reference to other component in the same screen. Supported property types are <<component_metadata_property_types,listed below>>.
+* `caption` - caption of the property to be displayed in the Inspector panel.
+* `description` - additional description for the property that will be displayed in the Inspector panel as a mouse-over tooltip.
+* `category` - category of the property in the Inspector panel. (Not implemented in the Screen Designer yet as of Studio 14.0.)
+* `required` - the property is required, in this case Screen Designer will not allow component declaration with an empty value.
+* `defaultValue` - specifies the value of the property that is implicitly used by the component when the corresponding XML attribute is omitted. The default value will be omitted from XML code.
+* `options` - context dependent list of options for the component property:
+** For `ENUMERATION` property type - enumeration options.
+** For `BEAN_REF` property type - list of allowed base classes for the Spring bean.
+** For `COMPONENT_REF` property type - list of allowed base component classes.
+** For `PROPERTY_PATH_REF` property type - list of allowed entity attribute types. Use registered <<datatype,Datatype>> names for the datatype properties or `to_one` and `to_many` for the association properties.
+* `xmlAttribute` - target XML attribute name, if not set then equal to the property name.
+* `xmlElement` - target XML element name.
+* `typeParameter` - specifies the name of the generic type parameter provided by this property for the component. See description <<component_metadata_generic_types,below>>.
+--
+
+[[component_metadata_property_types]]
+Component property types::
+--
+The following property types (`com.haulmont.cuba.gui.meta.PropertyType`) are supported:
+
+* `INTEGER`, `LONG`, `FLOAT`, `DOUBLE`, `STRING`, `BOOLEAN`, `CHARACTER` - primitive types.
+* `DATE` - date in the `YYYY-MM-DD` format.
+* `DATE_TIME` - date with time in the `YYYY-MM-DD hh:mm:ss` format.
+* `TIME` - time in the `hh:mm:ss` format.
+* `ENUMERATION` - enumerated value. List of enumeration options is provided by the `options` annotation attribute.
+* `COMPONENT_ID` - <<gui_attr_id,identifier>> of this component, sub-component or action. Must be a valid Java identifier.
+* `ICON_ID` - <<gui_attr_icon,icon path or ID of icon>> from predefined CUBA icons.
+* `SIZE` - size value, e.g. width or height.
+* `LOCALIZED_STRING` - localized message represented by String value or by message key with `msg://` or `mainMsg://` prefix.
+* `JPA_QUERY` - JPA QL string.
+* `ENTITY_NAME` - name of the entity (specified by the `javax.persistence.Entity#name` annotation attribute) defined in the project.
+* `ENTITY_CLASS` - fully-qualified class name of the entity defined in the project.
+* `JAVA_CLASS_NAME` - fully-qualified class name of any Java class.
+* `CSS_CLASSNAME_LIST` - list of CSS classes separated with space symbol.
+* `CSS_BLOCK` - inline CSS properties
+* `BEAN_REF` - ID of a Spring bean defined in this project. The list of allowed base Spring bean classes is provided by the `options` annotation attribute.
+* `COMPONENT_REF` - ID of a component defined in this screen. The list of allowed base component classes is provided by the `options` annotation attribute.
+* `DATASOURCE_REF` - ID of a <<datasources,datasource>> defined in the screen (legacy API).
+* `COLLECTION_DATASOURCE_REF` - ID of a <<datasources,collection datasource>> defined in the screen (legacy API).
+* `DATALOADER_REF` - ID of a <<gui_data_loaders,data loader>> defined in the screen.
+* `DATACONTAINER_REF` - ID of a <<gui_data_containers,data container>> defined in the screen.
+* `COLLECTION_DATACONTAINER_REF` - ID of a <<gui_collection_container,collection data container>> defined in the screen.
+* `PROPERTY_REF` - name of an entity attribute. The list of allowed entity attribute types is provided by the `options` annotation attribute. In order to display suggestions for this attribute, this component property should be associated with another component property defining a data container or datasource with the help of <<component_metadata_property_groups,properties group>>.
+* `PROPERTY_PATH_REF` - name of an entity attribute or list of nested attributes separated with dot symbol, e.g. `user.group.name`. The list of allowed entity attribute types is provided by the `options` annotation attribute. In order to display suggestions for this component property in the Inspector panel, this component property should be associated with another component property defining a data container or datasource with the help of <<component_metadata_property_groups,properties group>>.
+* `DATATYPE_ID` - ID of a <<datatype,Datatype>>, e.g. `string` or `decimal`.
+* `SHORTCUT` - keyboard shortcut, e.g. `CTRL-SHIFT-U`.
+* `SCREEN_CLASS` - fully-qualified name of a <<screen_controllers,screen controller>> class defined in this project.
+* `SCREEN_ID` - ID of a screen defined in this project.
+* `SCREEN_OPEN_MODE` - screen <<gui_attr_openType,open mode>>.
+--
+
+[[component_metadata_bean_validation]]
+Component property validation::
+--
+Inspector panel supports validation of the component properties with limited set of BeanValidation annotations:
+
+* `@Min`, `@Max`, `@DecimalMin`, `@DecimalMax`.
+* `@Negative`, `@Positive`, `@PosizitiveOrZero`, `@NegativeOrZero`.
+* `@NotBlank`, `@NotEmpty`.
+* `@Digits`.
+* `@Pattern`.
+* `@Size`, `@Length`.
+* `@URL`.
+
+Example:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/BeanValidation.java[]
+----
+
+If user tries to input invalid property value, the following error message is displayed:
+
+image::ui_component/metadata/bean-validation.png[align="center"]
+--
+
+[[component_metadata_property_groups]]
+@StudioProperties annotation and property groups::
+--
+The metadata defined with the `@StudioProperty` can be overridden with the `@StudioProperties` annotation on the component interface.
+
+The `@StudioProperties` annotation can have zero or more declarations in the `groups` attribute with the `@PropertiesGroup` type. Each group defines a property group whose type is determined by the `@PropertiesGroup#constraint` attribute:
+
+* `ONE_OF` - group specifies properties that are mutually exclusive.
+* `ALL_OR_NOTHING` - a list of dependent properties that must be used together.
+
+One specific important application of the property group is the specification of the `dataContainer` and `property` attribute pair for the components that can be bound to the data container. These properties must be included into the `ALL_OR_NOTHING` group. See example of the component with such property group:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/PropertyGroups.java[]
+----
+--
+
+[[component_metadata_subelement_collection]]
+Defining sub-element metadata with @StudioCollection::
+--
+Compound components such as `table`, `pickerField` or charts are defined in the screen descriptor by several nested XML tags. Sub-tags represent parts of the component and are loaded to the screen by the parent component's `ComponentLoader`. You have two options how to declare metadata for sub-elements:
+
+* With `@StudioCollection` - sub-element metadata is specified right in the component interface.
+* With `@StudioElementGroup` and `@StudioElement` - sub-element metadata is specified on separate classes that represent XML sub-tags.
+
+The `com.haulmont.cuba.gui.meta.StudioCollection` annotation has the following attributes:
+
+* `xmlElement` - XML tag name of the collection.
+* `itemXmlElement` - XML tag name of the collection elements.
+* `documentationURL` - specifies URL pointing to the documentation page for the UI component. Used by the *CUBA Documentation* action in the Screen Designer. If the path to the documentation is version dependent, use the `%VERSION%` as a placeholder. It will be replaced with the minor version (e.g. `1.2`) of the library containing the UI component.
+* `itemProperties` - collection of `@StudioProperty` annotations defining item properties.
+
+See the example below.
+
+This is the desired XML structure in the screen descriptor:
+[source, xml]
+----
+include::{sourcesdir}/ui_component/metadata/collection.xml[]
+----
+
+Component class with `@StudioCollection` declaration:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/Collection.java[]
+----
+
+The Inspector panel for the main component's element additionally displays the *Add* -> *{element caption}* button that adds additional sub-element to the XML:
+
+image::ui_component/metadata/collection-owner-inspector.png[align="center"]
+
+If the sub-element is selected in the layout, the Inspector panel contains its properties specified in the `ElementCollection` annotation:
+
+image::ui_component/metadata/collection-element-inspector.png[align="center"]
+--
+
+[[component_metadata_subelement_group]]
+Defining sub-element metadata with @StudioElementGroup and @StudioElement::
+--
+The `@StudioElementGroup` is used to mark setter method in the component interface. It gives a hint to the Studio that it should search for sub-element metadata in the referenced class.
+
+[source, java]
+----
+@StudioElementsGroup(xmlElement = "subElementGroupTagName")
+void setSubElements(List<ComponentSubElement> subElements);
+----
+
+The `@StudioElementGroup` annotation has the following attributes:
+
+* `xmlElement` - XML tag name of the sub-element group.
+* `icon` - path to the icon used in the Palette and Hierarchy panels for the sub-element group, SVG or PNG format, relative to the component module root.
+* `documentationURL` - specifies URL pointing to the documentation page for the sub-element group. Used by the *CUBA Documentation* action in the Screen Designer. If the path to the documentation is version dependent, use the `%VERSION%` as a placeholder. It will be replaced with the minor version (e.g. `1.2`) of the library containing the UI component.
+
+The `@StudioElement` is used to mark the class that represents component's sub-element. Available attributes of the XML tag represented by this element are declared by using the `@StudioProperty` and `@StudioProperties` annotations.
+
+[source, java]
+----
+@StudioElement(xmlElement = "subElement", caption = "Sub Element")
+public interface SubElement {
+    @StudioProperty
+    void setElementProperty(String elementProperty);
+    // ...
+}
+----
+
+Attributes of the `@StudioElement` annotation are similar to ones of the `@StudioComponent`:
+
+* `xmlElement` - XML tag name of the sub-element.
+* `caption` - caption of the element to be displayed in the Inspector panel.
+* `description` - additional description for the element that will be displayed in the Inspector panel as a mouse-over tooltip.
+* `icon` - path to the sub-element icon used in the Palette and Hierarchy panels, SVG or PNG format, relative to the component module root.
+* `xmlns` - XML namespace required for the element. When the element is added to the screen, Studio automatically adds namespace import to the root element of the screen descriptor.
+* `xmlnsAlias` - XML namespace alias required for the element. E.g. if the namespace alias is `map` and the XML tag name is `layer` then the element will be added to the screen as `<map:layer/>` tag.
+* `defaultProperty` - name of the default element property, it will be automatically selected in the Inspector panel when the element is selected in the layout.
+* `unsupportedProperties` - the list of properties that are inherited from the element's parent interfaces but are not actually supported by the element. These properties will be hidden from the Inspector panel.
+* `documentationURL` - specifies URL pointing to the documentation page for the UI component. Used by the *CUBA Documentation* action in the Screen Designer. If the path to the documentation is version dependent, use the `%VERSION%` as a placeholder. It will be replaced with the minor version (e.g. `1.2`) of the library containing the UI component.
+
+See the example below.
+
+This is the desired XML structure in the screen descriptor:
+[source, xml]
+----
+include::{sourcesdir}/ui_component/metadata/element.xml[]
+----
+
+Component class with `@StudioElementsGroup` declaration:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/ElementOwner.java[]
+----
+
+Sub-element declaration annotated with `@StudioElement`:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/Element.java[]
+----
+
+The Inspector panel for the main component's element additionally displays the *Add* -> *{element caption}* button that adds additional sub-element to the XML:
+
+image::ui_component/metadata/element-group-owner-inspector.png[align="center"]
+
+If the sub-element is selected in the layout, the Inspector panel displays its properties specified in the element declaration:
+
+image::ui_component/metadata/element-group-element-inspector.png[align="center"]
+--
+
+[[component_metadata_embedded_pojo]]
+Declaring tag attributes extracted into a POJO with @StudioEmbedded::
+--
+There are some cases when you might want to extract a set of component properties into a separate POJO (plain old Java object). At the same time in the xml schema extracted properties are still specified as attributes of the main XML tag. In this case the `@StudioEmbedded` annotation can help you. You should mark the setter method that accepts the POJO object with `@StudioEmbedded` to declare that this POJO contains additional component properties.
+
+The `com.haulmont.cuba.gui.meta.StudioEmbedded` annotation has no attributes.
+
+Usage example is presented below.
+
+The desired XML structure, note that all attributes are specified for the main component tag:
+[source, xml]
+----
+include::{sourcesdir}/ui_component/metadata/embedded.xml[]
+----
+
+POJO class with annotated properties:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/EmbeddedPojo.java[]
+----
+
+Component interface:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/EmbeddedOwner.java[]
+----
+
+The Component Inspector panel shows embedded properties along with others:
+
+image::ui_component/metadata/embedded-inspector.png[align="center"]
+--
+
+
+[[component_metadata_component_handlers]]
+Support for Events and Delegate Methods::
+--
+Studio provides for custom UI components the same support for events and delegate methods as for built-in UI components. No annotations are required for declaring an event listener or delegate method.
+
+// TODO SHORT DESCRIPTION WITH CODE EXAMPLES
+
+Example of the facet declaring an event handler with its own event class:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/EventHandler.java[]
+----
+
+Example of the facet declaring three delegate methods with generic type parameter:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/MethodDelegate.java[]
+----
+
+--
+
+[[component_metadata_generic_types]]
+Support for Generic Type Parameters::
+--
+// todo introduction
+
+The `typeParameter` parameter of the `@StudioProperty` annotation specifies the name of the type parameter for the generic UI component or facet that is provided by the property. The actual class for the type parameter can be resolved for the following property types:
+
+* `PropertyType.JAVA_CLASS_NAME` - the specified class is used.
+* `PropertyType.ENTITY_CLASS` - the specified entity class is used.
+* `PropertyType.SCREEN_CLASS_NAME` - the specified class is used.
+* `PropertyType.DATACONTAINER_REF`, `PropertyType.COLLECTION_DATACONTAINER_REF` - the entity class of the specified data container is used.
+* `PropertyType.DATASOURCE_REF`, `PropertyType.COLLECTION_DATASOURCE_REF` - the entity class of the specified datasource is used.
+* `PropertyType.COMPONENT_REF` - the class of the entity that the given field is bound to is used.
+
+// todo code samples
+--
+
+[[component_metadata_other_examples]]
+Other examples of annotated components::
+--
+You can find other examples of annotated components and facets in the CUBA platform source code and use them for reference.
+
+Annotated components:
+
+* `com.haulmont.cuba.gui.components.CapsLockIndicator`
+* `com.haulmont.cuba.web.gui.components.dynamicattributes.DynamicAttributesPanel`
+
+Annotated facets:
+
+* `com.haulmont.cuba.gui.components.ClipboardTrigger`
+* `com.haulmont.cuba.gui.components.EditorScreenFacet`
+* `com.haulmont.cuba.gui.components.NotificationFacet`
+* and <<gui_facets,others>>.
+
+--
