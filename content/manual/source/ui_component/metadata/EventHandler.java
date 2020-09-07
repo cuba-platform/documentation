@@ -1,18 +1,20 @@
-@StudioFacet
-public interface ClipboardTrigger extends Facet {
+@StudioComponent(category = "Samples")
+public interface LazyTreeTable extends Component {
 
     // ...
-    
-    Subscription addCopyListener(Consumer<CopyEvent> listener);
 
-    class CopyEvent extends EventObject {
-        public CopyEvent(ClipboardTrigger source, boolean success) {
+    Subscription addNodeExpandListener(Consumer<NodeExpandEvent> listener);
+
+    class NodeExpandEvent extends EventObject {
+        private final Object nodeId;
+
+        public NodeExpandEvent(LazyTreeTable source, Object nodeId) {
             super(source);
-            this.success = success;
+            this.nodeId = nodeId;
         }
 
-        public boolean isSuccess() {
-            return success;
+        public Object getNodeId() {
+            return nodeId;
         }
     }
 }

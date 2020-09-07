@@ -1,13 +1,13 @@
 :sourcesdir: ../../../../../../source
 
 [[own_component_in_studio]]
-====== Support for Custom Visual Components in CUBA Studio
+====== Support for Custom Visual Components and Facets in CUBA Studio
 --
-{studio_man_url}/#screen_descriptor[Screen Designer] of the CUBA Studio allows developers to integrate a custom UI component implemented in an add-on or project by adding special *UI component metadata* annotations to the component's definition.
+{studio_man_url}/#screen_descriptor[Screen Designer] of the CUBA Studio allows developers to integrate a custom UI component (or facet) implemented in an add-on or project by adding special *UI component metadata* annotations to the component's definition.
 
 [TIP]
 ====
-Custom UI components are supported in the CUBA Studio starting from Studio version `14.0` and platform version `7.2.5`.
+Custom UI components and facets are supported in the CUBA Studio starting from Studio version `14.0` and platform version `7.2.5`.
 ====
 
 Support for the UI component in the Screen Designer includes the following features:
@@ -18,6 +18,8 @@ Support for the UI component in the Screen Designer includes the following featu
 * Displaying and editing component's properties in the Inspector panel. Scaffolding XML tag attributes when component's properties are modified.
 * Providing suggestions for property values.
 * Validating property values.
+* Injecting component to the screen controller.
+* Generating event handlers and delegate methods declared by the component.
 * Displaying component stub in the Layout Preview panel.
 * Providing links to the web documentation if it is provided.
 
@@ -38,13 +40,15 @@ Support for the UI component in the Screen Designer includes the following featu
 
 <<component_metadata_bean_validation,Component property validation>>
 
+<<component_metadata_property_groups,StudioProperties annotation and property groups>>
+
 <<component_metadata_subelement_collection,Defining sub-element metadata with @StudioCollection>>
 
 <<component_metadata_subelement_group,Defining sub-element metadata with @StudioElementGroup and @StudioElement>>
 
 <<component_metadata_embedded_pojo,Declaring tag attributes extracted into a POJO with @StudioEmbedded>>
 
-<<component_metadata_component_handlers,Support for Events and Install Delegates>>
+<<component_metadata_component_handlers,Support for Events and Delegate Methods>>
 
 <<component_metadata_generic_types,Support for Generic Type Parameters>>
 
@@ -57,12 +61,12 @@ Support for the UI component in the Screen Designer includes the following featu
 [[component_metadata_prerequisites]]
 Prerequisites::
 --
-Note that the result of the Screen Designer's work is the scaffolded XML code in the screen descriptor. However, for the custom component to be successfully loaded from the XML in the running application, the following additional code should be implemented in your project:
+Note that the result of the Screen Designer's work is the scaffolded XML code in the screen descriptor. However, for the custom component or custom facet to be successfully loaded from the XML in the running application, the following additional code should be implemented in your project:
 
-* Component interface is created.
-* Component loader is implemented.
+* Component or Facet interface is created.
+* For components - the component loader is implemented. For facets, the facet provider is created - a Spring bean implementing the `com.haulmont.cuba.gui.xml.FacetProvider` interface parameterized by the facet class.
 * Component and its loader are registered in the `cuba-ui-component.xml` file.
-* Optional: defined the XML schema describing the structure and restrictions on component definition in the screen descriptor.
+* Optional: defined the XML schema describing the structure and restrictions on component (facet) definition in the screen descriptor.
 
 These steps are described in the <<vaadin_addon_sample_gui>> section.
 
@@ -117,9 +121,9 @@ All UI metadata annotations and related classes are located in the `com.haulmont
 Full list of annotations is the following:
 
 * `@StudioComponent` - indicates that the annotated UI component interface should be available in the Screen Designer. Provides necessary attributes for panels of the Screen Designer. The annotated interface must be a direct or indirect subclass of the `com.haulmont.cuba.gui.components.Component`.
-* `@StudioFacet` - indicates that the annotated interface should be available in the Screen Designer as a facet. Provides necessary attributes for panels of the Screen Designer. The annotated interface must be a direct or indirect sub-interface of the `com.haulmont.cuba.gui.components.Facet`.
+* `@StudioFacet` - indicates that the annotated interface should be available in the Screen Designer as a facet. Provides necessary attributes for panels of the Screen Designer. The annotated interface must be a direct or indirect sub-interface of the `com.haulmont.cuba.gui.components.Facet`. The facet should have an associated `FacetProvider` bean defined in the project.
 * `@StudioProperty` - indicates that the annotated setter method should be shown in the Inspector panel as the property of the UI component or Facet.
-* `@StudioProperties` - declares additional properties and property groups of the UI component or Facet. Can be used to declare additional properties not related to component property setter methods, to override inherited properties and to validate semantically connected pairs of properties.
+* `@StudioProperties` - declares additional properties and property groups of the UI component or Facet. Can be used to declare additional properties not related to component property setter methods, to override inherited properties and to validate semantically related pairs of properties.
 * `@PropertiesGroup` - declares a property group: list of dependent properties that must be used only together or mutually exclusive.
 * `@StudioElementsGroup` - indicates that the annotated setter method should be shown in the Screen Designer as a nested group of elements of the UI component or Facet, e.g. columns, actions or property map.
 * `@StudioElement` - indicates that the annotated class or interface should be available in the Screen Designer as a part of the UI Component or Facet, e.g. column, action or property map.
@@ -164,6 +168,12 @@ The `@StudioComponent` annotation has the following attributes:
 Facet definition::
 --
 Declaring that custom <<gui_facets,facet>> should become available in the Screen Designer is performed by marking the facet interface with the `com.haulmont.cuba.gui.meta.StudioFacet` annotation.
+
+[TIP]
+====
+For support of the custom facet in the Screen Designer, an associated FacetProvider implementation should be created in the project.
+====
+FacetProvider is a Spring bean implementing the `com.haulmont.cuba.gui.xml.FacetProvider` interface parameterized by the facet class. See the `com.haulmont.cuba.web.gui.facets.ClipboardTriggerFacetProvider` platform class as an example.
 
 The attributes of the `@StudioFacet` annotation are similar to the attributes of the `@StudioComponent` annotation described in the previous section.
 
@@ -324,7 +334,7 @@ The Inspector panel for the main component's element additionally displays the *
 
 image::ui_component/metadata/collection-owner-inspector.png[align="center"]
 
-If the sub-element is selected in the layout, the Inspector panel contains its properties specified in the `ElementCollection` annotation:
+If the sub-element is selected in the layout, the Inspector panel contains its properties specified in the `StudioCollection` annotation:
 
 image::ui_component/metadata/collection-element-inspector.png[align="center"]
 --
@@ -437,18 +447,27 @@ image::ui_component/metadata/embedded-inspector.png[align="center"]
 [[component_metadata_component_handlers]]
 Support for Events and Delegate Methods::
 --
-Studio provides for custom UI components the same support for events and delegate methods as for built-in UI components. No annotations are required for declaring an event listener or delegate method.
+Studio provides for custom UI components and facets the same support for events and delegate methods as for built-in UI components. No annotations are required for declaring an event listener or delegate method in a component interface.
 
-// TODO SHORT DESCRIPTION WITH CODE EXAMPLES
-
-Example of the facet declaring an event handler with its own event class:
+Example of the component declaring an event handler with its own event class:
 
 [source, java]
 ----
 include::{sourcesdir}/ui_component/metadata/EventHandler.java[]
 ----
 
-Example of the facet declaring three delegate methods with generic type parameter:
+Declared event handler becomes availble in the Inspector panel:
+
+image::ui_component/metadata/event-handler-in-inspector.png[align="center"]
+
+Event handler implementation method's stub generated by the Studio will be the following:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/EventHandlerInController.java[]
+----
+
+The next example demonstrates how to declare delegate methods in the facet with generic type parameter:
 [source, java]
 ----
 include::{sourcesdir}/ui_component/metadata/MethodDelegate.java[]
@@ -470,7 +489,31 @@ The `typeParameter` parameter of the `@StudioProperty` annotation specifies the 
 * `PropertyType.DATASOURCE_REF`, `PropertyType.COLLECTION_DATASOURCE_REF` - the entity class of the specified datasource is used.
 * `PropertyType.COMPONENT_REF` - the class of the entity that the given field is bound to is used.
 
-// todo code samples
+Usage example is presented below.
+
+Component interface for the UI component that displays collection of entities provided by the <<gui_collection_container,CollectionContainer>>:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/GenericComponentInterface.java[]
+----
+<1> - component interface is parameterized with the `E` parameter which represents the entity class of items displayed in the tree.
+<2> - by specifying the `typeParameter` annotation attribute on the attribute of the `COLLECTION_DATACONTAINER_REF` type you can direct Studio to infer actual entity type by looking at the associated collection container.
+<3> - generic type parameter is also used by the component's delegate method.
+
+To allow Studio automatically infer component's type parameter, this component should be associated with the collection container in the screen descriptor:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/generic-component-usage.xml[]
+----
+
+The following code will be generated by the Studio in the screen controller:
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/GenericComponentInController.java[]
+----
+<1> - component is injected to the controller with the correct type parameter.
+<2> - correct type parameter is used for the delegate method's signature.
 --
 
 [[component_metadata_other_examples]]
