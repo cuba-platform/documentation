@@ -27,8 +27,8 @@ public class ShowSelectedAction extends ItemTrackingAction {
         if (selected != null) {
             Notifications notifications = ComponentsHelper.getScreenContext(target).getNotifications();
             notifications.create()
-                    .setType(Notifications.NotificationType.TRAY)
-                    .setCaption(metadataTools.getInstanceName(selected))
+                    .withType(Notifications.NotificationType.TRAY)
+                    .withCaption(metadataTools.getInstanceName(selected))
                     .show();
         }
     }

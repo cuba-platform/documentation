@@ -2,7 +2,7 @@
 
 [[custom_action_types]]
 ===== Custom Action Types
-
+--
 You can create your own action types or override existing standard types in your project.
 
 For example, imagine that you need an action that would show the instance name of the currently selected entity in a table, and you would like to use this action in multiple screens by specifying its type only. Below are the steps to create such action.
@@ -32,3 +32,106 @@ include::{sourcesdir}/gui/std_actions/std_actions_2_2.xml[]
 ====
 If you want to override an existing type, just register your new action type with the same name.
 ====
+--
+
+[[custom_action_types_metadata]]
+CUBA Studio support and configurable properties for custom actions::
+--
+Custom action types implemented in your project can be integrated into user interface of the CUBA Studio's Screen Designer. Screen Designer provides the following support for custom action types:
+
+* Ability to select action type in the list of standard actions when adding new action to the screen from the palette or by invoking the *+Add* -> *Action* in the table.
+* Quick navigation from action usage site to the action class by pressing *Ctrl + B* or Ctrl-clicking the mouse when the cursor is placed on the action type in the screen descriptor (e.g. on the `showSelected` attribute value in the XML fragment `<action id="sel" type="showSelected">`).
+* Editing of the user-defined action properties in the *Component Inspector* panel.
+* Generating event handlers and method delegates provided by the action to customize its logic.
+* Support for generic type parameterization. The generic type is determined as the entity class used by the table (action's owner component).
+
+The `@com.haulmont.cuba.gui.meta.StudioAction` annotation is used to mark custom action class as containing custom properties. Custom actions should be marked with this annotation, however at the moment Studio doesn't use any of the `@StudioAction` annotation attributes.
+
+The `@com.haulmont.cuba.gui.meta.StudioPropertiesItem` annotation is used to mark setter of the action property as editable action property. Such properties will be displayed and editable in the Component Inspector panel of the Screen Designer. Annotation has the following attributes:
+
+* `name` - name of the attribute written to the XML. If not set, setter's attribute name is used.
+* `type` - type of the property. This attribute is used by the Inspector panel to create appropriate input component providing suggestions and basic validation. Description for all property types is available <<component_metadata_property_types,here>>.
+* `caption` - caption of the property to be displayed in the Inspector panel.
+* `description` - additional description for the property that will be displayed in the Inspector panel as a mouse-over tooltip.
+* `category` - category of the property in the Inspector panel (not used by the Screen Designer yet).
+* `required` - the property is required, in this case Inspector panel will not allow to input an empty value for this property.
+* `defaultValue` - specifies the value of the property that is implicitly used by the action when the corresponding XML attribute is omitted. The default value will be omitted from XML code.
+* `options` - list of options for the component property, e.g. for `ENUMERATION` property type.
+
+Note that only limited list of Java types is supported for action properties:
+
+* Primitive types: `String`, `Boolean`, `Byte`, `Short`, `Integer`, `Long`, `Float`, `Double`.
+* Enumerations.
+* `java.lang.Class`.
+* `java.util.List` of types mentioned above. Studio's Inspector panel doesn't have specific input component for this Java class, so it should be input as plain String and marked as `PropertyType.STRING`.
+
+Examples:
+[source, java]
+----
+include::{sourcesdir}/gui/std_actions/ActionPropertyExamples.java[]
+----
+<1> - String property with limited number of options and with default value.
+<2> - required property with options limited by classes of screens defined in the project.
+<3> - list of integer numbers. The property type is set to `STRING` as Inspector panel doesn't have suitable input component.
+--
+
+[[custom_action_types_example]]
+Example of the customizable action: SendByEmailAction::
+--
+This example demonstrates:
+
+* declaration and annotating the custom action class.
+* annotating action's editable parameters.
+* declaration of the custom event produced by the action and its event handler.
+* declaration of the action's delegate methods.
+
+The `SendByEmailAction` represents an action that sends email about the entity currently selected in the table owning the action. This action is highly configurable as most of its internal logic can be modified with properties, delegate methods and events.
+
+Action source code:
+[source, java]
+----
+include::{sourcesdir}/gui/std_actions/ActionWithParameters.java[]
+----
+<1> - action class is marked with the `@StudioAction` annotation.
+<2> - action id is set with the help of `@ActionType` annotation.
+<3> - action class has the `E` type parameter - type of the entity stored in the owning table.
+<4> - email recipient address is exposed as action property.
+<5> - method that adds the listener for the `EmailSentEvent` event. This method is detected by the Studio as the declaration of the action's *event handler*.
+<6> - method that sets the `Function` class used to delegate (to the screen controller) the logic of generating email body. This method is detected by the Studio as the declaration of the action's *delegate method*.
+<7> - declaration of another delegate method - in this case it's used to delegate the logic of creating email attachments. Note that both delegate methods use the `E` generic type parameter.
+<8> - the required delegate method (implemented in the screen controller) is called to generate email body.
+<9> - if it is set, the optional delegate method is called to create email attachments.
+<10> - this is the actual call to send the email.
+<11> - the `EmailSentEvent` is published after successful sending of the email. If screen controller was subscribed for this event, the corresponding event handler method will be called.
+<12> - declaration of the event class, note that it's possible to add some fields to the event object and thus pass useful data to the event handling logic.
+
+When the code is implemented like presented above, the Studio begins to display new custom action along with standard actions in the action creation dialog:
+
+image::gui_action/custom_action_wizard.png[align="center"]
+
+After the action is added to the screen descriptor, you can select it and edit its properties in the Component Inspector panel:
+
+image::gui_action/custom_action_properties.png[align="center"]
+
+When the custom action's property is changed in the Inspector, it is written to the `properties` subtag of the action tag in the screen descriptor:
+
+[source, xml]
+----
+include::{sourcesdir}/gui/std_actions/action_with_parameters.xml[]
+----
+
+Action's event handlers and delegate methods are also displayed in the Component Inspector panel, and can be generated from it:
+
+image::gui_action/custom_action_handlers.png[align="center"]
+
+Now action's delegate methods and event handlers can be generated and implemented. The example of the generated logic in the screen controller looks like this:
+[source, java]
+----
+include::{sourcesdir}/gui/std_actions/ActionWithParametersController.java[]
+----
+<1> - the correct type parameter is used for the action's injection point.
+<2> - implementation of the event handler.
+<3> - implementation of the `bodyGenerator` delegate method. The method signature is generated with correct type parameter.
+<4> - implementation of the `attachmentProvider` delegate method generated by the Studio.
+
+--
