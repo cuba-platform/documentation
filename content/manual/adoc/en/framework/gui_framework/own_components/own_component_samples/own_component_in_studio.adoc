@@ -26,7 +26,7 @@ Support for the UI component in the Screen Designer includes the following featu
 '''
 <<component_metadata_prerequisites,Prerequisites>>
 
-<<component_metadata_stepper_sample,Stepper Sample Project>>
+<<component_metadata_stepper_sample,Stepper sample project>>
 
 <<component_metadata_annotation_list,Metadata annotation list>>
 
@@ -42,15 +42,17 @@ Support for the UI component in the Screen Designer includes the following featu
 
 <<component_metadata_property_groups,StudioProperties annotation and property groups>>
 
-<<component_metadata_subelement_collection,Defining sub-element metadata with @StudioCollection>>
+<<component_metadata_subelement_collection,Declaring sub-element metadata with @StudioCollection>>
 
-<<component_metadata_subelement_group,Defining sub-element metadata with @StudioElementGroup and @StudioElement>>
+<<component_metadata_subelement_group,Declaring sub-element metadata with @StudioElementGroup and @StudioElement>>
+
+<<component_metadata_subtag,Declaring sub-tag attributes>>
 
 <<component_metadata_embedded_pojo,Declaring tag attributes extracted into a POJO with @StudioEmbedded>>
 
-<<component_metadata_component_handlers,Support for Events and Delegate Methods>>
+<<component_metadata_component_handlers,Support for events and delegate methods>>
 
-<<component_metadata_generic_types,Support for Generic Type Parameters>>
+<<component_metadata_generic_types,Support for generic type parameters>>
 
 <<component_metadata_other_examples,Other examples of annotated components>>
 
@@ -73,7 +75,7 @@ These steps are described in the <<vaadin_addon_sample_gui>> section.
 --
 
 [[component_metadata_stepper_sample]]
-Stepper Sample Project::
+Stepper sample project::
 --
 Fully implemented example of custom UI component with metadata annotations can be found in the *Stepper* Vaadin addon integration sample. Its source code can be found here: https://github.com/cuba-labs/vaadin-stepper-addon-integration.
 
@@ -219,7 +221,7 @@ The `@StudioProperty` annotation has the following attributes:
 ** For `COMPONENT_REF` property type - list of allowed base component classes.
 ** For `PROPERTY_PATH_REF` property type - list of allowed entity attribute types. Use registered <<datatype,Datatype>> names for the datatype properties or `to_one` and `to_many` for the association properties.
 * `xmlAttribute` - target XML attribute name, if not set then equal to the property name.
-* `xmlElement` - target XML element name.
+* `xmlElement` - target XML element name. By using this attribute you can declare component property mapped to a sub-tag of the main component XML tag, <<component_metadata_subtag,see below>>.
 * `typeParameter` - specifies the name of the generic type parameter provided by this property for the component. See description <<component_metadata_generic_types,below>>.
 --
 
@@ -301,7 +303,7 @@ include::{sourcesdir}/ui_component/metadata/PropertyGroups.java[]
 --
 
 [[component_metadata_subelement_collection]]
-Defining sub-element metadata with @StudioCollection::
+Declaring sub-element metadata with @StudioCollection::
 --
 Compound components such as `table`, `pickerField` or charts are defined in the screen descriptor by several nested XML tags. Sub-tags represent parts of the component and are loaded to the screen by the parent component's `ComponentLoader`. You have two options how to declare metadata for sub-elements:
 
@@ -340,7 +342,7 @@ image::ui_component/metadata/collection-element-inspector.png[align="center"]
 --
 
 [[component_metadata_subelement_group]]
-Defining sub-element metadata with @StudioElementGroup and @StudioElement::
+Declaring sub-element metadata with @StudioElementGroup and @StudioElement::
 --
 The `@StudioElementGroup` is used to mark setter method in the component interface. It gives a hint to the Studio that it should search for sub-element metadata in the referenced class.
 
@@ -409,6 +411,27 @@ If the sub-element is selected in the layout, the Inspector panel displays its p
 image::ui_component/metadata/element-group-element-inspector.png[align="center"]
 --
 
+[[component_metadata_subtag]]
+Declaring sub-tag attributes::
+--
+It is possible to declare some of component attributes not in the main tag, but in a single sub-tag of the main component XML tag in the screen descriptor. As an example, consider the following XML layout of the component:
+
+[source, xml]
+----
+include::{sourcesdir}/ui_component/metadata/subtag.xml[]
+----
+
+Here the `scrollBar` is a part of the main `myChart` component and not an independent component, so we need to declare attributes metadata in the main component interface.
+
+Metadata annotations defining attributes of the sub-tag can be declared right in the component interface using the `xmlElement` attribute of the `@StudioProperty` annotation. This attribute defines the name of the sub-tag. The annotated component definition looks as follows:
+
+[source, java]
+----
+include::{sourcesdir}/ui_component/metadata/ComponentWithSubTag.java[]
+----
+
+--
+
 [[component_metadata_embedded_pojo]]
 Declaring tag attributes extracted into a POJO with @StudioEmbedded::
 --
@@ -445,9 +468,9 @@ image::ui_component/metadata/embedded-inspector.png[align="center"]
 
 
 [[component_metadata_component_handlers]]
-Support for Events and Delegate Methods::
+Support for events and delegate methods::
 --
-Studio provides for custom UI components and facets the same support for events and delegate methods as for built-in UI components. No annotations are required for declaring an event listener or delegate method in a component interface.
+Studio provides the same support for events and delegate methods in custom UI components (or facets) as for built-in UI components. No annotations are required for declaring an event listener or delegate method in a component interface.
 
 Example of the component declaring an event handler with its own event class:
 
@@ -456,7 +479,7 @@ Example of the component declaring an event handler with its own event class:
 include::{sourcesdir}/ui_component/metadata/EventHandler.java[]
 ----
 
-Declared event handler becomes availble in the Inspector panel:
+Declared event handler becomes available in the Inspector panel:
 
 image::ui_component/metadata/event-handler-in-inspector.png[align="center"]
 
@@ -476,9 +499,11 @@ include::{sourcesdir}/ui_component/metadata/MethodDelegate.java[]
 --
 
 [[component_metadata_generic_types]]
-Support for Generic Type Parameters::
+Support for generic type parameters::
 --
-// todo introduction
+Studio supports parameterizing component interface with generic type parameter. The parameter can be the entity class, screen class or any other Java class. Type parameter is used when the component is injected to the screen controller and when delegate method stubs are generated.
+
+Studio infers generic type used by particular component by looking at its properties assigned in the XML. Component property can specify generic type directly or indirectly. E.g. the `table` component displays list of entities and is parameterized by the entity class. To determine actual entity type used, Studio looks at the `dataContainer` attribute, and then at the collection container definition. If all attributes are assigned then entity class used by the collection container is determined to be table's generic parameter.
 
 The `typeParameter` parameter of the `@StudioProperty` annotation specifies the name of the type parameter for the generic UI component or facet that is provided by the property. The actual class for the type parameter can be resolved for the following property types:
 
