@@ -1,0 +1,1 @@
+DataContext dataContext = UiControllerUtils.getScreenData(screenOrFrame).getDataContext();
