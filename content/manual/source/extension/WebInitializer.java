@@ -10,6 +10,6 @@ public class WebInitializer {
                 e.getApplicationContext(), "com.demo.comp.MyHttpServlet");
  
         e.getSource().addServlet("my_servlet", myServlet)
-                .addMapping("/myservlet/");
+                .addMapping("/myservlet/*");
     }
 }
