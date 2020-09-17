@@ -1,7 +1,5 @@
-package com.company.sample.web;
+package com.company.jespatest.web;
 
-import com.company.sample.config.ActiveDirectoryConfig;
-import com.company.sample.web.sys.DomainAliasesResolver;
 import com.google.common.collect.ImmutableMap;
 import com.haulmont.cuba.core.global.ClientType;
 import com.haulmont.cuba.core.global.GlobalConfig;
@@ -9,8 +7,13 @@ import com.haulmont.cuba.core.sys.AppContext;
 import com.haulmont.cuba.core.sys.ConditionalOnAppProperty;
 import com.haulmont.cuba.security.auth.*;
 import com.haulmont.cuba.security.global.LoginException;
+import com.haulmont.cuba.web.App;
+import com.haulmont.cuba.web.Connection;
 import com.haulmont.cuba.web.auth.WebAuthConfig;
+import com.haulmont.cuba.web.security.ExternalUserCredentials;
 import com.haulmont.cuba.web.security.LoginProvider;
+import com.haulmont.cuba.web.security.events.AppStartedEvent;
+import com.haulmont.cuba.web.sys.RequestContext;
 import jespa.http.HttpSecurityService;
 import jespa.ntlm.NtlmSecurityProvider;
 import jespa.security.PasswordCredential;
@@ -18,19 +21,18 @@ import jespa.security.SecurityProviderException;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Nullable;
 import javax.annotation.PostConstruct;
 import javax.inject.Inject;
-import javax.servlet.FilterChain;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
+import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.io.Serializable;
+import java.security.Principal;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,7 +40,7 @@ import static com.haulmont.cuba.web.security.ExternalUserCredentials.EXTERNAL_AU
 
 @ConditionalOnAppProperty(property = "activeDirectory.integrationEnabled", value = "true")
 @Component("sample_JespaAuthProvider")
-public class JespaAuthProvider extends HttpSecurityService implements LoginProvider, Ordered {
+public class JespaAuthProvider extends HttpSecurityService implements LoginProvider, Ordered, Filter {
 
     private static final Logger log = LoggerFactory.getLogger(JespaAuthProvider.class);
 
@@ -153,6 +155,26 @@ public class JespaAuthProvider extends HttpSecurityService implements LoginProvi
 
     @Override
     public void destroy() {
+    }
+
+    @Override
+    public void init(FilterConfig filterConfig) throws ServletException {
+    }
+
+    @EventListener
+    public void loginOnAppStart(AppStartedEvent appStartedEvent) {
+        App app = appStartedEvent.getApp();
+        Connection connection = app.getConnection();
+        Principal userPrincipal = RequestContext.get().getRequest().getUserPrincipal();
+        if (userPrincipal != null) {
+            String login = userPrincipal.getName();
+            log.debug("Trying to login using jespa principal " + login);
+            try {
+                connection.login(new ExternalUserCredentials(login, App.getInstance().getLocale()));
+            } catch (LoginException e) {
+                log.trace("Unable to login on start", e);
+            }
+        }
     }
 
     @Override
