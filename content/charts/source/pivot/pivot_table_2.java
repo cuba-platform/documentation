@@ -13,7 +13,7 @@ public class PivotSampleScreen extends Screen {
 
         DerivedProperties derivedProperties = new DerivedProperties();
         derivedProperties.addAttribute("Smokes",
-                new JsFunction("function(record) {return record.smoker == \"Yes\" ? \"True\" : \"False\";}"));
+                new JsFunction("function(record) {return record.Smoker == \"Yes\" ? \"True\" : \"False\";}"));
         tipsCustomAggregatorPivotTable.setDerivedProperties(derivedProperties);
     }
 }
