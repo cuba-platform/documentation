@@ -1,0 +1,130 @@
+:sourcesdir: ../../../../source
+
+[[widgetset_win_path_too_long]]
+==== Building widgetset on Windows
+
+--
+When building projects with the `web-toolkit` module and custom widgetset on Windows, sometimes you can encounter the following error message in the Run console window:
+----
+Execution failed for task ':app-web-toolkit:buildWidgetSet'.
+> A problem occurred starting process 'command 'C:\Program Files\AdoptOpenJDK\jdk-8.0.242.08-hotspot\bin\java.exe''
+
+* Try:
+Run with --stacktrace option to get the stack trace. Run with --info or --debug option to get more log output. Run with --scan to get full insights.
+----
+
+This message doesn't show exact reason of the problem. Open the terminal (e.g. Terminal tool window in the IntelliJ IDEA or CUBA Studio) and run command with `--stacktrace` option in the project folder (adjust module name if your project's module prefix differs from the default `app`):
+
+----
+gradlew :app-web-toolkit:buildWidgetSet --stacktrace
+----
+
+You will get the error output ending like below:
+
+----
+...
+Caused by: java.io.IOException: Cannot run program "C:\Program Files\AdoptOpenJDK\jdk-8.0.242.08-hotspot\bin\java.exe" (in directory "C:\projects\proj\modules\web-toolkit"): CreateProcess error=206, The filename or extension is too long
+        at net.rubygrapefruit.platform.internal.DefaultProcessLauncher.start(DefaultProcessLauncher.java:25)
+        ... 8 more
+Caused by: java.io.IOException: CreateProcess error=206, The filename or extension is too long
+        ... 9 more
+----
+
+*If* the error message contains *"CreateProcess error=206"* - it means that you meet the https://www.google.com/search?q=windows+error+206[infamous Windows limitation] - inability to create process with command line of more than 32K characters.
+
+Unfortunately, there is no possible automatic way to avoid this problem. Possible solutions for the "The filename or extension is too long" error are:
+
+* Switch to other operating system for development (MacOS or Linux).
+* Upgrade project to use Gradle 6 or later by altering the `distributionUrl` property in the `gradle\wrapper\gradle.properties` file in the project. Gradle 6 avoids mentioned error by changing the way how command line parameters are passed to the external commands. Note that CUBA uses by default and was tested with Gradle {gradleVersion}, so changing Gradle version may require you to adjust your build scripts.
+* Shorten command line of the <<build.gradle_buildWidgetSet,buildWidgetSet>> Gradle task to reduce its length below 32K limit.
+--
+
+[[widgetset_win_path_too_long_shortening]]
+Shortening buildWidgetSet command line::
+--
+Take the following measures to shorten `buildWidgetSet` command line:
+
+1. Move your project to the folder with short path from the disk root, e.g. `C:\proj\`.
+
+2. Move and rename Gradle user home directory to the shortest possible name. See below.
+
+3. Exclude transitive dependencies of the `app-web-toolkit` module that aren't necessary for widgetset building. See below.
+--
+
+[[widgetset_win_path_too_long_debug_length]]
+Determine buildWidgetSet command line length::
+--
+To determine actual command line length of the Java process that builds widgetset, run the following command in terminal:
+----
+gradlew -i :app-web-toolkit:buildWidgetSet --stacktrace > build.log
+----
+
+Then open created `build.log` file in the text editor and search for the following snippet in the end:
+----
+GWT Compiler args:
+	[...]
+JVM Args:
+	[...]
+Starting process 'command 'C:\...\bin\java.exe''. Working directory: ... Command: C:\...\java.exe <THOUSANDS OF CHARACTERS> com.company.project.web.toolkit.ui.AppWidgetSet
+----
+
+The "Starting process ..." line contains all command line with arguments, so its length is near to the actual command line length that we need to shorten.
+--
+
+[[widgetset_win_path_too_long_gradle_home]]
+Change path to the Gradle user home directory::
+--
+Read more about Gradle user home directory in the https://docs.gradle.org/{gradleVersion}/userguide/build_environment.html#sec:gradle_environment_variables[Gradle manual].
+
+1. Choose new name of the user home directory. One-letter folder name located in the disk root is recommended, e.g. `C:\g\`.
+
+2. Open standard Environment Variables operating system dialog and add new environment variable with name `GRADLE_USER_HOME` and value equal to the new folder name: `C:\g`
+
+3. Open your user's home directory in the Explorer: `C:\users\%myusername%`.
+
+4. Select `.gradle` folder. Move it to the new location and rename to the new name: `C:\users\%myusername%\.gradle` becomes `C:\g`
+
+5. Reopen IntelliJ IDEA or CUBA Studio IDE to apply environment variable changes.
+--
+
+[[widgetset_win_path_too_long_exclude]]
+Exclude transitive dependencies of the app-web-toolkit module::
+--
+First you need to discover transitive dependencies of the `app-web-toolkit` module. Run the following command in terminal:
+----
+gradlew :app-web-toolkit:dependencies > deps.log
+----
+Then open created `deps.log` file in the text editor. You need to look for the `compile` group of listed dependencies.
+
+Then open the `build.gradle` project file and modify the `configure(webToolkitModule) {` section. Add dependency exclusions like presented in the example below:
+----
+configure(webToolkitModule) {
+    configurations.compile {
+        // library dependencies that aren't necessary for widgetset compilation
+        exclude group: 'org.springframework'
+        exclude group: 'org.springframework.security.oauth'
+        exclude group: 'org.eclipse.persistence'
+        exclude group: 'org.codehaus.groovy'
+        exclude group: 'org.apache.ant'
+        exclude group: 'org.eclipse.jetty'
+        exclude group: 'com.esotericsoftware'
+        exclude group: 'com.googlecode.owasp-java-html-sanitizer'
+        exclude group: 'net.sourceforge.htmlunit'
+
+        // add-on dependencies that don't contain web components or widgetset
+        // and therefore aren't necessary for widgetset compilation
+        exclude group: 'com.haulmont.addon.restapi'
+        exclude group: 'com.haulmont.reports'
+        exclude group: 'com.haulmont.addon.admintools'
+        exclude group: 'com.haulmont.addon.search'
+        exclude group: 'com.haulmont.addon.emailtemplates'
+        exclude group: 'de.diedavids.cuba.metadataextensions'
+        exclude group: 'de.diedavids.cuba.instantlauncher'
+    }
+    // ...
+}
+----
+The example presented above is just for reference. In your particular project you might need to exclude more libraries or add-ons.
+
+Repeat excluding more libraries until `buildWidgetSet` command-line length (which can be determined by looking at debug logs as shown above) becomes less than 32000 characters.
+--
