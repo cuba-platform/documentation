@@ -1,0 +1,130 @@
+:sourcesdir: ../../../../source
+
+[[widgetset_win_path_too_long]]
+==== Сборка виджетсета под Windows
+
+--
+При сборке проектов, включающих модуль `web-toolkit` и собственный GWT виджетсет под ОС Windows в некоторых случаях вы можете встретить следующее сообщение об ошибке в консольном окне Run:
+----
+Execution failed for task ':app-web-toolkit:buildWidgetSet'.
+> A problem occurred starting process 'command 'C:\Program Files\AdoptOpenJDK\jdk-8.0.242.08-hotspot\bin\java.exe''
+
+* Try:
+Run with --stacktrace option to get the stack trace. Run with --info or --debug option to get more log output. Run with --scan to get full insights.
+----
+
+Это сообщение не показывает точную причину проблемы. Откройте терминал (например окно инструментов Terminal в IntelliJ IDEA или CUBA Studio) и запустите команду с опцией `--stacktrace` в каталоге проекта (подправьте имя модуля, если префикс модуля в вашем проекте отличается от значения по умолчанию `app`):
+
+----
+gradlew :app-web-toolkit:buildWidgetSet --stacktrace
+----
+
+Вы получите вывод с ошибкой, заканчивающийся как показано ниже:
+
+----
+...
+Caused by: java.io.IOException: Cannot run program "C:\Program Files\AdoptOpenJDK\jdk-8.0.242.08-hotspot\bin\java.exe" (in directory "C:\projects\proj\modules\web-toolkit"): CreateProcess error=206, The filename or extension is too long
+        at net.rubygrapefruit.platform.internal.DefaultProcessLauncher.start(DefaultProcessLauncher.java:25)
+        ... 8 more
+Caused by: java.io.IOException: CreateProcess error=206, The filename or extension is too long
+        ... 9 more
+----
+
+*Если* сообщение об ошибке содержит *"CreateProcess error=206"* - это означает, что вы встретили https://www.google.com/search?q=windows+error+206[известное ограничение Windows] - невозможность запустить процесс со строкой запуска более чем 32K символов.
+
+К сожалению, нет возможности как-то автоматически обойти эту проблему. Возможные решения для ошибки "The filename or extension is too long" следующие:
+
+* Сменить операционную систему, используемую для разработки (на MacOS или Linux).
+* Обновить проект на использование Gradle 6 или более новой версии, изменив свойство `distributionUrl` в проектном файле `gradle\wrapper\gradle.properties`. Gradle 6 избегает упомянутой ошибки, т.к. в нем изменен способ, которым параметры запуска передаются во внешние команды. Нужно иметь в виду, что платформа CUBA использует по умолчанию и была протестирована с Gradle {gradleVersion}, поэтому после изменения версии Gradle вам может потребоваться подправить скрипты сборки в проекте.
+* Сократить строку запуска задачи <<build.gradle_buildWidgetSet,buildWidgetSet>>, чтобы уменьшить ее длину ниже предела в 32K.
+--
+
+[[widgetset_win_path_too_long_shortening]]
+Сокращение строки запуска buildWidgetSet::
+--
+Проделайте следующие меры, чтобы сократить строку запуска `buildWidgetSet`:
+
+1. Переместите ваш проект в каталог с коротким путем от корня диска, например `C:\proj\`.
+
+2. Переместите и переименуйте домашнюю директорию Gradle, чтобы она имела настолько короткое имя, насколько возможно. Подробности ниже.
+
+3. Исключите транзитивные зависимости модуля `app-web-toolkit`, которые не являются обязательными для сборки виджетсета. Подробности ниже.
+--
+
+[[widgetset_win_path_too_long_debug_length]]
+Определение длины строки запуска команды buildWidgetSet::
+--
+Чтобы определить реальную длину строки запуска Java процесса, который собирает виджетсет, запустите следующую команду в терминале:
+----
+gradlew -i :app-web-toolkit:buildWidgetSet --stacktrace > build.log
+----
+
+Затем откройте созданный файл `build.log` в текстовом редакторе и найдите следующий фрагмент в конце файла:
+----
+GWT Compiler args:
+	[...]
+JVM Args:
+	[...]
+Starting process 'command 'C:\...\bin\java.exe''. Working directory: ... Command: C:\...\java.exe <ТЫСЯЧИ СИМВОЛОВ> com.company.project.web.toolkit.ui.AppWidgetSet
+----
+
+Строка "Starting process ..." как раз содержит все аргументы строки запуска, поэтому ее длина близка к реальной длине строки запуска, которую требуется сократить.
+--
+
+[[widgetset_win_path_too_long_gradle_home]]
+Изменение пути к домашней папке Gradle::
+--
+Прочитать больше о домашней папке Gradle можно https://docs.gradle.org/{gradleVersion}/userguide/build_environment.html#sec:gradle_environment_variables[на сайте Gradle].
+
+1. Выберите новое имя домашнего каталога Gradle. Рекомендуется каталог с именем из одной буквы, расположенный в корне диска, например `C:\g\`.
+
+2. Откройте стандартный диалог операционной системы "Переменные среды" и добавьте новую переменную среды с именем `GRADLE_USER_HOME` и новым именем домашнего каталога как значением: `C:\g`
+
+3. Откройте домашнюю папку вашего пользователя в Проводнике: `C:\users\%myusername%`.
+
+4. Выберите каталог `.gradle`. Переместите его на новое место и переименуйте: `C:\users\%myusername%\.gradle` становится `C:\g`
+
+5. Перезапустите IntelliJ IDEA или CUBA Studio, чтобы применить изменения переменных среды.
+--
+
+[[widgetset_win_path_too_long_exclude]]
+Исключение транзитивных зависимостей модуля app-web-toolkit::
+--
+Сначала потребуется определить транзитивные зависимости модуля `app-web-toolkit`. Выполните следующую команду в терминале:
+----
+gradlew :app-web-toolkit:dependencies > deps.log
+----
+Затем откройте созданный файл `deps.log` в текстовом редакторе. Вам нужна `compile` группа представленных там зависимостей.
+
+Откройте файл `build.gradle` и модифицируйте секцию `configure(webToolkitModule) {`. Добавьте исключения зависимостей, как представлено на примере ниже:
+----
+configure(webToolkitModule) {
+    configurations.compile {
+        // зависимости - библиотеки, которые не требуются для сборки виджетсета
+        exclude group: 'org.springframework'
+        exclude group: 'org.springframework.security.oauth'
+        exclude group: 'org.eclipse.persistence'
+        exclude group: 'org.codehaus.groovy'
+        exclude group: 'org.apache.ant'
+        exclude group: 'org.eclipse.jetty'
+        exclude group: 'com.esotericsoftware'
+        exclude group: 'com.googlecode.owasp-java-html-sanitizer'
+        exclude group: 'net.sourceforge.htmlunit'
+
+        // зависимости - аддоны, которые не содержат web-компонентов или виджетсет
+        // и поэтому не требуются для сборки виджетсета
+        exclude group: 'com.haulmont.addon.restapi'
+        exclude group: 'com.haulmont.reports'
+        exclude group: 'com.haulmont.addon.admintools'
+        exclude group: 'com.haulmont.addon.search'
+        exclude group: 'com.haulmont.addon.emailtemplates'
+        exclude group: 'de.diedavids.cuba.metadataextensions'
+        exclude group: 'de.diedavids.cuba.instantlauncher'
+    }
+    // ...
+}
+----
+Представленный выше пример можно использовать как образец. Но в вашем конкретном проекте может потребоваться исключить дополнительные библиотеки или аддоны.
+
+Продолжайте исключать дополнительные библиотеки, пока длина строки запуска команды `buildWidgetSet` (которая определяется по детальному журналу, как описано выше) не сократится до менее чем 32000 символов.
+--
