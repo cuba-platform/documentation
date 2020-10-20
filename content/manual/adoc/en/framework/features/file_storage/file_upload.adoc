@@ -27,13 +27,14 @@ include::{sourcesdir}/features/fileUploadDialog_1.java[]
 <3> - uploading file to the file storage of the middle tier.
 <4> - saving the `FileDescriptor` entity.
 
-Temporary files are deleted automatically in the following ways:
+After a successful upload, the dialog is closed with `COMMIT_ACTION_ID`. In a `CloseWithCommitListener`, use the `getFileId()` and `getFileName()` methods to get the UUID and the name of uploaded file. Then you can get the file itself or create a `FileDescriptor` and upload the file to the file storage, or implement any other logic.
 
-* `FileUploadField` is used in `IMMEDIATE` <<gui_FileUploadField_fileStoragePutMode,mode>>.
-* `FileUploadingAPI.putFileIntoStorage(UUID, FileDescriptor)` method is used.
+The temporary client-level storage (`FileUploadingAPI`) stores temporary files in the folder defined by <<cuba.tempDir,cuba.tempDir>> application property. Temporary files are deleted automatically in the following cases:
 
-In other ways, after uploading files on the server, into the file storage or `byte[]` it is recommended to delete them using `FileUploadingAPI.deleteFile(UUID)` method.
+* If `FileUploadField` is used in `IMMEDIATE` <<gui_FileUploadField_fileStoragePutMode,mode>>.
+* If you use the `FileUploadingAPI.putFileIntoStorage(UUID, FileDescriptor)` method.
 
-The temporary client-level storage (`FileUploadingAPI`) stores temporary files in the folder defined by <<cuba.tempDir,cuba.tempDir>> application property. Temporary files can remain in the folder in case of any failures. The `clearTempDirectory()` method of the `cuba_FileUploading` bean is invoked periodically by the scheduler defined in the <<spring.xml,cuba-web-spring.xml>> file.
+Otherwise, you should delete the temporary files using the `FileUploadingAPI.deleteFile(UUID)` method.
 
-After successful upload, the dialog is closed with `COMMIT_ACTION_ID`. In a `CloseWithCommitListener`, use the `getFileId()` and `getFileName()` methods to get the UUID and the name of uploaded file. Then you can get the file itself or create a `FileDescriptor` and upload the file to the file storage, or implement any other logic.
+Temporary files can remain in the folder in case of any failures. The `clearTempDirectory()` method of the `cuba_FileUploading` bean is invoked periodically by the scheduler defined in the <<spring.xml,cuba-web-spring.xml>> file. By default it runs on Tuesday, Thursday, Saturday midnight and deletes all files older than 2 days.
+
