@@ -26,7 +26,24 @@ Interaction mechanism is based on link:http://www.jgroups.org[JGroups]. The plat
 If there is a firewall between your middleware servers, don't forget to open firewall ports according to your `JGroups` configuration.
 ====
 
-In order to set up JGroups parameters for your environment, copy the appropriate `jgroups.xml` file from the root of `cuba-core-<version>.jar` to your project *core* module or to `tomcat/conf/app-core` and modify it.
+In order to set up JGroups parameters for your environment, copy the appropriate `jgroups.xml` file from the root of `cuba-core-<version>.jar` to the source root of your project's *core* module (the `src` folder) or to `tomcat/conf/app-core` and modify it.
 
 `ClusterManagerAPI` bean provides the program interface for interaction between servers in the Middleware cluster. It can be used in the application – see JavaDocs and usages in the platform code.
 
+[[cluster_mw_server_sync_session_repl]]
+Synchronous replication of user sessions::
+--
+By default all JGroups messages are sent to the cluster *asynchronously*. It means that middleware code returns response to the client layer before the moment when the cluster message is received by other cluster members.
+
+Such behavior improves response time of the system, however it can cause problems with load balancers that route requests between client layers and middleware and use round-robin strategy (such as NGINX or Kubernetes). That is: login request from web client returns earlier than new user session is fully replicated to other cluster members. Subsequent middleware call from web client layer can be directed by the round-robin strategy to the other middleware node where it will fail with `NoUserSessionException` because the user session hasn't been received by this cluster member yet.
+
+To avoid `NoUserSessionException` errors when using round-robin balancer with middleware cluster, new user sessions created on login should be replicated *synchronously*. Set these properties in the `app.properties` (or `app_home/local.app.properties` on the target server) file:
+
+[source,plain]
+----
+cuba.syncNewUserSessionReplication = true
+
+# also if you use REST API add-on
+cuba.rest.syncTokenReplication = true
+----
+--
