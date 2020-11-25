@@ -1,6 +1,6 @@
-public class TaskEdit extends StandardEditor<Task> {
+public class EventEdit extends StandardEditor<Event> {
     @Subscribe
-    protected void onInit(InitEvent event) {
+    public void onInit(InitEvent event) {
         setCrossFieldValidate(false);
     }
 }
