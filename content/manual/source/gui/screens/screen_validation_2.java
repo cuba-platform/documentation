@@ -9,8 +9,8 @@ public class DemoScreen extends Screen {
     @Inject
     protected TimeSource timeSource;
 
-    @Subscribe
-    protected void onInit(InitEvent initEvent) {
+    @Subscribe("validateBtn")
+    public void onValidateBtnClick(Button.ClickEvent event) {
         Event event = metadata.create(Event.class);
         event.setName("Demo event");
         event.setStartDate(timeSource.currentTimestamp());
