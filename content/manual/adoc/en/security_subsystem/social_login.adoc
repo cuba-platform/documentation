@@ -3,28 +3,30 @@
 [[social_login]]
 === Social Login
 
-Social login is a form of <<sso,single sign-on>> that allows you to use credentials from a social networking site such as Facebook, Twitter or Google+, to sign in to a CUBA application instead of creating a new login account explicitly for the application.
+A social login is a form of <<sso,single sign-on>> that allows you to use credentials from a social networking site such as Facebook, Twitter or Google+, to sign in to a CUBA application instead of creating a new login account explicitly for the application.
 
 [TIP]
 ====
-See https://www.cuba-platform.com/guides/anonymous-access-and-social-login[Anonymous Access & Social Login] guide to learn how to set up public access to some screens of the application and implement custom login using a Google, Facebook, or GitHub account.
+See https://www.cuba-platform.com/guides/anonymous-access-and-social-login[Anonymous Access & Social Login] guide to learn how to set up public access to some application screens and implement a custom login using a Google, Facebook, or GitHub account.
 ====
 
-In the following example, we will consider the social login using Facebook. Facebook uses OAuth2 authorization mechanism, for more details consult the documentation on Facebook API and Facebook Login Flow: https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow.
+In the following example, we will consider the social login using Facebook. Facebook uses the OAuth2 authorization mechanism; for more details, consult the documentation on Facebook API and Facebook Login Flow: https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow.
 
-The source code of this sample project is available on https://github.com/cuba-platform/sample-social-login[GitHub], below are the key points of the social login implementation.
+The source code of this sample project is available on https://github.com/cuba-platform/sample-social-login-cuba7[GitHub]. Below are the key points of social login implementation.
 
-. In order to connect your application to Facebook, you will need to create the *App ID* (unique application identifier) and *App Secret* (a kind of password that authenticates requests from your application to Facebook servers). Follow the https://developers.facebook.com/docs/apps/register[instruction] and register the generated values in `app.properties` file of the *core* module as the `facebook.appId` and `facebook.appSecret` application properties respectively, for example:
+. To connect your application to Facebook, you will need to create the *App ID* (unique application identifier) and *App Secret* (a kind of password that authenticates requests from your application to Facebook servers). Follow the https://developers.facebook.com/docs/apps/register[instruction] and register the generated values in the `app.properties` file of the *core* module as the `facebook.appId` and `facebook.appSecret` application properties, respectively, for example:
 +
 --
 [source, properties]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
 ----
 facebook.appId = 123456789101112
 facebook.appSecret = 123456789101112abcde131415fghi16
 ----
 
-Also register the URL that you used for the Facebook app registration in the <<cuba.webAppUrl,cuba.webAppUrl>> property in the *core* and *web* application properties files, for example:
+Grant https://developers.facebook.com/docs/permissions/reference/email[email] permission that allows your app to view the user's primary email address.
+
+Then, register the URL that you used for the Facebook app registration in the <<cuba.webAppUrl,cuba.webAppUrl>> property in the *core* and *web* application properties files, for example:
 
 [source, properties]
 ----
@@ -32,73 +34,86 @@ cuba.webAppUrl = http://cuba-fb.test:8080/app
 ----
 --
 
-. Extend the https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ext-loginWindow.xml[login screen] and add the button for social login. This button will invoke the `loginFacebook()` method - the entry point to the social login flow.
+. Extend the <<gui_LoginScreen,login screen>> and add the button for the social login. Subscribe to the button click event: it will be the entry point to the social login flow.
++
+[source, xml]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/web/src/com/company/demo/web/screens/ext-login-screen.xml[ext-login-screen.xml]
+----
+include::{sourcesdir}/security/social_login_button.xml[]
+----
 
-. To use Facebook user accounts, we need to add one extra field to the standard CUBA user account. Extend the `User` entity and add the `facebookId` attribute of String type to it:
+. We need to add one extra field to the standard CUBA user account to use Facebook user accounts. <<entity_extension,Extend>> the `User` entity and add the `facebookId` attribute of String type to it:
 +
 [source, java]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/entity/SocialUser.java[SocialUser.java]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/global/src/com/company/demo/entity/SocialUser.java[SocialUser.java]
 ----
 @Column(name = "FACEBOOK_ID")
 protected String facebookId;
 ----
 
-. Create a service that will look for a user with a given `facebookId` in the application database and either return the existent user or create a new one:
+. Create a `FacebookAccessRole` <<roles_design_time,role>> that allows the user to view the *Help*, *Settings*, and *About* screens:
 +
 [source, java]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/SocialRegistrationService.java[SocialRegistrationService.java]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/core/src/com/company/demo/core/role/FacebookAccessRole.java[FacebookAccessRole.java]
+----
+include::{sourcesdir}/security/security_facebook_access_role.java[]
+----
+
+. Create a <<services,service>> that will look for a user with a given `facebookId` in the application database and either return the existent user or create a new one:
++
+[source, java]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/global/src/com/company/demo/service/SocialRegistrationService.java[SocialRegistrationService.java]
 ----
 include::{sourcesdir}/security/security_SocialRegistrationService.java[]
 ----
 +
 [source, java]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/SocialRegistrationServiceBean.java[SocialRegistrationServiceBean.java]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/core/src/com/company/demo/service/SocialRegistrationServiceBean.java[SocialRegistrationServiceBean.java]
 ----
 include::{sourcesdir}/security/security_SocialRegistrationServiceBean.java[]
 ----
 
-. Create a service to manage the login process. In this example it is https://github.com/cuba-platform/sample-social-login/blob/master/modules/global/src/com/company/demo/service/FacebookService.java[FacebookService] that contains two methods: `getLoginUrl()` and `getUserData()`.
+. Create a service to manage the login process. In this example it is https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/global/src/com/company/demo/service/FacebookService.java[FacebookService] that contains two methods: `getLoginUrl()` and `getUserData()`.
 +
 --
-* `getLoginUrl()` will generate the login URL based on the application URL and OAuth2 response type (code, access token or both; see more on response types in https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow[Facebook API documentation]). The complete implementation of this method you can find in the https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/service/FacebookServiceBean.java[FacebookServiceBean.java] file.
+* `getLoginUrl()` will generate the login URL based on the application URL and OAuth2 response type (code, access token, or both; see more on response types in https://developers.facebook.com/docs/facebook-login/manually-build-a-login-flow[Facebook API documentation]). The complete implementation of this method you can find in the https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/core/src/com/company/demo/service/FacebookServiceBean.java[FacebookServiceBean.java] file.
 
-* `getUserData()` will look for the Facebook user by the given application URL and code, and either return the personal data of the existent user or create a new one. In this example we want to get the user's id, name and email, the id will correspond the `facebookId` attribute created above.
+* `getUserData()` will look for the Facebook user by the given application URL and code and either return the personal data of the existent user or create a new one. In this example, we want to get the user's `id`, `name`, and `email`; the `id` will correspond the `facebookId` attribute created above.
 --
 
-. Define the `facebook.fields` and `facebook.scope` application properties in the `app.properties` file of the *core* module:
+. Define the `facebook.fields` application property in the `app.properties` file of the *core* module:
 +
 [source, properties]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/core/src/com/company/demo/app.properties[app.properties]
 ----
 facebook.fields = id,name,email
-facebook.scope = email
 ----
 
-. Go back to the `loginFacebook()` method in the controller of the extended login window. The full code of the controller you can find in the https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java] file.
+. Go back to the Facebook login button click event in the controller of the extended login screen. The full code of the controller you can find in the https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/web/src/com/company/demo/web/screens/ExtLoginScreen.java[ExtLoginScreen.java] file.
 +
 --
-In this method we add the request handler to the current session, save the current URL and invoke the redirect to the Facebook authentication form in the browser:
+In this event, we add the request handler to the current session, save the current URL, and invoke the redirect to the Facebook authentication form in the browser:
 
 [source,java]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/web/src/com/company/demo/web/screens/ExtLoginScreen.java[ExtLoginScreen.java]
 ----
 include::{sourcesdir}/security/security_loginFacebook.java[]
 ----
 
 The `handleFacebookCallBackRequest()` method will handle the callback after the Facebook authentication form. Firstly, we use the `UIAccessor` instance to lock the UI until the login request is proceeded.
 
-Then, `FacebookService` will get the Facebook user account email and id. After that, the corresponding CUBA user will be found by `facebookId` or registered on the fly in the system.
+Then, `FacebookService` will get the Facebook user account `email` and `id`. After that, the corresponding CUBA user will be found by `facebookId` or registered on the fly in the system.
 
 Next, the authentication is triggered, the user session on behalf of this user is loaded, and the UI is updated. After that, we remove the Facebook callback handler, as far as we no longer expect authentication.
 
 [source,java]
-.https://github.com/cuba-platform/sample-social-login/blob/master/modules/web/src/com/company/demo/web/login/ExtAppLoginWindow.java[ExtAppLoginWindow.java]
+.https://github.com/cuba-platform/sample-social-login-cuba7/blob/master/modules/web/src/com/company/demo/web/screens/ExtLoginScreen.java[ExtLoginScreen.java]
 ----
 include::{sourcesdir}/security/security_handleFacebookCallBackRequest.java[]
 ----
 --
 
-Now, when a user clicks the *Facebook* button on the login screen, the application will ask them for permission to use their Facebook profile and email, and if this permission is granted, the logged in user will be redirected to the main application page.
+Now, when a user clicks the *Facebook* button on the login screen, the application will ask them for permission to use their Facebook profile and email, and if this permission is granted, the logged-in user will be redirected to the main application page.
 
-You can implement your own login mechanism using custom `LoginProvider`, `HttpRequestFilter` or events described in the <<web_login>> section.
+You can implement your own login mechanism using custom `LoginProvider`, `HttpRequestFilter`, or events described in the <<web_login>> section.
 

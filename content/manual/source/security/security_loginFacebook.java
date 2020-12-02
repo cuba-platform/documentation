@@ -9,13 +9,14 @@ private FacebookService facebookService;
 @Inject
 private GlobalConfig globalConfig;
 
-public void loginFacebook() {
+@Subscribe("facebookBtn")
+public void onFacebookBtnClick(Button.ClickEvent event) {
     VaadinSession.getCurrent()
         .addRequestHandler(facebookCallBackRequestHandler);
 
     this.redirectUri = Page.getCurrent().getLocation();
 
-    String loginUrl = facebookService.getLoginUrl(globalConfig.getWebAppUrl(), OAuth2ResponseType.CODE);
+    String loginUrl = facebookService.getLoginUrl(globalConfig.getWebAppUrl(), FacebookService.OAuth2ResponseType.CODE);
     Page.getCurrent()
         .setLocation(loginUrl);
 }
