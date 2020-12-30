@@ -40,7 +40,7 @@
     `state: fixed` `type: bug` `ver: 7.2.11` `ver: 7.3.0` 
 * [#3090 Filter by 'Localized Name' does not work in Role browser](https://github.com/cuba-platform/cuba/issues/3090) \
     `state: fixed` `type: bug` `ver: 7.2.11` `ver: 7.3.0` 
-* [#3087 Tokenlist changes don`t save](https://github.com/cuba-platform/cuba/issues/3087) \
+* [#3087 Tokenlist changes don't save](https://github.com/cuba-platform/cuba/issues/3087) \
     `state: fixed` `type: bug` `ver: 7.2.11` `ver: 7.3.0` 
 * [#3086 Query IN parameter accepting list of entities doesn't work on MySQL](https://github.com/cuba-platform/cuba/issues/3086) \
     `state: fixed` `type: bug` `ver: 7.2.11` `ver: 7.3.0` 
