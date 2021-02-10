@@ -4,7 +4,7 @@ import com.haulmont.cuba.core.global.FileLoader;
 import com.haulmont.cuba.core.global.FileStorageException;
 import com.haulmont.cuba.core.global.Metadata;
 import com.haulmont.cuba.gui.components.AbstractWindow;
-import com.haulmont.cuba.gui.components.ResizableTextArea;
+import com.haulmont.cuba.gui.components.TextArea;
 import com.haulmont.cuba.gui.upload.FileUploadingAPI;
 import org.apache.commons.io.IOUtils;
 
@@ -23,9 +23,9 @@ public class FileLoaderScreen extends AbstractWindow {
     @Inject
     private DataManager dataManager;
     @Inject
-    private ResizableTextArea textAreaIn;
+    private TextArea textAreaIn;
     @Inject
-    private ResizableTextArea textAreaOut;
+    private TextArea textAreaOut;
 
     private FileDescriptor fileDescriptor;
 
@@ -50,7 +50,7 @@ public class FileLoaderScreen extends AbstractWindow {
     public void onButtonOutClick() {
         try {
             InputStream inputStream = fileLoader.openStream(fileDescriptor);
-            textAreaOut.setValue(IOUtils.toString(inputStream));
+            textAreaOut.setValue(IOUtils.toString(inputStream, StandardCharsets.UTF_8));
         } catch (FileStorageException | IOException e) {
             throw new RuntimeException(e);
         }
