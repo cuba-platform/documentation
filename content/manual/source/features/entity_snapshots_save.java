@@ -1,16 +1,12 @@
-public class CustomerEditor extends AbstractEditor<Customer> {
+public class OrderEdit extends StandardEditor<Order> {
 
     @Inject
-    protected Datasource<Customer> customerDs;
+    InstanceContainer <Order> orderDc;
     @Inject
     protected EntitySnapshotService entitySnapshotService;
-
 ...
-    @Override
-    protected boolean postCommit(boolean committed, boolean close) {
-        if (committed) {
-            entitySnapshotService.createSnapshot(customerDs.getItem(), customerDs.getView());
-        }
-        return super.postCommit(committed, close);
+    @Subscribe
+    public void onAfterCommitChanges(AfterCommitChangesEvent event) {
+         entitySnapshotService.createSnapshot(orderDc.getItem(), orderDc.getView());
     }
 }
