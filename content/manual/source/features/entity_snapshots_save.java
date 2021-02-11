@@ -6,7 +6,7 @@ public class OrderEdit extends StandardEditor<Order> {
     protected EntitySnapshotService entitySnapshotService;
 ...
     @Subscribe
-    public void onBeforeCommitChanges(AfterCommitChangesEvent event) {
+    public void onAfterCommitChanges(AfterCommitChangesEvent event) {
          entitySnapshotService.createSnapshot(orderDc.getItem(), orderDc.getView());
     }
 }
