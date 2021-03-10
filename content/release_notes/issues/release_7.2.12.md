@@ -45,10 +45,6 @@
     `type: bug` `ver: 7.2.12` `ver: 7.3.0` 
 * [#151 Unable to use JavaCV added as a dependency](https://github.com/cuba-platform/cuba-gradle-plugin/issues/151) \
     `state: fixed` `type: bug` `ver: 7.2.12` `ver: 7.3.0` 
-* [#12 Compatibility with Intellij Gradle plugin](https://github.com/cuba-platform/cuba-gradle-plugin/issues/12) \
-    `severity: major` `state: fixed` `type: enhancement` `ver: 7.0.0` `ver: 7.2.12` `ver: 7.3.0` 
-* [#11 Separate app properties for core and web blocks in buildWar task](https://github.com/cuba-platform/cuba-gradle-plugin/issues/11) \
-    `state: won't fix` `type: enhancement` `ver: 7.2.12` `ver: 7.3.0` 
 
 # cuba-platform/reports
 
