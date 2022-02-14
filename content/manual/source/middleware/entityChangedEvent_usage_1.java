@@ -6,16 +6,13 @@ import com.haulmont.cuba.core.app.events.EntityChangedEvent;
 import com.haulmont.cuba.core.entity.contracts.Id;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import java.util.UUID;
 
 @Component("demo_CustomerChangedListener")
 public class CustomerChangedListener {
 
-    @TransactionalEventListener(
-            phase = TransactionPhase.BEFORE_COMMIT // <1>
-    )
+    @EventListener // <1>
     public void beforeCommit(EntityChangedEvent<Customer, UUID> event) {
         Id<Customer, UUID> entityId = event.getEntityId(); // <2>
         EntityChangedEvent.Type changeType = event.getType(); // <3>
@@ -27,9 +24,7 @@ public class CustomerChangedListener {
         }
     }
 
-    @TransactionalEventListener(
-            phase = TransactionPhase.AFTER_COMMIT // <6>
-    )
+    @TransactionalEventListener // <6>
     public void afterCommit(EntityChangedEvent<Customer, UUID> event) {
         // <7>
     }
