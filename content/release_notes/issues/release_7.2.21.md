@@ -13,8 +13,6 @@
 
 # cuba-platform/reports
 
-* [#304 Update to YARG 2.2.22](https://github.com/cuba-platform/reports/issues/304) \
-    `ver: 7.3.0` `ver: 7.2.21` 
 * [#302 Report with custom template doesn't work with brackets in groovy script name ](https://github.com/cuba-platform/reports/issues/302) \
     `ver: 7.3.0` `ver: 7.2.21` 
 
