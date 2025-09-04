@@ -4,9 +4,9 @@
 
 The documentation is written in AsciiDoc format. Source files, images and includes are located in the `content` directory in the following subdirectories:
 
-* `manual` - Developer's Manual
-* `polymer` - Polymer UI Tutorial
-* `release_notes` - latest release notes
+* `manual` - Developer's Manual.
+* `polymer` - Polymer UI Tutorial.
+* `release_notes` - latest release notes.
 * other subdirectories contain documentation on platform addons.
 
 Most of the documents have English and Russian versions in the corresponding subdirectories (`en` and `ru`). 
